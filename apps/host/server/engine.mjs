@@ -4,6 +4,7 @@ import { cachedHardware, detect } from './hardware.mjs';
 import { get as getStore, update } from './store.mjs';
 import * as supervisor from './supervisor.mjs';
 import { nowIso } from './util.mjs';
+import { kvMemoryFactor, resolveKvSettings } from './kv-settings.mjs';
 
 const engineState = {
   running: false,
@@ -44,7 +45,7 @@ export function params() {
   const overrides = getStore().expert ?? {};
   const catalog = expertParams(cachedHardware()?.cpu?.cores ?? null);
   const known = new Set(catalog.map(p => p.id));
-  const mapped = new Set(['gpu.layers','ctx.length','ctx.kvMode','mem.mmap','mem.lock','perf.batch','perf.threads','perf.flashAttn','server.port','server.parallel']);
+  const mapped = new Set(['gpu.layers','ctx.length','ctx.kvMode','ctx.kType','ctx.vType','mem.mmap','mem.lock','perf.batch','perf.threads','perf.flashAttn','server.port','server.parallel']);
   return [...catalog.map((p) => ({
     ...p,
     applies: p.id.startsWith('sample.') ? 'Next request' : mapped.has(p.id) ? 'Next model load' : 'Preserved only · adapter does not apply this value',
@@ -134,7 +135,7 @@ export function predict(beginner, hw, v, expert = getStore().expert ?? {}) {
   if (v && hw) {
     const headroom = hw.accelerator.unified ? hw.memory.totalGb * 0.72 : hw.accelerator.usableVramGb;
     const fp = { ...footprint(v, ctx) };
-    const kvFactor = ['FP16'].includes(expert['ctx.kvMode']) ? 2 : expert['ctx.kvMode'] === 'Q4_0' ? .5 : 1;
+    const kvFactor = kvMemoryFactor(Object.entries(expert).map(([id, value]) => ({ id, value })));
     fp.kvGb *= kvFactor; fp.totalGb = fp.weightsGb + fp.kvGb + fp.overheadGb;
     if (headroom) {
       const verdict = fp.totalGb <= headroom * 0.85 ? 'Comfortable' : fp.totalGb <= headroom ? 'Tight' : 'Above estimated memory budget';
@@ -263,7 +264,14 @@ export async function validate(draft = {}) {
     else if (p.type === 'text' && typeof value !== 'string') addError(p.id, 'enter text.');
   }
   if (!CONTEXT_TOKENS[String(values['ctx.length']).toLowerCase()] || String(values['ctx.length']).toLowerCase() === 'recommended') addError('ctx.length', 'enter a whole context size from 4K to 1024K.');
-  const kv = values['ctx.kvMode'];
+  let kvFactor = 1;
+  try {
+    const cacheParams = Object.entries(values).map(([id, value]) => ({ id, value }));
+    resolveKvSettings(cacheParams);
+    kvFactor = kvMemoryFactor(cacheParams);
+  } catch (error) {
+    addError('ctx.kType', error.message);
+  }
   if (draft?.beginner && draft?.expert?.some(p => p.id === 'ctx.length')) {
     const effective = beginner.contextLength === 'recommended' ? '128K' : String(beginner.contextLength).toUpperCase();
     if (values['ctx.length'] !== effective) addError('ctx.length', 'match beginner.contextLength (Recommended means 128K).');
@@ -276,7 +284,7 @@ export async function validate(draft = {}) {
     issues.push({ level: 'warn', message: `${ctx / 1024}K exceeds ${v.label}'s trained context — quality beyond that limit is not verified.` });
   }
   if (v && headroom) {
-    const fp = footprint(v, ctx); const factor = kv === 'FP16' ? 2 : kv === 'Q4_0' ? .5 : 1;
+    const fp = footprint(v, ctx); const factor = kvFactor;
     const estimate = fp.weightsGb + fp.kvGb * factor + fp.overheadGb;
     if (estimate > hw.memory.totalGb) issues.push({ level: 'warn', message: `Estimated working memory (${estimate.toFixed(1)} GB) exceeds physical memory. Choose a smaller model or shorter context.` });
   }
@@ -295,7 +303,7 @@ export async function validate(draft = {}) {
   return {
     ok: issues.every((i) => i.level !== 'error'),
     issues,
-    predicted: predict(beginner, hw, v, values),
+    predicted: issues.some(i => i.level === 'error') ? null : predict(beginner, hw, v, values),
   };
 }
 

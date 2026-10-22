@@ -28,6 +28,9 @@
 #include "strata/kernels/mrope.hpp"
 #include "strata/kernels/native_rope.hpp"
 #include "strata/kernels/native_flash_attn.hpp"
+#if defined(STRATA_WITH_SPIN8)
+#include "strata/core/spin8_attention.hpp"
+#endif
 #include "strata/kernels/fused_gr.hpp"
 #include "strata/kernels/cvec.hpp"
 #include "strata/kernels/qsa_decode_attn.hpp"
@@ -1261,7 +1264,11 @@ int64_t max_blocks = (st.max_cells / s.idx_block) + 2;
     // KV streaming: every block the selection names is made resident before anything reads it
     qsa_kv_resolve(st, g, b.ids, st.step, 1, cap, stream);
     if (st.kv_rot) strata::kernels::fwht256_inplace_cuda(b.qcur, g.n_head, stream);   // <Hq, Hk> = <q, k>
-    if (g_fast_attn && !native_flash_attn_short && dump == nullptr) {
+    bool strict_spin8 = false;
+#if defined(STRATA_WITH_SPIN8)
+    strict_spin8 = spin8_attention_enabled();
+#endif
+    if (g_fast_attn && !native_flash_attn_short && !strict_spin8 && dump == nullptr) {
         const strata::kernels::QsaAttnPools pools = qsa_attn_pools(st);
         strata::kernels::qsa_decode_attn_step(b.qcur, pools, b.ids, st.step, cap, s, b.attn_scratch, b.attn, stream);
     } else {
@@ -1274,6 +1281,13 @@ int64_t max_blocks = (st.max_cells / s.idx_block) + 2;
     else if (st.kv_q4) strata::kernels::kv_gather_q4_step(st.k_q4, st.v_q4, st.page_table, b.ids, st.step, cap, s, b.k_scratch, b.v_scratch, stream);
     else if (st.kv_int8) kv_gather_q8_step(st.k_q, st.v_q, st.k_scale, st.v_scale, st.page_table, b.ids, st.step, cap, s,                                 b.k_scratch, b.v_scratch, stream);
     else kv_gather_step(st.k_pool, st.v_pool, st.page_table, b.ids, st.step, cap, s, b.k_scratch, b.v_scratch,                   stream);
+#if defined(STRATA_WITH_SPIN8)
+    if (strict_spin8) {
+        if (!spin8_attention_step(b.qcur, b.k_scratch, b.v_scratch, st.step, (size_t) cap,
+            (size_t) g.n_head, (size_t) g.n_head_kv, (size_t) g.head_dim, b.attn_scratch, b.attn,
+            st.attention_status, st.host_step + kStepCount, stream, err)) return false;
+    } else
+#endif
     if (native_flash_attn_short) {
     if (st.max_cells < 1 || st.max_cells > 256 || !st.attention_status || !st.host_step) {
         err = v.name("native_flash_attn") + ": short adapter requires context <=256 and persistent status storage";

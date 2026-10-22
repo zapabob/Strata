@@ -1,6 +1,7 @@
 /** Independent model identities for the design host. Native engines remain capability gated. */
 import { randomUUID } from 'node:crypto';
 import { RequestQueue } from './request-queue.mjs';
+import { kvMemoryFactor } from './kv-settings.mjs';
 const deviceId = gpu => gpu.id ?? `${gpu.vendor}:${gpu.index}`;
 const active = r => ['queued','generating'].includes(r.state);
 
@@ -11,7 +12,7 @@ export function modelReservation(model, config, hardware, gpuIds, checkCapacity=
   if (!Number.isFinite(context) || context < 4096 || checkCapacity && context > model.contextMax) throw new Error('Choose a supported conversation context.');
   const chosen = hardware.gpus.filter(g => gpuIds.includes(deviceId(g)));
   const reserve = config.extra?.headroom === 'full' ? Math.max(2,hardware.memory.totalGb*.125) : Math.max(4,hardware.memory.totalGb*.25);
-  const cache = (model.kvKbPerToken ?? 24) * context / 1024**2 * (expert['ctx.kvMode']==='FP16'?2:expert['ctx.kvMode']==='Q4_0'?.5:1) * Math.max(1,Number(expert['server.parallel'] ?? 1));
+  const cache = (model.kvKbPerToken ?? 24) * context / 1024**2 * kvMemoryFactor(config.expert) * Math.max(1,Number(expert['server.parallel'] ?? 1));
   const fixed = cache + (model.experts>0?2.5:1.2);
   const weights = model.diskGb;
   // Equal placement is a planning assumption, never a claim about engine allocation.

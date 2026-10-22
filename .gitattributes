@@ -25,3 +25,4 @@ docker/compose/* text eol=lf
 
 # Apple tools (codesign, plutil) read these: LF only, wherever the repository is cloned
 *.plist text eol=lf
+tools/spin8_*.patch -text

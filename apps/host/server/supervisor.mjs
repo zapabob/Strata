@@ -16,6 +16,8 @@ import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { MODELS_DIR } from './store.mjs';
 import { which } from './util.mjs';
+import { buildSpin8Args, probeBackendCapabilities } from './spin8-backend.mjs';
+import { resolveKvSettings, explicitKvEnvironment } from './kv-settings.mjs';
 
 const LOG_LIMIT = 400;
 
@@ -57,24 +59,30 @@ export function init(hub) {
 
 /* ------------------------------------------------------------------ binary --- */
 
-const BINARY_NAMES = ['llama-server'];
-
-export function findBinary() {
+export function findBinary({ platform = process.platform, env = process.env, modelsDir = MODELS_DIR } = {}) {
+  const binaryNames = platform === 'win32' ? ['llama-server.exe', 'llama-server'] : ['llama-server'];
   const candidates = [];
 
-  if (process.env.STRATA_LLAMA_SERVER) candidates.push({ path: process.env.STRATA_LLAMA_SERVER, source: 'STRATA_LLAMA_SERVER' });
+  if (env.STRATA_LLAMA_SERVER) candidates.push({ path: env.STRATA_LLAMA_SERVER, source: 'STRATA_LLAMA_SERVER' });
 
   // A build downloaded into the app's own folder wins over anything on PATH:
   // it is the version Strata was tested against.
   try {
-    const engineDir = join(MODELS_DIR, '..', 'engine');
+    const engineDir = join(modelsDir, '..', 'engine');
     if (existsSync(engineDir)) {
+      if (platform === 'win32') {
+        for (const name of binaryNames) candidates.push({ path: join(engineDir, name), source: 'bundled' });
+      }
       for (const entry of readdirSync(engineDir)) {
         const dir = join(engineDir, entry);
         if (!statSync(dir).isDirectory()) continue;
-        for (const name of BINARY_NAMES) {
+        for (const name of binaryNames) {
           const full = join(dir, name);
           if (existsSync(full)) candidates.push({ path: full, source: 'bundled' });
+          if (platform === 'win32') {
+            candidates.push({ path: join(dir, 'bin', 'Release', name), source: 'bundled' });
+            candidates.push({ path: join(dir, 'bin', name), source: 'bundled' });
+          }
         }
       }
     }
@@ -82,7 +90,7 @@ export function findBinary() {
     /* ignore unreadable engine dir */
   }
 
-  for (const name of BINARY_NAMES) {
+  for (const name of binaryNames) {
     candidates.push({ path: `/opt/homebrew/bin/${name}`, source: 'homebrew' });
     candidates.push({ path: `/usr/local/bin/${name}`, source: 'homebrew' });
   }
@@ -90,31 +98,41 @@ export function findBinary() {
   return candidates.find((c) => existsSync(c.path)) ?? null;
 }
 
-export async function resolveBinary() {
+export async function resolveBinary({ updateState = true } = {}) {
   const found = findBinary();
   if (found) {
-    state.binary = found.path;
-    state.binarySource = found.source;
+    if (updateState) {
+      state.binary = found.path;
+      state.binarySource = found.source;
+    }
     return found;
   }
-  const onPath = await which('llama-server');
+  const onPath = await which(process.platform === 'win32' ? 'llama-server.exe' : 'llama-server');
   if (onPath) {
-    state.binary = onPath;
-    state.binarySource = 'PATH';
+    if (updateState) {
+      state.binary = onPath;
+      state.binarySource = 'PATH';
+    }
     return { path: onPath, source: 'PATH' };
   }
   return null;
 }
 
+export async function probeCapabilities({ manifestPath = process.env.STRATA_BONSAI_MANIFEST ?? null } = {}) {
+  const binary = await resolveBinary({ updateState: false });
+  return probeBackendCapabilities(binary?.path, { manifestPath });
+}
+
 /* --------------------------------------------------------------- arguments --- */
 
-const KV_TYPES = { INT8: 'q8_0', FP16: 'f16', Q8_0: 'q8_0', Q4_0: 'q4_0' };
 
 /**
  * Turn the tuning configuration into a real llama-server command line.
  * Exported so the UI can show exactly what will run.
  */
 export function buildArgs({ modelPath, config, hardware, port = state.port }) {
+  // Check before lifecycle changes: an unsupported request must not stop a server.
+  const spin8Args = buildSpin8Args(config);
   const beginner = config.beginner ?? {};
   const params = new Map((config.expert ?? []).map((p) => [p.id, p.value]));
   const num = (id, fallback) => {
@@ -143,8 +161,8 @@ export function buildArgs({ modelPath, config, hardware, port = state.port }) {
   const threads = num('perf.threads', Math.max(4, (hardware?.cpu?.cores ?? 8) - 2));
   args.push('-t', String(threads));
 
-  const kv = KV_TYPES[String(params.get('ctx.kvMode') ?? 'INT8')] ?? 'q8_0';
-  args.push('-ctk', kv, '-ctv', kv);
+  const kv = resolveKvSettings(config.expert);
+  args.push('-ctk', kv.k, '-ctv', kv.v);
 
   const batch = num('perf.batch', 2048);
   args.push('-b', String(batch), '-ub', String(Math.max(128, Math.min(512, Math.round(batch / 4)))));
@@ -170,7 +188,7 @@ export function buildArgs({ modelPath, config, hardware, port = state.port }) {
 
   if (config.serving?.apiKey) args.push('--api-key', config.serving.apiKey);
 
-  return args;
+  return [...args, ...spin8Args];
 }
 
 export function describeCommand() {
@@ -210,6 +228,7 @@ async function waitForHealth(port, timeoutMs = 90_000) {
 }
 
 export async function start({ modelId, modelPath, port = 8080, config, hardware, timeoutMs = 120_000 }) {
+  const args = buildArgs({ modelPath, config, hardware, port });
   if (state.status === 'running' && state.modelId === modelId && state.port === port) {
     return status();
   }
@@ -233,7 +252,7 @@ export async function start({ modelId, modelPath, port = 8080, config, hardware,
   state.modelPath = modelPath;
   state.error = null;
   state.logs = [];
-  state.args = buildArgs({ modelPath, config, hardware, port });
+  state.args = args;
   state.command = describeCommand();
   hubRef?.send('engine-status', status());
 
@@ -241,7 +260,7 @@ export async function start({ modelId, modelPath, port = 8080, config, hardware,
 
   child = spawn(binary.path, state.args, {
     cwd: join(MODELS_DIR, '..'),
-    env: { ...process.env, LLAMA_CACHE: join(MODELS_DIR, '..', 'cache') },
+    env: { ...explicitKvEnvironment(), LLAMA_CACHE: join(MODELS_DIR, '..', 'cache') },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
 
@@ -318,6 +337,7 @@ export async function stop() {
 }
 
 export async function restart(opts) {
+  buildArgs(opts);
   await stop();
   await new Promise((r) => setTimeout(r, 400));
   return start(opts);

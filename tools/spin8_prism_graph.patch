@@ -1,0 +1,329 @@
+diff --git a/common/arg.cpp b/common/arg.cpp
+index 12e33698dc27e403d3699599fdc00a0d022cfacd..a62a579e0cb47606119c0b0825cda0b9540c0005 100644
+--- a/common/arg.cpp
++++ b/common/arg.cpp
+@@ -1740,6 +1740,16 @@ common_params_context common_params_parser_init(common_params & params, llama_ex
+             params.n_chunks = value;
+         }
+     ).set_examples({LLAMA_EXAMPLE_IMATRIX, LLAMA_EXAMPLE_PERPLEXITY, LLAMA_EXAMPLE_RETRIEVAL, LLAMA_EXAMPLE_KV_MEAN_CENTER}));
++    add_opt(common_arg({"--spin8-mode"}, "MODE",
++        "reference graph: off|vector|spinor-plus|spinor-minus|consensus (requires --flash-attn off, unquantized KV)",
++        [](common_params & params, const std::string & value) {
++            const std::vector<std::string> modes = {"off", "vector", "spinor-plus", "spinor-minus", "consensus"};
++            const auto it = std::find(modes.begin(), modes.end(), value);
++            if (it == modes.end()) { throw std::runtime_error("invalid --spin8-mode"); }
++            params.spin8_mode = static_cast<int32_t>(it - modes.begin());
++        }));
++    add_opt(common_arg({"--spin8-profile"}, "FILE", "explicit spin8-profile-v1 plane profile",
++        [](common_params & params, const std::string & value) { params.spin8_profile = value; }));
+     add_opt(common_arg({ "-fa", "--flash-attn" }, "[on|off|auto]",
+                        string_format("set Flash Attention use ('on', 'off', or 'auto', default: '%s')",
+                                      llama_flash_attn_type_name(params.flash_attn_type)),
+diff --git a/common/common.cpp b/common/common.cpp
+index a24c68a1cd956b6bd68dec78b89e89f06052715f..718f087751198986b5af642eab3d3b92201b5043 100644
+--- a/common/common.cpp
++++ b/common/common.cpp
+@@ -1778,6 +1778,8 @@ struct llama_context_params common_context_params_to_llama(const common_params &
+     cparams.pooling_type      = params.pooling_type;
+     cparams.attention_type    = params.attention_type;
+     cparams.flash_attn_type   = params.flash_attn_type;
++    cparams.spin8_mode        = params.spin8_mode;
++    cparams.spin8_profile     = params.spin8_profile.empty() ? nullptr : params.spin8_profile.c_str();
+     cparams.cb_eval           = params.cb_eval;
+     cparams.cb_eval_user_data = params.cb_eval_user_data;
+     cparams.offload_kqv       = !params.no_kv_offload;
+diff --git a/common/common.h b/common/common.h
+index fd2dde72ff99d14d4f987edc22c0c543d44a9c40..fe23d850132ce0d3671709f3c0be1a578d924b6f 100644
+--- a/common/common.h
++++ b/common/common.h
+@@ -499,6 +499,9 @@ struct common_params {
+     enum llama_attention_type    attention_type    = LLAMA_ATTENTION_TYPE_UNSPECIFIED; // attention type for embeddings
+     enum llama_flash_attn_type   flash_attn_type   = LLAMA_FLASH_ATTN_TYPE_AUTO; // whether to use Flash Attention
+ 
++    int32_t spin8_mode = 0;
++    std::string spin8_profile;
++
+     struct common_params_sampling    sampling;
+     struct common_params_speculative speculative;
+     struct common_params_diffusion   diffusion;
+diff --git a/include/llama.h b/include/llama.h
+index deb1e12828c6cead2a6c7a1793f4c4396b5121d2..5759853ec3b17bd0cfc79f0321b3db95893b6201 100644
+--- a/include/llama.h
++++ b/include/llama.h
+@@ -372,6 +372,10 @@ extern "C" {
+         enum llama_attention_type    attention_type;    // attention type to use for embeddings
+         enum llama_flash_attn_type   flash_attn_type;   // when to enable Flash Attention
+ 
++        // Reference graph: 0=off, 1=vector, 2=spinor-plus, 3=spinor-minus, 4=consensus.
++        int32_t spin8_mode;
++        const char * spin8_profile; // explicit profile path; copied during context construction
++
+         // ref: https://github.com/ggml-org/llama.cpp/pull/2054
+         float    rope_freq_base;   // RoPE base frequency, 0 = from model
+         float    rope_freq_scale;  // RoPE frequency scaling factor, 0 = from model
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index c6df19f2ecf4ffdd7c31937c756f2425653af822..3ee51b29b38587a161989c74218ef64666094921 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -61,6 +61,15 @@ target_include_directories(llama PUBLIC ../include)
+ target_compile_features   (llama PRIVATE cxx_std_17) # don't bump
+ 
+ target_link_libraries(llama PUBLIC ggml)
++set(STRATA_SPIN8_DIR "" CACHE PATH "Strict shared Spin8 core source directory")
++if (STRATA_SPIN8_DIR)
++    set(SPIN8_BUILD_TESTS OFF CACHE BOOL "" FORCE)
++    set(SPIN8_ENABLE_CUDA OFF CACHE BOOL "" FORCE)
++    add_subdirectory("${STRATA_SPIN8_DIR}" "${CMAKE_BINARY_DIR}/spin8-core")
++    set_target_properties(spin8 PROPERTIES POSITION_INDEPENDENT_CODE ON)
++    target_link_libraries(llama PRIVATE spin8)
++    target_compile_definitions(llama PUBLIC LLAMA_SPIN8)
++endif()
+ 
+ if (BUILD_SHARED_LIBS)
+     set_target_properties(llama PROPERTIES POSITION_INDEPENDENT_CODE ON)
+diff --git a/src/llama-context.cpp b/src/llama-context.cpp
+index 0f0f4dc7e382e3e29cf5cf741bc0a6fa8ee91b6c..5c8d394908913d4c22eafb1affc036cea786eec0 100644
+--- a/src/llama-context.cpp
++++ b/src/llama-context.cpp
+@@ -316,6 +316,28 @@ llama_context::llama_context(
+         cparams.causal_attn = params.attention_type == LLAMA_ATTENTION_TYPE_CAUSAL;
+     }
+ 
++    if (params.spin8_mode != 0) {
++#ifdef LLAMA_SPIN8
++        if (params.flash_attn_type != LLAMA_FLASH_ATTN_TYPE_DISABLED || ggml_is_quantized(params.type_k) ||
++            ggml_is_quantized(params.type_v) || hparams.is_mla() || model.arch == LLM_ARCH_DEEPSEEK4) {
++            throw std::runtime_error("Spin8 reference graph requires --flash-attn off, unquantized KV and dense attention");
++        }
++        bool has_dense_attention = false;
++        for (uint32_t il = 0; il < hparams.n_layer(); ++il) {
++            if (!hparams.is_recr(il)) {
++                has_dense_attention = true;
++                if (hparams.n_embd_head_k(il) < 8 || hparams.n_embd_head_k(il) % 8 != 0) {
++                    throw std::runtime_error("Spin8 reference graph requires dense head dimensions divisible by 8");
++                }
++            }
++        }
++        if (!has_dense_attention) { throw std::runtime_error("Spin8 unavailable for models without dense attention layers"); }
++        cparams.spin8 = llama_spin8::load(params.spin8_mode, params.spin8_profile);
++        LLAMA_LOG_WARN("Spin8 capability=reference-graph; logits before one softmax; shared V; no rotated quantized K caches; recurrent layers unchanged\n");
++#else
++        throw std::runtime_error("Spin8 unavailable: build with STRATA_SPIN8_DIR");
++#endif
++    }
+     cparams.flash_attn = params.flash_attn_type != LLAMA_FLASH_ATTN_TYPE_DISABLED;
+     cparams.auto_fa    = params.flash_attn_type == LLAMA_FLASH_ATTN_TYPE_AUTO;
+ 
+@@ -4065,6 +4087,8 @@ llama_context_params llama_context_default_params() {
+         /*.pooling_type                =*/ LLAMA_POOLING_TYPE_UNSPECIFIED,
+         /*.attention_type              =*/ LLAMA_ATTENTION_TYPE_UNSPECIFIED,
+         /*.flash_attn_type             =*/ LLAMA_FLASH_ATTN_TYPE_AUTO,
++        /*.spin8_mode                  =*/ 0,
++        /*.spin8_profile               =*/ nullptr,
+         /*.rope_freq_base              =*/ 0.0f,
+         /*.rope_freq_scale             =*/ 0.0f,
+         /*.yarn_ext_factor             =*/ -1.0f,
+diff --git a/src/llama-cparams.h b/src/llama-cparams.h
+index 24814961440176b299d1a2929a14d4ce29ed5d65..a2cc21808644e194ecaff65e9bec8d982e7a356d 100644
+--- a/src/llama-cparams.h
++++ b/src/llama-cparams.h
+@@ -4,6 +4,9 @@
+ #include "llama.h"
+ 
+ #include <array>
++#ifdef LLAMA_SPIN8
++#include "llama-spin8.h"
++#endif
+ #include <cstdint>
+ #include <vector>
+ 
+@@ -52,6 +55,9 @@ struct llama_cparams {
+ 
+     bool causal_attn;
+     bool offload_kqv;
++#ifdef LLAMA_SPIN8
++    std::shared_ptr<llama_spin8> spin8;
++#endif
+     bool flash_attn;
+     bool auto_fa;
+     bool fused_gdn_ar;       // use fused gated delta net (autoregressive)
+diff --git a/src/llama-graph.cpp b/src/llama-graph.cpp
+index c5e428af0e7bc71dfee5520f990ca08fc84b0ac0..5fb63c1a6109d483908c3a6f7b73d9dd47a01b2a 100644
+--- a/src/llama-graph.cpp
++++ b/src/llama-graph.cpp
+@@ -25,6 +25,22 @@
+ #include <typeinfo>
+ #include <unordered_set>
+ 
++#ifdef LLAMA_SPIN8
++class llm_graph_input_spin8 : public llm_graph_input_i {
++public:
++    explicit llm_graph_input_spin8(std::shared_ptr<llama_spin8> cfg) : cfg(std::move(cfg)) {}
++    void set_input(const llama_ubatch * ubatch) override {
++        cfg->audit(ubatch->n_tokens);
++        for (int v = 0; v < 3; ++v) {
++            ggml_backend_tensor_set(matrices[v], cfg->matrices[v].data(), 0, 64*sizeof(float));
++        }
++    }
++    bool can_reuse(const llm_graph_params &) override { return true; }
++    std::shared_ptr<llama_spin8> cfg;
++    std::array<ggml_tensor *, 3> matrices{};
++};
++#endif
++
+ // dedup helpers
+ 
+ static ggml_tensor * build_attn_inp_kq_mask(
+@@ -2763,7 +2779,23 @@ ggml_tensor * llm_graph_context::build_attn_mha(
+ 
+         cur = ggml_reshape_2d(ctx0, cur, cur->ne[0]*cur->ne[1], cur->ne[2]*cur->ne[3]);
+     } else {
+-        ggml_tensor * kq = ggml_mul_mat(ctx0, k, q);
++        ggml_tensor * kq;
++#ifdef LLAMA_SPIN8
++        if (cparams.spin8) {
++            if (v_mla) { throw std::runtime_error("Spin8 reference graph does not support MLA"); }
++            auto inp = std::make_unique<llm_graph_input_spin8>(cparams.spin8);
++            for (int view = 0; view < 3; ++view) {
++                inp->matrices[view] = ggml_new_tensor_2d(ctx0, GGML_TYPE_F32, 8, 8);
++                ggml_set_input(inp->matrices[view]);
++                ggml_format_name(inp->matrices[view], "spin8_matrix_%d_%d", il, view);
++            }
++            kq = llama_spin8_scores(ctx0, q, k, inp->matrices, cparams.spin8->weights);
++            res->add_input(std::move(inp));
++        } else
++#endif
++        {
++            kq = ggml_mul_mat(ctx0, k, q);
++        }
+         cb(kq, "kq", il);
+ 
+         // note: this op tends to require high floating point range
+diff --git a/src/llama-spin8.h b/src/llama-spin8.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..a5b57b5174cc9fec7c67c2ba0aa91d898f02656c
+--- /dev/null
++++ b/src/llama-spin8.h
+@@ -0,0 +1,122 @@
++#pragma once
++#include "ggml.h"
++#include "spin8/spin8.h"
++#include <array>
++#include <chrono>
++#include <cmath>
++#include <fstream>
++#include <memory>
++#include <mutex>
++#include <sstream>
++#include <stdexcept>
++#include <string>
++#include <vector>
++
++// Reference graph adapter. K is rotated after cache read; this is not a rotated quantized cache.
++struct llama_spin8 {
++    std::array<std::array<float, 64>, 3> matrices{};
++    std::array<float, 3> weights{};
++    std::unique_ptr<spin8_plan, decltype(&spin8_plan_free)> plan{nullptr, spin8_plan_free};
++    mutable std::mutex mutex;
++    mutable spin8_monitor monitor{};
++    mutable uint64_t layer_tokens = 0;
++    const std::chrono::steady_clock::time_point epoch = std::chrono::steady_clock::now();
++
++    static std::shared_ptr<llama_spin8> load(int mode, const char * path) {
++        if (mode < 1 || mode > 4 || !path || !*path) {
++            throw std::runtime_error("Spin8 requires mode 1..4 and an explicit --spin8-profile");
++        }
++        std::ifstream input(path);
++        std::string line;
++        if (!std::getline(input, line) || line != "spin8-profile-v1") {
++            throw std::runtime_error("Spin8 profile: unreadable or unsupported version");
++        }
++        std::vector<spin8_plane> planes;
++        size_t bytes = 0;
++        while (std::getline(input, line)) {
++            bytes += line.size() + 1;
++            if (bytes > 65536 || planes.size() >= 4096) {
++                throw std::runtime_error("Spin8 profile exceeds size limit");
++            }
++            if (line.empty() || line[0] == '#') { continue; }
++            spin8_plane plane{};
++            std::string extra;
++            std::istringstream row(line);
++            if (!(row >> plane.a >> plane.b >> plane.angle) || (row >> extra)) {
++                throw std::runtime_error("Spin8 profile: invalid plane row");
++            }
++            planes.push_back(plane);
++        }
++        if (input.bad() || planes.empty()) { throw std::runtime_error("Spin8 profile is empty or unreadable"); }
++        auto cfg = std::make_shared<llama_spin8>();
++        spin8_plan * raw = nullptr;
++        if (spin8_plan_create(planes.data(), planes.size(), &raw) != SPIN8_OK) {
++            throw std::runtime_error("Spin8 profile: invalid Spin(8) lift");
++        }
++        cfg->plan.reset(raw);
++        for (int view = 0; view < 3; ++view) {
++            double matrix[64];
++            if (spin8_plan_matrix(raw, static_cast<spin8_view>(view), matrix) != SPIN8_OK) {
++                throw std::runtime_error("Spin8 matrix construction failed");
++            }
++            for (size_t i = 0; i < 64; ++i) { cfg->matrices[view][i] = static_cast<float>(matrix[i]); }
++            cfg->weights[view] = mode == 4 ? 1.0f/3.0f : (mode == view + 1 ? 1.0f : 0.0f);
++        }
++        spin8_monitor_init(&cfg->monitor);
++        cfg->audit(0);
++        return cfg;
++    }
++
++    void audit(uint64_t tokens) const {
++        std::lock_guard<std::mutex> lock(mutex);
++        layer_tokens += tokens;
++        const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - epoch).count();
++        int due = 0;
++        spin8_status status = spin8_monitor_due(&monitor, layer_tokens, seconds, &due);
++        if (status == SPIN8_OK && !due) { return; }
++        if (status != SPIN8_OK) { throw std::runtime_error("transform_invariant_violation: Spin8 invalidated"); }
++        spin8_audit_report strict{};
++        status = spin8_plan_audit(plan.get(), &strict);
++        for (int view = 0; view < 3 && status == SPIN8_OK; ++view) {
++            double deployed[64];
++            for (size_t i = 0; i < 64; ++i) { deployed[i] = matrices[view][i]; }
++            spin8_matrix_audit audit{};
++            status = spin8_audit_matrix(deployed, &audit);
++            if (status == SPIN8_OK && (audit.det_sign != 1 || audit.max_error > 1e-5 ||
++                audit.ef_normalized > 1e-5 || std::abs(audit.log_abs_det) > 8e-5)) { status = SPIN8_AUDIT_FAILED; }
++        }
++        spin8_monitor_record(&monitor, layer_tokens, seconds, status);
++        if (status != SPIN8_OK) { throw std::runtime_error("transform_invariant_violation: Spin8 audit failed"); }
++    }
++};
++
++inline ggml_tensor * llama_spin8_rotate(ggml_context * ctx, ggml_tensor * matrix, ggml_tensor * x) {
++    if (x->ne[0] < 8 || x->ne[0] % 8 != 0) {
++        throw std::runtime_error("Spin8 reference graph requires head dimension divisible by 8");
++    }
++    const auto cols = ggml_nelements(x)/8;
++    auto * blocks = ggml_reshape_2d(ctx, ggml_cont(ctx, ggml_cast(ctx, x, GGML_TYPE_F32)), 8, cols);
++    auto * rotated = ggml_mul_mat(ctx, matrix, blocks);
++    ggml_mul_mat_set_prec(rotated, GGML_PREC_F32);
++    return ggml_reshape_4d(ctx, rotated, x->ne[0], x->ne[1], x->ne[2], x->ne[3]);
++}
++
++inline ggml_tensor * llama_spin8_scores(ggml_context * ctx, ggml_tensor * q, ggml_tensor * k,
++        const std::array<ggml_tensor *, 3> & matrices, const std::array<float, 3> & weights) {
++    if (ggml_is_quantized(k->type) || q->ne[0] != k->ne[0]) {
++        throw std::runtime_error("Spin8 reference graph requires unquantized K with matching Q/K dimensions");
++    }
++    ggml_tensor * scores = nullptr;
++    for (int view = 0; view < 3; ++view) {
++        if (weights[view] == 0.0f) { continue; }
++        auto * qr = llama_spin8_rotate(ctx, matrices[view], q);
++        auto * kr = llama_spin8_rotate(ctx, matrices[view], k);
++        auto * term = ggml_mul_mat(ctx, kr, qr);
++        ggml_mul_mat_set_prec(term, GGML_PREC_F32);
++        term = ggml_scale(ctx, term, weights[view]);
++        scores = scores ? ggml_add(ctx, scores, term) : term;
++    }
++    if (!scores) { throw std::runtime_error("Spin8 reference graph has no active view"); }
++    ggml_set_name(scores, "spin8_reference_logits");
++    return scores;
++}

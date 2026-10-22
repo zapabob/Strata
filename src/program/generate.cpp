@@ -38,6 +38,9 @@
 #include "strata/core/on_device.hpp"
 #include "strata/core/peer_experts.hpp"
 #include "strata/core/layer.hpp"
+#if defined(STRATA_WITH_SPIN8)
+#include "strata/core/spin8_attention.hpp"
+#endif
 #include "strata/core/layout.hpp"
 #include "strata/core/session.hpp"
 #include "strata/core/weights.hpp"
@@ -441,6 +444,8 @@ struct Options {
     bool native_moe_combine = false;   // pinned fused CUDA weighted reduction
     bool native_gdn = false;          // pinned CUDA recurrence and preprocessing
     bool native_flash_attn_short = false; // diagnostic pinned attention, context <=256
+    std::string spin8_mode = "off";
+    std::string spin8_profile;
     bool native_qsa_indexer = false;  // pinned F16 key cache and F32 pooling
     bool native_qsa = false;          // pinned F32 QSA norms and gate
     /// THE CONTEXT EXTENSION (rope scaling, rope_scaling.hpp).  These knobs resolve to ONE process config,
@@ -2474,6 +2479,8 @@ int main(int argc, char** argv) {
         else if (a == "--native-moe-combine") o.native_moe_combine = true;
         else if (a == "--native-gdn") o.native_gdn = true;
         else if (a == "--native-flash-attn-short") o.native_flash_attn_short = true;
+        else if (a == "--spin8-mode") o.spin8_mode = next("--spin8-mode");
+        else if (a == "--spin8-profile") o.spin8_profile = next("--spin8-profile");
         else if (a == "--native-qsa-indexer") o.native_qsa_indexer = true;
         else if (a == "--native-qsa") o.native_qsa = true;
         else if (a == "--native-rope") o.native_rope = true;
@@ -3329,6 +3336,23 @@ int main(int argc, char** argv) {
     if (o.native_flash_attn_short && o.max_context > 256) {
         std::fprintf(stderr, "strata generate: --native-flash-attn-short requires --max-context <=256\n");
         return 2;
+    }
+    if (o.spin8_mode != "off") {
+        if (o.gpu_only_full || o.graph_only || o.gpu_stages || o.native_flash_attn_short || o.spec > 0 || o.serve) {
+            std::fprintf(stderr, "strata generate: Spin8 reference requires the normal decode loop; --spec must be 0 and --serve is unavailable\n");
+            return 2;
+        }
+#if defined(STRATA_WITH_SPIN8)
+        std::string spin8_error;
+        if (!strata::core::spin8_attention_configure(o.spin8_mode, o.spin8_profile, spin8_error)) {
+            std::fprintf(stderr, "strata generate: %s\n", spin8_error.c_str());
+            return 2;
+        }
+        std::fprintf(stderr, "strata generate: experimental strict Spin8 decode reference; prefill unchanged, no per-view quantized KV\n");
+#else
+        std::fprintf(stderr, "strata generate: spin8_backend_unavailable; build with STRATA_ENABLE_SPIN8\n");
+        return 2;
+#endif
     }
     if (o.native_flash_attn_short && (o.gpu_only_full || o.graph_only || o.gpu_stages)) {
         std::fprintf(stderr, "strata generate: --native-flash-attn-short requires the normal decode loop for status validation\n");
@@ -15872,7 +15896,7 @@ int main(int argc, char** argv) {
         // The sampled-token synchronization also completes every captured QSA
         // status readback. Retain one status per layer so a later layer cannot
         // hide an earlier failure; no extra synchronization or token allocation.
-        if (o.native_flash_attn_short) for (int64_t j = 0; j < ss.qsa_alloc; ++j) {
+        if (o.native_flash_attn_short || o.spin8_mode != "off") for (int64_t j = 0; j < ss.qsa_alloc; ++j) {
             const int64_t i = ss.qsa_ord0 + j;   // the global ordinal, as the session's carve names it
             const int32_t status = ss.qsa_states[i].host_step[strata::kernels::kStepCount];
             if (status != 0) {
@@ -15881,6 +15905,15 @@ int main(int argc, char** argv) {
                 return 1;
             }
         }
+#if defined(STRATA_WITH_SPIN8)
+        if (o.spin8_mode != "off") {
+            std::string spin8_error;
+            if (!strata::core::spin8_attention_check(spin8_error)) {
+                std::fprintf(stderr, "strata generate: %s\n", spin8_error.c_str());
+                return 1;
+            }
+        }
+#endif
         if (next < 0 || next >= n_vocab) {
             std::fprintf(stderr, "strata generate: the sampler returned %d, outside 0..%lld\n", next,
                          (long long) (n_vocab - 1));
