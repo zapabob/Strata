@@ -1,0 +1,1380 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 6d8a7e8bbfeaa70fc19ca0440b9c6bb27006d126..6ba867b703fbf5f8b514b2f55406faa22ce4e8c5 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1,5 +1,10 @@
+ cmake_minimum_required(VERSION 3.14...3.28) # for add_link_options and implicit target directories.
+ project("llama.cpp" C CXX)
++# Optional controlled build launcher converts Japanese-only MSVC output to UTF-8.
++# Ninja must match that exact byte protocol to retain header dependencies.
++if(MSVC AND STRATA_SPIN8_MSVC_UTF8_DIAGNOSTICS)
++    set(CMAKE_CL_SHOWINCLUDES_PREFIX "メモ: インクルード ファイル: ")
++endif()
+ include(CheckIncludeFileCXX)
+ 
+ ### llama.cpp version
+@@ -134,6 +139,7 @@ option(LLAMA_BUILD_TOOLS     "llama: build tools"
+ option(LLAMA_BUILD_EXAMPLES  "llama: build examples"                                                             ${LLAMA_STANDALONE})
+ option(LLAMA_BUILD_SERVER    "llama: build server example"                                                       ${LLAMA_STANDALONE})
+ option(LLAMA_BUILD_APP       "llama: build the unified binary"                                                   ${LLAMA_STANDALONE})
++option(LLAMA_EMBED_UI "llama: permit any embedded UI assets" ON)
+ option(LLAMA_BUILD_UI        "llama: build the embedded Web UI for server"                                       ON)
+ option(LLAMA_USE_PREBUILT_UI "llama: use prebuilt UI from HF Bucket when available (requires LLAMA_BUILD_UI=ON)" ON)
+ 
+@@ -213,6 +219,11 @@ endif()
+ if (NOT TARGET ggml AND NOT LLAMA_USE_SYSTEM_GGML)
+     set(GGML_BUILD_NUMBER ${LLAMA_BUILD_NUMBER})
+     set(GGML_BUILD_COMMIT ${LLAMA_BUILD_COMMIT})
++    if(DEFINED STRATA_SPIN8_SOURCE)
++        set(SPIN8_ENABLE_CUDA ${GGML_CUDA} CACHE BOOL "" FORCE)
++        set(SPIN8_BUILD_TESTS OFF CACHE BOOL "" FORCE)
++        add_subdirectory("${STRATA_SPIN8_SOURCE}" "${CMAKE_BINARY_DIR}/spin8")
++    endif()
+     add_subdirectory(ggml)
+     # ... otherwise assume ggml is added by a parent CMakeLists.txt
+ endif()
+diff --git a/common/arg.cpp b/common/arg.cpp
+index 12e33698dc27e403d3699599fdc00a0d022cfacd..3d3f42d0e56a353ff71cc3f50d9424a501c6add0 100644
+--- a/common/arg.cpp
++++ b/common/arg.cpp
+@@ -2422,6 +2422,11 @@ common_params_context common_params_parser_init(common_params & params, llama_ex
+             params.no_host = true;
+         }
+     ).set_env("LLAMA_ARG_NO_HOST"));
++    add_opt(common_arg(
++        {"--spin8-query-sidecar"}, "PATH",
++        "immutable model-bound query-v3 sidecar (explicit -fa on/off and -np 1 required)",
++        [](common_params & params, const std::string & value) { params.spin8_query_sidecar = value; }
++    ));
+     add_opt(common_arg(
+         {"-ctk", "--cache-type-k"}, "TYPE",
+         string_format(
+diff --git a/common/common.cpp b/common/common.cpp
+index a24c68a1cd956b6bd68dec78b89e89f06052715f..a119bd4cd01cd086ed57f5bb389099eb849acefa 100644
+--- a/common/common.cpp
++++ b/common/common.cpp
+@@ -1705,6 +1705,7 @@ void common_set_adapter_lora(struct llama_context * ctx, std::vector<common_adap
+ 
+ struct llama_model_params common_model_params_to_llama(common_params & params) {
+     auto mparams = llama_model_default_params();
++    mparams.spin8_hash_model = !params.spin8_query_sidecar.empty();
+ 
+     if (!params.devices.empty()) {
+         mparams.devices = params.devices.data();
+@@ -1743,6 +1744,10 @@ struct llama_model_params common_model_params_to_llama(common_params & params) {
+ 
+ struct llama_context_params common_context_params_to_llama(const common_params & params) {
+     auto cparams = llama_context_default_params();
++    cparams.spin8_query_sidecar = params.spin8_query_sidecar.empty() ? nullptr : params.spin8_query_sidecar.c_str();
++    if (cparams.spin8_query_sidecar && (std::any_of(params.speculative.types.begin(), params.speculative.types.end(), [](common_speculative_type t) { return t != COMMON_SPECULATIVE_TYPE_NONE; }) || !params.lora_adapters.empty())) {
++        throw std::runtime_error("transform_invariant_violation: speculative_or_lora_unsupported");
++    }
+ 
+     cparams.n_ctx             = params.n_ctx;
+     cparams.n_seq_max         = params.n_parallel;
+diff --git a/common/common.h b/common/common.h
+index fd2dde72ff99d14d4f987edc22c0c543d44a9c40..5abe6b16190ad85f67b9e8c2c15aed775a17999a 100644
+--- a/common/common.h
++++ b/common/common.h
+@@ -591,6 +591,7 @@ struct common_params {
+     // path to a K-cache mean-centering bias file (GGUF), or empty to disable.
+     // only takes effect when cache_type_k == GGML_TYPE_Q4_0; see docs/kv-mean-center.md
+     std::string kv_mean_center_path = "";
++    std::string spin8_query_sidecar;
+ 
+     common_conversation_mode conversation_mode = COMMON_CONVERSATION_MODE_AUTO;
+ 
+diff --git a/ggml/src/CMakeLists.txt b/ggml/src/CMakeLists.txt
+index 9fef45dfdb7f4537a0d7d9abaa065b617fe92bf7..42eda8810796fa5f20bc51da24458ee753e0c74c 100644
+--- a/ggml/src/CMakeLists.txt
++++ b/ggml/src/CMakeLists.txt
+@@ -608,6 +608,10 @@ foreach (target ggml-base ggml)
+     target_compile_features   (${target} PRIVATE c_std_11 cxx_std_17) # don't bump
+ endforeach()
+ 
++if(TARGET spin8)
++    target_sources(ggml-base PRIVATE ggml-spin8.cpp)
++    target_link_libraries(ggml-base PRIVATE spin8)
++endif()
+ target_link_libraries(ggml-base PRIVATE Threads::Threads)
+ 
+ if (DEFINED MATH_LIBRARY)
+diff --git a/ggml/src/ggml-cuda/CMakeLists.txt b/ggml/src/ggml-cuda/CMakeLists.txt
+index b687cd5862b7ca1c823433767575a27ca9a9e830..8c4567c3fbfd4fae806fe6f2ec64ecd64bdfd44d 100644
+--- a/ggml/src/ggml-cuda/CMakeLists.txt
++++ b/ggml/src/ggml-cuda/CMakeLists.txt
+@@ -77,6 +77,13 @@ if (CUDAToolkit_FOUND)
+     # Notably the Blackwell FP4 tensor core instructions are not forwards compatible and therefore need 12Xa.
+     # But while 12X vs. 12Xa can be checked in device code there is (to my knowledge) no easy way to do the same check in host code.
+     # So for now just replace all instances of 12X with 12Xa, this should be fine until Rubin is released.
++    option(GGML_CUDA_STANDARD_SM120 "Preserve standard sm_120 and disable architecture-specific FP4 instructions" OFF)
++    if (GGML_CUDA_STANDARD_SM120)
++        if (NOT CMAKE_CUDA_ARCHITECTURES STREQUAL "120")
++            message(FATAL_ERROR "GGML_CUDA_STANDARD_SM120 requires CMAKE_CUDA_ARCHITECTURES=120")
++        endif()
++        add_compile_definitions(GGML_CUDA_STANDARD_SM120)
++    else()
+     foreach(ARCHS IN ITEMS CMAKE_CUDA_ARCHITECTURES CMAKE_CUDA_ARCHITECTURES_NATIVE)
+         set(FIXED_ARCHS "")
+         foreach(ARCH IN LISTS ${ARCHS})
+@@ -90,6 +97,7 @@ if (CUDAToolkit_FOUND)
+         endforeach()
+         set(${ARCHS} ${FIXED_ARCHS})
+     endforeach()
++    endif()
+ 
+     # If we try to compile a "native" build it will use the 12X architectures and fail.
+     # So we should instead use the native architectures as determined by CMake after replacing 12X with 12Xa.
+@@ -270,3 +278,10 @@ if (CUDAToolkit_FOUND)
+ else()
+     message(FATAL_ERROR "CUDA Toolkit not found")
+ endif()
++
++if(TARGET spin8_cuda)
++    set_source_files_properties(ggml-cuda.cu PROPERTIES COMPILE_DEFINITIONS LLAMA_SPIN8_QUERY_V3)
++    target_sources(ggml-cuda PRIVATE spin8-bridge.cpp)
++    target_link_libraries(ggml-cuda PRIVATE $<LINK_ONLY:spin8_cuda>)
++    set_source_files_properties(ggml-cuda.cu spin8-bridge.cpp PROPERTIES INCLUDE_DIRECTORIES "${STRATA_SPIN8_SOURCE}/include")
++endif()
+diff --git a/ggml/src/ggml-cuda/common.cuh b/ggml/src/ggml-cuda/common.cuh
+index d294186c76bdac9597719a0fe1af3d7fdefe0f62..0fcceaa32185793ea8fa53ea6d4e8dc11b1c32ed 100644
+--- a/ggml/src/ggml-cuda/common.cuh
++++ b/ggml/src/ggml-cuda/common.cuh
+@@ -291,7 +291,7 @@ static const char * cu_get_error_str(CUresult err) {
+ #define AMPERE_MMA_AVAILABLE
+ #endif // !defined(GGML_USE_HIP) && __CUDA_ARCH__ >= GGML_CUDA_CC_AMPERE
+ 
+-#if !defined(GGML_USE_HIP) && __CUDA_ARCH__ >= GGML_CUDA_CC_BLACKWELL && __CUDA_ARCH__ < GGML_CUDA_CC_RUBIN
++#if !defined(GGML_USE_HIP) && !defined(GGML_CUDA_STANDARD_SM120) && __CUDA_ARCH__ >= GGML_CUDA_CC_BLACKWELL && __CUDA_ARCH__ < GGML_CUDA_CC_RUBIN
+ #    define BLACKWELL_MMA_AVAILABLE
+ #endif // !defined(GGML_USE_HIP) && __CUDA_ARCH__ >= GGML_CUDA_CC_BLACKWELL
+ 
+@@ -366,8 +366,13 @@ static bool cp_async_available(const int cc) {
+ }
+ 
+ static bool blackwell_mma_available(const int cc) {
++#ifdef GGML_CUDA_STANDARD_SM120
++    GGML_UNUSED(cc);
++    return false;
++#else
+     return GGML_CUDA_CC_IS_NVIDIA(cc) && ggml_cuda_highest_compiled_arch(cc) >= GGML_CUDA_CC_BLACKWELL &&
+            ggml_cuda_highest_compiled_arch(cc) < GGML_CUDA_CC_RUBIN;
++#endif
+ }
+ 
+ // Checks whether the tensor's base data pointer and higher-dimensional strides are byte-aligned to `alignment` bytes.
+diff --git a/ggml/src/ggml-cuda/ggml-cuda.cu b/ggml/src/ggml-cuda/ggml-cuda.cu
+index 7d34ee5be30000243537f1426803a68171692ede..1986c61b77126d173f037a388ae576f2a33b81a8 100644
+--- a/ggml/src/ggml-cuda/ggml-cuda.cu
++++ b/ggml/src/ggml-cuda/ggml-cuda.cu
+@@ -1,4 +1,8 @@
+ #include "ggml-cuda.h"
++#ifdef LLAMA_SPIN8_QUERY_V3
++#include "../ggml-spin8.h"
++bool ggml_cuda_spin8_compute(ggml_tensor *, int, cudaStream_t) noexcept;
++#endif
+ #include "ggml-impl.h"
+ #include "ggml-backend-impl.h"
+ 
+@@ -2183,6 +2187,10 @@ static void ggml_cuda_mul_mat_id(ggml_backend_cuda_context & ctx, ggml_tensor *
+ 
+ static bool ggml_cuda_compute_forward(ggml_backend_cuda_context & ctx, struct ggml_tensor * dst) {
+     switch (dst->op) {
++#ifdef LLAMA_SPIN8_QUERY_V3
++        case GGML_OP_CUSTOM:
++            return ggml_cuda_spin8_compute(dst, ctx.device, ctx.stream());
++#endif
+         case GGML_OP_ARGMAX:
+             ggml_cuda_argmax(ctx, dst);
+             break;
+@@ -2681,6 +2689,10 @@ static bool ggml_cuda_graph_check_compability(ggml_cgraph * cgraph) {
+             continue;
+         }
+ 
++#ifdef LLAMA_SPIN8_QUERY_V3
++        // Captured launches bypass host error checks and backend ownership.
++        if (ggml_spin8_match(node)) { return false; }
++#endif
+         // [TAG_MUL_MAT_ID_CUDA_GRAPHS]
+         if (node->op == GGML_OP_MUL_MAT_ID) {
+             const int cc = ggml_cuda_info().devices[ggml_cuda_get_device()].cc;
+@@ -5690,6 +5702,10 @@ static bool ggml_backend_cuda_device_supports_op(ggml_backend_dev_t dev, const g
+     }
+ 
+     switch (op->op) {
++#ifdef LLAMA_SPIN8_QUERY_V3
++        case GGML_OP_CUSTOM:
++            return ggml_spin8_supported(op);
++#endif
+         case GGML_OP_UNARY:
+             switch (ggml_get_unary_op(op)) {
+                 case GGML_UNARY_OP_ABS:
+diff --git a/ggml/src/ggml-cuda/spin8-bridge.cpp b/ggml/src/ggml-cuda/spin8-bridge.cpp
+new file mode 100644
+index 0000000000000000000000000000000000000000..afe83e7d32899582553f8788d53dbe5aaf9be186
+--- /dev/null
++++ b/ggml/src/ggml-cuda/spin8-bridge.cpp
+@@ -0,0 +1,81 @@
++#include "../ggml-spin8.h"
++#include "spin8/query_v3_cuda.h"
++#include <cuda_runtime.h>
++#include <memory>
++
++namespace {
++struct device_state {
++    int device;
++    int * flag = nullptr;
++    spin8_query_v3_cuda_plan * plan = nullptr;
++};
++struct device_scope {
++    int previous = -1;
++    cudaError_t status;
++    explicit device_scope(int device) {
++        status = cudaGetDevice(&previous);
++        if (status == cudaSuccess) { status = cudaSetDevice(device); }
++    }
++    ~device_scope() { if (previous >= 0) { cudaSetDevice(previous); } }
++};
++int check_device(void * data) {
++    auto & state = *static_cast<device_state *>(data);
++    device_scope scope(state.device);
++    int flag = 0;
++    if (scope.status != cudaSuccess ||
++        cudaMemcpy(&flag, state.flag, sizeof(flag), cudaMemcpyDeviceToHost) != cudaSuccess) { return 4; }
++    return flag ? 2 : 0;
++}
++void free_device(void * data) {
++    auto * state = static_cast<device_state *>(data);
++    device_scope scope(state->device);
++    // Context has already synchronized all backend work before destruction.
++    if (scope.status == cudaSuccess && state->flag) { cudaFree(state->flag); }
++    spin8_query_v3_cuda_plan_free(state->plan);
++    delete state;
++}
++}
++
++// Compiled as ordinary C++ glue. The mathematical CUDA kernel is linked from
++// spin8_cuda, whose compilation is not subject to ggml-cuda fast-math flags.
++bool ggml_cuda_spin8_compute(ggml_tensor * dst, int device, cudaStream_t stream) noexcept {
++    auto * layer = ggml_spin8_match(dst);
++    if (!layer) { return false; }
++    auto * context = layer->state;
++    try {
++        if (!ggml_spin8_supported(dst)) { context->error.store(1); return true; }
++        if (context->error.load()) { return true; }
++        device_state * state = nullptr;
++        for (auto & entry : context->devices) {
++            if (entry.device == device) { state = static_cast<device_state *>(entry.data); break; }
++        }
++        if (!state) {
++            std::unique_ptr<device_state, decltype(&free_device)> owned(new device_state{device}, free_device);
++            int actual = -1;
++            if (cudaGetDevice(&actual) != cudaSuccess || actual != device ||
++                spin8_query_v3_cuda_plan_create(3, &owned->plan) != SPIN8_OK ||
++                cudaMalloc(&owned->flag, sizeof(int)) != cudaSuccess ||
++                cudaMemsetAsync(owned->flag, 0, sizeof(int), stream) != cudaSuccess) {
++                context->error.store(3); return true;
++            }
++            context->devices.push_back({device, owned.get(), check_device, free_device});
++            state = owned.release();
++        }
++        const auto * q = dst->src[0];
++        const auto * parameters = static_cast<const float *>(dst->src[1]->data);
++        const size_t width = layer->width, heads = layer->heads;
++        spin8_query_v3_cuda_bank_f32 bank{};
++        bank.version = 1; bank.heads = heads; bank.width = width;
++        bank.win = parameters; bank.win_bytes = heads*8*width*4; bank.win_head_stride_bytes = 8*width*4;
++        bank.bin = bank.win+heads*8*width; bank.bin_bytes = heads*8*4; bank.bin_head_stride_bytes = 8*4;
++        bank.wout = bank.bin+heads*8; bank.wout_bytes = heads*56*4; bank.wout_head_stride_bytes = 56*4;
++        bank.bout = bank.wout+heads*56; bank.bout_bytes = heads*7*4; bank.bout_head_stride_bytes = 7*4;
++        const auto error = spin8_query_v3_cuda_apply_batched_f32(state->plan, &bank,
++            static_cast<const float *>(q->data), ggml_nbytes(q), q->nb[1], q->nb[2],
++            static_cast<float *>(dst->data), ggml_nbytes(dst), dst->nb[1], dst->nb[2],
++            heads, size_t(q->ne[2]), width, state->flag, stream);
++        if (error != cudaSuccess) { context->error.store(3); }
++        else { context->cuda_calls.fetch_add(1); layer->cuda_calls.fetch_add(1); }
++    } catch (...) { context->error.store(5); }
++    return true;
++}
+diff --git a/ggml/src/ggml-spin8.cpp b/ggml/src/ggml-spin8.cpp
+new file mode 100644
+index 0000000000000000000000000000000000000000..5f05df3477fdf507e796a50b2385829b2e6fcba4
+--- /dev/null
++++ b/ggml/src/ggml-spin8.cpp
+@@ -0,0 +1,100 @@
++#include "ggml-spin8.h"
++#include "ggml-impl.h"
++#include <cmath>
++#include <cstring>
++#include <stdexcept>
++
++static void spin8_cpu(ggml_tensor * dst, int ith, int nth, void * userdata) {
++    (void) nth;
++    if (ith != 0) { return; }
++    auto * layer = static_cast<ggml_spin8_layer *>(userdata);
++    auto * state = layer->state;
++    if (state->error.load()) { return; }
++    if (!ggml_spin8_supported(dst)) {
++        state->error.store(1);
++        return;
++    }
++    const auto * q = dst->src[0];
++    const auto * bank = dst->src[1];
++    const auto * weights = static_cast<const float *>(bank->data);
++    for (int64_t i = 0; i < ggml_nelements(bank); ++i) {
++        if (!std::isfinite(weights[i])) { state->error.store(2); return; }
++    }
++    for (size_t h = 0; h < layer->heads; ++h) {
++        const size_t src_offset = h * q->nb[1], dst_offset = h * dst->nb[1];
++        const auto status = spin8_query_v3_controller_apply(
++            layer->cpu[h], SPIN8_F32,
++            static_cast<const char *>(q->data) + src_offset, ggml_nbytes(q) - src_offset,
++            q->nb[2] / sizeof(float), static_cast<char *>(dst->data) + dst_offset,
++            ggml_nbytes(dst) - dst_offset, dst->nb[2] / sizeof(float), size_t(q->ne[2]));
++        if (status != SPIN8_OK) { state->error.store(100 + int(status)); return; }
++    }
++    state->cpu_calls.fetch_add(1);
++    layer->cpu_calls.fetch_add(1);
++}
++
++ggml_spin8_state * ggml_spin8_state_create() { return new ggml_spin8_state; }
++void ggml_spin8_state_free(ggml_spin8_state * state) {
++    if (!state) { return; }
++    for (auto & device : state->devices) { device.destroy(device.data); }
++    delete state;
++}
++int ggml_spin8_state_check(ggml_spin8_state * state) {
++    for (auto & device : state->devices) {
++        const int error = device.check(device.data);
++        if (error) { state->error.store(error); }
++    }
++    return state->error.load();
++}
++void ggml_spin8_layer_free(ggml_spin8_layer * layer) {
++    if (!layer) { return; }
++    for (auto * controller : layer->cpu) { spin8_query_v3_controller_free(controller); }
++    delete layer;
++}
++ggml_spin8_layer * ggml_spin8_layer_create(
++    ggml_spin8_state * state, const spin8_query_adapter_layer_view & view) {
++    std::unique_ptr<ggml_spin8_layer, decltype(&ggml_spin8_layer_free)> layer(
++        new ggml_spin8_layer{state, view.spec.head_width, view.spec.q_heads, {}}, ggml_spin8_layer_free);
++    const size_t width = layer->width;
++    layer->cpu.reserve(layer->heads);
++    for (size_t h = 0; h < layer->heads; ++h) {
++        std::vector<double> win(view.win + h * 8 * width, view.win + (h + 1) * 8 * width);
++        std::vector<double> bin(view.bin + h * 8, view.bin + (h + 1) * 8);
++        std::vector<double> wout(view.wout + h * 56, view.wout + (h + 1) * 56);
++        std::vector<double> bout(view.bout + h * 7, view.bout + (h + 1) * 7);
++        spin8_query_v3_controller * controller = nullptr;
++        if (spin8_query_v3_controller_create(3, width, win.data(), win.size()*8,
++                bin.data(), bin.size()*8, wout.data(), wout.size()*8, bout.data(), bout.size()*8,
++                &controller) != SPIN8_OK) {
++            throw std::runtime_error("transform_invariant_violation: cpu_controller_creation");
++        }
++        layer->cpu.push_back(controller);
++    }
++    return layer.release();
++}
++ggml_spin8_layer * ggml_spin8_match(const ggml_tensor * node) {
++    if (!node || node->op != GGML_OP_CUSTOM) { return nullptr; }
++    ggml_custom_op_params params;
++    memcpy(&params, node->op_params, sizeof(params));
++    return params.fun == spin8_cpu ? static_cast<ggml_spin8_layer *>(params.userdata) : nullptr;
++}
++bool ggml_spin8_supported(const ggml_tensor * node) {
++    const auto * layer = ggml_spin8_match(node);
++    if (!layer || !node->src[0] || !node->src[1]) { return false; }
++    const auto * q = node->src[0];
++    const auto * bank = node->src[1];
++    return q->type == GGML_TYPE_F32 && node->type == GGML_TYPE_F32 &&
++        bank->type == GGML_TYPE_F32 && ggml_is_contiguous(bank) &&
++        q->ne[0] == int64_t(layer->width) && q->ne[1] == int64_t(layer->heads) &&
++        q->ne[2] > 0 && q->ne[3] == 1 && ggml_are_same_shape(q, node) &&
++        q->nb[0] == 4 && q->nb[1] >= layer->width*4 &&
++        q->nb[2] >= (layer->heads-1)*q->nb[1]+layer->width*4 &&
++        q->nb[1]%4 == 0 && q->nb[2]%4 == 0 && ggml_is_contiguous(node) &&
++        ggml_nelements(bank) == int64_t(layer->heads*(8*layer->width+71));
++}
++ggml_tensor * ggml_spin8_query(
++    ggml_context * ctx, ggml_tensor * q, ggml_tensor * bank, ggml_spin8_layer * layer) {
++    ggml_tensor * args[] = {q, bank};
++    return ggml_custom_4d(ctx, GGML_TYPE_F32, q->ne[0], q->ne[1], q->ne[2], 1,
++                         args, 2, spin8_cpu, 1, layer);
++}
+diff --git a/ggml/src/ggml-spin8.h b/ggml/src/ggml-spin8.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..4377503f35dfabafc98e120f2188fa4a3770547a
+--- /dev/null
++++ b/ggml/src/ggml-spin8.h
+@@ -0,0 +1,41 @@
++#pragma once
++
++#include "ggml.h"
++#include "spin8/query_adapter.h"
++#include "spin8/query_v3.h"
++#include <atomic>
++#include <cstdint>
++#include <memory>
++#include <vector>
++
++// Private Prism bridge. Context operations are serialized by the caller.
++// Device callbacks belong to their backend DLL, which outlives this state.
++struct ggml_spin8_device {
++    int device;
++    void * data;
++    int (*check)(void *);
++    void (*destroy)(void *);
++};
++struct ggml_spin8_state {
++    std::atomic<int> error{0};
++    std::atomic<uint64_t> cpu_calls{0}, cuda_calls{0};
++    std::vector<ggml_spin8_device> devices;
++};
++struct ggml_spin8_layer {
++    ggml_spin8_state * state;
++    size_t width, heads;
++    std::vector<spin8_query_v3_controller *> cpu;
++    std::atomic<uint64_t> cpu_calls{0}, cuda_calls{0};
++};
++
++GGML_API ggml_spin8_state * ggml_spin8_state_create();
++GGML_API void ggml_spin8_state_free(ggml_spin8_state * state);
++GGML_API int ggml_spin8_state_check(ggml_spin8_state * state);
++GGML_API ggml_spin8_layer * ggml_spin8_layer_create(
++    ggml_spin8_state * state, const spin8_query_adapter_layer_view & view);
++GGML_API void ggml_spin8_layer_free(ggml_spin8_layer * layer);
++GGML_API ggml_tensor * ggml_spin8_query(
++    ggml_context * ctx, ggml_tensor * q, ggml_tensor * bank, ggml_spin8_layer * layer);
++// Never dereference custom userdata until the exact function matches.
++GGML_API ggml_spin8_layer * ggml_spin8_match(const ggml_tensor * node);
++GGML_API bool ggml_spin8_supported(const ggml_tensor * node);
+diff --git a/include/llama.h b/include/llama.h
+index deb1e12828c6cead2a6c7a1793f4c4396b5121d2..1452ae0ee00f03e6684303b22372bec1782da0f2 100644
+--- a/include/llama.h
++++ b/include/llama.h
+@@ -346,6 +346,7 @@ extern "C" {
+         bool no_host;         // bypass host buffer allowing extra buffers to be used
+         bool no_alloc;        // only load metadata and simulate memory allocations
+         bool load_mtp;        // whether to load MTP layers
++        bool spin8_hash_model; // opt-in: hash actual ordered loader file handles
+     };
+ 
+     struct llama_sampler_seq_config {
+@@ -423,6 +424,8 @@ extern "C" {
+         // a source/target/parent context
+         // can be utilized in various ways, for example by sharing results or llama_memory between 2 contexts
+         struct llama_context * ctx_other;
++        const char * spin8_query_sidecar; // immutable v3 sidecar; NULL disables
++        bool spin8_query_inspect; // derive bindings without enabling transform
+     };
+ 
+     struct llama_model_tensor_override {
+@@ -476,6 +479,8 @@ extern "C" {
+ 
+     // Helpers for getting default parameters
+     // TODO: update API to start accepting pointers to params structs (https://github.com/ggml-org/llama.cpp/discussions/9172)
++    // Returns JSON required bytes including NUL; writes only when capacity fits.
++    LLAMA_API size_t llama_spin8_query_info(struct llama_context * ctx, char * out, size_t capacity);
+     LLAMA_API struct llama_model_params          llama_model_default_params(void);
+     LLAMA_API struct llama_context_params        llama_context_default_params(void);
+     LLAMA_API struct llama_sampler_chain_params  llama_sampler_chain_default_params(void);
+diff --git a/scripts/ui-assets.cmake b/scripts/ui-assets.cmake
+index 0c1c4de555a12cbc9414656c10440da90696765c..a224ff598d2e5e13f9e0cf147dddf58aac074a91 100644
+--- a/scripts/ui-assets.cmake
++++ b/scripts/ui-assets.cmake
+@@ -292,6 +292,16 @@ function(emit_files dist_dir)
+     endif()
+ endfunction()
+ 
++# Explicit empty route ignores stale source/binary dist without deletion.
++if(DEFINED EMBED_UI AND NOT EMBED_UI)
++    message(STATUS "UI: embedding disabled; no provisioning or cached assets")
++    execute_process(COMMAND "${LLAMA_UI_EMBED}" "${UI_CPP}" "${UI_H}" RESULT_VARIABLE rc)
++    if(NOT rc EQUAL 0)
++        message(FATAL_ERROR "UI: empty generation failed (${rc})")
++    endif()
++    return()
++endif()
++
+ # ---------------------------------------------------------------------------
+ # 1. Priority 1: pre-built assets supplied in tools/ui/dist
+ # ---------------------------------------------------------------------------
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index c6df19f2ecf4ffdd7c31937c756f2425653af822..2403a51336133f74f7f9fd64525ff8301b5ba35d 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -67,3 +67,34 @@ if (BUILD_SHARED_LIBS)
+     target_compile_definitions(llama PRIVATE LLAMA_BUILD)
+     target_compile_definitions(llama PUBLIC  LLAMA_SHARED)
+ endif()
++
++if(TARGET spin8)
++    target_sources(llama PRIVATE llama-spin8.cpp)
++    target_compile_definitions(llama PRIVATE LLAMA_SPIN8_QUERY_V3)
++    target_link_libraries(llama PRIVATE spin8)
++    target_include_directories(llama PRIVATE ../ggml/src "${STRATA_SPIN8_SOURCE}/third_party/sha256")
++endif()
++
++if(TARGET spin8 AND STRATA_SPIN8_TESTS)
++    add_executable(strata-spin8-model-test "${STRATA_SPIN8_SOURCE}/../tools/spin8_prism_model_test.cpp")
++    target_include_directories(strata-spin8-model-test PRIVATE . ../ggml/src "${STRATA_SPIN8_SOURCE}/include")
++    target_compile_definitions(strata-spin8-model-test PRIVATE LLAMA_SPIN8_QUERY_V3)
++    target_compile_features(strata-spin8-model-test PRIVATE cxx_std_17)
++    target_link_libraries(strata-spin8-model-test PRIVATE llama ggml)
++    add_executable(strata-spin8-bridge-test "${STRATA_SPIN8_SOURCE}/../tools/spin8_prism_bridge_test.cpp")
++    target_include_directories(strata-spin8-bridge-test PRIVATE ../ggml/src)
++    target_compile_features(strata-spin8-bridge-test PRIVATE cxx_std_17)
++    target_link_libraries(strata-spin8-bridge-test PRIVATE ggml spin8)
++endif()
++
++if(TARGET spin8 AND STRATA_SPIN8_TESTS)
++    add_executable(strata-spin8-ui-test "${STRATA_SPIN8_SOURCE}/../tools/spin8_prism_ui_test.cpp")
++    target_include_directories(strata-spin8-ui-test PRIVATE "${CMAKE_BINARY_DIR}/tools/ui")
++    target_link_libraries(strata-spin8-ui-test PRIVATE llama-ui)
++    add_dependencies(strata-spin8-ui-test llama-ui-assets)
++    if(WIN32 AND STRATA_SPIN8_BASELINE_SOURCE)
++        add_executable(strata-spin8-baseline-test "${STRATA_SPIN8_SOURCE}/../tools/spin8_prism_baseline_test.cpp")
++        target_include_directories(strata-spin8-baseline-test BEFORE PRIVATE "${STRATA_SPIN8_BASELINE_SOURCE}/include" "${STRATA_SPIN8_BASELINE_SOURCE}/ggml/include")
++        target_compile_features(strata-spin8-baseline-test PRIVATE cxx_std_17)
++    endif()
++endif()
+diff --git a/src/llama-context.cpp b/src/llama-context.cpp
+index 0f0f4dc7e382e3e29cf5cf741bc0a6fa8ee91b6c..366835ca0b3aa536edf8a3b64d5db21acbaae459 100644
+--- a/src/llama-context.cpp
++++ b/src/llama-context.cpp
+@@ -417,6 +417,14 @@ llama_context::llama_context(
+                 __func__, cparams.n_ctx_seq, hparams.n_ctx_train);
+     }
+ 
++#ifdef LLAMA_SPIN8_QUERY_V3
++    if (params.spin8_query_sidecar || params.spin8_query_inspect) {
++        spin8_query = std::make_unique<llama_spin8_query>(model, cparams, params);
++        cparams.spin8_query = spin8_active() ? spin8_query.get() : nullptr;
++    }
++#else
++    if (params.spin8_query_sidecar || params.spin8_query_inspect) { throw std::runtime_error("query-v3 not compiled"); }
++#endif
+     if (!hparams.vocab_only) {
+         // GPU backends
+         for (const auto & dev : model.devices) {
+@@ -616,6 +624,9 @@ llama_context::~llama_context() {
+             }
+         }
+     }
++#ifdef LLAMA_SPIN8_QUERY_V3
++    spin8_query.reset(); // after sync, before backend destruction
++#endif
+     ggml_opt_free(opt_ctx);
+ }
+ 
+@@ -991,6 +1002,9 @@ enum llama_pooling_type llama_context::pooling_type() const {
+ }
+ 
+ float * llama_context::get_logits() {
++#ifdef LLAMA_SPIN8_QUERY_V3
++    if (spin8_active() && spin8_query->failed) { return nullptr; }
++#endif
+     output_reorder();
+ 
+     return logits.data;
+@@ -1026,6 +1040,9 @@ int64_t llama_context::output_resolve_row(int32_t i) const {
+ }
+ 
+ float * llama_context::get_logits_ith(int32_t i) {
++#ifdef LLAMA_SPIN8_QUERY_V3
++    if (spin8_active() && spin8_query->failed) { return nullptr; }
++#endif
+     output_reorder();
+ 
+     try {
+@@ -1367,6 +1384,12 @@ void llama_context::set_embeddings_layer_inp(uint32_t lid, bool enable) {
+ }
+ 
+ void llama_context::set_nextn_layer_offset(int32_t offset) {
++#ifdef LLAMA_SPIN8_QUERY_V3
++    if (spin8_active() && (offset != 0)) {
++        LLAMA_LOG_ERROR("transform_invariant_violation: runtime_mode_change_unsupported\n");
++        spin8_invalidate(); return;
++    }
++#endif
+     cparams.nextn_layer_offset = offset;
+ }
+ 
+@@ -1393,6 +1416,12 @@ int32_t llama_context::mtp_chain_support() const {
+ }
+ 
+ void llama_context::set_mtp_chain(uint32_t n_steps) {
++#ifdef LLAMA_SPIN8_QUERY_V3
++    if (spin8_active() && (n_steps != 0)) {
++        LLAMA_LOG_ERROR("transform_invariant_violation: runtime_mode_change_unsupported\n");
++        spin8_invalidate(); return;
++    }
++#endif
+     cparams.mtp_chain_n = n_steps;
+     if (n_steps == 0) {
+         return;  // keeps the last chain's ids readable
+@@ -1584,6 +1613,12 @@ void llama_context::set_dspark_ctx(const float * feat, int64_t n_ctx_rows, int64
+ }
+ 
+ void llama_context::set_causal_attn(bool value) {
++#ifdef LLAMA_SPIN8_QUERY_V3
++    if (spin8_active() && (value != cparams.causal_attn)) {
++        LLAMA_LOG_ERROR("transform_invariant_violation: runtime_mode_change_unsupported\n");
++        spin8_invalidate(); return;
++    }
++#endif
+     LLAMA_LOG_DEBUG("%s: value = %d\n", __func__, value);
+ 
+     if (cparams.causal_attn == value) {
+@@ -1725,6 +1760,12 @@ bool llama_context::set_adapter_cvec(
+ }
+ 
+ llm_graph_result * llama_context::process_ubatch(const llama_ubatch & ubatch, llm_graph_type gtype, llama_memory_context_i * mctx, ggml_status & ret) {
++#ifdef LLAMA_SPIN8_QUERY_V3
++    if (spin8_active() && (spin8_query->failed || gtype != LLM_GRAPH_TYPE_DEFAULT)) {
++        LLAMA_LOG_ERROR("transform_invariant_violation: graph_type_unsupported\n");
++        spin8_invalidate(); ret = GGML_STATUS_FAILED; return nullptr;
++    }
++#endif
+     if (mctx && !mctx->apply()) {
+         LLAMA_LOG_ERROR("%s: failed to apply memory context\n", __func__);
+         ret = GGML_STATUS_FAILED;
+@@ -1825,6 +1866,11 @@ llm_graph_result * llama_context::process_ubatch(const llama_ubatch & ubatch, ll
+ }
+ 
+ int llama_context::encode(const llama_batch & batch_inp) {
++#ifdef LLAMA_SPIN8_QUERY_V3
++    if (spin8_active() && spin8_query->failed) {
++        LLAMA_LOG_ERROR("transform_invariant_violation: context_unusable\n"); return -3;
++    }
++#endif
+     // MTP hook batches carry both token (next-token id) and embd (h_nextn row),
+     // so accept either present rather than requiring exactly one.
+     GGML_ASSERT(batch_inp.token || batch_inp.embd);
+@@ -2079,6 +2125,11 @@ static bool needs_raw_logits(const llama_ubatch & ubatch, const std::map<llama_s
+ }
+ 
+ int llama_context::decode(const llama_batch & batch_inp) {
++#ifdef LLAMA_SPIN8_QUERY_V3
++    if (spin8_active() && spin8_query->failed) {
++        LLAMA_LOG_ERROR("transform_invariant_violation: context_unusable\n"); return -3;
++    }
++#endif
+     // MTP hook batches carry both token (next-token id) and embd (h_nextn row),
+     // so accept either present rather than requiring exactly one.
+     GGML_ASSERT(batch_inp.token || batch_inp.embd);
+@@ -3032,8 +3083,21 @@ ggml_status llama_context::graph_compute(
+         set_n_threads_fn.second(set_n_threads_fn.first, n_threads);
+     }
+ 
++#ifdef LLAMA_SPIN8_QUERY_V3
++    if (spin8_active() && spin8_query->failed) { return GGML_STATUS_FAILED; }
++#endif
+     sync_pending = true;
+     auto status = ggml_backend_sched_graph_compute_async(sched.get(), gf);
++#ifdef LLAMA_SPIN8_QUERY_V3
++    if (spin8_active()) {
++        ggml_backend_sched_synchronize(sched.get());
++        const int error = ggml_spin8_state_check(spin8_query->state.get());
++        if (status != GGML_STATUS_SUCCESS || error) {
++            LLAMA_LOG_ERROR("transform_invariant_violation: backend_status=%d bridge_reason=%d\n", int(status), error);
++            spin8_invalidate(); return GGML_STATUS_FAILED;
++        }
++    }
++#endif
+     if (status != GGML_STATUS_SUCCESS) {
+         LLAMA_LOG_ERROR("%s: ggml_backend_sched_graph_compute_async failed with error %d\n", __func__, status);
+     }
+@@ -3509,6 +3573,12 @@ size_t llama_context::state_set_data(const uint8_t * src, size_t size) {
+ static constexpr uint32_t io_magic = 0xaf143cd8;
+ 
+ size_t llama_context::state_seq_get_size(llama_seq_id seq_id, llama_state_seq_flags flags) {
++#ifdef LLAMA_SPIN8_QUERY_V3
++    if (spin8_active() && (flags & LLAMA_STATE_SEQ_FLAGS_ON_DEVICE)) {
++        LLAMA_LOG_ERROR("transform_invariant_violation: device_state_serialization_unsupported\n");
++        spin8_invalidate(); return 0;
++    }
++#endif
+     llama_io_write_dummy io(flags & LLAMA_STATE_SEQ_FLAGS_ON_DEVICE);
+     try {
+         io.write(&io_magic, sizeof(io_magic));
+@@ -3522,6 +3592,12 @@ size_t llama_context::state_seq_get_size(llama_seq_id seq_id, llama_state_seq_fl
+ }
+ 
+ size_t llama_context::state_seq_get_data(llama_seq_id seq_id, uint8_t * dst, size_t size, llama_state_seq_flags flags) {
++#ifdef LLAMA_SPIN8_QUERY_V3
++    if (spin8_active() && (flags & LLAMA_STATE_SEQ_FLAGS_ON_DEVICE)) {
++        LLAMA_LOG_ERROR("transform_invariant_violation: device_state_serialization_unsupported\n");
++        spin8_invalidate(); return 0;
++    }
++#endif
+     std::unique_ptr<llama_io_write_i> io;
+     if (flags & LLAMA_STATE_SEQ_FLAGS_ON_DEVICE) {
+         io = std::make_unique<llama_io_write_device>(dst, size, mem_storage[seq_id]);
+@@ -3541,6 +3617,12 @@ size_t llama_context::state_seq_get_data(llama_seq_id seq_id, uint8_t * dst, siz
+ }
+ 
+ size_t llama_context::state_seq_set_data(llama_seq_id seq_id, const uint8_t * src, size_t size, llama_state_seq_flags flags) {
++#ifdef LLAMA_SPIN8_QUERY_V3
++    if (spin8_active() && (flags & LLAMA_STATE_SEQ_FLAGS_ON_DEVICE)) {
++        LLAMA_LOG_ERROR("transform_invariant_violation: device_state_serialization_unsupported\n");
++        spin8_invalidate(); return 0;
++    }
++#endif
+     std::unique_ptr<llama_io_read_i> io;
+     if (flags & LLAMA_STATE_SEQ_FLAGS_ON_DEVICE) {
+         // create a temporary io to read the magic and the src seq_id
+@@ -3555,7 +3637,11 @@ size_t llama_context::state_seq_set_data(llama_seq_id seq_id, const uint8_t * sr
+         llama_seq_id seq_id_read;
+         io->read(&seq_id_read, sizeof(seq_id_read));
+ 
+-        GGML_ASSERT(mem_storage.find(seq_id_read) != mem_storage.end());
++#ifdef LLAMA_SPIN8_QUERY_V3
++        llama_spin8_prefix_reader discriminator(*io);
++        if (discriminator.enabled()) { throw std::runtime_error("transform_invariant_violation: enabled_state_into_off_context"); }
++#endif
++        if (mem_storage.find(seq_id_read) == mem_storage.end()) { throw std::runtime_error("device state owner unavailable"); }
+ 
+         io = std::make_unique<llama_io_read_device>(src, size, mem_storage[seq_id_read]);
+     } else {
+@@ -3714,6 +3800,9 @@ size_t llama_context::state_seq_save_file(llama_seq_id seq_id, const char * file
+ }
+ 
+ size_t llama_context::state_write_data(llama_io_write_i & io) {
++#ifdef LLAMA_SPIN8_QUERY_V3
++    if (spin8_active()) { spin8_query->write_header(io, 1); }
++#endif
+     LLAMA_LOG_DEBUG("%s: writing state\n", __func__);
+ 
+     // write model info
+@@ -3733,7 +3822,15 @@ size_t llama_context::state_write_data(llama_io_write_i & io) {
+     return io.n_bytes();
+ }
+ 
+-size_t llama_context::state_read_data(llama_io_read_i & io) {
++size_t llama_context::state_read_data(llama_io_read_i & input) {
++#ifdef LLAMA_SPIN8_QUERY_V3
++    try {
++        llama_spin8_prefix_reader io(input);
++        if (spin8_active()) { spin8_query->read_header(io, 1); }
++        else if (io.enabled()) { throw std::runtime_error("transform_invariant_violation: enabled_state_in_off_context"); }
++#else
++    auto & io = input;
++#endif
+     LLAMA_LOG_DEBUG("%s: reading state\n", __func__);
+ 
+     // read model info
+@@ -3757,9 +3854,15 @@ size_t llama_context::state_read_data(llama_io_read_i & io) {
+     }
+ 
+     return io.n_bytes();
++#ifdef LLAMA_SPIN8_QUERY_V3
++    } catch (...) { spin8_invalidate(); throw; }
++#endif
+ }
+ 
+ size_t llama_context::state_seq_write_data(llama_io_write_i & io, llama_seq_id seq_id, llama_state_seq_flags flags) {
++#ifdef LLAMA_SPIN8_QUERY_V3
++    if (spin8_active()) { spin8_query->write_header(io, 2); }
++#endif
+     if (memory) {
+         memory->state_write(io, seq_id, flags);
+     }
+@@ -3767,12 +3870,23 @@ size_t llama_context::state_seq_write_data(llama_io_write_i & io, llama_seq_id s
+     return io.n_bytes();
+ }
+ 
+-size_t llama_context::state_seq_read_data(llama_io_read_i & io, llama_seq_id seq_id, llama_state_seq_flags flags) {
++size_t llama_context::state_seq_read_data(llama_io_read_i & input, llama_seq_id seq_id, llama_state_seq_flags flags) {
++#ifdef LLAMA_SPIN8_QUERY_V3
++    try {
++        llama_spin8_prefix_reader io(input);
++        if (spin8_active()) { spin8_query->read_header(io, 2); }
++        else if (io.enabled()) { throw std::runtime_error("transform_invariant_violation: enabled_state_in_off_context"); }
++#else
++    auto & io = input;
++#endif
+     if (memory) {
+         memory->state_read(io, seq_id, flags);
+     }
+ 
+     return io.n_bytes();
++#ifdef LLAMA_SPIN8_QUERY_V3
++    } catch (...) { spin8_invalidate(); throw; }
++#endif
+ }
+ 
+ //
+@@ -4089,6 +4203,8 @@ llama_context_params llama_context_default_params() {
+         /*.sampler                     =*/ nullptr,
+         /*.n_sampler                   =*/ 0,
+         /*.ctx_other                   =*/ nullptr,
++        /*.spin8_query_sidecar         =*/ nullptr,
++        /*.spin8_query_inspect         =*/ false,
+     };
+ 
+     return result;
+@@ -4476,6 +4592,9 @@ int32_t llama_set_adapters_lora(
+         GGML_ASSERT(n_adapters == 0 && "invalid llama_set_adapters_lora call");
+     }
+ 
++#ifdef LLAMA_SPIN8_QUERY_V3
++    if (ctx->spin8_active() && n_adapters) { LLAMA_LOG_ERROR("transform_invariant_violation: runtime_lora_unsupported\n"); return -1; }
++#endif
+     ctx->set_adapters_lora(adapters, n_adapters, scales);
+ 
+     return 0;
+@@ -4488,6 +4607,9 @@ int32_t llama_set_adapter_cvec(
+               int32_t   n_embd,
+               int32_t   il_start,
+               int32_t   il_end) {
++#ifdef LLAMA_SPIN8_QUERY_V3
++    if (ctx->spin8_active()) { LLAMA_LOG_ERROR("transform_invariant_violation: runtime_control_vector_unsupported\n"); return -1; }
++#endif
+     bool res = ctx->set_adapter_cvec(data, len, n_embd, il_start, il_end);
+ 
+     return res ? 0 : -1;
+@@ -4644,8 +4766,15 @@ bool llama_state_load_file(llama_context * ctx, const char * path_session, llama
+     ctx->synchronize();
+ 
+     try {
+-        return ctx->state_load_file(path_session, tokens_out, n_token_capacity, n_token_count_out);
++        const bool result = ctx->state_load_file(path_session, tokens_out, n_token_capacity, n_token_count_out);
++#ifdef LLAMA_SPIN8_QUERY_V3
++        if (!result && ctx->spin8_active()) { ctx->spin8_invalidate(); }
++#endif
++        return result;
+     } catch (const std::exception & err) {
++#ifdef LLAMA_SPIN8_QUERY_V3
++        if (ctx->spin8_active()) { ctx->spin8_invalidate(); }
++#endif
+         LLAMA_LOG_ERROR("%s: error loading session file: %s\n", __func__, err.what());
+         return false;
+     }
+@@ -4686,7 +4815,19 @@ size_t llama_state_seq_get_data_ext(llama_context * ctx, uint8_t * dst, size_t s
+ size_t llama_state_seq_set_data_ext(llama_context * ctx, const uint8_t * src, size_t size, llama_seq_id seq_id, llama_state_seq_flags flags) {
+     ctx->synchronize();
+ 
+-    return ctx->state_seq_set_data(seq_id, src, size, flags);
++    try {
++        const size_t result = ctx->state_seq_set_data(seq_id, src, size, flags);
++#ifdef LLAMA_SPIN8_QUERY_V3
++        if (!result && ctx->spin8_active()) { ctx->spin8_invalidate(); }
++#endif
++        return result;
++    } catch (const std::exception & error) {
++#ifdef LLAMA_SPIN8_QUERY_V3
++        if (ctx->spin8_active()) { ctx->spin8_invalidate(); }
++#endif
++        LLAMA_LOG_ERROR("transform_invariant_violation: state_read: %s\n", error.what());
++        return 0;
++    }
+ }
+ 
+ size_t llama_state_seq_save_file(llama_context * ctx, const char * filepath, llama_seq_id seq_id, const llama_token * tokens, size_t n_token_count) {
+@@ -4704,8 +4845,15 @@ size_t llama_state_seq_load_file(llama_context * ctx, const char * filepath, lla
+     ctx->synchronize();
+ 
+     try {
+-        return ctx->state_seq_load_file(dest_seq_id, filepath, tokens_out, n_token_capacity, n_token_count_out);
++        const size_t result = ctx->state_seq_load_file(dest_seq_id, filepath, tokens_out, n_token_capacity, n_token_count_out);
++#ifdef LLAMA_SPIN8_QUERY_V3
++        if (!result && ctx->spin8_active()) { ctx->spin8_invalidate(); }
++#endif
++        return result;
+     } catch (const std::exception & err) {
++#ifdef LLAMA_SPIN8_QUERY_V3
++        if (ctx->spin8_active()) { ctx->spin8_invalidate(); }
++#endif
+         LLAMA_LOG_ERROR("%s: error loading sequence state file: %s\n", __func__, err.what());
+         return 0;
+     }
+@@ -4716,7 +4864,25 @@ size_t llama_state_seq_load_file(llama_context * ctx, const char * filepath, lla
+ int32_t llama_encode(
+         llama_context * ctx,
+           llama_batch   batch) {
+-    const int ret = ctx->encode(batch);
++#ifdef LLAMA_SPIN8_QUERY_V3
++    if (ctx->spin8_active()) {
++        LLAMA_LOG_ERROR("transform_invariant_violation: encoder_unsupported\n");
++        ctx->spin8_invalidate(); return -3;
++    }
++#endif
++    int ret;
++#ifdef LLAMA_SPIN8_QUERY_V3
++    if (ctx->spin8_active()) {
++        try { ret = ctx->encode(batch); }
++        catch (const std::exception & error) {
++            LLAMA_LOG_ERROR("transform_invariant_violation: graph_exception: %s\n", error.what()); ret = -3;
++        } catch (...) {
++            LLAMA_LOG_ERROR("transform_invariant_violation: graph_exception_unknown\n"); ret = -3;
++        }
++        if (ret != 0) { ctx->synchronize(); ctx->spin8_invalidate(); }
++    } else
++#endif
++    { ret = ctx->encode(batch); }
+     if (ret != 0) {
+         LLAMA_LOG_ERROR("%s: failed to encode, ret = %d\n", __func__, ret);
+     }
+@@ -4727,7 +4893,26 @@ int32_t llama_encode(
+ int32_t llama_decode(
+         llama_context * ctx,
+           llama_batch   batch) {
+-    const int ret = ctx->decode(batch);
++#ifdef LLAMA_SPIN8_QUERY_V3
++    if (ctx->spin8_active() && (batch.n_tokens <= 0 || uint32_t(batch.n_tokens) > ctx->get_cparams().n_batch ||
++        bool(batch.token) == bool(batch.embd))) {
++        LLAMA_LOG_ERROR("transform_invariant_violation: invalid_batch\n");
++        ctx->spin8_invalidate(); return -1;
++    }
++#endif
++    int ret;
++#ifdef LLAMA_SPIN8_QUERY_V3
++    if (ctx->spin8_active()) {
++        try { ret = ctx->decode(batch); }
++        catch (const std::exception & error) {
++            LLAMA_LOG_ERROR("transform_invariant_violation: graph_exception: %s\n", error.what()); ret = -3;
++        } catch (...) {
++            LLAMA_LOG_ERROR("transform_invariant_violation: graph_exception_unknown\n"); ret = -3;
++        }
++        if (ret != 0) { ctx->synchronize(); ctx->spin8_invalidate(); }
++    } else
++#endif
++    { ret = ctx->decode(batch); }
+     if (ret != 0 && ret != 1) {
+         LLAMA_LOG_ERROR("%s: failed to decode, ret = %d\n", __func__, ret);
+     }
+@@ -4811,3 +4996,33 @@ llama_memory_breakdown llama_get_memory_breakdown(const struct llama_context * c
+ llama_context * llama_get_ctx_other(struct llama_context * ctx) {
+     return ctx->get_cparams().ctx_other;
+ }
++
++#ifdef LLAMA_SPIN8_QUERY_V3
++void llama_context::spin8_invalidate() {
++    if (spin8_query) { spin8_query->failed = true; }
++    if (memory) { memory->clear(true); }
++}
++#endif
++size_t llama_spin8_query_info(llama_context * ctx, char * out, size_t capacity) {
++    try {
++#ifdef LLAMA_SPIN8_QUERY_V3
++        if (!ctx || !ctx->spin8_query) { return 0; }
++        const auto & query = *ctx->spin8_query;
++        std::string json = "{\"active\":" + std::string(query.active() ? "true" : "false") +
++            ",\"failed\":" + (query.failed ? "true" : "false") +
++            ",\"cpuCalls\":" + std::to_string(query.state->cpu_calls.load()) +
++            ",\"cudaCalls\":" + std::to_string(query.state->cuda_calls.load()) +
++            ",\"capabilities\":{\"devices\":[\"CPU\",\"single-CUDA\"],\"tensorType\":\"F32\",\"layout\":\"channel-head-token-padded\",\"headWidthMin\":1,\"headWidthMax\":16384,\"tail\":\"identity\",\"architecture\":\"qwen35\",\"maxSequences\":1,\"cudaGraphs\":false,\"deviceState\":false,\"MTP\":false,\"runtimeAdapters\":false,\"sharedParent\":false,\"rowSplit\":false,\"externalKVMeanCenter\":false,\"backendSamplers\":false,\"flashAttentionChoice\":\"explicit\",\"contextType\":\"default\",\"modelKVOverrides\":false,\"directIOHashing\":false,\"noAllocModel\":false},\"layerCalls\":[";
++        bool first = true;
++        for (const auto & entry : query.layers) {
++            if (!first) { json += ','; } first = false;
++            json += "{\"layer\":" + std::to_string(entry.first) + ",\"cpu\":" + std::to_string(entry.second->cpu_calls.load()) + ",\"cuda\":" + std::to_string(entry.second->cuda_calls.load()) + "}";
++        }
++        json += "],\"bindings\":" + query.bindings_json + "}";
++        if (out && capacity >= json.size()+1) { memcpy(out, json.c_str(), json.size()+1); }
++        return json.size()+1;
++#else
++        (void)ctx; (void)out; (void)capacity; return 0;
++#endif
++    } catch (...) { return 0; }
++}
+diff --git a/src/llama-context.h b/src/llama-context.h
+index 7ad06c4469c245ae03394b7c2e04eec90f9e5fda..59583e0f5a70c77cbe39642d47cb5da6290faa46 100644
+--- a/src/llama-context.h
++++ b/src/llama-context.h
+@@ -7,6 +7,9 @@
+ #include "llama-adapter.h"
+ #include "llama-impl.h"
+ #include "llama-memory.h"
++#ifdef LLAMA_SPIN8_QUERY_V3
++#include "llama-spin8.h"
++#endif
+ 
+ #include "ggml-cpp.h"
+ #include "ggml-opt.h"
+@@ -40,6 +43,11 @@ struct llama_memory_buffer {
+ using llama_memory_buffers = std::map<ggml_backend_buffer_type_t, llama_memory_buffer>;
+ 
+ struct llama_context {
++#ifdef LLAMA_SPIN8_QUERY_V3
++    std::unique_ptr<llama_spin8_query> spin8_query;
++    void spin8_invalidate();
++    bool spin8_active() const { return spin8_query && spin8_query->active(); }
++#endif
+     // init scheduler and compute buffers, reserve worst-case graphs
+     llama_context(
+             const llama_model & model,
+diff --git a/src/llama-cparams.h b/src/llama-cparams.h
+index 24814961440176b299d1a2929a14d4ce29ed5d65..1946bf5bc76c8265595d8d352521dbc216f1985f 100644
+--- a/src/llama-cparams.h
++++ b/src/llama-cparams.h
+@@ -9,7 +9,11 @@
+ 
+ #define LLAMA_MAX_SEQ 256
+ 
++struct llama_spin8_query;
+ struct llama_cparams {
++#ifdef LLAMA_SPIN8_QUERY_V3
++    llama_spin8_query * spin8_query = nullptr;
++#endif
+     uint32_t n_ctx;           // context size used during inference
+     uint32_t n_ctx_seq;       // context for a single sequence
+     uint32_t n_batch;
+diff --git a/src/llama-model.cpp b/src/llama-model.cpp
+index 3bf8245e406cdced1f6b32c22f90a2501a4b98fa..af26a9baffdabd8e2c91817cfc6558231927a34e 100644
+--- a/src/llama-model.cpp
++++ b/src/llama-model.cpp
+@@ -1,4 +1,7 @@
+ #include "llama-model.h"
++#ifdef LLAMA_SPIN8_QUERY_V3
++#include "llama-spin8.h"
++#endif
+ 
+ #include "llama-arch.h"
+ #include "llama-ext.h"
+@@ -1547,6 +1550,16 @@ void llama_model_base::load_vocab(llama_model_loader & ml) {
+ }
+ 
+ bool llama_model_base::load_tensors(llama_model_loader & ml) {
++#ifdef LLAMA_SPIN8_QUERY_V3
++    if (params.spin8_hash_model) {
++        if (params.no_alloc || params.kv_overrides || params.load_mtp || params.dspark_head_source) {
++            throw std::runtime_error("transform_invariant_violation: model_loading_mode_unsupported");
++        }
++        llama_spin8_hash_model(*this, ml);
++    }
++#else
++    if (params.spin8_hash_model) { throw std::runtime_error("query-v3 not compiled"); }
++#endif
+     if (params.dspark_head_source && arch != LLM_ARCH_DSPARK) {
+         throw std::runtime_error("Shared target head is supported only for DSpark");
+     }
+@@ -2997,6 +3010,7 @@ llama_model_params llama_model_default_params() {
+         /*.no_host                     =*/false,
+         /*.no_alloc                    =*/false,
+         /*.load_mtp                    =*/false,
++        /*.spin8_hash_model            =*/false,
+     };
+ 
+     return result;
+diff --git a/src/llama-model.h b/src/llama-model.h
+index d93326b8645849cecfd0ad2fb2c6da9c9d1e5726..7d80de5539789d09144afc84c3b6ecebddd2ac5b 100644
+--- a/src/llama-model.h
++++ b/src/llama-model.h
+@@ -721,6 +721,9 @@ struct llama_model {
+     llama_hadamard_rotations hadamard_rotations;
+     llama_hadamard_rotations hadamard_inverses;
+ 
++#ifdef LLAMA_SPIN8_QUERY_V3
++    std::vector<uint8_t> spin8_model_digests;
++#endif
+     // list of devices used in this model
+     std::vector<llama_device> devices;
+ 
+diff --git a/src/llama-spin8.cpp b/src/llama-spin8.cpp
+new file mode 100644
+index 0000000000000000000000000000000000000000..7606bb6c21bbd06df42cf2c3838d444c023aaff3
+--- /dev/null
++++ b/src/llama-spin8.cpp
+@@ -0,0 +1,196 @@
++#include "llama-spin8.h"
++#include "llama-cparams.h"
++#include "llama-model.h"
++#include "llama-model-loader.h"
++#include "llama-mmap.h"
++#include "ggml-backend.h"
++#include "ggml-cpu.h"
++#include <algorithm>
++#include <cstring>
++#include <fstream>
++#include <sstream>
++#include <stdexcept>
++extern "C" {
++#include "sha256.h"
++}
++
++namespace {
++constexpr uint8_t magic[8] = {'S','P','8','S','T','A','T','1'};
++void u32(std::vector<uint8_t> & out, uint32_t value) {
++    for (unsigned i = 0; i < 4; ++i) { out.push_back(uint8_t(value >> (8*i))); }
++}
++void f32(std::vector<uint8_t> & out, float value) {
++    uint32_t bits; memcpy(&bits, &value, 4); u32(out, bits);
++}
++void label(std::vector<uint8_t> & out, const char * text) {
++    const auto size = strlen(text); u32(out, uint32_t(size)); out.insert(out.end(), text, text+size);
++}
++std::array<uint8_t,32> digest(const std::vector<uint8_t> & data) {
++    std::array<uint8_t,32> result{};
++    spin8_sidecar_sha256_hash(result.data(), data.data(), data.size()); return result;
++}
++std::string hex(const uint8_t * data, size_t size) {
++    constexpr char digits[] = "0123456789abcdef";
++    std::string out; out.reserve(2*size);
++    for (size_t i = 0; i < size; ++i) { out += digits[data[i]>>4]; out += digits[data[i]&15]; }
++    return out;
++}
++void require(bool condition, const char * reason) {
++    if (!condition) { throw std::runtime_error(std::string("transform_invariant_violation: ")+reason); }
++}
++}
++
++void llama_spin8_hash_model(llama_model & model, llama_model_loader & loader) {
++    require(!loader.files.empty() && loader.files.size() <= 256, "model_file_count");
++    std::vector<uint8_t> buffer(1024*1024);
++    for (auto & file : loader.files) {
++        require(!file->has_direct_io(), "direct_io_hashing_unsupported");
++        const size_t saved = file->tell(), length = file->size();
++        spin8_sidecar_sha256_t hash; spin8_sidecar_sha256_init(&hash);
++        file->seek(0, SEEK_SET);
++        try {
++            for (size_t position = 0; position < length;) {
++                const size_t count = std::min(buffer.size(), length-position);
++                file->read_raw(buffer.data(), count);
++                spin8_sidecar_sha256_update(&hash, buffer.data(), count); position += count;
++            }
++            require(file->size() == length, "model_changed_during_hash");
++            file->seek(saved, SEEK_SET);
++        } catch (...) { file->seek(saved, SEEK_SET); throw; }
++        std::array<uint8_t,32> result{}; spin8_sidecar_sha256_final(&hash, result.data());
++        model.spin8_model_digests.insert(model.spin8_model_digests.end(), result.begin(), result.end());
++    }
++}
++
++llama_spin8_query::llama_spin8_query(const llama_model & model, const llama_cparams & resolved,
++                                  const llama_context_params & params) {
++    require(model.arch == LLM_ARCH_QWEN35, "architecture_unsupported");
++    require(!model.spin8_model_digests.empty(), "model_not_hashed_by_loader");
++    require(params.ctx_other == nullptr && params.ctx_type == LLAMA_CONTEXT_TYPE_DEFAULT &&
++            params.n_rs_seq == 0, "shared_or_speculative_context_unsupported");
++    require(params.path_kv_mean_center == nullptr, "external_kv_bias_unsupported");
++    require(params.flash_attn_type != LLAMA_FLASH_ATTN_TYPE_AUTO, "explicit_flash_attention_required");
++    require(resolved.n_seq_max == 1, "multi_sequence_unsupported");
++    require(params.n_samplers == 0, "backend_sampler_unsupported");
++    require(model.n_devices() <= 1 && model.split_mode() != LLAMA_SPLIT_MODE_ROW, "multi_device_or_row_split_unsupported");
++    const auto & hp = model.hparams;
++    std::vector<spin8_query_adapter_layer_spec> specs;
++    for (uint32_t i = 0; i < hp.n_layer(); ++i) {
++        if (!hp.is_recr(i)) { specs.push_back({i, hp.n_head(i), hp.n_head_kv(i), hp.n_embd_head_k(i)}); }
++    }
++    require(!specs.empty(), "no_regular_attention_layers");
++    // Canonical v1: length-prefixed UTF8 labels, little-endian u32 and IEEE-F32
++    // bit patterns. No native struct padding, locale, path or sidecar fields.
++    std::vector<uint8_t> profile;
++    label(profile, "prism73bfe6cc-spin8-query-v3-profile-v1");
++    label(profile, "post-Qnorm-pre-MRoPE;rank8;rational-tau-tan-pi/8;positive-chirality;C(c)C(e0)^T;tail-identity;original-folded-Hadamard");
++    u32(profile, uint32_t(params.type_k)); u32(profile, uint32_t(params.type_v));
++    u32(profile, resolved.flash_attn); u32(profile, resolved.causal_attn);
++    u32(profile, resolved.kv_unified); u32(profile, params.swa_full);
++    u32(profile, hp.n_layer()); u32(profile, uint32_t(specs.size()));
++    f32(profile, hp.f_norm_rms_eps);
++    for (const auto & spec : specs) {
++        u32(profile, spec.layer_index); u32(profile, spec.q_heads); u32(profile, spec.kv_heads); u32(profile, spec.head_width);
++    }
++    std::vector<uint8_t> position;
++    label(position, "prism73bfe6cc-spin8-query-v3-position-v1");
++    u32(position, uint32_t(hp.rope_type)); u32(position, hp.n_rot());
++    u32(position, resolved.n_ctx); u32(position, resolved.n_ctx_seq); u32(position, resolved.n_ctx_orig_yarn);
++    for (int section : hp.rope_sections) { u32(position, uint32_t(section)); }
++    f32(position, resolved.rope_freq_base); f32(position, resolved.rope_freq_scale);
++    f32(position, resolved.yarn_ext_factor); f32(position, resolved.yarn_attn_factor);
++    f32(position, resolved.yarn_beta_fast); f32(position, resolved.yarn_beta_slow);
++    const auto profile_hash = digest(profile), position_hash = digest(position);
++    spin8_query_adapter_expectations expected{};
++    expected.abi_version = 1; expected.struct_bytes = sizeof(expected);
++    expected.model_count = uint32_t(model.spin8_model_digests.size()/32);
++    expected.model_digests = model.spin8_model_digests.data(); expected.model_digests_bytes = model.spin8_model_digests.size();
++    expected.layer_count = uint32_t(specs.size()); expected.layers = specs.data(); expected.layers_bytes = specs.size()*sizeof(specs[0]);
++    memcpy(expected.profile_digest, profile_hash.data(), 32); memcpy(expected.position_digest, position_hash.data(), 32);
++    std::ostringstream json;
++    json << "{\"schema\":1,\"models\":[";
++    for (uint32_t i = 0; i < expected.model_count; ++i) {
++        if (i) { json << ','; } json << '"' << hex(expected.model_digests+32*i, 32) << '"';
++    }
++    json << "],\"profile\":\"" << hex(profile_hash.data(),32) << "\",\"position\":\"" << hex(position_hash.data(),32)
++         << "\",\"profileEncodingHex\":\"" << hex(profile.data(),profile.size())
++         << "\",\"positionEncodingHex\":\"" << hex(position.data(),position.size()) << "\",\"layers\":[";
++    for (size_t i = 0; i < specs.size(); ++i) {
++        const auto & spec = specs[i]; if (i) { json << ','; }
++        json << "{\"layer_index\":" << spec.layer_index << ",\"q_heads\":" << spec.q_heads
++             << ",\"kv_heads\":" << spec.kv_heads << ",\"head_width\":" << spec.head_width << '}';
++    }
++    json << "]}"; bindings_json = json.str();
++    if (!params.spin8_query_sidecar) { return; } // inspection-only context
++    std::ifstream file(params.spin8_query_sidecar, std::ios::binary | std::ios::ate);
++    require(file.good(), "sidecar_open");
++    const auto length = file.tellg();
++    require(length > 0 && length <= SPIN8_QUERY_ADAPTER_MAX_BYTES, "sidecar_size");
++    std::vector<uint8_t> bytes(static_cast<size_t>(length)); file.seekg(0);
++    require(bool(file.read(reinterpret_cast<char *>(bytes.data()), length)), "sidecar_read");
++    spin8_query_adapter * loaded = nullptr;
++    const auto status = spin8_query_adapter_load(bytes.data(), bytes.size(), &expected, sizeof(expected), &loaded);
++    require(status == SPIN8_OK, "sidecar_binding_or_format"); adapter.reset(loaded);
++    spin8_query_adapter_info info{};
++    require(spin8_query_adapter_get_info(adapter.get(), &info, sizeof(info)) == SPIN8_OK, "sidecar_info");
++    label(provenance, "prism-query-v3-state-provenance-v1");
++    u32(provenance, expected.model_count);
++    provenance.insert(provenance.end(), model.spin8_model_digests.begin(), model.spin8_model_digests.end());
++    for (const auto * hash : {info.profile_digest, info.position_digest, info.convention_digest, info.content_digest}) {
++        provenance.insert(provenance.end(), hash, hash+32);
++    }
++    // CPU-backed immutable banks are real graph inputs, staged by GGML to the
++    // actual execution backend. Backend error flags are deliberately separate.
++    bank_ctx.reset(ggml_init({ggml_tensor_overhead()*specs.size(), nullptr, true}));
++    require(bank_ctx != nullptr, "bank_context_allocation");
++    for (uint32_t i = 0; i < specs.size(); ++i) {
++        spin8_query_adapter_layer_view view{};
++        require(spin8_query_adapter_get_layer(adapter.get(), i, &view, sizeof(view)) == SPIN8_OK, "sidecar_layer");
++        auto * bank = ggml_new_tensor_1d(bank_ctx.get(), GGML_TYPE_F32,
++            int64_t(view.spec.q_heads)*(8*view.spec.head_width+71));
++        ggml_format_name(bank, "spin8_bank_%u", view.spec.layer_index);
++        banks.emplace(int(view.spec.layer_index), bank);
++        layers.emplace(int(view.spec.layer_index), layer_ptr(ggml_spin8_layer_create(state.get(), view), ggml_spin8_layer_free));
++    }
++    bank_buffer.reset(ggml_backend_alloc_ctx_tensors_from_buft(bank_ctx.get(), ggml_backend_cpu_buffer_type()));
++    require(bank_buffer != nullptr, "bank_buffer_allocation");
++    // Keep ordinary input usage: marking this small bank as a CPU weight would
++    // override Q placement and silently schedule the custom operation on CPU.
++    for (uint32_t i = 0; i < specs.size(); ++i) {
++        spin8_query_adapter_layer_view view{};
++        require(spin8_query_adapter_get_layer(adapter.get(), i, &view, sizeof(view)) == SPIN8_OK, "sidecar_layer");
++        auto * bank = banks.at(int(view.spec.layer_index)); size_t offset = 0;
++        const float * arrays[] = {view.win, view.bin, view.wout, view.bout};
++        const size_t sizes[] = {view.win_bytes, view.bin_bytes, view.wout_bytes, view.bout_bytes};
++        for (size_t j = 0; j < 4; ++j) { ggml_backend_tensor_set(bank, arrays[j], offset, sizes[j]); offset += sizes[j]; }
++    }
++}
++ggml_tensor * llama_spin8_query::apply(ggml_context * ctx, ggml_tensor * q, int layer) {
++    require(!failed && active(), "context_unusable");
++    return ggml_spin8_query(ctx, q, banks.at(layer), layers.at(layer).get());
++}
++void llama_spin8_query::write_header(llama_io_write_i & io, uint32_t kind) const {
++    require(!failed, "context_unusable");
++    std::vector<uint8_t> header(magic, magic+8); u32(header, kind); u32(header, uint32_t(provenance.size()));
++    io.write(header.data(), header.size()); io.write(provenance.data(), provenance.size());
++}
++void llama_spin8_query::read_header(llama_io_read_i & io, uint32_t kind) {
++    require(!failed, "context_unusable");
++    std::vector<uint8_t> expected(magic, magic+8); u32(expected, kind); u32(expected, uint32_t(provenance.size()));
++    expected.insert(expected.end(), provenance.begin(), provenance.end());
++    std::vector<uint8_t> actual(expected.size()); io.read(actual.data(), actual.size());
++    require(actual == expected, "state_provenance_mismatch");
++}
++llama_spin8_prefix_reader::llama_spin8_prefix_reader(llama_io_read_i & input) : source(input) {
++    source.read(prefix.data(), prefix.size());
++}
++void llama_spin8_prefix_reader::read(void * dst, size_t size) {
++    const size_t take = std::min(size, prefix.size()-position);
++    memcpy(dst, prefix.data()+position, take); position += take;
++    if (size > take) { source.read(static_cast<uint8_t *>(dst)+take, size-take); }
++}
++void llama_spin8_prefix_reader::read_tensor(ggml_tensor * tensor, size_t offset, size_t size) {
++    require(position == prefix.size(), "state_prefix_unconsumed"); source.read_tensor(tensor, offset, size);
++}
++size_t llama_spin8_prefix_reader::n_bytes() { return source.n_bytes()-(prefix.size()-position); }
++bool llama_spin8_prefix_reader::enabled() const { return memcmp(prefix.data(), magic, 8) == 0; }
+diff --git a/src/llama-spin8.h b/src/llama-spin8.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..ec746de77c14cf2ed91926546565a204bdb29482
+--- /dev/null
++++ b/src/llama-spin8.h
+@@ -0,0 +1,47 @@
++#pragma once
++#include "ggml-spin8.h"
++#include "ggml-cpp.h"
++#include "llama.h"
++#include "llama-io.h"
++#include <array>
++#include <map>
++#include <string>
++
++struct llama_model;
++struct llama_model_loader;
++struct llama_cparams;
++void llama_spin8_hash_model(llama_model & model, llama_model_loader & loader);
++
++struct llama_spin8_query {
++    std::unique_ptr<spin8_query_adapter, decltype(&spin8_query_adapter_free)> adapter{nullptr, spin8_query_adapter_free};
++    std::unique_ptr<ggml_spin8_state, decltype(&ggml_spin8_state_free)> state{ggml_spin8_state_create(), ggml_spin8_state_free};
++    using layer_ptr = std::unique_ptr<ggml_spin8_layer, decltype(&ggml_spin8_layer_free)>;
++    std::map<int, layer_ptr> layers;
++    std::map<int, ggml_tensor *> banks;
++    ggml_context_ptr bank_ctx;
++    ggml_backend_buffer_ptr bank_buffer;
++    std::vector<uint8_t> provenance;
++    std::string bindings_json;
++    bool failed = false;
++
++    llama_spin8_query(const llama_model & model, const llama_cparams & resolved,
++                      const llama_context_params & params);
++    bool active() const { return adapter != nullptr; }
++    ggml_tensor * apply(ggml_context * ctx, ggml_tensor * q, int layer);
++    void write_header(llama_io_write_i & io, uint32_t kind) const;
++    void read_header(llama_io_read_i & io, uint32_t kind);
++};
++
++// Reads a discriminator before deserialization and replays it for legacy off
++// state. All readers, including file wrappers, retain their original bounds.
++class llama_spin8_prefix_reader : public llama_io_read_i {
++    llama_io_read_i & source;
++    std::array<uint8_t, 8> prefix{};
++    size_t position = 0;
++public:
++    explicit llama_spin8_prefix_reader(llama_io_read_i & source);
++    void read(void * dst, size_t size) override;
++    void read_tensor(ggml_tensor * tensor, size_t offset, size_t size) override;
++    size_t n_bytes() override;
++    bool enabled() const;
++};
+diff --git a/src/models/qwen35.cpp b/src/models/qwen35.cpp
+index 91479865722420a81fcfb2688afe188206098080..8221a8007ce28ef3ea8109c5fbe5b15a98dde299 100644
+--- a/src/models/qwen35.cpp
++++ b/src/models/qwen35.cpp
+@@ -1,4 +1,8 @@
+ #include "models.h"
++#ifdef LLAMA_SPIN8_QUERY_V3
++#include "llama-spin8.h"
++#include "llama-cparams.h"
++#endif
+ #include "llama-impl.h"
+ #include "llama-memory-recurrent.h"
+ #include "llama-kv-cache.h"
+@@ -355,6 +359,12 @@ ggml_tensor * llama_model_qwen35::graph::build_layer_attn(
+     // Apply Q normalization
+     Qcur = build_norm(Qcur, model.layers[il].attn_q_norm, nullptr, LLM_NORM_RMS, il);
+     cb(Qcur, "Qcur_normed", il);
++#ifdef LLAMA_SPIN8_QUERY_V3
++    if (cparams.spin8_query) {
++        Qcur = cparams.spin8_query->apply(ctx0, Qcur, il);
++        cb(Qcur, "spin8_query_v3", il);
++    }
++#endif
+ 
+     ggml_tensor * Kcur = build_lora_mm(model.layers[il].wk, cur, model.layers[il].wk_s);
+     cb(Kcur, "Kcur", il);
+diff --git a/tools/server/CMakeLists.txt b/tools/server/CMakeLists.txt
+index 280bd9e19dca30e48073d3071c421695a4cbff4c..f5b70c71d56ac61a8cc9f42e3c7b2cb7609e12d1 100644
+--- a/tools/server/CMakeLists.txt
++++ b/tools/server/CMakeLists.txt
+@@ -63,3 +63,8 @@ install(TARGETS ${TARGET} RUNTIME)
+ 
+ target_link_libraries(${TARGET} PRIVATE llama-server-impl)
+ target_compile_features(${TARGET} PRIVATE cxx_std_17)
++
++# ui.h encodes the asset array size in its ABI. Reused builds must compile
++# server-http after generation and track this header explicitly.
++add_dependencies(llama-server-impl llama-ui-assets)
++set_property(SOURCE server-http.cpp APPEND PROPERTY OBJECT_DEPENDS "${CMAKE_BINARY_DIR}/tools/ui/ui.h")
+diff --git a/tools/ui/CMakeLists.txt b/tools/ui/CMakeLists.txt
+index 208b46a5c15a43211a4fb26404b10a326199ed75..a29f9004e620300d6f68b7eb385f73cf3a0237ba 100644
+--- a/tools/ui/CMakeLists.txt
++++ b/tools/ui/CMakeLists.txt
+@@ -101,6 +101,7 @@ add_custom_target(llama-ui-assets ALL
+         "-DHF_VERSION=${HF_UI_VERSION}"
+         "-DHF_ENABLED=${LLAMA_USE_PREBUILT_UI}"
+         "-DBUILD_UI=${LLAMA_BUILD_UI}"
++        "-DEMBED_UI=${LLAMA_EMBED_UI}"
+         "-DLLAMA_UI_EMBED=${LLAMA_UI_EMBED_EXE}"
+         "-DLLAMA_UI_GZIP=${LLAMA_UI_GZIP}"
+         -P "${PROJECT_SOURCE_DIR}/scripts/ui-assets.cmake"

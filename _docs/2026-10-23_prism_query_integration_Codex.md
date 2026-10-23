@@ -1,0 +1,39 @@
+# Prism query-v3 integration — work in progress
+
+Task4B targets fixed Prism 73bfe6cc485554822f80c473a3c0c4f25e80f41b. It is not complete until the actual read-only Hikari 27B model passes prefill, decode, binding and state tests. Standalone graph tests are separate evidence.
+
+The implementation applies the canonical prompt, home and Codex AGENTS, project AGENTS, common MILSPECLLMOps, implementation-start, skill-selection, C, C++, Python, security and LLMOps SOPs. Selected skills are executing-plans and milspec-codex-standard. No release or formal standards-conformance claim is made.
+
+## Design decisions
+
+The only mathematical insertion is after regular-attention Q normalization and before MRoPE in qwen35. K/V, recurrent layers, folded weight transforms, gate and downstream attention remain unchanged. The immutable sidecar and CPU controllers belong to the llama context. The GGML node uses Q and a parameter tensor as actual dependencies. CUDA recognizes the bridge's exact callback before reading its userdata and invokes the reviewed separately compiled batched kernel on the GGML stream.
+
+A sticky error flag must be owned by the actual execution backend. A copied input tensor cannot satisfy this requirement. Retaining every Q output merely to retain an appended flag would inflate graph memory. The selected design uses persistent per-device context state registered by the CUDA bridge, with a backend-owned device flag, a host error status, readback and destruction callbacks. Scheduler completion is synchronized once per graph, then all registered backend flags are read. Any violation invalidates hybrid memory and makes the context unusable until reconstruction. Allocation is per context/device, never per row.
+
+Binding must hash the actual loader file handles, in their split order, only when requested. It must include exact selected geometry and canonical versioned encodings of resolved position and codec parameters. File hashing does not prevent later external mutation of mmap data; the caller must preserve the loaded files throughout model lifetime. State headers must reject off/on and profile mismatches before loading either KV or recurrent memory. Runtime auxiliary adapters and unsupported speculative/shared-parent contexts must fail explicitly.
+
+## Startup and reproducibility fixes
+
+`tools/spin8_prism_process.py` creates a child-only environment without any `LLAMA_ARG_*` keys, including empty values. It records names, never inherited values. Explicit command-line choices are retained. Regression coverage includes child inspection, parent immutability and an optional actual pinned-binary version probe.
+
+The embedded UI needs an explicit disable switch that runs before source-dist, cached-dist or network provisioning. Merely setting BUILD_UI=OFF or disabling HF is insufficient. Existing downloaded assets must remain untouched as evidence.
+
+## Verification and limits
+
+This is an incomplete source checkpoint. The actual GGML scheduler passes eight CPU/CUDA cases, covering padded widths 13/256, zero/nonzero parameters, graph reuse and sticky nonfinite faults. Each CPU case records CPU=3/CUDA=0, and each CUDA case CPU=0/CUDA=3. This establishes standalone dispatch, not real-model integration. The linked UI contains zero assets. The focused environment/UI suite passed 5/5 against the compiled candidate. All 182 retained NVCC objects have audited dependency records; a real MSVC header-change rebuild regression passes after correcting localized include parsing.
+
+The baseline real-model helper resolved all five DLLs to the preserved original build, then failed a 6,539.67 MiB CUDA allocation before inference. Post-run system commit headroom was about 1.1 GiB, with about 8 GiB physical and more than 13 GiB GPU memory available. The driver cause is unproven; no comparable model outputs exist yet. The unchanged paired test requires 512 context, F16 K/V, full GPU offload, bitwise original-versus-off and off-versus-zero F32 logits for prefill/decode, and a measurable nonzero effect. No tolerance or offload change is used to bypass this gate.
+
+The last compiled patch hash is `d1f31f4c318ade6d7c5de5431cd4260168f83f534e7e8ff90c8dd62fc14c88de` in `H:/Strata/build/query-v3-integration-20261023-10/manifest.json`. Small later native edits for candidate DLL provenance and expanded capability diagnostics remain unbuilt; current composed source hash is `659e524f1d57999535fcbae3aa8d2fb20fccbb4e0f7ba65a034dd3f126910ebe`. The unchanged exact patch verifier and syntax checks pass for that source. Detailed successes, failures, commands, pending real-model lifecycle cases and rollback instructions are in `.superpowers/sdd/2026-10-23_strata_030_execution_Codex/task-4b-report.md`.
+
+The early stale UI-header link failure, access violation from missing MSVC header dependencies, failed English compiler-locale attempt, CUDA-test allocation-placement failure and baseline DLL-search failures are all retained. They are not counted as passing runs. Unrelated processes, page-file settings, GGUF files and preserved baseline assets are untouched. HIP/SYCL/macOS builds, actual model acceptance, formal context benchmarks and release acceptance remain unverified. The controller's earlier original-server prompt-cache bad_alloc is a separate unresolved lifecycle issue.
+
+## Canonical bindings
+
+Encoding v1 uses a four-byte little-endian length before each UTF-8 label, little-endian unsigned 32-bit integers, and IEEE binary32 bits for every float. Profile fields, in order, are the pinned Prism/query-v3 profile label, the full mathematical/placement convention label, K type, V type, resolved flash attention, causal attention, unified KV, full SWA, total layers, selected regular-layer count, RMS epsilon, then each selected layer's index, Q heads, KV heads and head width. Position fields are its versioned label, RoPE type, rotary width, resolved context length, per-sequence context length, original YaRN context, the four MRoPE sections, resolved base, scale, YaRN extension factor, attention factor, fast beta and slow beta. Inspection returns both encodings in hex and their SHA256 digests; the Python probe recomputes the digests independently.
+
+Model identities are the concatenated SHA256 values of each file used by the loader, in loader split order. State provenance contains its own versioned label, model count and ordered digests, then profile, position, mathematical convention and immutable sidecar content digests. A full-state or sequence-state header adds an eight-byte discriminator, a kind and a bounded length before that provenance. Disabled state retains the original byte format. Sequence memory APIs retain their existing outer ownership header before the new discriminator.
+
+The initial supported model path is qwen35 regular attention with a single sequence and at most one GPU. Multi-device/row splitting, MTP, speculative/shared-parent contexts, device-resident state serialization, runtime auxiliary adapters, external KV mean centering and backend samplers are rejected. CUDA graph capture is disabled for this operation; ordinary scheduler graph reuse remains supported. The bridge uses F32 channel/head/token tensors with padded row strides, head widths 1–16384 and identity tails. The existing sidecar parser independently enforces valid GQA geometry. CPU and CUDA counters and each regular layer's dispatch counts are exposed. No CUDA claim may be inferred merely from a loaded GPU.
+
+External changes to a mapped GGUF after loader hashing remain outside the supported lifetime contract. A caller must keep those files immutable until model destruction. This implementation does not claim a filesystem snapshot or protection against an external writer. Model metadata overrides and direct-I/O hashing are rejected when inspection or activation is requested.
