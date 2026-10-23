@@ -133,13 +133,22 @@ class AcceptanceV2Test(unittest.TestCase):
         }
         report = dict(
             schema="strata-spin8-acceptance-v2",
+            run_id="qualification-20261023-01",
             measured_date="2026-10-23",
             evidence_kind="measured",
             builds=builds,
             runtime=dict(
                 policy="keep-8080-stopped",
                 probes=[
-                    self.receipt(dict(phase=p, port=8080, listener_count=0))
+                    self.receipt(
+                        dict(
+                            phase=p,
+                            port=8080,
+                            listener_count=0,
+                            run_id="qualification-20261023-01",
+                            measured_date="2026-10-23",
+                        )
+                    )
                     for p in (
                         "before",
                         "after_success",
@@ -173,6 +182,7 @@ class AcceptanceV2Test(unittest.TestCase):
             )
             for count in (4096, 32768):
                 binding = dict(
+                    run_id=report["run_id"],
                     model_id=name,
                     model_sha256=hashes,
                     input_tokens=count,
@@ -180,6 +190,8 @@ class AcceptanceV2Test(unittest.TestCase):
                 )
                 conditions = self.receipt(
                     dict(
+                        run_id=report["run_id"],
+                        measured_date=report["measured_date"],
                         cuda_architecture="sm_120",
                         device="RTX fixture",
                         sampling="temperature=0;seed=17",
@@ -249,6 +261,14 @@ class AcceptanceV2Test(unittest.TestCase):
                     quality=self.receipt(
                         dict(
                             candidate_binding,
+                            baseline_source_commit=builds["baseline"]["source_commit"],
+                            baseline_binary_sha256=builds["baseline"]["binary_sha256"],
+                            candidate_source_commit=builds["candidate"][
+                                "source_commit"
+                            ],
+                            candidate_binary_sha256=builds["candidate"][
+                                "binary_sha256"
+                            ],
                             datasets=datasets,
                             evaluated_tokens=1000,
                             baseline_mean_nll=2,
@@ -302,6 +322,134 @@ class AcceptanceV2Test(unittest.TestCase):
                 model["contexts"].append(context)
             report["models"].append(model)
         return report
+
+    def rebind_model_receipts(self, **changes: object) -> None:
+        """Re-record every model receipt while deliberately preserving runtime probes."""
+        for model in self.data["models"]:
+            for context in model["contexts"]:
+                self.replace_record(context, "conditions", **changes)
+                condition_hash = context["conditions"]["evidence"]["sha256"]
+                for group in ("warmups", "pairs"):
+                    for pair in context[group]:
+                        for arm in ("baseline", "candidate"):
+                            self.replace_record(
+                                pair, arm, conditions_sha256=condition_hash, **changes
+                            )
+                for field in ("quality", "functional", "monitor"):
+                    self.replace_record(
+                        context, field, conditions_sha256=condition_hash, **changes
+                    )
+
+    def test_stale_baseline_quality_receipt_is_rejected(self) -> None:
+        self.replace_record(
+            self.data["builds"],
+            "baseline",
+            source_commit=digest("replacement-baseline-source")[:40],
+            binary_sha256=digest("replacement-baseline-binary"),
+        )
+        build = self.data["builds"]["baseline"]
+        for model in self.data["models"]:
+            for context in model["contexts"]:
+                for group in ("warmups", "pairs"):
+                    for pair in context[group]:
+                        self.replace_record(
+                            pair,
+                            "baseline",
+                            source_commit=build["source_commit"],
+                            binary_sha256=build["binary_sha256"],
+                        )
+        result = self.result()
+        self.assertFalse(result["passed"], result)
+        self.assertTrue(
+            any(
+                "quality.baseline_source_commit" in failure
+                for failure in result["failures"]
+            ),
+            result,
+        )
+
+    def test_stale_runtime_measurement_date_is_rejected(self) -> None:
+        self.data["measured_date"] = "2026-10-24"
+        self.rebind_model_receipts(measured_date="2026-10-24")
+        self.assertFalse(self.result()["passed"])
+
+    def test_runtime_from_another_run_is_rejected(self) -> None:
+        self.data["run_id"] = "qualification-20261023-02"
+        self.rebind_model_receipts(run_id=self.data["run_id"])
+        self.assertFalse(self.result()["passed"])
+
+    def test_run_identifier_is_bounded_and_bound_to_measurements(self) -> None:
+        for value in (None, True, "", "x" * 65, "run/path", "unknown"):
+            self.data["run_id"] = value
+            self.assertFalse(self.result()["passed"])
+        self.data = self.make_fixture()
+        pair = self.data["models"][0]["contexts"][0]["pairs"][0]
+        self.replace_record(pair, "candidate", run_id="other-run")
+        self.assertFalse(self.result()["passed"])
+
+    def test_monitor_one_percent_inclusive_at_multiple_scales(self) -> None:
+        for baseline, monitored in ((1, 1.01), (100, 101)):
+            self.data = self.make_fixture()
+            for model in self.data["models"]:
+                for context in model["contexts"]:
+                    self.replace_record(
+                        context,
+                        "monitor",
+                        overhead_baseline_seconds=baseline,
+                        overhead_monitored_seconds=monitored,
+                    )
+            self.assertTrue(
+                self.result()["passed"], (baseline, monitored, self.result())
+            )
+            context = self.data["models"][0]["contexts"][0]
+            self.replace_record(
+                context,
+                "monitor",
+                overhead_monitored_seconds=math.nextafter(monitored, math.inf),
+            )
+            self.assertFalse(self.result()["passed"], (baseline, monitored))
+
+    def test_decode_and_ttft_targets_are_inclusive(self) -> None:
+        for baseline_decode, candidate_decode, baseline_ttft, candidate_ttft in (
+            (1.05, 1, 1, 1.05),
+            (1.05e-6, 1e-6, 0.1, 0.105),
+            (105, 100, 100, 105),
+        ):
+            self.data = self.make_fixture()
+            for model in self.data["models"]:
+                for context in model["contexts"]:
+                    for pair in context["pairs"]:
+                        self.replace_record(
+                            pair,
+                            "baseline",
+                            completion_tokens=105,
+                            decode_seconds=baseline_decode,
+                            ttft_seconds=baseline_ttft,
+                        )
+                        self.replace_record(
+                            pair,
+                            "candidate",
+                            completion_tokens=105,
+                            decode_seconds=candidate_decode,
+                            ttft_seconds=candidate_ttft,
+                        )
+            self.assertTrue(self.result()["passed"], self.result())
+            pairs = self.data["models"][0]["contexts"][0]["pairs"]
+            for pair in pairs:
+                self.replace_record(
+                    pair,
+                    "candidate",
+                    ttft_seconds=math.nextafter(candidate_ttft, math.inf),
+                )
+            self.assertFalse(self.result()["passed"])
+            for pair in pairs:
+                self.replace_record(
+                    pair,
+                    "candidate",
+                    ttft_seconds=candidate_ttft,
+                    decode_seconds=math.nextafter(candidate_decode, math.inf),
+                )
+            self.assertFalse(self.result()["passed"])
 
     def result(self) -> dict:
         return evaluate(self.data, evidence_root=self.root)

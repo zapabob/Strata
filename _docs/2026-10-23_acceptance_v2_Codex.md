@@ -20,7 +20,7 @@ For v2, speed results are retained once the measurement rows validate, even when
 
 ## V2 record contract
 
-The root has `schema`, `evidence_kind=measured`, an ISO `measured_date`, `builds`, `runtime` and exactly two `models`. `builds.baseline` and `builds.candidate` each identify a lowercase 40-character `source_commit` and a 64-character `binary_sha256`, with a content-matching evidence receipt. Obvious repeated-character identity placeholders fail validation.
+The root has `schema`, `evidence_kind=measured`, an ISO `measured_date`, a bounded explicit `run_id`, `builds`, `runtime` and exactly two `models`. Run ids have 1–64 ASCII alphanumeric/dot/underscore/hyphen characters and start with an alphanumeric character; known placeholder ids are rejected. Every measurement, conditions, quality, functional, monitoring and runtime-probe receipt must match this run id and measurement date. Build identities describe reusable artifacts and do not themselves assert a measurement run. `builds.baseline` and `builds.candidate` each identify a lowercase 40-character `source_commit` and a 64-character `binary_sha256`, with a content-matching evidence receipt. Obvious repeated-character identity placeholders fail validation.
 
 Mandatory models are `bonsai27b` and `strata-q2_0`, exactly once each. Their ordered `model_sha256` lists must match these frozen inputs:
 
@@ -38,7 +38,7 @@ Each context contains `conditions`, `warmups`, `pairs`, `quality`, `functional` 
 
 Every measurement row has `arm`, `model_id`, ordered `model_sha256`, `input_tokens`, `measured_date`, `source_commit`, `binary_sha256`, `conditions_sha256`, `prompt_sha256`, positive integer `completion_tokens`, positive finite `decode_seconds` and `ttft_seconds`, plus evidence. Each arm matches its own build; both arms match the same model, day, context and conditions. Prompt hashes and completion lengths match within each pair. Completion lengths are fixed within each group. Decode speeds and their median ratio must also remain finite; finite inputs whose derived speed overflows do not pass.
 
-The `quality`, `functional` and `monitor` receipts share the model/day/context binding and the candidate source, binary and conditions identity. They are not accepted as unbound scalar claims.
+The `quality`, `functional` and `monitor` receipts share the model/run/day/context binding and the candidate source, binary and conditions identity. Quality additionally requires explicit `baseline_source_commit`, `baseline_binary_sha256`, `candidate_source_commit` and `candidate_binary_sha256` matching both build records. The same quality receipt contains the paired NLL values and all fixed-case outcomes, so both sides of that comparison are bound together. Replacing the baseline build and its timing rows while retaining old quality evidence fails. These records are not accepted as unbound scalar claims.
 
 Quality has `outcome=conclusive`, positive integer `evaluated_tokens`, nonnegative finite baseline and candidate mean NLL, and `datasets`. Each dataset role, evaluation/training/calibration/selection, identifies an id, SHA-256, source, revision and split. Their ids and dataset hashes must be distinct. Distinct hashes do not prove that datasets contain no overlapping examples; dataset curation remains a producer/reviewer responsibility. `fixed_cases` records pass/fail results for both arms by required case id; the evaluator derives the count of new failures rather than trusting a supplied zero.
 
@@ -46,11 +46,11 @@ Functional evidence records three physical K views, one shared V view, positive 
 
 Monitoring records baseline and monitored elapsed seconds and derives overhead. `audits` has explicit CPU-audit and GPU-probe counts for `load`, `coefficient_change`, `tokens_1024` and `seconds_60`. `faults` covers `cpu_coefficients` and `gpu_probe`; each records positive injections, matching stopped and invalidated counts, and `error=transform_invariant_violation`. Boolean counts are rejected.
 
-Runtime policy is `keep-8080-stopped`. Evidence receipts are required for `before`, `after_success`, `after_failure` and `after_cancel`, each recording integer port 8080 and integer listener count zero. Restoration of the previous service is not a v2 requirement. Evaluation itself does not start, stop or probe a service.
+Runtime policy is `keep-8080-stopped`. Evidence receipts are required for `before`, `after_success`, `after_failure` and `after_cancel`, each recording integer port 8080, integer listener count zero, and the matching run id and measurement date. Old-day or other-run runtime receipts cannot qualify a new evaluation. Restoration of the previous service is not a v2 requirement. Evaluation itself does not start, stop or probe a service.
 
 ## Numerical gates
 
-For each required model/context, the median candidate decode speed divided by median baseline speed must be at least 1.05. Median candidate TTFT divided by baseline TTFT must be at most 1.05. Candidate mean NLL must be at most baseline mean NLL plus `ln(1.01)`. Comparing NLL values in this form avoids cancellation at the inclusive boundary; this is the PPL ratio threshold without exponentiating large values. Newly failed fixed cases must be zero. Measured monitoring overhead `(monitored_seconds-baseline_seconds)/baseline_seconds` must be at most 0.01.
+For each required model/context, the median candidate decode speed divided by median baseline speed must be at least 1.05. Median candidate TTFT divided by baseline TTFT must be at most 1.05. Decode/TTFT decision medians and monitoring overhead use exact `fractions.Fraction` arithmetic over the recorded decimal readings and exact targets 105/100 or 1/100; output metrics are ordinary finite floats. This avoids rejecting decimal boundary values because of binary rounding and introduces no permissive tolerance. Candidate mean NLL must be at most baseline mean NLL plus `ln(1.01)`. Comparing NLL values in this form avoids cancellation at the inclusive boundary; this is the PPL ratio threshold without exponentiating large values. Newly failed fixed cases must be zero. Measured monitoring overhead `(monitored_seconds-baseline_seconds)/baseline_seconds` must be at most 0.01.
 
 ## Evidence files and trust boundary
 
@@ -79,3 +79,11 @@ Self-review-event: type=qa_defect scope=tools/spin8_acceptance.py category=relea
 Trigger evidence was the boolean-only legacy fixture granting a pass and the missing versioned provenance contract. Decision is review-only for governance: the authorised task changes evaluator checks and tests, with no AGENTS, SOP, skill or automation edits. During implementation, review also caught overflow in derived speeds, a test-fixture reset error and loss of visible speed results when quality was inconclusive. Focused regression tests cover these findings. Final code review checks scope, default behavior, failure closure and evidence bounds.
 
 Runtime, GPU, real-model quality/speed, CI, package/install/GUI and release qualification were not run by this task. They remain separate execution tasks. Rollback is an ordinary revert of this task's source commit, with no model or runtime restoration needed. No formal MILSPEC compliance or v0.3.0 release-readiness claim is made.
+
+## Independent-review repair
+
+The independent review found stale baseline quality provenance, unbound runtime date/run records and an inclusive monitoring boundary error. A new RED run against the unrepaired implementation reproduced four failures: stale baseline, stale runtime date, wrong runtime run and elapsed 1/1.01. One initial decode/TTFT boundary control passed. Further bounded arithmetic inspection found decode durations 1.05e-6/1e-6 could also be falsely rejected; exact decimal rational decision arithmetic fixes that without changing targets. Tests now cover the baseline-identity mutation, stale runtime date/run, bounded run ids and wrong-run measurements, monitoring boundaries at 1/1.01 and 100/101, and decode/TTFT boundaries at multiple scales plus the immediately worse representable readings.
+
+Self-review-event: type=rework_returned scope=tools/spin8_acceptance.py category=release-gate evidence=.superpowers/sdd/2026-10-23_strata_030_execution_Codex/task-2-report.md
+
+The repair is limited to owned evaluator/tests/documentation. No process, dependency, model or controller execution-record change was made. Final repair verification passed all 32 tests in 35.57 seconds. Black check, flake8 with the documented options and `git diff --check` passed. The repair commit is recorded in the task report.

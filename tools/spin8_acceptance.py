@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 from datetime import date
+from fractions import Fraction
 import hashlib
 import json
 import math
@@ -359,8 +360,13 @@ def check_monitor(
     monitored = number(
         monitor.get("overhead_monitored_seconds"), "overhead_monitored_seconds"
     )
-    overhead = (monitored - baseline) / baseline
-    require(overhead <= 0.01, "monitor_overhead_above_1_percent")
+    # Use the recorded decimal readings for threshold decisions. Binary float
+    # subtraction can reject exactly 1%; no tolerance widens the target.
+    overhead = Fraction(str(monitored)) / Fraction(str(baseline)) - 1
+    require(
+        overhead <= Fraction(1, 100),
+        "monitor_overhead_above_1_percent",
+    )
     for audit in named_records(
         monitor.get("audits"),
         "trigger",
@@ -382,7 +388,7 @@ def check_monitor(
             and fault.get("error") == "transform_invariant_violation",
             "monitor_not_fail_closed",
         )
-    return overhead
+    return float(overhead)
 
 
 def check_pairs(
@@ -393,11 +399,11 @@ def check_pairs(
     binding: dict[str, Any],
     builds: dict[str, Any],
     condition_hash: str,
-) -> tuple[float, float]:
+) -> tuple[float, float, bool, bool]:
     pairs = list_value(value, "pairs")
     require(len(pairs) == total, f"{total}_pairs_required")
-    speeds: dict[str, list[float]] = {"baseline": [], "candidate": []}
-    ttft: dict[str, list[float]] = {"baseline": [], "candidate": []}
+    speeds: dict[str, list[Fraction]] = {"baseline": [], "candidate": []}
+    ttft: dict[str, list[Fraction]] = {"baseline": [], "candidate": []}
     generation_lengths: set[int] = set()
     for i, value in enumerate(pairs):
         pair = object_value(value, "pair")
@@ -427,26 +433,25 @@ def check_pairs(
             lengths.append(tokens)
             generation_lengths.add(tokens)
             prompts.append(identity(row.get("prompt_sha256"), "prompt_sha256"))
-            speeds[arm].append(
-                number(
-                    tokens / number(row.get("decode_seconds"), "decode_seconds"),
-                    "derived_decode_speed",
-                )
-            )
-            ttft[arm].append(number(row.get("ttft_seconds"), "ttft_seconds"))
+            duration = number(row.get("decode_seconds"), "decode_seconds")
+            number(tokens / duration, "derived_decode_speed")
+            wait = number(row.get("ttft_seconds"), "ttft_seconds")
+            speeds[arm].append(Fraction(tokens) / Fraction(str(duration)))
+            ttft[arm].append(Fraction(str(wait)))
         require(lengths[0] == lengths[1], "generation_lengths_mismatch")
         require(prompts[0] == prompts[1], "paired_prompt_mismatch")
     require(len(generation_lengths) == 1, "generation_lengths_not_fixed")
+    gain = statistics.median(speeds["candidate"]) / statistics.median(
+        speeds["baseline"]
+    )
+    wait_ratio = statistics.median(ttft["candidate"]) / statistics.median(
+        ttft["baseline"]
+    )
     return (
-        number(
-            statistics.median(speeds["candidate"])
-            / statistics.median(speeds["baseline"]),
-            "derived_decode_ratio",
-        ),
-        number(
-            statistics.median(ttft["candidate"]) / statistics.median(ttft["baseline"]),
-            "derived_ttft_ratio",
-        ),
+        number(float(gain), "derived_decode_ratio"),
+        number(float(wait_ratio), "derived_ttft_ratio"),
+        gain >= Fraction(105, 100),
+        wait_ratio <= Fraction(105, 100),
     )
 
 
@@ -460,6 +465,14 @@ def evaluate_v2(report: dict[str, Any], evidence_root: Path | None) -> dict[str,
         and date.fromisoformat(measured_date).isoformat() == measured_date,
         "measurement_date_required",
     )
+    run_id = report.get("run_id")
+    require(
+        isinstance(run_id, str)
+        and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", run_id) is not None
+        and run_id.lower() not in ("todo", "unknown", "placeholder"),
+        "invalid_run_id",
+    )
+    run_binding = dict(run_id=run_id, measured_date=measured_date)
     builds = object_value(report.get("builds"), "builds")
     for arm in ("baseline", "candidate"):
         build = evidence.verify(builds.get(arm), "builds." + arm)
@@ -476,7 +489,7 @@ def evaluate_v2(report: dict[str, Any], evidence_root: Path | None) -> dict[str,
         {"before", "after_success", "after_failure", "after_cancel"},
         "runtime.probes",
     ):
-        evidence.verify(probe, "runtime.probe")
+        bound_record(evidence, probe, run_binding, "runtime.probe")
         require(
             count(probe.get("port"), "port") == 8080
             and count(probe.get("listener_count"), "listener_count") == 0,
@@ -508,12 +521,15 @@ def evaluate_v2(report: dict[str, Any], evidence_root: Path | None) -> dict[str,
             )
             for context in contexts:
                 binding = dict(
+                    run_id=run_id,
                     model_id=name,
                     model_sha256=MODEL_HASHES[name],
                     input_tokens=context["input_tokens"],
                     measured_date=measured_date,
                 )
-                conditions = evidence.verify(context.get("conditions"), "conditions")
+                conditions = bound_record(
+                    evidence, context.get("conditions"), run_binding, "conditions"
+                )
                 require(
                     conditions.get("cuda_architecture") == "sm_120"
                     and conditions.get("baseline_profile") == "optimised",
@@ -549,7 +565,7 @@ def evaluate_v2(report: dict[str, Any], evidence_root: Path | None) -> dict[str,
                     builds,
                     condition_hash,
                 )
-                gain, wait = check_pairs(
+                gain, wait, decode_passed, ttft_passed = check_pairs(
                     evidence,
                     context.get("pairs"),
                     10,
@@ -581,17 +597,25 @@ def evaluate_v2(report: dict[str, Any], evidence_root: Path | None) -> dict[str,
                     result["quality_status"] = "reported_inconclusive"
                 check_functional(evidence, context, candidate_binding)
                 result["nll_delta"] = check_quality(
-                    evidence, context, candidate_binding
+                    evidence,
+                    context,
+                    dict(
+                        candidate_binding,
+                        baseline_source_commit=builds["baseline"]["source_commit"],
+                        baseline_binary_sha256=builds["baseline"]["binary_sha256"],
+                        candidate_source_commit=builds["candidate"]["source_commit"],
+                        candidate_binary_sha256=builds["candidate"]["binary_sha256"],
+                    ),
                 )
                 result["quality_status"] = "conclusive"
                 result["monitor_overhead_ratio"] = check_monitor(
                     evidence, context, candidate_binding
                 )
-                if gain < 1.05:
+                if not decode_passed:
                     failures.append(
                         f"{name}:{context['input_tokens']}:decode_gain_below_5_percent"
                     )
-                if wait > 1.05:
+                if not ttft_passed:
                     failures.append(
                         f"{name}:{context['input_tokens']}:ttft_regression_above_5_percent"
                     )
