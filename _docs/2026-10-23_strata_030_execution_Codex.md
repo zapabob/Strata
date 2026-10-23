@@ -70,4 +70,8 @@ Existing binaries were rerun with `ctest --test-dir <STRATA_DATA>/build/spin8-cu
 
 The existing Python 3.12 environment imports torch 2.5.1+cu121, pytest 8.3.5 and numpy 2.2.6. Its torch import emits a pynvml deprecation warning. It can provide separate CPU reference evidence; it is not the supplied Linux torch 2.10.0 environment and its old CUDA wheel is not qualified for sm_120. No package was installed to obtain this evidence.
 
+Later in the same execution, H: free space rose above the remaining shard plus a 10 GiB reserve and 64 MiB staging allowance. The authorised transfer resumed, without removing any files, in `<STRATA_DATA>/build/release-030-model-resume-20261023`. Its input receipt pins the fetch script and source commit; logs and final exit receipt are separate files. The transfer remains a model acquisition step, not an inference result. The existing Python environment emits two uv warnings about dangling distribution metadata; no repair of that unrelated environment was attempted.
+
+The Hikari GGUF was freshly hashed in full: 7,206,168,928 bytes, SHA-256 `0ab2a1f237b73e5002ecd8c9b764249b90ee59eca749a6226c44bb43b1036a13`, matching the approved model identity. Its modification timestamp was unchanged (21 October 2026, 13:02:53 UTC). No model parameters were written.
+
 Implementation, mathematical correctness, model compatibility, speed, quality and distribution qualification are separate statuses. None of the v0.3.0 release gates has been claimed complete at intake.
