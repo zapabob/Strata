@@ -1,7 +1,8 @@
 // Real-model integration test. One immutable loaded model, sequential contexts.
-// Private context access is used ONLY to corrupt an owned ephemeral test bank.
+// Private access inspects owned test state and corrupts an ephemeral test bank.
 #include "llama.h"
 #include "llama-context.h"
+#include "llama-sampler.h"
 #include "ggml-backend.h"
 #include <algorithm>
 #include <cmath>
@@ -21,6 +22,19 @@
 
 static void require(bool ok, const char * what) {
     if (!ok) { throw std::runtime_error(what); }
+}
+static int sampler_initializations=0;
+static int constructor_sampler_initializations=0;
+static bool trap_constructor_sampler_init(llama_sampler *, ggml_backend_buffer_type_t, uint32_t) {
+    ++constructor_sampler_initializations;
+    return true;
+}
+static bool trap_sampler_init(llama_sampler *, ggml_backend_buffer_type_t, uint32_t) {
+    ++sampler_initializations;
+    return true;
+}
+static void trap_sampler_apply(llama_sampler *, ggml_context *, ggml_cgraph *, llama_sampler_data *) {
+    throw std::runtime_error("rejected sampler executed");
 }
 static void record_libraries() {
 #ifdef _WIN32
@@ -73,6 +87,11 @@ int main(int argc, char ** argv) {
         ggml_backend_load_all(); llama_backend_init();
         record_libraries();
         auto mp=llama_model_default_params(); mp.n_gpu_layers=999; mp.spin8_hash_model=true;
+        auto direct_io=mp; direct_io.load_mode=LLAMA_LOAD_MODE_DIRECT_IO;
+        std::unique_ptr<llama_model, decltype(&llama_model_free)> rejected(
+            llama_model_load_from_file(argv[1],direct_io),llama_model_free);
+        require(!rejected,"explicit direct-I/O hashing mode accepted");
+        std::cout << "SPIN8_DIRECT_IO_REJECTED" << std::endl;
         std::unique_ptr<llama_model, decltype(&llama_model_free)> model(llama_model_load_from_file(argv[1],mp),llama_model_free);
         require(bool(model),"model load failed");
         auto cp=llama_context_default_params(); cp.n_ctx=512; cp.n_batch=64; cp.n_ubatch=64;
@@ -134,9 +153,68 @@ int main(int argc, char ** argv) {
             require(entry.second->cuda_calls.load()==7 && entry.second->cpu_calls.load()==0,"per-layer CUDA coverage");
         }
         // Rejection is before reading even an invalid adapter pointer or mutating state.
+        std::vector<uint8_t> before_refusal(llama_state_get_size(zero.get()));
+        require(llama_state_get_data(zero.get(),before_refusal.data(),before_refusal.size())==before_refusal.size(),"pre-refusal state");
         require(llama_set_adapters_lora(zero.get(),nullptr,1,nullptr)==-1,"runtime LoRA accepted");
         require(llama_set_adapter_cvec(zero.get(),nullptr,0,0,0,0)==-1,"runtime cvec accepted");
+        // Keep the genuine chain interface so the upstream constructor would
+        // accept it. Instrument its child, and inspect the chain's init state.
+        auto * construction_sampler=llama_sampler_chain_init(llama_sampler_chain_default_params());
+        auto * construction_child=llama_sampler_init_greedy();
+        auto * child_iface=construction_child->iface;
+        auto construction_iface=*child_iface;
+        construction_iface.backend_init=trap_constructor_sampler_init;
+        construction_iface.backend_apply=trap_sampler_apply;
+        construction_child->iface=&construction_iface;
+        llama_sampler_chain_add(construction_sampler,construction_child);
+        const auto * construction_chain=static_cast<const llama_sampler_chain *>(construction_sampler->ctx);
+        const auto chain_before=*construction_chain;
+        llama_sampler_seq_config config{0,construction_sampler};
+        auto refused_params=cp;
+        refused_params.n_samplers=1; refused_params.samplers=&config;
+        refused_params.spin8_query_inspect=false; // sidecar request alone
+        context_ptr refused_sidecar(llama_init_from_model(model.get(),refused_params),llama_free);
+        require(!refused_sidecar,"constructor accepted backend sampler with sidecar");
+        refused_params.spin8_query_sidecar=nullptr; refused_params.spin8_query_inspect=true;
+        context_ptr refused_inspect(llama_init_from_model(model.get(),refused_params),llama_free);
+        require(!refused_inspect,"constructor accepted backend sampler with inspection");
+        require(constructor_sampler_initializations==0,"constructor initialized sampler before rejection");
+        require(construction_chain->is_init==chain_before.is_init && !construction_chain->is_init &&
+                construction_chain->n_nodes==chain_before.n_nodes &&
+                construction_chain->samplers.size()==1 &&
+                construction_chain->samplers[0].ptr==construction_child &&
+                construction_chain->samplers[0].is_backend==chain_before.samplers[0].is_backend &&
+                construction_chain->cur.empty() &&
+                construction_chain->t_sample_us==chain_before.t_sample_us &&
+                construction_chain->n_sample==chain_before.n_sample &&
+                construction_child->iface==&construction_iface,
+                "constructor refusal mutated caller-owned sampler");
+        // Prove the count/request guard also precedes configuration dereference.
+        refused_params.samplers=reinterpret_cast<llama_sampler_seq_config *>(uintptr_t(1));
+        context_ptr refused_pointer(llama_init_from_model(model.get(),refused_params),llama_free);
+        require(!refused_pointer,"constructor dereferenced unsupported sampler configuration");
+        construction_child->iface=child_iface;
+        llama_sampler_free(construction_sampler);
+        save_text(output+"/constructor-refusal-result.json","{\"sidecarRejected\":true,\"inspectionRejected\":true,\"invalidConfigRejected\":true,\"samplerInitializations\":0,\"samplerUnchanged\":true}");
+        auto * sampler=llama_sampler_chain_init(llama_sampler_chain_default_params());
+        llama_sampler_chain_add(sampler,llama_sampler_init_greedy());
+        auto * original_iface=sampler->iface;
+        auto trap_iface=*original_iface;
+        trap_iface.backend_init=trap_sampler_init;
+        trap_iface.backend_apply=trap_sampler_apply;
+        sampler->iface=&trap_iface;
+        require(!llama_set_sampler(zero.get(),0,sampler),"runtime sampler accepted by public API");
+        require(!llama_set_sampler(zero.get(),0,nullptr),"sampler removal accepted on unsupported context");
+        require(sampler_initializations==0,"sampler initialized before rejection");
+        sampler->iface=original_iface;
+        llama_sampler_free(sampler);
         require(!zero->spin8_query->failed,"rejected runtime adapter mutated context");
+        std::vector<uint8_t> after_refusal(llama_state_get_size(zero.get()));
+        require(llama_state_get_data(zero.get(),after_refusal.data(),after_refusal.size())==after_refusal.size(),"post-refusal state");
+        require(before_refusal==after_refusal,"refusal mutated hybrid state");
+        require(llama_state_set_data(zero.get(),full.data(),full.size())==full.size(),"post-refusal restore");
+        require(max_error(continuation,decode(zero.get(),{next},nv))==0,"context unusable after refusal");
+        save_text(output+"/refusal-result.json","{\"loraRejected\":true,\"samplerRejected\":true,\"samplerInitializations\":0,\"stateUnchanged\":true,\"continuedExactly\":true}");
         zero.reset();
         auto nonzero=make(nonzero_path.c_str()); require(bool(nonzero),"nonzero context failed");
         auto nz_prefill=decode(nonzero.get(),tokens,nv); auto nz_decode=decode(nonzero.get(),{next},nv);

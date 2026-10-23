@@ -501,10 +501,10 @@ index 0c1c4de555a12cbc9414656c10440da90696765c..a224ff598d2e5e13f9e0cf147dddf58a
  # 1. Priority 1: pre-built assets supplied in tools/ui/dist
  # ---------------------------------------------------------------------------
 diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
-index c6df19f2ecf4ffdd7c31937c756f2425653af822..2403a51336133f74f7f9fd64525ff8301b5ba35d 100644
+index c6df19f2ecf4ffdd7c31937c756f2425653af822..0e5921a8fc707153d6e4e4eb9f77d29da43f0446 100644
 --- a/src/CMakeLists.txt
 +++ b/src/CMakeLists.txt
-@@ -67,3 +67,34 @@ if (BUILD_SHARED_LIBS)
+@@ -67,3 +67,40 @@ if (BUILD_SHARED_LIBS)
      target_compile_definitions(llama PRIVATE LLAMA_BUILD)
      target_compile_definitions(llama PUBLIC  LLAMA_SHARED)
  endif()
@@ -512,11 +512,17 @@ index c6df19f2ecf4ffdd7c31937c756f2425653af822..2403a51336133f74f7f9fd64525ff830
 +if(TARGET spin8)
 +    target_sources(llama PRIVATE llama-spin8.cpp)
 +    target_compile_definitions(llama PRIVATE LLAMA_SPIN8_QUERY_V3)
++    if(TARGET spin8_cuda AND TARGET ggml-cuda)
++        set_property(SOURCE llama-context.cpp APPEND PROPERTY COMPILE_DEFINITIONS LLAMA_SPIN8_QUERY_V3_CUDA)
++    endif()
 +    target_link_libraries(llama PRIVATE spin8)
 +    target_include_directories(llama PRIVATE ../ggml/src "${STRATA_SPIN8_SOURCE}/third_party/sha256")
 +endif()
 +
 +if(TARGET spin8 AND STRATA_SPIN8_TESTS)
++    add_executable(strata-spin8-capabilities-test "${STRATA_SPIN8_SOURCE}/../tools/spin8_prism_capabilities_test.cpp")
++    target_link_libraries(strata-spin8-capabilities-test PRIVATE llama ggml)
++    target_compile_features(strata-spin8-capabilities-test PRIVATE cxx_std_17)
 +    add_executable(strata-spin8-model-test "${STRATA_SPIN8_SOURCE}/../tools/spin8_prism_model_test.cpp")
 +    target_include_directories(strata-spin8-model-test PRIVATE . ../ggml/src "${STRATA_SPIN8_SOURCE}/include")
 +    target_compile_definitions(strata-spin8-model-test PRIVATE LLAMA_SPIN8_QUERY_V3)
@@ -540,10 +546,24 @@ index c6df19f2ecf4ffdd7c31937c756f2425653af822..2403a51336133f74f7f9fd64525ff830
 +    endif()
 +endif()
 diff --git a/src/llama-context.cpp b/src/llama-context.cpp
-index 0f0f4dc7e382e3e29cf5cf741bc0a6fa8ee91b6c..366835ca0b3aa536edf8a3b64d5db21acbaae459 100644
+index 0f0f4dc7e382e3e29cf5cf741bc0a6fa8ee91b6c..9511781cfa55694b634aea0560967129b62a09b8 100644
 --- a/src/llama-context.cpp
 +++ b/src/llama-context.cpp
-@@ -417,6 +417,14 @@ llama_context::llama_context(
+@@ -168,6 +168,13 @@ llama_context::llama_context(
+     cvec(std::make_unique<llama_adapter_cvec>()),
+     loras(std::make_unique<llama_adapter_loras>()),
+     balloc(std::make_unique<llama_batch_allocr>(model.hparams.n_pos_per_embd())) {
++#ifdef LLAMA_SPIN8_QUERY_V3
++    // The query object is constructed later. Reject requested backend sampling
++    // before inspecting its configuration or initializing caller-owned samplers.
++    if ((params.spin8_query_sidecar || params.spin8_query_inspect) && params.n_samplers != 0) {
++        throw std::runtime_error("transform_invariant_violation: backend_sampler_unsupported");
++    }
++#endif
+     // TODO warning when creating llama_context with awkward ctx size that is not a power of 2,
+     //     may need to be backend-dependent
+     LLAMA_LOG_INFO("%s: constructing llama_context\n", __func__);
+@@ -417,6 +424,14 @@ llama_context::llama_context(
                  __func__, cparams.n_ctx_seq, hparams.n_ctx_train);
      }
  
@@ -558,7 +578,7 @@ index 0f0f4dc7e382e3e29cf5cf741bc0a6fa8ee91b6c..366835ca0b3aa536edf8a3b64d5db21a
      if (!hparams.vocab_only) {
          // GPU backends
          for (const auto & dev : model.devices) {
-@@ -616,6 +624,9 @@ llama_context::~llama_context() {
+@@ -616,6 +631,9 @@ llama_context::~llama_context() {
              }
          }
      }
@@ -568,7 +588,7 @@ index 0f0f4dc7e382e3e29cf5cf741bc0a6fa8ee91b6c..366835ca0b3aa536edf8a3b64d5db21a
      ggml_opt_free(opt_ctx);
  }
  
-@@ -991,6 +1002,9 @@ enum llama_pooling_type llama_context::pooling_type() const {
+@@ -991,6 +1009,9 @@ enum llama_pooling_type llama_context::pooling_type() const {
  }
  
  float * llama_context::get_logits() {
@@ -578,7 +598,7 @@ index 0f0f4dc7e382e3e29cf5cf741bc0a6fa8ee91b6c..366835ca0b3aa536edf8a3b64d5db21a
      output_reorder();
  
      return logits.data;
-@@ -1026,6 +1040,9 @@ int64_t llama_context::output_resolve_row(int32_t i) const {
+@@ -1026,6 +1047,9 @@ int64_t llama_context::output_resolve_row(int32_t i) const {
  }
  
  float * llama_context::get_logits_ith(int32_t i) {
@@ -588,7 +608,7 @@ index 0f0f4dc7e382e3e29cf5cf741bc0a6fa8ee91b6c..366835ca0b3aa536edf8a3b64d5db21a
      output_reorder();
  
      try {
-@@ -1367,6 +1384,12 @@ void llama_context::set_embeddings_layer_inp(uint32_t lid, bool enable) {
+@@ -1367,6 +1391,12 @@ void llama_context::set_embeddings_layer_inp(uint32_t lid, bool enable) {
  }
  
  void llama_context::set_nextn_layer_offset(int32_t offset) {
@@ -601,7 +621,7 @@ index 0f0f4dc7e382e3e29cf5cf741bc0a6fa8ee91b6c..366835ca0b3aa536edf8a3b64d5db21a
      cparams.nextn_layer_offset = offset;
  }
  
-@@ -1393,6 +1416,12 @@ int32_t llama_context::mtp_chain_support() const {
+@@ -1393,6 +1423,12 @@ int32_t llama_context::mtp_chain_support() const {
  }
  
  void llama_context::set_mtp_chain(uint32_t n_steps) {
@@ -614,7 +634,7 @@ index 0f0f4dc7e382e3e29cf5cf741bc0a6fa8ee91b6c..366835ca0b3aa536edf8a3b64d5db21a
      cparams.mtp_chain_n = n_steps;
      if (n_steps == 0) {
          return;  // keeps the last chain's ids readable
-@@ -1584,6 +1613,12 @@ void llama_context::set_dspark_ctx(const float * feat, int64_t n_ctx_rows, int64
+@@ -1584,6 +1620,12 @@ void llama_context::set_dspark_ctx(const float * feat, int64_t n_ctx_rows, int64
  }
  
  void llama_context::set_causal_attn(bool value) {
@@ -627,7 +647,22 @@ index 0f0f4dc7e382e3e29cf5cf741bc0a6fa8ee91b6c..366835ca0b3aa536edf8a3b64d5db21a
      LLAMA_LOG_DEBUG("%s: value = %d\n", __func__, value);
  
      if (cparams.causal_attn == value) {
-@@ -1725,6 +1760,12 @@ bool llama_context::set_adapter_cvec(
+@@ -1609,6 +1651,14 @@ void llama_context::set_warmup(bool value) {
+ }
+ 
+ bool llama_context::set_sampler(llama_seq_id seq_id, llama_sampler * sampler) {
++#ifdef LLAMA_SPIN8_QUERY_V3
++    // Refuse before sampler dereference, backend initialization or map mutation.
++    // This also covers the public C API wrapper and direct internal calls.
++    if (spin8_active()) {
++        LLAMA_LOG_ERROR("transform_invariant_violation: runtime_backend_sampler_unsupported\n");
++        return false;
++    }
++#endif
+     if (!sampler && sampling.samplers.count(seq_id) == 0) {
+         return true;
+     }
+@@ -1725,6 +1775,12 @@ bool llama_context::set_adapter_cvec(
  }
  
  llm_graph_result * llama_context::process_ubatch(const llama_ubatch & ubatch, llm_graph_type gtype, llama_memory_context_i * mctx, ggml_status & ret) {
@@ -640,7 +675,7 @@ index 0f0f4dc7e382e3e29cf5cf741bc0a6fa8ee91b6c..366835ca0b3aa536edf8a3b64d5db21a
      if (mctx && !mctx->apply()) {
          LLAMA_LOG_ERROR("%s: failed to apply memory context\n", __func__);
          ret = GGML_STATUS_FAILED;
-@@ -1825,6 +1866,11 @@ llm_graph_result * llama_context::process_ubatch(const llama_ubatch & ubatch, ll
+@@ -1825,6 +1881,11 @@ llm_graph_result * llama_context::process_ubatch(const llama_ubatch & ubatch, ll
  }
  
  int llama_context::encode(const llama_batch & batch_inp) {
@@ -652,7 +687,7 @@ index 0f0f4dc7e382e3e29cf5cf741bc0a6fa8ee91b6c..366835ca0b3aa536edf8a3b64d5db21a
      // MTP hook batches carry both token (next-token id) and embd (h_nextn row),
      // so accept either present rather than requiring exactly one.
      GGML_ASSERT(batch_inp.token || batch_inp.embd);
-@@ -2079,6 +2125,11 @@ static bool needs_raw_logits(const llama_ubatch & ubatch, const std::map<llama_s
+@@ -2079,6 +2140,11 @@ static bool needs_raw_logits(const llama_ubatch & ubatch, const std::map<llama_s
  }
  
  int llama_context::decode(const llama_batch & batch_inp) {
@@ -664,7 +699,7 @@ index 0f0f4dc7e382e3e29cf5cf741bc0a6fa8ee91b6c..366835ca0b3aa536edf8a3b64d5db21a
      // MTP hook batches carry both token (next-token id) and embd (h_nextn row),
      // so accept either present rather than requiring exactly one.
      GGML_ASSERT(batch_inp.token || batch_inp.embd);
-@@ -3032,8 +3083,21 @@ ggml_status llama_context::graph_compute(
+@@ -3032,8 +3098,21 @@ ggml_status llama_context::graph_compute(
          set_n_threads_fn.second(set_n_threads_fn.first, n_threads);
      }
  
@@ -686,7 +721,7 @@ index 0f0f4dc7e382e3e29cf5cf741bc0a6fa8ee91b6c..366835ca0b3aa536edf8a3b64d5db21a
      if (status != GGML_STATUS_SUCCESS) {
          LLAMA_LOG_ERROR("%s: ggml_backend_sched_graph_compute_async failed with error %d\n", __func__, status);
      }
-@@ -3509,6 +3573,12 @@ size_t llama_context::state_set_data(const uint8_t * src, size_t size) {
+@@ -3509,6 +3588,12 @@ size_t llama_context::state_set_data(const uint8_t * src, size_t size) {
  static constexpr uint32_t io_magic = 0xaf143cd8;
  
  size_t llama_context::state_seq_get_size(llama_seq_id seq_id, llama_state_seq_flags flags) {
@@ -699,7 +734,7 @@ index 0f0f4dc7e382e3e29cf5cf741bc0a6fa8ee91b6c..366835ca0b3aa536edf8a3b64d5db21a
      llama_io_write_dummy io(flags & LLAMA_STATE_SEQ_FLAGS_ON_DEVICE);
      try {
          io.write(&io_magic, sizeof(io_magic));
-@@ -3522,6 +3592,12 @@ size_t llama_context::state_seq_get_size(llama_seq_id seq_id, llama_state_seq_fl
+@@ -3522,6 +3607,12 @@ size_t llama_context::state_seq_get_size(llama_seq_id seq_id, llama_state_seq_fl
  }
  
  size_t llama_context::state_seq_get_data(llama_seq_id seq_id, uint8_t * dst, size_t size, llama_state_seq_flags flags) {
@@ -712,7 +747,7 @@ index 0f0f4dc7e382e3e29cf5cf741bc0a6fa8ee91b6c..366835ca0b3aa536edf8a3b64d5db21a
      std::unique_ptr<llama_io_write_i> io;
      if (flags & LLAMA_STATE_SEQ_FLAGS_ON_DEVICE) {
          io = std::make_unique<llama_io_write_device>(dst, size, mem_storage[seq_id]);
-@@ -3541,6 +3617,12 @@ size_t llama_context::state_seq_get_data(llama_seq_id seq_id, uint8_t * dst, siz
+@@ -3541,6 +3632,12 @@ size_t llama_context::state_seq_get_data(llama_seq_id seq_id, uint8_t * dst, siz
  }
  
  size_t llama_context::state_seq_set_data(llama_seq_id seq_id, const uint8_t * src, size_t size, llama_state_seq_flags flags) {
@@ -725,7 +760,7 @@ index 0f0f4dc7e382e3e29cf5cf741bc0a6fa8ee91b6c..366835ca0b3aa536edf8a3b64d5db21a
      std::unique_ptr<llama_io_read_i> io;
      if (flags & LLAMA_STATE_SEQ_FLAGS_ON_DEVICE) {
          // create a temporary io to read the magic and the src seq_id
-@@ -3555,7 +3637,11 @@ size_t llama_context::state_seq_set_data(llama_seq_id seq_id, const uint8_t * sr
+@@ -3555,7 +3652,11 @@ size_t llama_context::state_seq_set_data(llama_seq_id seq_id, const uint8_t * sr
          llama_seq_id seq_id_read;
          io->read(&seq_id_read, sizeof(seq_id_read));
  
@@ -738,7 +773,7 @@ index 0f0f4dc7e382e3e29cf5cf741bc0a6fa8ee91b6c..366835ca0b3aa536edf8a3b64d5db21a
  
          io = std::make_unique<llama_io_read_device>(src, size, mem_storage[seq_id_read]);
      } else {
-@@ -3714,6 +3800,9 @@ size_t llama_context::state_seq_save_file(llama_seq_id seq_id, const char * file
+@@ -3714,6 +3815,9 @@ size_t llama_context::state_seq_save_file(llama_seq_id seq_id, const char * file
  }
  
  size_t llama_context::state_write_data(llama_io_write_i & io) {
@@ -748,7 +783,7 @@ index 0f0f4dc7e382e3e29cf5cf741bc0a6fa8ee91b6c..366835ca0b3aa536edf8a3b64d5db21a
      LLAMA_LOG_DEBUG("%s: writing state\n", __func__);
  
      // write model info
-@@ -3733,7 +3822,15 @@ size_t llama_context::state_write_data(llama_io_write_i & io) {
+@@ -3733,7 +3837,15 @@ size_t llama_context::state_write_data(llama_io_write_i & io) {
      return io.n_bytes();
  }
  
@@ -765,7 +800,7 @@ index 0f0f4dc7e382e3e29cf5cf741bc0a6fa8ee91b6c..366835ca0b3aa536edf8a3b64d5db21a
      LLAMA_LOG_DEBUG("%s: reading state\n", __func__);
  
      // read model info
-@@ -3757,9 +3854,15 @@ size_t llama_context::state_read_data(llama_io_read_i & io) {
+@@ -3757,9 +3869,15 @@ size_t llama_context::state_read_data(llama_io_read_i & io) {
      }
  
      return io.n_bytes();
@@ -781,7 +816,7 @@ index 0f0f4dc7e382e3e29cf5cf741bc0a6fa8ee91b6c..366835ca0b3aa536edf8a3b64d5db21a
      if (memory) {
          memory->state_write(io, seq_id, flags);
      }
-@@ -3767,12 +3870,23 @@ size_t llama_context::state_seq_write_data(llama_io_write_i & io, llama_seq_id s
+@@ -3767,12 +3885,23 @@ size_t llama_context::state_seq_write_data(llama_io_write_i & io, llama_seq_id s
      return io.n_bytes();
  }
  
@@ -806,7 +841,7 @@ index 0f0f4dc7e382e3e29cf5cf741bc0a6fa8ee91b6c..366835ca0b3aa536edf8a3b64d5db21a
  }
  
  //
-@@ -4089,6 +4203,8 @@ llama_context_params llama_context_default_params() {
+@@ -4089,6 +4218,8 @@ llama_context_params llama_context_default_params() {
          /*.sampler                     =*/ nullptr,
          /*.n_sampler                   =*/ 0,
          /*.ctx_other                   =*/ nullptr,
@@ -815,17 +850,21 @@ index 0f0f4dc7e382e3e29cf5cf741bc0a6fa8ee91b6c..366835ca0b3aa536edf8a3b64d5db21a
      };
  
      return result;
-@@ -4476,6 +4592,9 @@ int32_t llama_set_adapters_lora(
-         GGML_ASSERT(n_adapters == 0 && "invalid llama_set_adapters_lora call");
-     }
- 
+@@ -4472,10 +4603,12 @@ int32_t llama_set_adapters_lora(
+             llama_adapter_lora ** adapters,
+             size_t n_adapters,
+             float * scales) {
 +#ifdef LLAMA_SPIN8_QUERY_V3
 +    if (ctx->spin8_active() && n_adapters) { LLAMA_LOG_ERROR("transform_invariant_violation: runtime_lora_unsupported\n"); return -1; }
 +#endif
+     if (adapters == nullptr || scales == nullptr) {
+         GGML_ASSERT(n_adapters == 0 && "invalid llama_set_adapters_lora call");
+     }
+-
      ctx->set_adapters_lora(adapters, n_adapters, scales);
  
      return 0;
-@@ -4488,6 +4607,9 @@ int32_t llama_set_adapter_cvec(
+@@ -4488,6 +4621,9 @@ int32_t llama_set_adapter_cvec(
                int32_t   n_embd,
                int32_t   il_start,
                int32_t   il_end) {
@@ -835,7 +874,7 @@ index 0f0f4dc7e382e3e29cf5cf741bc0a6fa8ee91b6c..366835ca0b3aa536edf8a3b64d5db21a
      bool res = ctx->set_adapter_cvec(data, len, n_embd, il_start, il_end);
  
      return res ? 0 : -1;
-@@ -4644,8 +4766,15 @@ bool llama_state_load_file(llama_context * ctx, const char * path_session, llama
+@@ -4644,8 +4780,15 @@ bool llama_state_load_file(llama_context * ctx, const char * path_session, llama
      ctx->synchronize();
  
      try {
@@ -852,7 +891,7 @@ index 0f0f4dc7e382e3e29cf5cf741bc0a6fa8ee91b6c..366835ca0b3aa536edf8a3b64d5db21a
          LLAMA_LOG_ERROR("%s: error loading session file: %s\n", __func__, err.what());
          return false;
      }
-@@ -4686,7 +4815,19 @@ size_t llama_state_seq_get_data_ext(llama_context * ctx, uint8_t * dst, size_t s
+@@ -4686,7 +4829,19 @@ size_t llama_state_seq_get_data_ext(llama_context * ctx, uint8_t * dst, size_t s
  size_t llama_state_seq_set_data_ext(llama_context * ctx, const uint8_t * src, size_t size, llama_seq_id seq_id, llama_state_seq_flags flags) {
      ctx->synchronize();
  
@@ -873,7 +912,7 @@ index 0f0f4dc7e382e3e29cf5cf741bc0a6fa8ee91b6c..366835ca0b3aa536edf8a3b64d5db21a
  }
  
  size_t llama_state_seq_save_file(llama_context * ctx, const char * filepath, llama_seq_id seq_id, const llama_token * tokens, size_t n_token_count) {
-@@ -4704,8 +4845,15 @@ size_t llama_state_seq_load_file(llama_context * ctx, const char * filepath, lla
+@@ -4704,8 +4859,15 @@ size_t llama_state_seq_load_file(llama_context * ctx, const char * filepath, lla
      ctx->synchronize();
  
      try {
@@ -890,7 +929,7 @@ index 0f0f4dc7e382e3e29cf5cf741bc0a6fa8ee91b6c..366835ca0b3aa536edf8a3b64d5db21a
          LLAMA_LOG_ERROR("%s: error loading sequence state file: %s\n", __func__, err.what());
          return 0;
      }
-@@ -4716,7 +4864,25 @@ size_t llama_state_seq_load_file(llama_context * ctx, const char * filepath, lla
+@@ -4716,7 +4878,25 @@ size_t llama_state_seq_load_file(llama_context * ctx, const char * filepath, lla
  int32_t llama_encode(
          llama_context * ctx,
            llama_batch   batch) {
@@ -917,7 +956,7 @@ index 0f0f4dc7e382e3e29cf5cf741bc0a6fa8ee91b6c..366835ca0b3aa536edf8a3b64d5db21a
      if (ret != 0) {
          LLAMA_LOG_ERROR("%s: failed to encode, ret = %d\n", __func__, ret);
      }
-@@ -4727,7 +4893,26 @@ int32_t llama_encode(
+@@ -4727,7 +4907,26 @@ int32_t llama_encode(
  int32_t llama_decode(
          llama_context * ctx,
            llama_batch   batch) {
@@ -945,7 +984,7 @@ index 0f0f4dc7e382e3e29cf5cf741bc0a6fa8ee91b6c..366835ca0b3aa536edf8a3b64d5db21a
      if (ret != 0 && ret != 1) {
          LLAMA_LOG_ERROR("%s: failed to decode, ret = %d\n", __func__, ret);
      }
-@@ -4811,3 +4996,33 @@ llama_memory_breakdown llama_get_memory_breakdown(const struct llama_context * c
+@@ -4811,3 +5010,48 @@ llama_memory_breakdown llama_get_memory_breakdown(const struct llama_context * c
  llama_context * llama_get_ctx_other(struct llama_context * ctx) {
      return ctx->get_cparams().ctx_other;
  }
@@ -959,19 +998,34 @@ index 0f0f4dc7e382e3e29cf5cf741bc0a6fa8ee91b6c..366835ca0b3aa536edf8a3b64d5db21a
 +size_t llama_spin8_query_info(llama_context * ctx, char * out, size_t capacity) {
 +    try {
 +#ifdef LLAMA_SPIN8_QUERY_V3
-+        if (!ctx || !ctx->spin8_query) { return 0; }
-+        const auto & query = *ctx->spin8_query;
-+        std::string json = "{\"active\":" + std::string(query.active() ? "true" : "false") +
-+            ",\"failed\":" + (query.failed ? "true" : "false") +
-+            ",\"cpuCalls\":" + std::to_string(query.state->cpu_calls.load()) +
-+            ",\"cudaCalls\":" + std::to_string(query.state->cuda_calls.load()) +
-+            ",\"capabilities\":{\"devices\":[\"CPU\",\"single-CUDA\"],\"tensorType\":\"F32\",\"layout\":\"channel-head-token-padded\",\"headWidthMin\":1,\"headWidthMax\":16384,\"tail\":\"identity\",\"architecture\":\"qwen35\",\"maxSequences\":1,\"cudaGraphs\":false,\"deviceState\":false,\"MTP\":false,\"runtimeAdapters\":false,\"sharedParent\":false,\"rowSplit\":false,\"externalKVMeanCenter\":false,\"backendSamplers\":false,\"flashAttentionChoice\":\"explicit\",\"contextType\":\"default\",\"modelKVOverrides\":false,\"directIOHashing\":false,\"noAllocModel\":false},\"layerCalls\":[";
++        // A null context reports build/runtime capabilities without model loading.
++        const auto * query = ctx ? ctx->spin8_query.get() : nullptr;
++        size_t cpu_devices = 0, cuda_devices = 0;
++        for (size_t i = 0; i < ggml_backend_dev_count(); ++i) {
++            const auto device = ggml_backend_dev_get(i);
++            const auto reg = ggml_backend_dev_backend_reg(device);
++            if (strcmp(ggml_backend_reg_name(reg), "CPU") == 0) { ++cpu_devices; }
++            if (strcmp(ggml_backend_reg_name(reg), "CUDA") == 0) { ++cuda_devices; }
++        }
++#ifdef LLAMA_SPIN8_QUERY_V3_CUDA
++        const char * compiled_cuda = "true";
++#else
++        const char * compiled_cuda = "false";
++#endif
++        std::string json = "{\"active\":" + std::string(query && query->active() ? "true" : "false") +
++            ",\"failed\":" + (query && query->failed ? "true" : "false") +
++            ",\"cpuCalls\":" + std::to_string(query ? query->state->cpu_calls.load() : 0) +
++            ",\"cudaCalls\":" + std::to_string(query ? query->state->cuda_calls.load() : 0) +
++            ",\"capabilities\":{\"compiled\":{\"cpu\":true,\"cuda\":" + compiled_cuda +
++            "},\"runtime\":{\"cpuDevices\":" + std::to_string(cpu_devices) + ",\"cudaDevices\":" + std::to_string(cuda_devices) +
++            "},\"maxCudaDevicesPerContext\":1,\"tensorType\":\"F32\",\"layout\":\"channel-head-token-padded\",\"headWidthMin\":1,\"headWidthMax\":16384,\"tail\":\"identity\",\"architecture\":\"qwen35\",\"maxSequences\":1,\"cudaGraphs\":false,\"deviceState\":false,\"MTP\":false,\"runtimeAdapters\":false,\"sharedParent\":false,\"rowSplit\":false,\"externalKVMeanCenter\":false,\"backendSamplers\":false,\"flashAttentionChoice\":\"explicit\",\"contextType\":\"default\",\"modelKVOverrides\":false,\"directIOHashing\":false,\"noAllocModel\":false},\"layerCalls\":[";
 +        bool first = true;
-+        for (const auto & entry : query.layers) {
++        if (query) { for (const auto & entry : query->layers) {
 +            if (!first) { json += ','; } first = false;
 +            json += "{\"layer\":" + std::to_string(entry.first) + ",\"cpu\":" + std::to_string(entry.second->cpu_calls.load()) + ",\"cuda\":" + std::to_string(entry.second->cuda_calls.load()) + "}";
 +        }
-+        json += "],\"bindings\":" + query.bindings_json + "}";
++        }
++        json += "],\"bindings\":" + (query ? query->bindings_json : "null") + "}";
 +        if (out && capacity >= json.size()+1) { memcpy(out, json.c_str(), json.size()+1); }
 +        return json.size()+1;
 +#else
@@ -1074,10 +1128,10 @@ index d93326b8645849cecfd0ad2fb2c6da9c9d1e5726..7d80de5539789d09144afc84c3b6eceb
  
 diff --git a/src/llama-spin8.cpp b/src/llama-spin8.cpp
 new file mode 100644
-index 0000000000000000000000000000000000000000..7606bb6c21bbd06df42cf2c3838d444c023aaff3
+index 0000000000000000000000000000000000000000..02a54b9943e40f25caff12cb51956e8218755eca
 --- /dev/null
 +++ b/src/llama-spin8.cpp
-@@ -0,0 +1,196 @@
+@@ -0,0 +1,198 @@
 +#include "llama-spin8.h"
 +#include "llama-cparams.h"
 +#include "llama-model.h"
@@ -1122,9 +1176,11 @@ index 0000000000000000000000000000000000000000..7606bb6c21bbd06df42cf2c3838d444c
 +
 +void llama_spin8_hash_model(llama_model & model, llama_model_loader & loader) {
 +    require(!loader.files.empty() && loader.files.size() <= 256, "model_file_count");
++    // Windows has_direct_io() always returns true, including buffered fopen.
++    // Reject the actual selected loader mode, not that platform capability flag.
++    require(!loader.use_direct_io, "direct_io_hashing_unsupported");
 +    std::vector<uint8_t> buffer(1024*1024);
 +    for (auto & file : loader.files) {
-+        require(!file->has_direct_io(), "direct_io_hashing_unsupported");
 +        const size_t saved = file->tell(), length = file->size();
 +        spin8_sidecar_sha256_t hash; spin8_sidecar_sha256_init(&hash);
 +        file->seek(0, SEEK_SET);
