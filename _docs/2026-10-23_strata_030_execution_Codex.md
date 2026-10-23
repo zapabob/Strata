@@ -74,4 +74,8 @@ Later in the same execution, H: free space rose above the remaining shard plus a
 
 The Hikari GGUF was freshly hashed in full: 7,206,168,928 bytes, SHA-256 `0ab2a1f237b73e5002ecd8c9b764249b90ee59eca749a6226c44bb43b1036a13`, matching the approved model identity. Its modification timestamp was unchanged (21 October 2026, 13:02:53 UTC). No model parameters were written.
 
+The resumed second shard finished successfully on 23 October at 01:11:33 UTC. The fetcher verified its entire 28,800,138,432 bytes against SHA-256 `316b46f3a2dbd68c900f43136ab9449f9dcc3725dfd8c794847c204bc161e113` before publishing the final filename. The first shard was then freshly verified: 37,623,740,192 bytes, SHA-256 `69820c02ec7d0b45ef2ebb19d6620299db749fe2aded7f39f93c6b88b199b720`; its modification timestamp remained unchanged. The input, download log, exit receipt and first-shard verification receipt are in the model-resume evidence directory above. Both frozen Q2_0 shards are now present. These checks establish file integrity, not model inference or speed.
+
+Free space was 1,264,996,352 bytes at transfer completion and subsequently 3,967,832,064 bytes at a later observation. Capacity changes outside the owned transfer have not been attributed. No existing evidence or unrelated files were removed to make space. The existing Prism CUDA build's dry run reports 361 outstanding tasks, including 57 CUDA compilations; its server executable is not yet available. Further large builds and dependency acquisition require another capacity check and must remain sequential.
+
 Implementation, mathematical correctness, model compatibility, speed, quality and distribution qualification are separate statuses. None of the v0.3.0 release gates has been claimed complete at intake.
