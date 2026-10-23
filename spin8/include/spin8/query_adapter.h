@@ -49,8 +49,11 @@ typedef struct {
  * Input bytes may be unaligned. Descriptors/outputs require native alignment.
  * Copies finite IEEE F32 parameters into owned float-aligned immutable storage.
  * Caller provides valid accessible spans, stable for the duration of the call.
- * out must be disjoint from all input spans. A valid disjoint out is set null
- * on failure; invalid/aliased out is untouched. No exceptions cross the ABI.
+ * Before writing out, all declared nonnull input spans must have representable
+ * address ranges and be disjoint from out. Otherwise return INVALID_ARGUMENT
+ * without writing out or inputs. A nonnull zero-capacity input protects its
+ * base byte for this check. After these checks, validation failures set out
+ * null. Invalid/aliased out remains untouched. No exceptions cross the ABI.
  * INVALID_ARGUMENT: bad spans, descriptor, geometry or canonical layout;
  * UNSUPPORTED: unknown wire/ABI version or mathematical conventions/flags;
  * AUDIT_FAILED: checksum or independently expected binding/geometry mismatch;

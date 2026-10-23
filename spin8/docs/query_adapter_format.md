@@ -104,8 +104,15 @@ compares the complete digest bytes and geometry; it does not infer them.
 `spin8_query_adapter_load` verifies the checksum, canonical structure, bindings,
 geometry and finite scalars before publishing an object. Payload is copied
 into owned `float`-aligned storage. No C++ exception crosses the ABI. A valid,
-disjoint result pointer becomes null on failure. An invalid or input-aliased
-result pointer is rejected without writing it, preserving unrelated input.
+disjoint result pointer becomes null on validation failure after every declared
+input span has passed numerical range and output-disjointness checks. An invalid
+or input-aliased result pointer, or any nonnull input span whose endpoint cannot
+be represented, is rejected without output writes. This conservative early
+failure preserves the input even when a claimed capacity is SIZE_MAX. Nonnull
+zero-capacity inputs protect their base byte for alias checks. The same rule
+applies to top-level file/expectation spans and nested model/layer capacities;
+invalid counts cannot disable it. An invalid expectation descriptor is rejected
+before any nested field is read. No wire or ABI version changes are introduced.
 
 `get_info` and `get_layer` take output byte capacities and leave output unchanged
 on failure. Directory ordinals start at zero and are different from model layer

@@ -175,3 +175,73 @@ state to undo. The new H: build/evidence folder can be retained independently;
 do not delete existing evidence to perform rollback. The controller must obtain
 independent review and implement/validate the real hook separately before
 claiming Task4/model integration complete.
+
+## Independent review correction: overflowing input span aliases
+
+The independent review of `f6a7440` returned Spec issues / Needs fixes for one
+Important static finding. The original top-level alias predicates were gated
+by `pointer(input, declared_bytes, 1)`. A file or expectation byte count of
+SIZE_MAX made that predicate false; the loader then cleared `*out` even when
+it aliased the input base. Nested alias checks were similarly gated by the
+validated count/capacity predicates. The initial self-review did not combine
+aliasing with invalid span sizes, and therefore missed this failure path.
+
+The focused correction is based on controller documentation commit `6985a24`.
+It adds a single `disjoint_input` guard before any result write, independent
+of count/capacity validity. Every nonnull declared input span must have a
+representable endpoint and be disjoint from the output span. An unrepresentable
+span makes disjointness unknown and is rejected conservatively without output
+writes. A nonnull zero-capacity span protects its base byte. Top-level file and
+expectation spans are checked before accessing the expectation descriptor;
+only an aligned, exactly sized descriptor may expose nested model/layer spans.
+Those nested spans use the same guard before `*out` can be written.
+
+The failure contract is now precise: representable verified-disjoint output is
+nulled on subsequent validation failure. Invalid/aliased output, or any nonnull
+input span whose endpoint cannot be represented, is rejected with no output
+writes. Source/header/spec documentation agree. Normal valid calls, the wire
+layout, ABI version, finite F32 bits and numerical core are unchanged. The old
+standalone overflow tests now check the conservative untouched-output result;
+ordinary verified-disjoint validation failures still require null output.
+
+New `overflow_alias_regressions()` runs even in the no-argument native test. It
+combines file output alias with SIZE_MAX and zero lengths; expectation output
+alias with SIZE_MAX and zero capacities; nested model/layer output aliases with
+invalid zero counts and SIZE_MAX/zero capacities; and a numerically overflowing
+expectation descriptor address, rejected without dereference or output write.
+Each input is checked byte-for-byte for preservation. Existing golden, signed-
+zero, identity, C ABI, capacity, geometry, malformed container and hash tests
+remain enabled.
+
+Root explicitly granted the compiler window after its Prism build had reached
+321/321 and terminated at a separate version-smoke failure. A fresh capacity
+guard passed (at least 1,500,000 KiB physical RAM and 500 MiB H: free). Evidence
+is in `H:/Strata/build/query-sidecar-alias-fix-20261023`. Only the focused target
+was rebuilt with one job:
+
+```powershell
+cmake --build H:/Strata/build/query-sidecar-20261023/cpu --config Release --target spin8_query_adapter_test --parallel 1
+& H:/Strata/build/query-sidecar-20261023/cpu/Release/spin8_query_adapter_test.exe
+```
+
+RED was observed against the original production loader with only new tests:
+build passed, native test exited1 with `overflow/zero file range with result
+alias preserves input` (`build-red.log`, `test-red.log`). This is the first
+combined failing case, not a claim that every negative case ran past the failure.
+After the guard fix, the same target built with `/W4 /WX /fp:strict` and the
+native test exited0 (`build-green.log`, `test-green.log`). The complete existing
+Python suite, with the actual rebuilt C++/C executable and unrelated plugin
+autoload disabled, passed10/10 in5.44s (`pytest-green.log`). The command and env
+are the same as above, except `SPIN8_TEST_TMP` points to this fix evidence folder.
+Production clang-tidy analyzer/bugprone checks passed for user code
+(`clang-tidy-green.log`); the same120 standard-library diagnostics were filtered
+by its default non-user-code policy. Clang-format dry-run/Werror and Git
+whitespace checks passed (`format-green.log`).
+
+The compiler window was explicitly returned to root after these checks. No
+further compiler call, model access, server, numerical-core change, package
+installation or external action occurred. Root's concurrent execution log was
+preserved and excluded from this worker's commit. Self-review of the correction
+checked overflow before overlap arithmetic, zero-length behavior, descriptor
+read order, nested invalid-count paths and the documented null/untouched split.
+Independent re-review is still required before accepting the corrected stage.

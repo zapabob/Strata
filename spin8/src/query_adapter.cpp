@@ -41,6 +41,17 @@ bool overlap(const void *a, size_t an, const void *b, size_t bn) {
   const auto y = reinterpret_cast<uintptr_t>(b);
   return x < y + bn && y < x + an;
 }
+bool disjoint_input(const void *result, size_t result_bytes, const void *input,
+                    size_t input_bytes) {
+  if (!input)
+    return true;
+  // A malformed span must not disable alias protection. If its endpoint cannot
+  // be represented, disjointness is unknown: reject before any output write.
+  // Even a zero-capacity nonnull input protects its base byte from output.
+  const size_t checked_bytes = input_bytes ? input_bytes : 1;
+  return pointer(input, checked_bytes, 1) &&
+         !overlap(result, result_bytes, input, checked_bytes);
+}
 uint32_t u32(const uint8_t *p) {
   return uint32_t(p[0]) | (uint32_t(p[1]) << 8) | (uint32_t(p[2]) << 16) |
          (uint32_t(p[3]) << 24);
@@ -171,12 +182,10 @@ spin8_query_adapter_load(const void *bytes, size_t n,
   const void *result_address = static_cast<const void *>(out);
   if (!pointer(result_address, sizeof(*out), alignof(spin8_query_adapter *)))
     return SPIN8_INVALID_ARGUMENT;
-  // Do not corrupt aliased inputs even on a failing call. Every pointer's
-  // numerical range is established before overlap arithmetic or dereference.
-  if ((pointer(bytes, n, 1) &&
-       overlap(result_address, sizeof(*out), bytes, n)) ||
-      (pointer(expected, expected_bytes, 1) &&
-       overlap(result_address, sizeof(*out), expected, expected_bytes)))
+  // No output write until every declared input range is representable and
+  // disjoint. In particular SIZE_MAX/zero capacities cannot bypass this guard.
+  if (!disjoint_input(result_address, sizeof(*out), bytes, n) ||
+      !disjoint_input(result_address, sizeof(*out), expected, expected_bytes))
     return SPIN8_INVALID_ARGUMENT;
   if (!pointer(expected, sizeof(*expected),
                alignof(spin8_query_adapter_expectations)) ||
@@ -185,6 +194,10 @@ spin8_query_adapter_load(const void *bytes, size_t n,
     return SPIN8_INVALID_ARGUMENT;
   }
   const auto &e = *expected;
+  if (!disjoint_input(result_address, sizeof(*out), e.model_digests,
+                      e.model_digests_bytes) ||
+      !disjoint_input(result_address, sizeof(*out), e.layers, e.layers_bytes))
+    return SPIN8_INVALID_ARGUMENT;
   const bool model_span =
       e.model_count && e.model_count <= max_models &&
       e.model_digests_bytes >= size_t(e.model_count) * digest_bytes &&
@@ -194,11 +207,6 @@ spin8_query_adapter_load(const void *bytes, size_t n,
       e.layers_bytes >= size_t(e.layer_count) * sizeof(*e.layers) &&
       pointer(e.layers, size_t(e.layer_count) * sizeof(*e.layers),
               alignof(spin8_query_adapter_layer_spec));
-  if ((model_span && overlap(result_address, sizeof(*out), e.model_digests,
-                             e.model_count * digest_bytes)) ||
-      (layer_span && overlap(result_address, sizeof(*out), e.layers,
-                             e.layer_count * sizeof(*e.layers))))
-    return SPIN8_INVALID_ARGUMENT;
   *out = nullptr;
   if (e.abi_version != SPIN8_QUERY_ADAPTER_ABI_VERSION)
     return SPIN8_UNSUPPORTED;

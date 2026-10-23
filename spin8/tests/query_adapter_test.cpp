@@ -151,14 +151,76 @@ spin8_query_adapter_expectations expectations(uint32_t count, uint8_t *models) {
   e.layers_bytes = sizeof(specs);
   return e;
 }
-void failed(
-    const std::vector<uint8_t> &data, spin8_query_adapter_expectations e,
-    size_t descriptor_bytes = sizeof(spin8_query_adapter_expectations)) {
+void overflow_alias_regressions() {
+  alignas(spin8_query_adapter *) std::array<uint8_t, 64> bytes{};
+  alignas(spin8_query_adapter *) std::array<uint8_t, 64> models{};
+  alignas(spin8_query_adapter *) spin8_query_adapter_layer_spec layers[] = {
+      {2, 24, 4, 256}, {7, 2, 1, 11}};
+  std::fill(bytes.begin(), bytes.end(), uint8_t{0xa5});
+  std::fill(models.begin(), models.end(), uint8_t{0x5a});
+  auto e = expectations(2, models.data());
+  e.layers = layers;
+  const auto bytes_before = bytes;
+  for (const size_t capacity : {SIZE_MAX, size_t(0)})
+    check(spin8_query_adapter_load(
+              bytes.data(), capacity, &e, sizeof(e),
+              reinterpret_cast<spin8_query_adapter **>(bytes.data())) ==
+                  SPIN8_INVALID_ARGUMENT &&
+              bytes == bytes_before,
+          "overflow/zero file range with result alias preserves input");
+  const auto e_before = e;
+  for (const size_t capacity : {SIZE_MAX, size_t(0)})
+    check(spin8_query_adapter_load(bytes.data(), bytes.size(), &e, capacity,
+                                   reinterpret_cast<spin8_query_adapter **>(
+                                       &e)) == SPIN8_INVALID_ARGUMENT &&
+              std::memcmp(&e, &e_before, sizeof(e)) == 0,
+          "overflow/zero expectation range with result alias preserves "
+          "descriptor");
+  const auto models_before = models;
+  const auto layers_before =
+      std::array<spin8_query_adapter_layer_spec, 2>{layers[0], layers[1]};
+  for (const size_t capacity : {SIZE_MAX, size_t(0)}) {
+    auto nested = e;
+    nested.model_count = 0;
+    nested.model_digests_bytes = capacity;
+    check(spin8_query_adapter_load(
+              bytes.data(), bytes.size(), &nested, sizeof(nested),
+              reinterpret_cast<spin8_query_adapter **>(models.data())) ==
+                  SPIN8_INVALID_ARGUMENT &&
+              models == models_before,
+          "invalid nested model range cannot bypass result alias rejection");
+    nested = e;
+    nested.layer_count = 0;
+    nested.layers_bytes = capacity;
+    check(spin8_query_adapter_load(
+              bytes.data(), bytes.size(), &nested, sizeof(nested),
+              reinterpret_cast<spin8_query_adapter **>(layers)) ==
+                  SPIN8_INVALID_ARGUMENT &&
+              std::memcmp(layers, layers_before.data(), sizeof(layers)) == 0,
+          "invalid nested layer range cannot bypass result alias rejection");
+  }
+  auto *out = reinterpret_cast<spin8_query_adapter *>(uintptr_t(1));
+  check(spin8_query_adapter_load(
+            bytes.data(), bytes.size(),
+            reinterpret_cast<const spin8_query_adapter_expectations *>(
+                UINTPTR_MAX - 7),
+            sizeof(e), &out) == SPIN8_INVALID_ARGUMENT &&
+            out == reinterpret_cast<spin8_query_adapter *>(uintptr_t(1)),
+        "unrepresentable descriptor rejected without dereference or output "
+        "write");
+}
+void failed(const std::vector<uint8_t> &data,
+            spin8_query_adapter_expectations e,
+            size_t descriptor_bytes = sizeof(spin8_query_adapter_expectations),
+            bool untouched = false) {
   auto *out = reinterpret_cast<spin8_query_adapter *>(uintptr_t(1));
   check(spin8_query_adapter_load(data.data(), data.size(), &e, descriptor_bytes,
                                  &out) != SPIN8_OK,
         "bad expected contract rejected");
-  check(out == nullptr, "failure null result");
+  check(out == (untouched
+                    ? reinterpret_cast<spin8_query_adapter *>(uintptr_t(1))
+                    : nullptr),
+        "failure result follows disjointness guarantee");
 }
 void boundaries(const std::vector<uint8_t> &data,
                 const spin8_query_adapter_expectations &expected) {
@@ -220,14 +282,14 @@ void boundaries(const std::vector<uint8_t> &data,
   e = expected;
   e.layers =
       reinterpret_cast<const spin8_query_adapter_layer_spec *>(UINTPTR_MAX - 7);
-  failed(data, e);
+  failed(data, e, sizeof(e), true);
   spin8_query_adapter *out =
       reinterpret_cast<spin8_query_adapter *>(uintptr_t(1));
   check(spin8_query_adapter_load(data.data(), SIZE_MAX, &expected,
                                  sizeof(expected),
                                  &out) == SPIN8_INVALID_ARGUMENT &&
-            !out,
-        "overflow byte capacity");
+            out == reinterpret_cast<spin8_query_adapter *>(uintptr_t(1)),
+        "unrepresentable file range leaves result untouched");
   check(spin8_query_adapter_load(
             data.data(), SPIN8_QUERY_ADAPTER_MAX_BYTES + size_t(1), &expected,
             sizeof(expected), &out) == SPIN8_INVALID_ARGUMENT &&
@@ -269,6 +331,7 @@ void boundaries(const std::vector<uint8_t> &data,
 
 int main(int argc, char **argv) {
   hashes();
+  overflow_alias_regressions();
   spin8_query_v3_basis_report basis{};
   check(spin8_query_v3_basis_audit(&basis) == SPIN8_OK,
         "actual core basis audit");
