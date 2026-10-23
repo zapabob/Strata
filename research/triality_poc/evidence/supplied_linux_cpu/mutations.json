@@ -1,0 +1,49 @@
+{
+  "scope": "seven targeted mutations of the standalone PoC, not exhaustive mutation coverage",
+  "mutations": [
+    {
+      "name": "wrong_half_angle",
+      "test": "test_same_lift_intertwiner_and_sign",
+      "returncode": 1,
+      "detected": true
+    },
+    {
+      "name": "normalisation_removed",
+      "test": "test_query_chart_identity_norm_bound_grad",
+      "returncode": 1,
+      "detected": true
+    },
+    {
+      "name": "wrong_inverse",
+      "test": "test_exact_key_roundtrip_and_noncontiguous",
+      "returncode": 1,
+      "detected": true
+    },
+    {
+      "name": "wrong_bit_order",
+      "test": "test_pack_roundtrip",
+      "returncode": 1,
+      "detected": true
+    },
+    {
+      "name": "beta_ignored",
+      "test": "test_qjl_zero_and_formula",
+      "returncode": 1,
+      "detected": true
+    },
+    {
+      "name": "scale_twice",
+      "test": "test_exact_views_preserve_scores",
+      "returncode": 1,
+      "detected": true
+    },
+    {
+      "name": "clifford_sign",
+      "test": "test_clifford_and_chirality",
+      "returncode": 1,
+      "detected": true
+    }
+  ],
+  "detected": 7,
+  "total": 7
+}

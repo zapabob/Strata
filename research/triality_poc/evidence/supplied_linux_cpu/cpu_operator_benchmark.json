@@ -1,0 +1,94 @@
+{
+  "scope": "operator only; candidate is not fused; no GPU/LLM speed claim from CPU timings",
+  "environment": {
+    "torch": "2.10.0+cpu",
+    "device": "cpu",
+    "dtype": "float32",
+    "cuda_build": null,
+    "gpu": null
+  },
+  "geometry": {
+    "device": "cpu",
+    "dtype": "float32",
+    "sequence": 128,
+    "queries": 8,
+    "heads": 6,
+    "kv_heads": 1,
+    "dim": 32,
+    "repetitions": 10,
+    "out": "evidence/cpu_operator_benchmark.json"
+  },
+  "pack_ms": 1.4368790000389708,
+  "payload_bytes": 27136,
+  "profile_bytes": 12300,
+  "arms": {
+    "exact_sdpa": {
+      "p50_ms": 0.04273399997600791,
+      "p95_ms_exploratory": 0.09763599998677809,
+      "samples_ms": [
+        0.04298399994695501,
+        0.0465299999632407,
+        0.029024000014032936,
+        0.04522799986261816,
+        0.02893299983952602,
+        0.04349499999989348,
+        0.13945000000603613,
+        0.04248400000506081,
+        0.028412999881766154,
+        0.041121999856841285
+      ],
+      "peak_allocated_bytes_including_live_tensors": null
+    },
+    "single6_reference": {
+      "p50_ms": 0.2713219998895511,
+      "p95_ms_exploratory": 0.30858825001587314,
+      "samples_ms": [
+        0.3221940000912582,
+        0.2831950000654615,
+        0.2612519999729557,
+        0.2490140000190877,
+        0.26326499983042595,
+        0.2528899999560963,
+        0.291958999923736,
+        0.2793789999486762,
+        0.2904569998918305,
+        0.2456290001191519
+      ],
+      "peak_allocated_bytes_including_live_tensors": null
+    },
+    "triality3x3_with_adapter_dense": {
+      "p50_ms": 0.7862820000354986,
+      "p95_ms_exploratory": 0.8564067000975227,
+      "samples_ms": [
+        0.8845290001318062,
+        0.7659709999643383,
+        0.8220350000556209,
+        0.7655699998849741,
+        0.8036680001168861,
+        0.8116899998640292,
+        0.8093860001281428,
+        0.7688959999541112,
+        0.72382700000162,
+        0.7466320000730775
+      ],
+      "peak_allocated_bytes_including_live_tensors": null
+    },
+    "triality3x3_with_adapter_tiled": {
+      "p50_ms": 1.3184559999217527,
+      "p95_ms_exploratory": 1.5286119999132095,
+      "samples_ms": [
+        1.615416999811714,
+        1.3973590000659897,
+        1.3243099999726837,
+        1.42251700003726,
+        1.4080459998240258,
+        1.2702989999979764,
+        1.2699979999979405,
+        1.3126019998708216,
+        1.3056820000656444,
+        1.2920209999265353
+      ],
+      "peak_allocated_bytes_including_live_tensors": null
+    }
+  }
+}

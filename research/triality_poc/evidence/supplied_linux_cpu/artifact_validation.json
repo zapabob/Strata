@@ -1,0 +1,14 @@
+{
+  "paper_pages": 14,
+  "references": 26,
+  "pdf_render_inspected": true,
+  "missing_glyph_or_overflow_warnings": false,
+  "notebook_cpu_cells_executed": 6,
+  "cpu_pytest_passed": 25,
+  "cuda_pytest_skipped": 1,
+  "numerical_checks_passed": 12,
+  "targeted_mutations_detected": 7,
+  "large_model_tests_executed": false,
+  "gpu_executed": false,
+  "archive_includes_font_files": false
+}

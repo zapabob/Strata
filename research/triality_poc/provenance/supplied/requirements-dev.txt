@@ -1,0 +1,7 @@
+# Install a CPU or CUDA PyTorch wheel separately; tested here: torch==2.10.0+cpu.
+numpy>=1.26
+pytest>=8
+scipy>=1.11
+nbformat>=5.10
+nbclient>=0.10
+ipykernel>=6

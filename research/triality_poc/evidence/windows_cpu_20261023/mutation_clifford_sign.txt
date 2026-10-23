@@ -1,0 +1,29 @@
+{"command": ["$PYTHON_HOME\\python.exe", "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests/test_contracts.py::test_clifford_and_chirality"], "cwd": "$WORKSPACE\\research\\triality_poc\\.scratch\\mutant_fh1d329q", "returncode": 1}
+F                                                                        [100%]
+================================== FAILURES ===================================
+_________________________ test_clifford_and_chirality _________________________
+
+    def test_clifford_and_chirality():
+        g, omega, L = c.algebra()
+        eye = torch.eye(16, dtype=torch.float64)
+        for i in range(8):
+            for j in range(8):
+>               assert torch.equal(g[i] @ g[j] + g[j] @ g[i], 2*eye if i == j else 0*eye)
+E               assert False
+E                +  where False = <built-in method equal of type object at 0x00007FFCFF43C250>(((tensor([[ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  1.,  0.,  0.,  0.,  0.,  0.,\n          0.,  0.],\n        [ 0.,  0., ...       [-0., -0., -0., -0., -0., -0., -0., -1.,  0.,  0.,  0.,  0.,  0.,  0.,\n          0.,  0.]], dtype=torch.float64) @ tensor([[ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  1.,  0.,  0.,  0.,  0.,  0.,\n          0.,  0.],\n        [ 0.,  0., ...       [-0., -0., -0., -0., -0., -0., -0., -1.,  0.,  0.,  0.,  0.,  0.,  0.,\n          0.,  0.]], dtype=torch.float64)) + (tensor([[ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  1.,  0.,  0.,  0.,  0.,  0.,\n          0.,  0.],\n        [ 0.,  0., ...       [-0., -0., -0., -0., -0., -0., -0., -1.,  0.,  0.,  0.,  0.,  0.,  0.,\n          0.,  0.]], dtype=torch.float64) @ tensor([[ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  1.,  0.,  0.,  0.,  0.,  0.,\n          0.,  0.],\n        [ 0.,  0., ...       [-0., -0., -0., -0., -0., -0., -0., -1.,  0.,  0.,  0.,  0.,  0.,  0.,\n          0.,  0.]], dtype=torch.float64))), tensor([[2., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],\n        [0., 2., 0., 0., 0., 0., 0., 0., 0.,...0., 0., 2., 0.],\n        [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 2.]],\n       dtype=torch.float64))
+E                +    where <built-in method equal of type object at 0x00007FFCFF43C250> = torch.equal
+
+tests\test_contracts.py:17: AssertionError
+============================== warnings summary ===============================
+..\..\..\..\conftest.py:2
+  $WORKSPACE\conftest.py:2: SyntaxWarning: invalid escape sequence '\S'
+    (%APPDATA%\Strata\settings.json, ~/.config/strata/settings.json) and can MOVE model files from a folder it finds there.
+
+..\..\..\..\..\..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\torch\cuda\__init__.py:61
+  $PYTHON_HOME\Lib\site-packages\torch\cuda\__init__.py:61: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+    import pynvml  # type: ignore[import]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests\test_contracts.py::test_clifford_and_chirality - assert False
+1 failed, 2 warnings in 8.98s

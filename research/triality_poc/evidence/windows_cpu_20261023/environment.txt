@@ -1,0 +1,4 @@
+{"command": ["$PYTHON_HOME\\python.exe", "-c", "import json,torch,numpy,pytest,sys,platform; print(json.dumps(dict(python=sys.version,executable=sys.executable,platform=platform.platform(),torch=torch.__version__,numpy=numpy.__version__,pytest=pytest.__version__,cuda_visible=False,cuda_build=torch.version.cuda)))"], "cwd": "$WORKSPACE\\research\\triality_poc", "returncode": 0}
+{"python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]", "executable": "$PYTHON_HOME\\python.exe", "platform": "Windows-11-10.0.26300-SP0", "torch": "2.5.1+cu121", "numpy": "2.2.6", "pytest": "8.3.5", "cuda_visible": false, "cuda_build": "12.1"}
+$PYTHON_HOME\Lib\site-packages\torch\cuda\__init__.py:61: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+  import pynvml  # type: ignore[import]

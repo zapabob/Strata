@@ -1,0 +1,10 @@
+{"command": ["$PYTHON_HOME\\python.exe", "-c", "import torch,pytest; from torch.nn.attention import sdpa_kernel,SDPBackend; torch.set_num_threads(1); context=sdpa_kernel(SDPBackend.MATH); context.__enter__(); raise SystemExit(pytest.main(['-q','-p','no:cacheprovider','--confcutdir=.','tests/test_contracts.py','tests/test_tiny_lm.py']))"], "cwd": "$WORKSPACE\\research\\triality_poc", "returncode": 0}
+.....................s....                                               [100%]
+25 passed, 1 skipped in 3.56s
+$PYTHON_HOME\Lib\site-packages\torch\cuda\__init__.py:61: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+  import pynvml  # type: ignore[import]
+Exception ignored in: <generator object sdpa_kernel at 0x0000023AA785F010>
+Traceback (most recent call last):
+  File "$PYTHON_HOME\Lib\site-packages\torch\nn\attention\__init__.py", line 121, in sdpa_kernel
+  File "$PYTHON_HOME\Lib\site-packages\torch\backends\cuda\__init__.py", line 433, in enable_cudnn_sdp
+AttributeError: 'NoneType' object has no attribute '_C'

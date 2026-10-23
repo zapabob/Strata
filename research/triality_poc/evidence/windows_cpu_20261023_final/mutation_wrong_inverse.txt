@@ -1,0 +1,26 @@
+{"command": ["$PYTHON_HOME\\python.exe", "-m", "pytest", "-q", "-p", "no:cacheprovider", "--confcutdir=.", "tests/test_contracts.py::test_exact_key_roundtrip_and_noncontiguous"], "cwd": "$WORKSPACE\\research\\triality_poc\\.scratch\\mutant_plbwb7a5", "returncode": 1}
+F                                                                        [100%]
+================================== FAILURES ===================================
+_________________ test_exact_key_roundtrip_and_noncontiguous __________________
+
+    def test_exact_key_roundtrip_and_noncontiguous():
+        rng(); k=torch.randn(2,2,8,32,dtype=torch.float64)[...,::2];v=torch.randn_like(k)
+        assert not k.is_contiguous()
+        cache=c.build_cache(k,v,c.make_views(16,7,dtype=k.dtype),None,None)
+>       torch.testing.assert_close(cache.reconstructed_key(),k,rtol=1e-13,atol=1e-13)
+E       AssertionError: Tensor-likes are not close!
+E       
+E       Mismatched elements: 512 / 512 (100.0%)
+E       Greatest absolute difference: 4.083202231293216 at index (1, 1, 7, 7) (up to 1e-13 allowed)
+E       Greatest relative difference: 286.4383254787672 at index (1, 0, 0, 12) (up to 1e-13 allowed)
+
+tests\test_contracts.py:173: AssertionError
+============================== warnings summary ===============================
+..\..\..\..\..\..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\torch\cuda\__init__.py:61
+  $PYTHON_HOME\Lib\site-packages\torch\cuda\__init__.py:61: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+    import pynvml  # type: ignore[import]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests\test_contracts.py::test_exact_key_roundtrip_and_noncontiguous - ...
+1 failed, 1 warning in 9.12s

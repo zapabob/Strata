@@ -1,0 +1,23 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+__________________ test_exact_key_roundtrip_and_noncontiguous __________________
+
+    def test_exact_key_roundtrip_and_noncontiguous():
+        rng(); k=torch.randn(2,2,8,32,dtype=torch.float64)[...,::2];v=torch.randn_like(k)
+        assert not k.is_contiguous()
+        cache=c.build_cache(k,v,c.make_views(16,7,dtype=k.dtype),None,None)
+>       torch.testing.assert_close(cache.reconstructed_key(),k,rtol=1e-13,atol=1e-13)
+E       AssertionError: Tensor-likes are not close!
+E       
+E       Mismatched elements: 512 / 512 (100.0%)
+E       Greatest absolute difference: 4.083202231293216 at index (1, 1, 7, 7) (up to 1e-13 allowed)
+E       Greatest relative difference: 286.4383254787672 at index (1, 0, 0, 12) (up to 1e-13 allowed)
+
+tests/test_contracts.py:173: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_contracts.py::test_exact_key_roundtrip_and_noncontiguous - AssertionError: Tensor-likes are not close!
+
+Mismatched elements: 512 / 512 (100.0%)
+Greatest absolute difference: 4.083202231293216 at index (1, 1, 7, 7) (up to 1e-13 allowed)
+Greatest relative difference: 286.4383254787672 at index (1, 0, 0, 12) (up to 1e-13 allowed)
+1 failed in 1.04s

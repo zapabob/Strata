@@ -1,0 +1,20 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+______________________ test_train_eval_partition_disjoint ______________________
+
+    def test_train_eval_partition_disjoint():
+        splits=make_splits(123)
+        seen=set()
+        for name,data in splits.items():
+            rows={tuple(r) for r in data.patterns.tolist()}
+>           assert rows.isdisjoint(seen)
+E           assert False
+E            +  where False = <built-in method isdisjoint of set object at 0x7f22a8463300>({(1, 1, 1, 1, 1, 1, ...)})
+E            +    where <built-in method isdisjoint of set object at 0x7f22a8463300> = {(1, 1, 1, 1, 1, 1, ...)}.isdisjoint
+
+tests/test_tiny_lm.py:20: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_tiny_lm.py::test_train_eval_partition_disjoint - assert False
+ +  where False = <built-in method isdisjoint of set object at 0x7f22a8463300>({(1, 1, 1, 1, 1, 1, ...)})
+ +    where <built-in method isdisjoint of set object at 0x7f22a8463300> = {(1, 1, 1, 1, 1, 1, ...)}.isdisjoint
+1 failed in 1.38s

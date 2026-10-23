@@ -1,0 +1,32 @@
+{"command": ["$PYTHON_HOME\\python.exe", "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests/test_contracts.py::test_exact_views_preserve_scores"], "cwd": "$WORKSPACE\\research\\triality_poc\\.scratch\\mutant_vssf5u3r", "returncode": 1}
+F                                                                        [100%]
+================================== FAILURES ===================================
+______________________ test_exact_views_preserve_scores _______________________
+
+    def test_exact_views_preserve_scores():
+        rng();q=torch.randn(2,6,5,16,dtype=torch.float64)
+        k=torch.randn(2,2,7,16,dtype=torch.float64);v=torch.randn_like(k)
+        cache=c.build_cache(k,v,c.make_views(16,3,dtype=q.dtype),None,None,beta=0)
+        s=c.cache_scores(q,cache)
+        target=q@k.repeat_interleave(3,dim=1).transpose(-2,-1)/4
+>       torch.testing.assert_close(s,target,atol=1e-12,rtol=1e-12)
+E       AssertionError: Tensor-likes are not close!
+E       
+E       Mismatched elements: 420 / 420 (100.0%)
+E       Greatest absolute difference: 2.5131375341462268 at index (0, 1, 0, 3) (up to 1e-12 allowed)
+E       Greatest relative difference: 0.7500000000002198 at index (1, 3, 2, 5) (up to 1e-12 allowed)
+
+tests\test_contracts.py:101: AssertionError
+============================== warnings summary ===============================
+..\..\..\..\conftest.py:2
+  $WORKSPACE\conftest.py:2: SyntaxWarning: invalid escape sequence '\S'
+    (%APPDATA%\Strata\settings.json, ~/.config/strata/settings.json) and can MOVE model files from a folder it finds there.
+
+..\..\..\..\..\..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\torch\cuda\__init__.py:61
+  $PYTHON_HOME\Lib\site-packages\torch\cuda\__init__.py:61: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+    import pynvml  # type: ignore[import]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests\test_contracts.py::test_exact_views_preserve_scores - AssertionE...
+1 failed, 2 warnings in 7.49s

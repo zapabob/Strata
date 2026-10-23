@@ -1,0 +1,119 @@
+{"command": ["$PYTHON_HOME\\python.exe", "-m", "pytest", "-q", "-p", "no:cacheprovider", "--confcutdir=.", "tests/test_contracts.py::test_pack_roundtrip"], "cwd": "$WORKSPACE\\research\\triality_poc\\.scratch\\mutant_ajln7xq3", "returncode": 1}
+FFFFFF                                                                   [100%]
+================================== FAILURES ===================================
+___________________________ test_pack_roundtrip[2] ____________________________
+
+bits = 2
+
+    @pytest.mark.parametrize('bits',[2,3,4,5,6,8])
+    def test_pack_roundtrip(bits):
+        rng();x=torch.randint(0,1<<bits,(2,3,37),dtype=torch.int64)
+        p=c.pack_unsigned(x,bits)
+        assert p.dtype==torch.uint8 and p.shape[-1]==math.ceil(37*bits/8)
+>       assert torch.equal(c.unpack_unsigned(p,bits,37),x)
+E       assert False
+E        +  where False = <built-in method equal of type object at 0x00007FFCFF43C250>(tensor([[[3, 0, 2, 1, 3, 3, 3, 3, 0, 2, 1, 3, 0, 2, 1, 1, 1, 0, 3, 1, 0, 0, 3,\n          3, 0, 0, 3, 3, 1, 1, 3, 0, 0,..., 0, 2, 0, 0, 1, 3, 2, 2, 3, 2, 0, 3, 0, 2, 3, 1, 0, 2, 2, 2, 1,\n          3, 0, 0, 3, 3, 3, 2, 0, 0, 2, 0, 3, 2, 1]]]), tensor([[[3, 0, 1, 2, 3, 3, 3, 3, 0, 1, 2, 3, 0, 1, 2, 2, 2, 0, 3, 2, 0, 0, 3,\n          3, 0, 0, 3, 3, 2, 2, 3, 0, 0,..., 0, 1, 0, 0, 2, 3, 1, 1, 3, 1, 0, 3, 0, 1, 3, 2, 0, 1, 1, 1, 2,\n          3, 0, 0, 3, 3, 3, 1, 0, 0, 1, 0, 3, 1, 2]]]))
+E        +    where <built-in method equal of type object at 0x00007FFCFF43C250> = torch.equal
+E        +    and   tensor([[[3, 0, 2, 1, 3, 3, 3, 3, 0, 2, 1, 3, 0, 2, 1, 1, 1, 0, 3, 1, 0, 0, 3,\n          3, 0, 0, 3, 3, 1, 1, 3, 0, 0,..., 0, 2, 0, 0, 1, 3, 2, 2, 3, 2, 0, 3, 0, 2, 3, 1, 0, 2, 2, 2, 1,\n          3, 0, 0, 3, 3, 3, 2, 0, 0, 2, 0, 3, 2, 1]]]) = <function unpack_unsigned at 0x000001612DE81DA0>(tensor([[[147, 255, 228, 164, 178, 240, 240,  58,  28,   0],\n         [199,  33,  41, 246,  51, 129,   7, 188,  77,   ...130, 138, 184,  82,  90,   3],\n         [ 73, 224, 117,  76,  75, 229, 240,   7, 113,   2]]],\n       dtype=torch.uint8), 2, 37)
+E        +      where <function unpack_unsigned at 0x000001612DE81DA0> = c.unpack_unsigned
+
+tests\test_contracts.py:81: AssertionError
+___________________________ test_pack_roundtrip[3] ____________________________
+
+bits = 3
+
+    @pytest.mark.parametrize('bits',[2,3,4,5,6,8])
+    def test_pack_roundtrip(bits):
+        rng();x=torch.randint(0,1<<bits,(2,3,37),dtype=torch.int64)
+        p=c.pack_unsigned(x,bits)
+        assert p.dtype==torch.uint8 and p.shape[-1]==math.ceil(37*bits/8)
+>       assert torch.equal(c.unpack_unsigned(p,bits,37),x)
+E       assert False
+E        +  where False = <built-in method equal of type object at 0x00007FFCFF43C250>(tensor([[[7, 1, 4, 3, 6, 6, 7, 7, 1, 4, 3, 7, 0, 4, 3, 2, 2, 0, 7, 3, 1, 0, 7,\n          7, 1, 0, 6, 7, 2, 3, 6, 1, 1,..., 1, 4, 0, 1, 3, 7, 5, 4, 7, 5, 1, 6, 1, 4, 6, 3, 0, 4, 5, 5, 3,\n          6, 1, 0, 6, 7, 7, 4, 1, 1, 5, 1, 7, 5, 2]]]), tensor([[[7, 4, 1, 6, 3, 3, 7, 7, 4, 1, 6, 7, 0, 1, 6, 2, 2, 0, 7, 6, 4, 0, 7,\n          7, 4, 0, 3, 7, 2, 6, 3, 4, 4,..., 4, 1, 0, 4, 6, 7, 5, 1, 7, 5, 4, 3, 4, 1, 3, 6, 0, 1, 5, 5, 6,\n          3, 4, 0, 3, 7, 7, 1, 4, 4, 5, 4, 7, 5, 2]]]))
+E        +    where <built-in method equal of type object at 0x00007FFCFF43C250> = torch.equal
+E        +    and   tensor([[[7, 1, 4, 3, 6, 6, 7, 7, 1, 4, 3, 7, 0, 4, 3, 2, 2, 0, 7, 3, 1, 0, 7,\n          7, 1, 0, 6, 7, 2, 3, 6, 1, 1,..., 1, 4, 0, 1, 3, 7, 5, 4, 7, 5, 1, 6, 1, 4, 6, 3, 0, 4, 5, 5, 3,\n          6, 1, 0, 6, 7, 7, 4, 1, 1, 5, 1, 7, 5, 2]]]) = <function unpack_unsigned at 0x000001612DE81DA0>(tensor([[[103, 188, 253, 140, 143,  88, 194,  77, 252, 196,  46, 143, 124,   1],\n         [ 47,  86,   8, 177, 233, 12... 86, 122],\n         [ 49,   3, 250, 205, 203,  49,  51, 210, 122, 196, 254, 144, 229,  43]]],\n       dtype=torch.uint8), 3, 37)
+E        +      where <function unpack_unsigned at 0x000001612DE81DA0> = c.unpack_unsigned
+
+tests\test_contracts.py:81: AssertionError
+___________________________ test_pack_roundtrip[4] ____________________________
+
+bits = 4
+
+    @pytest.mark.parametrize('bits',[2,3,4,5,6,8])
+    def test_pack_roundtrip(bits):
+        rng();x=torch.randint(0,1<<bits,(2,3,37),dtype=torch.int64)
+        p=c.pack_unsigned(x,bits)
+        assert p.dtype==torch.uint8 and p.shape[-1]==math.ceil(37*bits/8)
+>       assert torch.equal(c.unpack_unsigned(p,bits,37),x)
+E       assert False
+E        +  where False = <built-in method equal of type object at 0x00007FFCFF43C250>(tensor([[[15,  2,  9,  6, 12, 12, 14, 14,  3,  9,  7, 14,  1,  9,  7,  5,  5,\n           1, 14,  6,  2,  0, 15, 14,  3... 13,  3,  9, 13,\n           6,  1,  8, 10, 10,  7, 13,  3,  1, 12, 14, 14,  9,  3,  3, 11,  2,\n          14, 10,  5]]]), tensor([[[15,  4,  9,  6,  3,  3,  7,  7, 12,  9, 14,  7,  8,  9, 14, 10, 10,\n           8,  7,  6,  4,  0, 15,  7, 12... 11, 12,  9, 11,\n           6,  8,  1,  5,  5, 14, 11, 12,  8,  3,  7,  7,  9, 12, 12, 13,  4,\n           7,  5, 10]]]))
+E        +    where <built-in method equal of type object at 0x00007FFCFF43C250> = torch.equal
+E        +    and   tensor([[[15,  2,  9,  6, 12, 12, 14, 14,  3,  9,  7, 14,  1,  9,  7,  5,  5,\n           1, 14,  6,  2,  0, 15, 14,  3... 13,  3,  9, 13,\n           6,  1,  8, 10, 10,  7, 13,  3,  1, 12, 14, 14,  9,  3,  3, 11,  2,\n          14, 10,  5]]]) = <function unpack_unsigned at 0x000001612DE81DA0>(tensor([[[ 79, 105,  51, 119, 156, 126, 152, 174, 138, 103,   4, 127,  12, 123,\n          106, 195, 252, 133,   8],\n  ...6, 200, 246, 149,  87, 180, 156, 107,  24,  85, 190, 140, 115,\n          151, 204,  77,  87,  10]]], dtype=torch.uint8), 4, 37)
+E        +      where <function unpack_unsigned at 0x000001612DE81DA0> = c.unpack_unsigned
+
+tests\test_contracts.py:81: AssertionError
+___________________________ test_pack_roundtrip[5] ____________________________
+
+bits = 5
+
+    @pytest.mark.parametrize('bits',[2,3,4,5,6,8])
+    def test_pack_roundtrip(bits):
+        rng();x=torch.randint(0,1<<bits,(2,3,37),dtype=torch.int64)
+        p=c.pack_unsigned(x,bits)
+        assert p.dtype==torch.uint8 and p.shape[-1]==math.ceil(37*bits/8)
+>       assert torch.equal(c.unpack_unsigned(p,bits,37),x)
+E       assert False
+E        +  where False = <built-in method equal of type object at 0x00007FFCFF43C250>(tensor([[[30,  4, 19, 13, 24, 25, 29, 28,  7, 19, 14, 29,  2, 19, 14, 10, 11,\n           2, 28, 12,  4,  1, 31, 28,  6... 27,  6, 18, 26,\n          12,  3, 16, 21, 21, 15, 26,  7,  3, 25, 29, 29, 19,  6,  6, 22,  4,\n          28, 21, 11]]]), tensor([[[15,  4, 25, 22,  3, 19, 23,  7, 28, 25, 14, 23,  8, 25, 14, 10, 26,\n           8,  7,  6,  4, 16, 31,  7, 12... 27, 12,  9, 11,\n           6, 24,  1, 21, 21, 30, 11, 28, 24, 19, 23, 23, 25, 12, 12, 13,  4,\n           7, 21, 26]]]))
+E        +    where <built-in method equal of type object at 0x00007FFCFF43C250> = torch.equal
+E        +    and   tensor([[[30,  4, 19, 13, 24, 25, 29, 28,  7, 19, 14, 29,  2, 19, 14, 10, 11,\n           2, 28, 12,  4,  1, 31, 28,  6... 27,  6, 18, 26,\n          12,  3, 16, 21, 21, 15, 26,  7,  3, 25, 29, 29, 19,  6,  6, 22,  4,\n          28, 21, 11]]]) = <function unpack_unsigned at 0x000001612DE81DA0>(tensor([[[143, 100,  59, 230,  61,  60, 187, 139, 178,  83,  26,  29,  67, 224,\n           63,  12, 172, 171, 205, 228...  54,  75, 203, 224,  80, 171,\n           95,  28, 207, 123,  51,  99, 141, 156, 170,   1]]],\n       dtype=torch.uint8), 5, 37)
+E        +      where <function unpack_unsigned at 0x000001612DE81DA0> = c.unpack_unsigned
+
+tests\test_contracts.py:81: AssertionError
+___________________________ test_pack_roundtrip[6] ____________________________
+
+bits = 6
+
+    @pytest.mark.parametrize('bits',[2,3,4,5,6,8])
+    def test_pack_roundtrip(bits):
+        rng();x=torch.randint(0,1<<bits,(2,3,37),dtype=torch.int64)
+        p=c.pack_unsigned(x,bits)
+        assert p.dtype==torch.uint8 and p.shape[-1]==math.ceil(37*bits/8)
+>       assert torch.equal(c.unpack_unsigned(p,bits,37),x)
+E       assert False
+E        +  where False = <built-in method equal of type object at 0x00007FFCFF43C250>(tensor([[[61,  8, 38, 27, 48, 50, 58, 57, 14, 39, 28, 58,  4, 38, 29, 21, 22,\n           4, 57, 25,  8,  3, 63, 56, 13... 54, 12, 37, 52,\n          24,  7, 33, 42, 42, 30, 53, 14,  7, 51, 59, 59, 39, 12, 12, 45,  9,\n          56, 42, 23]]]), tensor([[[47,  4, 25, 54,  3, 19, 23, 39, 28, 57, 14, 23,  8, 25, 46, 42, 26,\n           8, 39, 38,  4, 48, 63,  7, 44... 27, 12, 41, 11,\n           6, 56, 33, 21, 21, 30, 43, 28, 56, 51, 55, 55, 57, 12, 12, 45, 36,\n           7, 21, 58]]]))
+E        +    where <built-in method equal of type object at 0x00007FFCFF43C250> = torch.equal
+E        +    and   tensor([[[61,  8, 38, 27, 48, 50, 58, 57, 14, 39, 28, 58,  4, 38, 29, 21, 22,\n           4, 57, 25,  8,  3, 63, 56, 13... 54, 12, 37, 52,\n          24,  7, 33, 42, 42, 30, 53, 14,  7, 51, 59, 59, 39, 12, 12, 45,  9,\n          56, 42, 23]]]) = <function unpack_unsigned at 0x000001612DE81DA0>(tensor([[[ 47, 145, 217, 195, 116, 157,  92, 238,  92,  72, 230, 170,  26, 114,\n          154,   4, 252,  31,  44, 176... 139, 129,\n          135,  85, 229, 173,  28,  62, 223, 119, 206,  48,  45, 121,  84,  58]]],\n       dtype=torch.uint8), 6, 37)
+E        +      where <function unpack_unsigned at 0x000001612DE81DA0> = c.unpack_unsigned
+
+tests\test_contracts.py:81: AssertionError
+___________________________ test_pack_roundtrip[8] ____________________________
+
+bits = 8
+
+    @pytest.mark.parametrize('bits',[2,3,4,5,6,8])
+    def test_pack_roundtrip(bits):
+        rng();x=torch.randint(0,1<<bits,(2,3,37),dtype=torch.int64)
+        p=c.pack_unsigned(x,bits)
+        assert p.dtype==torch.uint8 and p.shape[-1]==math.ceil(37*bits/8)
+>       assert torch.equal(c.unpack_unsigned(p,bits,37),x)
+E       assert False
+E        +  where False = <built-in method equal of type object at 0x00007FFCFF43C250>(tensor([[[245,  35, 152, 111, 194, 203, 233, 230,  58, 157, 113, 232,  18, 154,\n          118,  84,  91,  17, 229, 103..., 210,  96,  30, 135, 171, 170, 121, 214,  59,  28, 204, 239,\n          237, 158,  49,  50, 182,  37, 227, 170,  93]]]), tensor([[[175, 196,  25, 246,  67, 211, 151, 103,  92, 185, 142,  23,  72,  89,\n          110,  42, 218, 136, 167, 230...,  75,   6, 120, 225, 213,  85, 158, 107, 220,  56,  51, 247,\n          183, 121, 140,  76, 109, 164, 199,  85, 186]]]))
+E        +    where <built-in method equal of type object at 0x00007FFCFF43C250> = torch.equal
+E        +    and   tensor([[[245,  35, 152, 111, 194, 203, 233, 230,  58, 157, 113, 232,  18, 154,\n          118,  84,  91,  17, 229, 103..., 210,  96,  30, 135, 171, 170, 121, 214,  59,  28, 204, 239,\n          237, 158,  49,  50, 182,  37, 227, 170,  93]]]) = <function unpack_unsigned at 0x000001612DE81DA0>(tensor([[[175, 196,  25, 246,  67, 211, 151, 103,  92, 185, 142,  23,  72,  89,\n          110,  42, 218, 136, 167, 230...5, 213,  85, 158, 107, 220,  56,  51, 247,\n          183, 121, 140,  76, 109, 164, 199,  85, 186]]], dtype=torch.uint8), 8, 37)
+E        +      where <function unpack_unsigned at 0x000001612DE81DA0> = c.unpack_unsigned
+
+tests\test_contracts.py:81: AssertionError
+============================== warnings summary ===============================
+..\..\..\..\..\..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\torch\cuda\__init__.py:61
+  $PYTHON_HOME\Lib\site-packages\torch\cuda\__init__.py:61: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+    import pynvml  # type: ignore[import]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests\test_contracts.py::test_pack_roundtrip[2] - assert False
+FAILED tests\test_contracts.py::test_pack_roundtrip[3] - assert False
+FAILED tests\test_contracts.py::test_pack_roundtrip[4] - assert False
+FAILED tests\test_contracts.py::test_pack_roundtrip[5] - assert False
+FAILED tests\test_contracts.py::test_pack_roundtrip[6] - assert False
+FAILED tests\test_contracts.py::test_pack_roundtrip[8] - assert False
+6 failed, 1 warning in 9.13s

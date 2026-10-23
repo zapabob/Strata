@@ -1,0 +1,29 @@
+{"command": ["$PYTHON_HOME\\python.exe", "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests/test_contracts.py::test_query_chart_identity_norm_bound_grad"], "cwd": "$WORKSPACE\\research\\triality_poc\\.scratch\\mutant_dn6iwx0z", "returncode": 1}
+F                                                                        [100%]
+================================== FAILURES ===================================
+__________________ test_query_chart_identity_norm_bound_grad __________________
+
+    def test_query_chart_identity_norm_bound_grad():
+        rng();a=torch.randn(11,7,dtype=torch.float64)*3
+        co=c.unit_control(a)
+>       torch.testing.assert_close(co.square().sum(-1),torch.ones(11,dtype=co.dtype))
+E       AssertionError: Tensor-likes are not close!
+E       
+E       Mismatched elements: 11 / 11 (100.0%)
+E       Greatest absolute difference: 0.17140545438205868 at index (3,) (up to 1e-07 allowed)
+E       Greatest relative difference: 0.17140545438205868 at index (3,) (up to 1e-07 allowed)
+
+tests\test_contracts.py:55: AssertionError
+============================== warnings summary ===============================
+..\..\..\..\conftest.py:2
+  $WORKSPACE\conftest.py:2: SyntaxWarning: invalid escape sequence '\S'
+    (%APPDATA%\Strata\settings.json, ~/.config/strata/settings.json) and can MOVE model files from a folder it finds there.
+
+..\..\..\..\..\..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\torch\cuda\__init__.py:61
+  $PYTHON_HOME\Lib\site-packages\torch\cuda\__init__.py:61: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+    import pynvml  # type: ignore[import]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests\test_contracts.py::test_query_chart_identity_norm_bound_grad - A...
+1 failed, 2 warnings in 8.66s

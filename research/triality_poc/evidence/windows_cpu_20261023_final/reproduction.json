@@ -1,0 +1,56 @@
+{
+  "scope": "fresh Windows CPU reference verification; no training or real model inference",
+  "timestamp_utc": "2026-10-23T00:56:34.045024+00:00",
+  "platform": "Windows-11-10.0.26300-SP0",
+  "interpreter": "$PYTHON_HOME\\python.exe",
+  "source_sha256": "88a789fbe4537d24958fe20677d82cbfbc829813f04c0f9d291408f0a65d5ac9",
+  "cpu_only": true,
+  "cuda_visibility": "CUDA_VISIBLE_DEVICES=-1 in child processes",
+  "supplied_checkpoints_loaded": false,
+  "checks": {
+    "reference_pytest": false,
+    "dense_diagnostics": true,
+    "validation": true,
+    "environment": true,
+    "reference_pytest_math_sdpa": true,
+    "seven_targeted_mutations": true
+  },
+  "mutations": [
+    {
+      "name": "wrong_half_angle",
+      "returncode": 1,
+      "detected": true
+    },
+    {
+      "name": "normalisation_removed",
+      "returncode": 1,
+      "detected": true
+    },
+    {
+      "name": "wrong_inverse",
+      "returncode": 1,
+      "detected": true
+    },
+    {
+      "name": "wrong_bit_order",
+      "returncode": 1,
+      "detected": true
+    },
+    {
+      "name": "beta_ignored",
+      "returncode": 1,
+      "detected": true
+    },
+    {
+      "name": "scale_twice",
+      "returncode": 1,
+      "detected": true
+    },
+    {
+      "name": "clifford_sign",
+      "returncode": 1,
+      "detected": true
+    }
+  ],
+  "passed": false
+}

@@ -1,0 +1,16 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/mnt/data/triality_llm_paper_poc_20261023/triality_poc/validate.py", line 114, in <module>
+    if __name__=='__main__':raise SystemExit(main())
+                                             ~~~~^^
+  File "/mnt/data/triality_llm_paper_poc_20261023/triality_poc/validate.py", line 111, in main
+    device=resolve_device(a.device);r=run(device);path=Path(a.out);path.parent.mkdir(parents=True,exist_ok=True)
+                                      ~~~^^^^^^^^
+  File "/mnt/data/triality_llm_paper_poc_20261023/triality_poc/validate.py", line 47, in run
+    val=math.sqrt(math.pi/2)*E.norm(dim=-1)[None,:]*torch.einsum('nkm,nm->nk',signs,G@q0)/m/math.sqrt(16)
+                                                    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/pyvenv/lib/python3.13/site-packages/torch/functional.py", line 373, in einsum
+    return _VF.einsum(equation, operands)  # type: ignore[attr-defined]
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+RuntimeError: expected scalar type Float but found Double

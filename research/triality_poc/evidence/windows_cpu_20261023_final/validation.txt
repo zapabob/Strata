@@ -1,0 +1,109 @@
+{"command": ["$PYTHON_HOME\\python.exe", "-m", "triality_poc.validate", "--device", "cpu", "--out", "H:\\Strata\\reference\\triality-paper-20261023-local-evidence\\final\\validation.json"], "cwd": "$WORKSPACE\\research\\triality_poc", "returncode": 0}
+{
+  "scope": "new synthetic/analytic research probes; no real LLM inference",
+  "environment": {
+    "python": "3.12.10",
+    "torch": "2.5.1+cu121",
+    "device": "cpu",
+    "cuda_build": "12.1",
+    "gpu": null
+  },
+  "checks": {
+    "orthogonal": true,
+    "positive_det": true,
+    "norm": true,
+    "tangent": true,
+    "lie_rank28": true,
+    "gradcheck": true,
+    "angle_bound": true,
+    "qjl_mean_mc": true,
+    "qjl_variance_mc": true,
+    "fisher_projection": true,
+    "logit_bound": true,
+    "residual_bound": true
+  },
+  "passed": true,
+  "metrics": {
+    "orthogonality_max": 6.661338147750939e-16,
+    "determinant_error_max": 1.7763568394002505e-15,
+    "norm_error_max": 1.0658141036401503e-14,
+    "tangent_gram_error_max": 7.105427357601002e-15,
+    "lie_algebra_rank": 28,
+    "maximum_angle_radians": 0.39153682652476834,
+    "zero_gradcheck": true,
+    "qjl": {
+      "samples": 20000,
+      "m": 32,
+      "conditional_true_inner_product": -3.7125949251310204,
+      "mean_estimate": -3.732391845110993,
+      "mean_error_in_standard_errors": -1.1491997089027521,
+      "theory_variance": 5.935184670037958,
+      "empirical_variance": 5.960625491152647,
+      "variance_ratio": 1.0042864413710864
+    },
+    "fisher_shrinkage": {
+      "oracle_calibration_beta": 0.5130246163619925,
+      "D": 0.007642452178741878,
+      "N": 0.007254400594009536,
+      "arms": {
+        "0.0": {
+          "beta": 0.0,
+          "mean_kl": 0.0037186474400400654,
+          "fisher_approx": 0.0038212260893709387
+        },
+        "0.513025": {
+          "beta": 0.5130246163619925,
+          "mean_kl": 0.0018393678280965954,
+          "fisher_approx": 0.0018620596262929276
+        },
+        "1.0": {
+          "beta": 1.0,
+          "mean_kl": 0.003666888154385015,
+          "fisher_approx": 0.003658909540808793
+        }
+      },
+      "limitation": "fixed q/E; oracle residual; not deployable calibration or autoregressive evidence"
+    },
+    "fisher_projection": {
+      "before": 0.00010506112386661079,
+      "after": 1.5078573501459784e-05,
+      "control_rank": 7,
+      "eta_norm": 0.011582014171714703
+    },
+    "logit_kl_bound": {
+      "kl": 0.006474762346291737,
+      "range_squared_over_8": 0.026018257314686793,
+      "satisfied": true
+    },
+    "network_propagation": {
+      "first_order_relative_error": 1.0324399547357737e-07,
+      "observed_amplification": 0.9653868548772512,
+      "product_lipschitz_bound": 3.0050702515335175,
+      "bound_satisfied": true
+    },
+    "reference_payloads": {
+      "teacher_exact": {
+        "per_layer_per_sequence_payload_bytes": 8192,
+        "shared_profile_bytes": 1028
+      },
+      "single2": {
+        "per_layer_per_sequence_payload_bytes": 4864,
+        "shared_profile_bytes": 1028
+      },
+      "single6": {
+        "per_layer_per_sequence_payload_bytes": 5376,
+        "shared_profile_bytes": 1028
+      },
+      "triple2": {
+        "per_layer_per_sequence_payload_bytes": 6400,
+        "shared_profile_bytes": 3084
+      },
+      "triple2_v3": {
+        "per_layer_per_sequence_payload_bytes": 3200,
+        "shared_profile_bytes": 3084
+      }
+    }
+  }
+}
+$PYTHON_HOME\Lib\site-packages\torch\cuda\__init__.py:61: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+  import pynvml  # type: ignore[import]

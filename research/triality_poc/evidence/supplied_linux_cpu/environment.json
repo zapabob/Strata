@@ -1,0 +1,13 @@
+{
+  "python": "3.13.5",
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "torch": "2.10.0+cpu",
+  "numpy": "2.3.5",
+  "pytest": "9.0.2",
+  "cuda_build": null,
+  "cuda_available": false,
+  "cuda_command_rejected": true,
+  "notebook_executed_device": "cpu",
+  "notebook_code_cells": 6,
+  "real_models_executed": false
+}

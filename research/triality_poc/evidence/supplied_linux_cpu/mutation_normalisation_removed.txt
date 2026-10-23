@@ -1,0 +1,22 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+__________________ test_query_chart_identity_norm_bound_grad ___________________
+
+    def test_query_chart_identity_norm_bound_grad():
+        rng();a=torch.randn(11,7,dtype=torch.float64)*3
+        co=c.unit_control(a)
+>       torch.testing.assert_close(co.square().sum(-1),torch.ones(11,dtype=co.dtype))
+E       AssertionError: Tensor-likes are not close!
+E       
+E       Mismatched elements: 11 / 11 (100.0%)
+E       Greatest absolute difference: 0.17140545438205868 at index (3,) (up to 1e-07 allowed)
+E       Greatest relative difference: 0.17140545438205868 at index (3,) (up to 1e-07 allowed)
+
+tests/test_contracts.py:55: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_contracts.py::test_query_chart_identity_norm_bound_grad - AssertionError: Tensor-likes are not close!
+
+Mismatched elements: 11 / 11 (100.0%)
+Greatest absolute difference: 0.17140545438205868 at index (3,) (up to 1e-07 allowed)
+Greatest relative difference: 0.17140545438205868 at index (3,) (up to 1e-07 allowed)
+1 failed in 1.07s

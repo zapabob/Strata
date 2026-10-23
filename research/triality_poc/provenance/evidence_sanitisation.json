@@ -1,0 +1,178 @@
+{
+  "substitutions": [
+    "local workspace prefix -> $WORKSPACE",
+    "existing interpreter directory -> $PYTHON_HOME",
+    "local profile prefix -> $USERPROFILE"
+  ],
+  "raw_root": "H:/Strata/reference/triality-paper-20261023-local-evidence",
+  "files": [
+    {
+      "raw_run": "initial",
+      "file": "dense_diagnostics.txt",
+      "raw_sha256": "df99e4e44af4fec0588144e68eb57a931442ce95e0c279203b452b9066ff2501",
+      "public_sha256": "bb03f8db85b1fb219f68d77387c3019f44f2802fed8d06f7a6f026680540d8dd"
+    },
+    {
+      "raw_run": "initial",
+      "file": "environment.txt",
+      "raw_sha256": "e228591ebf807f27b9a6b0b83f94a58be12a8cb777d6fd5e5ad1e8a56e16f3f3",
+      "public_sha256": "15b75176901a0997506f07c32190bfbc809b9d8b29421bfd670bd241394eee00"
+    },
+    {
+      "raw_run": "initial",
+      "file": "mutation_beta_ignored.txt",
+      "raw_sha256": "60f3e8e03ce6f9c2704b50c75c4bf9ac83f50ba84b28221c08943a4fa32647ed",
+      "public_sha256": "22b65cd0f079073e752397613525a273032c2093645e07b0b7ec27a1015f466f"
+    },
+    {
+      "raw_run": "initial",
+      "file": "mutation_clifford_sign.txt",
+      "raw_sha256": "44ff66042cc29a1457fdf5055efb554916d274b03f033e8385a6e0b6bcf0319f",
+      "public_sha256": "9ecb2897dd0e99915605ecb06282fd3305df9e263babb6a5d8a7195db977d831"
+    },
+    {
+      "raw_run": "initial",
+      "file": "mutation_normalisation_removed.txt",
+      "raw_sha256": "f2fabd6c719f12fc8679bdaa31f5e7e476642660a72eb1bf4b7c40ab674cbb07",
+      "public_sha256": "9f693e0f4086d49f8c9f04c317f4ec3dc0ef7de65b29d52204a5b22a6668d11c"
+    },
+    {
+      "raw_run": "initial",
+      "file": "mutation_scale_twice.txt",
+      "raw_sha256": "63678a81932e0fcdcd968ec8e1f2d24cd11d6ec7a99fb6646b94f0e0effb6f5a",
+      "public_sha256": "c680240336c54879d8796182d0ac46b0125ea3a4570d9c4439b56dd375d936dd"
+    },
+    {
+      "raw_run": "initial",
+      "file": "mutation_wrong_bit_order.txt",
+      "raw_sha256": "9b14903672a73431e1a71060f77a50f9ee15339f9f89e58199e841052802b509",
+      "public_sha256": "90639f68d9f94ee5db207b25843580d1f3f5f3c5bca703d30b0897a986c1b2fd"
+    },
+    {
+      "raw_run": "initial",
+      "file": "mutation_wrong_half_angle.txt",
+      "raw_sha256": "8593deda24d5c1462a34a8df0c84340314a3db73ccc2a329b4b76bfd7b23ecdd",
+      "public_sha256": "0fa53f9ebb6b502af33c6dd43c7132f7c359b3b06e2d1f943bef6a6ef63e61ea"
+    },
+    {
+      "raw_run": "initial",
+      "file": "mutation_wrong_inverse.txt",
+      "raw_sha256": "722d6907f216b767722a21c8f7faa3a5b37de516307bbc8f5de710f6f1d553e3",
+      "public_sha256": "7af8e6271a1195d53446c125634297187977279d273b8d779f4de6b8b883546e"
+    },
+    {
+      "raw_run": "initial",
+      "file": "reference_pytest.txt",
+      "raw_sha256": "6380e6b7077de1e036169b4ea24372058c36fe87e04505682caccbede9b09add",
+      "public_sha256": "ac3ae61f09848ad7243f150357e99fdddef8186c97fb62d1f95fd0614472ce88"
+    },
+    {
+      "raw_run": "initial",
+      "file": "reproduction.json",
+      "raw_sha256": "68e86a09a8e7af67de23f22acb1f22011c6471a5e4ac81b61363c9005afc372c",
+      "public_sha256": "fa61c82b5e12d421a9fdc029fd1c85d90f0a51fad6b267a9eb3c122390d901c6"
+    },
+    {
+      "raw_run": "initial",
+      "file": "validation.json",
+      "raw_sha256": "32704833cc252de8c8152ce9034bb740eb2eac5c85b686d763f342530970c369",
+      "public_sha256": "32704833cc252de8c8152ce9034bb740eb2eac5c85b686d763f342530970c369"
+    },
+    {
+      "raw_run": "initial",
+      "file": "validation.txt",
+      "raw_sha256": "d074a21a645f192ad606318d8be2bfbbb2c87256f454ab3602bb3d866df2ff65",
+      "public_sha256": "e4379e134d15b82b79f1fb318e5ee98b43e4ba02935ea95690844e405255a048"
+    },
+    {
+      "raw_run": "final",
+      "file": "dense_diagnostics.txt",
+      "raw_sha256": "c6e7bf954a436b1018aa6920930b54af65d1b64d045701b54ea04aea7902616a",
+      "public_sha256": "b39e392e6ea26619fcc022048403350f3ce178108621fa08e38ce14852030d7f"
+    },
+    {
+      "raw_run": "final",
+      "file": "environment.txt",
+      "raw_sha256": "e228591ebf807f27b9a6b0b83f94a58be12a8cb777d6fd5e5ad1e8a56e16f3f3",
+      "public_sha256": "15b75176901a0997506f07c32190bfbc809b9d8b29421bfd670bd241394eee00"
+    },
+    {
+      "raw_run": "final",
+      "file": "mutation_beta_ignored.txt",
+      "raw_sha256": "9cdbef4ff42434e30802454ab97f831cbd5d7f3500f78130aa7e134a24c79c8f",
+      "public_sha256": "f63a7fcdce418ac7038d7aaf83b7e9776b68395ae4fe4d7b12e36aef526bf43a"
+    },
+    {
+      "raw_run": "final",
+      "file": "mutation_clifford_sign.txt",
+      "raw_sha256": "3a52c5d46be3649abe98d2539df567a27e1d69fb05ee4fdf09f1380b82d17f11",
+      "public_sha256": "babdce58b47db6f68cdf09f7c2c393cfd878ee9fbb6f1e16199c486e396f0320"
+    },
+    {
+      "raw_run": "final",
+      "file": "mutation_normalisation_removed.txt",
+      "raw_sha256": "5c18639243c407cfc93dc18b31cfc19360b79e6b07e771bedd77ac26e3ba164b",
+      "public_sha256": "f4b74f30c0b4b0766435cf5bbe5dea759e9c4d8249c57687cb35754a2ad12488"
+    },
+    {
+      "raw_run": "final",
+      "file": "mutation_scale_twice.txt",
+      "raw_sha256": "01078f5439537ad321095c559d740f1701902a5829ddc0166f92d8fc0757f38a",
+      "public_sha256": "6f3b76835a21f4ab130d286c51088758ce5f82aed9c8c0fa3deb7cbbb4ca324f"
+    },
+    {
+      "raw_run": "final",
+      "file": "mutation_wrong_bit_order.txt",
+      "raw_sha256": "5934a6aeb0c65e093a59c172aec306e688abd7d8b9e4a9b69eb352a396da1ae1",
+      "public_sha256": "b5fa495ec8de25779abf20bb5fa9d61237d5aa68c9fd735165dd173b992920bd"
+    },
+    {
+      "raw_run": "final",
+      "file": "mutation_wrong_half_angle.txt",
+      "raw_sha256": "a652430325e0b07f8f83deebb0e3d32a1b39f203e52b27144d8875490d882e95",
+      "public_sha256": "557d2e1a3307a9b8b47a8837dc86f934a0ec7c3c132e37f29e42b94205ec937b"
+    },
+    {
+      "raw_run": "final",
+      "file": "mutation_wrong_inverse.txt",
+      "raw_sha256": "f859e77315353e7a3299e20e1df771bbab05f57daee356e883bd19695850a373",
+      "public_sha256": "07499e917ee3e4a11b499b8fc974d9974fcdc811f8dd9c42a049a0a8aec86175"
+    },
+    {
+      "raw_run": "final",
+      "file": "reference_pytest.txt",
+      "raw_sha256": "c8d0243fb6f39a1fa591240c6ded4e717f37110c4c18697bd8f8d44425dc022d",
+      "public_sha256": "19e7c55d05a30e01b7d870535722ed1f0d0c68dde0c5e1aba8ac0146e941adc8"
+    },
+    {
+      "raw_run": "final",
+      "file": "reference_pytest_math_sdpa.txt",
+      "raw_sha256": "1d749edfecddc209554fe897531ef88b9d2be276b6405270dc33c500dfe8963a",
+      "public_sha256": "282fbc0463e4fdecda445d3a07467977a8c236454f14f6666f2110fc5b083a6b"
+    },
+    {
+      "raw_run": "final",
+      "file": "reference_pytest_math_sdpa_context_managed.txt",
+      "raw_sha256": "f23c778f13b1bfcd93c42e140af64516e28d97090d225f2f7d5ba2b468f6430f",
+      "public_sha256": "b9b5ba7317d19f8ea3fdd8b20e48735c7293180ef33ceb80b018ea03edd9acea"
+    },
+    {
+      "raw_run": "final",
+      "file": "reproduction.json",
+      "raw_sha256": "057acc59e785d7068066cdd81d45d76912500421d102d0a72205d8bcf677e412",
+      "public_sha256": "96909039f30b4d1545333f9edaa34c447219faab34388ed8af1cb02bdd422c3d"
+    },
+    {
+      "raw_run": "final",
+      "file": "validation.json",
+      "raw_sha256": "32704833cc252de8c8152ce9034bb740eb2eac5c85b686d763f342530970c369",
+      "public_sha256": "32704833cc252de8c8152ce9034bb740eb2eac5c85b686d763f342530970c369"
+    },
+    {
+      "raw_run": "final",
+      "file": "validation.txt",
+      "raw_sha256": "b81d1c9240546a5a4e92eb17100465f65f3abea0c25aaef6cd7ecdd96743087d",
+      "public_sha256": "fbdf1c6184662d2224ec33ccee94f86ce1900bfe4af30eb45c0d226a62df86c3"
+    }
+  ]
+}

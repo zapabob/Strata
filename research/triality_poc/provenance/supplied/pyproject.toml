@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+[project]
+name = "triality-llm-poc"
+version = "0.1.0"
+description = "Research-only Triality-conditioned attention and quantization PoC"
+requires-python = ">=3.10"
+dependencies = ["torch>=2.5", "numpy>=1.26"]
+[project.optional-dependencies]
+test = ["pytest>=8"]
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+[tool.setuptools.packages.find]
+include = ["triality_poc*"]
