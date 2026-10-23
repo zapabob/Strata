@@ -26,6 +26,33 @@ typedef struct {
   size_t bout_bytes;
 } spin8_query_v3_cuda_parameters_f32;
 
+#define SPIN8_QUERY_V3_CUDA_BANK_VERSION 1u
+
+/* Version 1 host descriptor of immutable device F32 arrays. Each head owns
+ * contiguous Win[8,width], bin[8], Wout[7,8], bout[7], shared across tokens.
+ * Each array has its own byte capacity and byte head stride (including
+ * padding). Strides must be float-aligned and at least one head's payload, even
+ * for one head. Array occupied spans, including inter-head padding, must be
+ * disjoint from one another, src/dst and error_flag. No implicit broadcast is
+ * allowed. */
+typedef struct {
+  uint32_t version;
+  size_t heads;
+  size_t width;
+  const float *win;
+  size_t win_bytes;
+  size_t win_head_stride_bytes;
+  const float *bin;
+  size_t bin_bytes;
+  size_t bin_head_stride_bytes;
+  const float *wout;
+  size_t wout_bytes;
+  size_t wout_head_stride_bytes;
+  const float *bout;
+  size_t bout_bytes;
+  size_t bout_head_stride_bytes;
+} spin8_query_v3_cuda_bank_f32;
+
 /* Host-only creation/destruction. Version must be SPIN8_QUERY_V3_VERSION.
  * Derives and audits signed permutations from spin8_query_v3_generators;
  * no GPU allocation, upload or device state. *out is null on failure.
@@ -69,6 +96,34 @@ cudaError_t spin8_query_v3_cuda_apply_f32(
     size_t src_capacity_bytes, size_t src_stride_bytes, float *dst,
     size_t dst_capacity_bytes, size_t dst_stride_bytes, size_t rows,
     size_t width, int *error_flag, cudaStream_t stream);
+
+/* Batched opt-in v3 execution with the SAME mathematical/numerical and caller
+ * ownership contracts as apply_f32 above. Logical tensor shape is
+ * [channels=width, query_heads=heads, tokens], channels contiguous. Address:
+ * base + token*token_stride_bytes + head*head_stride_bytes + channel*4.
+ * A head stride is >= width*4; a token stride is >= the occupied head span
+ * (heads-1)*head_stride + width*4. All strides are float-aligned, positive,
+ * and required even for singleton dimensions. This supports padded disjoint
+ * rows, prefill and decode. heads/width must match the bank; all dimensions
+ * are nonzero. Exact in-place requires equal src/dst head AND token strides.
+ * Other overlaps, including overlaps through padding, are rejected on host.
+ * Capacities, pointer alignment, spans, version and arithmetic overflow are
+ * checked before enqueueing one kernel on stream, without allocation or sync.
+ * Padding remains untouched; identity tails feed Win and copy bitwise.
+ * Caller clears error_flag before use. ANY flagged nonfinite input, parameter
+ * or result invalidates the ENTIRE batch; discard all output on nonzero flag
+ * after checking asynchronous stream completion. This is NOT atomic output
+ * rollback: finite rows may already have been written when another row fails.
+ * Parameter padding is not read or checked for finiteness. Host bank lifetime
+ * ends on return; device arrays must remain immutable/alive through completion.
+ */
+cudaError_t spin8_query_v3_cuda_apply_batched_f32(
+    const spin8_query_v3_cuda_plan *plan,
+    const spin8_query_v3_cuda_bank_f32 *bank, const float *src,
+    size_t src_capacity_bytes, size_t src_head_stride_bytes,
+    size_t src_token_stride_bytes, float *dst, size_t dst_capacity_bytes,
+    size_t dst_head_stride_bytes, size_t dst_token_stride_bytes, size_t heads,
+    size_t tokens, size_t width, int *error_flag, cudaStream_t stream);
 
 #ifdef __cplusplus
 }

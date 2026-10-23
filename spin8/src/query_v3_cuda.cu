@@ -73,10 +73,61 @@ bool valid_layout(const spin8_query_v3_cuda_plan *plan,
          (!overlaps(src, sn, dst, dn) || (src == dst && ss == ds));
 }
 
+bool tensor_span(size_t heads, size_t tokens, size_t row_bytes, size_t hs,
+                 size_t ts, size_t capacity, size_t &bytes) {
+  size_t head_span = 0;
+  return span(heads, row_bytes, hs, SIZE_MAX, head_span) &&
+         span(tokens, head_span, ts, capacity, bytes);
+}
+
+bool valid_batch(const spin8_query_v3_cuda_plan *plan,
+                 const spin8_query_v3_cuda_bank_f32 *p, const float *src,
+                 size_t sc, size_t sh, size_t st, float *dst, size_t dc,
+                 size_t dh, size_t dt, size_t heads, size_t tokens,
+                 size_t width, int *flag, size_t &rows) {
+  size_t row_bytes = 0, win_bytes = 0, sn = 0, dn = 0;
+  if (!pointer(plan, sizeof(*plan), alignof(spin8_query_v3_cuda_plan)) ||
+      !pointer(p, sizeof(*p), alignof(spin8_query_v3_cuda_bank_f32)) ||
+      p->version != SPIN8_QUERY_V3_CUDA_BANK_VERSION || p->heads != heads ||
+      p->width != width || !product(heads, tokens, rows) ||
+      !product(width, sizeof(float), row_bytes) ||
+      !product(8, row_bytes, win_bytes) ||
+      !tensor_span(heads, tokens, row_bytes, sh, st, sc, sn) ||
+      !tensor_span(heads, tokens, row_bytes, dh, dt, dc, dn) ||
+      !pointer(src, sn, alignof(float)) || !pointer(dst, dn, alignof(float)) ||
+      !pointer(flag, sizeof(int), alignof(int)))
+    return false;
+  const void *parameters[] = {p->win, p->bin, p->wout, p->bout};
+  const size_t payloads[] = {win_bytes, 8 * sizeof(float), 56 * sizeof(float),
+                             7 * sizeof(float)};
+  const size_t strides[] = {p->win_head_stride_bytes, p->bin_head_stride_bytes,
+                            p->wout_head_stride_bytes,
+                            p->bout_head_stride_bytes};
+  const size_t capacities[] = {p->win_bytes, p->bin_bytes, p->wout_bytes,
+                               p->bout_bytes};
+  size_t sizes[4]{};
+  for (size_t i = 0; i < 4; ++i) {
+    if (!span(heads, payloads[i], strides[i], capacities[i], sizes[i]) ||
+        !pointer(parameters[i], sizes[i], alignof(float)))
+      return false;
+    if (overlaps(parameters[i], sizes[i], src, sn) ||
+        overlaps(parameters[i], sizes[i], dst, dn) ||
+        overlaps(parameters[i], sizes[i], flag, sizeof(int)))
+      return false;
+    for (size_t j = 0; j < i; ++j)
+      if (overlaps(parameters[i], sizes[i], parameters[j], sizes[j]))
+        return false;
+  }
+  return !overlaps(src, sn, flag, sizeof(int)) &&
+         !overlaps(dst, dn, flag, sizeof(int)) &&
+         (!overlaps(src, sn, dst, dn) || (src == dst && sh == dh && st == dt));
+}
+
 __global__ void apply_kernel(spin8_query_v3_cuda_plan plan,
-                             spin8_query_v3_cuda_parameters_f32 p,
-                             const float *src, size_t ss, float *dst, size_t ds,
-                             size_t rows, size_t width, int *flag) {
+                             spin8_query_v3_cuda_bank_f32 bank,
+                             const float *src, size_t sh, size_t st, float *dst,
+                             size_t dh, size_t dt, size_t rows, size_t width,
+                             int *flag) {
   __shared__ double hidden[8];
   __shared__ double c[8];
   __shared__ int invalid;
@@ -89,8 +140,15 @@ __global__ void apply_kernel(spin8_query_v3_cuda_plan plan,
       identity = 1;
     }
     __syncthreads();
-    const float *q = src + row * ss;
-    float *out = dst + row * ds;
+    const size_t head = row % bank.heads, token = row / bank.heads;
+    const float *q = src + token * st + head * sh;
+    float *out = dst + token * dt + head * dh;
+    // Only the selected head's payload is read; parameter padding is ignored.
+    const spin8_query_v3_cuda_parameters_f32 p{
+        bank.win + head * (bank.win_head_stride_bytes / sizeof(float)),   0,
+        bank.bin + head * (bank.bin_head_stride_bytes / sizeof(float)),   0,
+        bank.wout + head * (bank.wout_head_stride_bytes / sizeof(float)), 0,
+        bank.bout + head * (bank.bout_head_stride_bytes / sizeof(float)), 0};
     for (size_t i = threadIdx.x; i < width; i += blockDim.x)
       if (!isfinite(q[i]))
         atomicOr(&invalid, 1);
@@ -273,8 +331,39 @@ extern "C" cudaError_t spin8_query_v3_cuda_apply_f32(
                     flag))
     return cudaErrorInvalidValue;
   const unsigned blocks = unsigned(rows > 65535 ? 65535 : rows);
+  const spin8_query_v3_cuda_bank_f32 bank{SPIN8_QUERY_V3_CUDA_BANK_VERSION,
+                                          1,
+                                          width,
+                                          parameters->win,
+                                          parameters->win_bytes,
+                                          0,
+                                          parameters->bin,
+                                          parameters->bin_bytes,
+                                          0,
+                                          parameters->wout,
+                                          parameters->wout_bytes,
+                                          0,
+                                          parameters->bout,
+                                          parameters->bout_bytes,
+                                          0};
   apply_kernel<<<blocks, 128, 0, stream>>>(
-      *plan, *parameters, src, ss / sizeof(float), dst, ds / sizeof(float),
-      rows, width, flag);
+      *plan, bank, src, 0, ss / sizeof(float), dst, 0, ds / sizeof(float), rows,
+      width, flag);
+  return cudaGetLastError();
+}
+
+extern "C" cudaError_t spin8_query_v3_cuda_apply_batched_f32(
+    const spin8_query_v3_cuda_plan *plan,
+    const spin8_query_v3_cuda_bank_f32 *bank, const float *src, size_t sc,
+    size_t sh, size_t st, float *dst, size_t dc, size_t dh, size_t dt,
+    size_t heads, size_t tokens, size_t width, int *flag, cudaStream_t stream) {
+  size_t rows = 0;
+  if (!valid_batch(plan, bank, src, sc, sh, st, dst, dc, dh, dt, heads, tokens,
+                   width, flag, rows))
+    return cudaErrorInvalidValue;
+  const unsigned blocks = unsigned(rows > 65535 ? 65535 : rows);
+  apply_kernel<<<blocks, 128, 0, stream>>>(
+      *plan, *bank, src, sh / sizeof(float), st / sizeof(float), dst,
+      dh / sizeof(float), dt / sizeof(float), rows, width, flag);
   return cudaGetLastError();
 }
