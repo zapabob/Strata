@@ -32,32 +32,42 @@ Commit only owned files. Report exact commands, results, skipped checks and sour
 
 Ownership: acceptance tooling and its focused tests. Version the schema; separate physical-three-view functional proof from performance-candidate modes; replace unconditional original-service-restored with explicit keep-8080-stopped evidence. Require both mandatory model identities, contexts, independent quality data, warm-ups, alternating pairs, functional coverage and all numerical thresholds. Reject missing, non-finite, fabricated-placeholder or mismatched source/model/artefact identities. Preserve legacy schema interpretation without granting a formal v0.3.0 pass to legacy records. Test negative and positive fixtures as evaluator tests, never as real-model evidence.
 
-## Task 3: Connect batched v3 controllers to real Bonsai query execution
+## Task 3: Add batched per-head v3 CUDA query execution
+
+Ownership: `spin8/include/spin8/query_v3_cuda.h`, `spin8/src/query_v3_cuda.cu`, focused CUDA tests and a task-specific `_docs` record. Add an explicitly versioned F32 parameter bank with independent Win/bin/Wout/bout for each Q head and checked byte capacities/strides. Apply to a documented token/head/channel layout in one launch on the caller's stream; support padded disjoint head/token rows, prefill (many tokens), decode (one token), exact in-place operation and identity tails. Preserve the old single-controller ABI and numerical convention. Avoid per-row dense matrices and global spinor buffers. Compare against independent CPU per-head controllers at width 256/24 Q heads and a tail width, include nonzero and zero controllers, signed zeros, invalid versions/capacities/aliasing/overflow, nonfinite input/parameter flags, and non-default streams. Validate against the available sm_120 device with small incremental builds only while capacity is limited. This task alone does not claim a real-model connection.
+
+## Task 4: Connect v3 controllers to the real Bonsai query graph
 
 Ownership: libspin8 query C ABI, CUDA implementation/tests, versioned sidecar loader, and a pinned Prism patch at the qwen35 normalised-Q pre-RoPE callsite. Explicitly support per-layer/per-Q-head rank-eight parameters and multiple tokens in both prefill and decode, validated capacities/byte strides/device/stream and identity tails. Keep the 48 recurrent layers on their existing route. Prove zero-controller equality, nonzero effect, independent CPU/CUDA agreement, GQA and invalid-input rejection. Add real llama-context smoke coverage and truthful backend capability reporting. Do not claim completion from the standalone 59-node graph.
 
-## Task 4: Complete compressed cache execution and invariant monitoring
+## Task 5: Complete compressed cache execution and invariant monitoring
 
 Ownership: libtqcodec, CUDA cache/scoring connection and backend lifecycle patches. Verify format-specific packing against pinned Prism and TheTom sources. Implement three physical K views and shared V with fused or tiled bounded-memory scoring, online softmax and V accumulation; keep scale/mask/gate/sparse semantics. Implement all-view save/restore/copy/position/cancel plus complete provenance identity. Audit CPU coefficients and actual GPU probes at load/change and 1,024 generated tokens or 60 seconds. Stop with transform_invariant_violation and invalidate state on failure; no silent fallback or correction. Test adversarial strides/capacities, masked rows, device fault injection and cache lifecycle.
 
-## Task 5: Carry settings through the shipped Control, CLI and GUI
+## Task 6: Carry settings through the shipped Control, CLI and GUI
 
 Ownership: Strata Control, CLI configuration, host native-control/settings bridge and relevant UI. Provide independent K/V, Spin8 mode/profile and query-sidecar selection through the actual packaged path. Keep Strata, Prism and TheTom separate. Restrict choices to verified operation/shape/device/cache capabilities, disable TheTom auto-asymmetry only in manually configured child processes, and show actual formats and capacities. Test the real settings path, process ownership and unchanged off defaults.
 
-## Task 6: Run calibration, additional training and mandatory model evaluations
+## Task 7: Run calibration, additional training and mandatory model evaluations
 
 Preserve and resume the incomplete Q2_0 shard only after sufficient disk space exists; verify full frozen hashes. Build the auxiliary TheTom weight formats from the approved fixed Qwen2.5-0.5B revision. Reproduce the supplied three synthetic seeds and ten separately fixed additional seeds. Train only additional Q controllers from bounded layer captures of original PQ2_0 weights, at most 1 GiB temporary capture, with recapture after upstream adapters. Keep training/calibration/selection/evaluation separate. Compare all approved arms and total memory including metadata/scratch. Record negative or inconclusive outcomes and continue improvements without claiming release readiness.
 
-## Task 7: Build and test Windows distributions
+## Task 8: Build and test Windows distributions
 
 Target Windows x64, sm_120 and AVX2, one heavy operation and one compile job at a time. Keep dependency pins/locks. Prepare private MSVC Rust/NSIS, fixed Node/Python and required backend DLLs under the artefact root. Separate fork identity and disable upstream update feeds. Resolve redistribution notices. Produce the requested setup.exe and true tar-then-7z portable archive, manifest, SHA-256 and build provenance; models and training environments are excluded. Test install/start/GUI inference/CLI/API/exit/restart/uninstall and portable relocation with spaces and no system Python/Node. Verify 8080 remains stopped and existing model/config data survives.
 
-## Task 8: Review documentation, bind artefacts and publish only after all gates
+## Task 9: Review documentation, bind artefacts and publish only after all gates
 
 Update README and Release opening with an 80–100-word British English TL;DR for AI engineers. Include the supplied vocabulary-KL figure and comparison table with Linux CPU/synthetic/three-seed provenance and confidence intervals. Generate separate local-model tables from saved measurements. Tie source, CI, binary manifest and tag to the same commit. Complete independent review, required CI, hardware and distribution gates before ordinary main push and formal v0.3.0 publication. Download the published assets and verify hashes. If any mandatory gate is unmet, do not publish a formal Release; retain evidence and continue the authorised work.
 
 ## Current evidence and constraints
 
 At execution intake H: reported 582,647,808 free bytes (about 556 MiB). The previous Q2_0 shard-two job failed with ENOSPC and retains its partial file. No new large download/build has been started. A storage clarification is pending while source and small reference work continue. The first-shard full-hash success is prior evidence, not a new verification.
+
+Canonical prompt SHA-256 at intake: `54e80937772be0ac111d00681502b27fdf831803a2aa6f6d8df9424bdfc77073`. Supplied paper ZIP SHA-256: `f9358b4eec96aa302df926a3a7dbf1b8e5401263cea0ada25612f0c0bae1d009`. The retained second-shard prefix is 18,119,393,280 bytes; its final expected length is 28,800,138,432 bytes.
+
+Existing binaries were rerun with `ctest --test-dir <STRATA_DATA>/build/spin8-cuda -C Release --output-on-failure` (8/8 pass, including CUDA) and `ctest --test-dir <STRATA_DATA>/build/tqcodec-cpu -C Release --output-on-failure` (8/8 pass). These are regression checks of existing binaries, not newly built v0.3.0 evidence. The fresh reports remain in each build's `Testing/Temporary` directory. No 8080 listener was found. Device inspection reported RTX 5060 Ti, driver 616.92, 16,311 MiB total VRAM, 1,503 MiB used; available RAM was approximately 15.4 GiB.
+
+The existing Python 3.12 environment imports torch 2.5.1+cu121, pytest 8.3.5 and numpy 2.2.6. Its torch import emits a pynvml deprecation warning. It can provide separate CPU reference evidence; it is not the supplied Linux torch 2.10.0 environment and its old CUDA wheel is not qualified for sm_120. No package was installed to obtain this evidence.
 
 Implementation, mathematical correctness, model compatibility, speed, quality and distribution qualification are separate statuses. None of the v0.3.0 release gates has been claimed complete at intake.
