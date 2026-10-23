@@ -21,7 +21,7 @@
 <sub>A voxel pagoda garden, 1 shot prompt running on an RTX 5070 with Strata (IQ3_S, 128K context) ·
 <a href="https://github.com/Niko1221/Strata/releases/download/v0.1.10/Pagoda.mp4">full video (49 s)</a></sub></p>
 
-Strata runs **[Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next)**, a 125-billion-parameter model that
+Strata — fork TL;DR (zapabob): this edition targets PrismL 2-bit dialect codec, Hikari07-family Bonsai 27B PQ2_0 and Spin8/Triality ops on the V0.3.0 track; formal quality gates remain open per the record at [_docs/2026-10-23_strata_030_execution_Codex.md](_docs/2026-10-23_strata_030_execution_Codex.md) — runs **[Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next)**, a 125-billion-parameter model that
 normally needs a server, on a normal PC. It chats, writes code, reads pictures and works with your apps and coding
 agents. Your chats and files stay on your PC.
 
