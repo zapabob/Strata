@@ -67,10 +67,16 @@ Strata provides two ways to run: the **Desktop GUI App** and the **Terminal CLI*
 
 ### Download Official Release v0.3.0
 
-Download the verified release archive from GitHub:
+Download verified release archives directly from GitHub:
 - **Release Page**: [Strata v0.3.0 Release](https://github.com/zapabob/Strata/releases/tag/v0.3.0)
-- **Archive**: `Strata-0.3.0-windows-x64-sm120-engine-gui.tar.7z` (412.7 MB)
-- **SHA-256**: `97a2d28bc91474bd37c0dcfd0bc8abc1ed10ae8db3b0c774d5ceb5a4f3c9c374`
+- **Archive 1: Standalone Executables (EXE Bundle)**:
+  - `Strata-0.3.0-windows-x64-sm120-exe.tar.7z` (479.3 MB)
+  - **SHA-256**: `ca37ff9f0120fccac47ddb8e8b1b7f3341889aab4c32e9b2ef9ccf63e1497a9a`
+  - *Contains*: `strata.exe` (native CUDA sm_120 inference engine), `strata-desktop.exe`, `strata-vision.exe`, `strata_kq.dll`, `cublas64_13.dll`, `cublasLt64_13.dll`, and MSVC runtimes.
+- **Archive 2: Complete Engine & Desktop GUI Bundle**:
+  - `Strata-0.3.0-windows-x64-sm120-engine-gui.tar.7z` (412.7 MB)
+  - **SHA-256**: `97a2d28bc91474bd37c0dcfd0bc8abc1ed10ae8db3b0c774d5ceb5a4f3c9c374`
+  - *Contains*: Native engine, Python control runtime, and complete Host Web UI.
 
 ### Option A: Desktop Application (GUI)
 

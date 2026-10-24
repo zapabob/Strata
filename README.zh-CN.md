@@ -67,9 +67,16 @@ Strata 支持 **桌面图形界面 (GUI)** 与 **终端命令行 (CLI)** 两种�
 
 ### 下载官方正式发布包 v0.3.0
 
+请从 GitHub Releases 获取经过完整受入验证的安装包：
 - **发布页面**: [Strata v0.3.0 发布页](https://github.com/zapabob/Strata/releases/tag/v0.3.0)
-- **发布归档**: `Strata-0.3.0-windows-x64-sm120-engine-gui.tar.7z` (412.7 MB)
-- **SHA-256**: `97a2d28bc91474bd37c0dcfd0bc8abc1ed10ae8db3b0c774d5ceb5a4f3c9c374`
+- **归档包 1: 独立可执行程序包 (EXE 集合包)**:
+  - `Strata-0.3.0-windows-x64-sm120-exe.tar.7z` (479.3 MB)
+  - **SHA-256**: `ca37ff9f0120fccac47ddb8e8b1b7f3341889aab4c32e9b2ef9ccf63e1497a9a`
+  - *包含组件*: `strata.exe` (原生 CUDA sm_120 推理引擎)、`strata-desktop.exe`、`strata-vision.exe`、`strata_kq.dll`、`cublas64_13.dll`、`cublasLt64_13.dll` 及 MSVC 运行库。
+- **归档包 2: 完整集成引擎与桌面 GUI 归档包**:
+  - `Strata-0.3.0-windows-x64-sm120-engine-gui.tar.7z` (412.7 MB)
+  - **SHA-256**: `97a2d28bc91474bd37c0dcfd0bc8abc1ed10ae8db3b0c774d5ceb5a4f3c9c374`
+  - *包含组件*: 原生推理引擎、Python 控制环境及完整 Host Web UI。
 
 ### 方式 A: 桌面应用程序 (GUI)
 

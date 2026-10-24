@@ -67,10 +67,16 @@ Strata は、**デスクトップ GUI アプリ** と **ターミナル CLI** �
 
 ### 公式リリース v0.3.0 のダウンロード
 
-GitHub リリースから検証済みパッケージを取得できます：
+GitHub リリースから用途に合わせて検証済みパッケージを取得できます：
 - **リリース配布ページ**: [Strata v0.3.0 リリース](https://github.com/zapabob/Strata/releases/tag/v0.3.0)
-- **パッケージ**: `Strata-0.3.0-windows-x64-sm120-engine-gui.tar.7z`（412.7 MB）
-- **SHA-256**: `97a2d28bc91474bd37c0dcfd0bc8abc1ed10ae8db3b0c774d5ceb5a4f3c9c374`
+- **パッケージ 1: スタンドアロン実行バイナリ（EXE 単体バンドル）**:
+  - `Strata-0.3.0-windows-x64-sm120-exe.tar.7z`（479.3 MB）
+  - **SHA-256**: `ca37ff9f0120fccac47ddb8e8b1b7f3341889aab4c32e9b2ef9ccf63e1497a9a`
+  - *同梱内容*: `strata.exe`（ネイティブ CUDA sm_120 推論エンジン）、`strata-desktop.exe`、`strata-vision.exe`、`strata_kq.dll`、`cublas64_13.dll`、`cublasLt64_13.dll`、MSVC ランタイム群、CLI ラッパー。
+- **パッケージ 2: 完全統合エンジン & デスクトップ GUI バンドル**:
+  - `Strata-0.3.0-windows-x64-sm120-engine-gui.tar.7z`（412.7 MB）
+  - **SHA-256**: `97a2d28bc91474bd37c0dcfd0bc8abc1ed10ae8db3b0c774d5ceb5a4f3c9c374`
+  - *同梱内容*: ネイティブエンジン、Python コントロールランタイム、および完全な Host Web UI。
 
 ### 方法 A: デスクトップ GUI アプリケーション
 
