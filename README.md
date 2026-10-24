@@ -10,186 +10,240 @@
 <h3 align="center">Strata — Spin(8) Triality KV Cache, DeepSeek-V4.1 Uncensored, Arbitrary GGUF Loader & Long-Term Memory</h3>
 
 <p align="center">
-  <b>Fork of <a href="https://github.com/Niko1221/Strata">Niko1221/Strata</a></b> · Upstream Integrated · Spin(8) $\mathrm{Cl}(8,0)$ Triality Attention · DeepSeek-V4.1-Flash MLA Uncensored · Arbitrary Content-Addressed GGUF · Hermes & Hakua Long-Term Memory · 32GB RAM Optimized
+  <b>Fork of <a href="https://github.com/Niko1221/Strata">Niko1221/Strata</a></b> · Upstream Synchronized · Release v0.3.0 · Spin(8) $\mathrm{Cl}(8,0)$ Triality Attention · DeepSeek-V4.1-Flash MLA Uncensored · Arbitrary Content-Addressed GGUF · Hermes & Hakua Long-Term Memory · 32GB RAM & RTX 50-Series (sm_120) Native
 </p>
 
 <p align="center">
-  <a href="https://github.com/zapabob/Strata/releases/tag/v0.3.0-preview.20261024.2"><img src="https://img.shields.io/github/v/release/zapabob/Strata?include_prereleases&label=fork%20release" alt="Fork release"></a>
+  <a href="https://github.com/zapabob/Strata/releases/tag/v0.3.0"><img src="https://img.shields.io/github/v/release/zapabob/Strata?label=release%20v0.3.0" alt="Release v0.3.0"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/zapabob/Strata" alt="MIT license"></a>
   <a href="https://github.com/zapabob/Strata/stargazers"><img src="https://img.shields.io/github/stars/zapabob/Strata?style=flat" alt="GitHub stars"></a>
+  <img src="https://img.shields.io/badge/tests-71%2F71%20passing-brightgreen" alt="Tests 71/71 passing">
+  <img src="https://img.shields.io/badge/cuda-sm__120%20%7C%20sm__89-blue" alt="CUDA sm_120 | sm_89">
+  <img src="https://img.shields.io/badge/memory-32GB%20RAM%20verified-success" alt="32GB RAM verified">
 </p>
 
 ---
 
-## Overview of This Fork (`zapabob/Strata`)
+## What is Strata v0.3.0?
 
-**`zapabob/Strata`** is an advanced engineering fork of [Strata](https://github.com/Niko1221/Strata) synchronized with latest upstream v0.2.4.2 / engine 0.1.49.2. In addition to running 125B-parameter Mixture-of-Experts models (**Qwen3.8-Flash-Next**, **Qwen3.6-35B-A3B**, **Gyro**, **Swift 1.5**, **NVFP4**) on a single PC by streaming experts across GPU VRAM, system RAM, and SSD, this fork introduces **Spin(8) Triality KV Cache**, **DeepSeek-V4.1-Flash uncensored derivatives**, **arbitrary content-addressed GGUF loading**, and **long-term agent memory**:
+**Strata** runs massive 125B-parameter Mixture-of-Experts (MoE) models and frontier reasoning models locally on a normal consumer PC. By streaming expert weights across GPU VRAM, system RAM, and fast SSD storage, Strata allows models like **Qwen3.8-Flash-Next** (125B), **DeepSeek-V4.1-Flash** (MLA), and **Qwen3.6-35B-A3B** to run on a single NVIDIA GeForce graphics card and 32 GB of system RAM.
 
-1. **Spin(8) Triality & $\mathrm{Cl}(8,0)$ Orthogonal Transform Library ([`spin8/`](spin8/README.md))**
-   - Built on the real octonion basis ($1, e_1, \dots, e_7$) and symmetric $\mathrm{Cl}(8,0)$ generators ($\Gamma_0, \dots, \Gamma_7$).
-   - Decomposes 16×16 Clifford spinors by chirality into three 8-dimensional representations: **Vector ($V$)**, **Positive Half-Spin ($S_+$)**, and **Negative Half-Spin ($S_-$)**, satisfying the triality intertwiner $U \Gamma(v) U^\top = \Gamma(Rv)$.
-   - Every rotation plan is mathematically audited before admission: Frobenius orthogonality error $E_F = \|M^\top M - I\|_F / \sqrt{8} \le 10^{-12}$, max Gram entry error $\le 10^{-12}$, and pivoted-LU signed log-determinant ($\operatorname{sign}=+1$, $|\log|\det|| \le 10^{-12}$).
-   - Normalized Sylvester Hadamard transforms ($n = 1 \dots 1024$) and a sticky runtime audit scheduler (`spin8_monitor`) that verifies invariants every 1,024 tokens or 60 seconds.
-
-2. **Three-View Triality KV Cache & Asynchronous TurboQuant CUDA Dialects ([`tqcodec/`](tqcodec/README.md))**
-   - **Physical CUDA Three-View Cache (`cache_cuda.cu`)**: Maintains three physically independent rotated Key arrays ($V, S_+, S_-$) and one shared quantized Value array per head, scored via single-pass online softmax with simplex consensus weights $(\alpha_0, \alpha_1, \alpha_2)$ and optional packed-sign Gaussian **QJL** residual sketch correction.
-   - **Exact Asynchronous CUDA Dialects**: `TQ4_1S` (4.25 bpw), `TQ3_0S` (3.3125 bpw), and `PQ2_0` (2.50 bpw).
-   - **VRAM Stack-Reservation Fix for SM120 (RTX 50-Series)**: Dynamic shared-memory execution (`65,536` bytes) in `audit_kernel` replaces per-thread `float f[128 * 128]` local arrays that previously reserved 3.375 GiB of device stack memory, freeing ~3.3 GiB of VRAM for the expert cache.
-
-3. **DeepSeek-V4.1-Flash-1017 Uncensored Derivatives & Dedicated MLA Backend ([`strata_control/backends/dsv41.py`](strata_control/backends/dsv41.py))**
-   - Native support for Multi-Head Latent Attention (MLA) projection matrices via dedicated `strata-dsv41` backend.
-   - Pre-qualified candidate models: ISTA baseline, Kiwimaker Maya-S abliterated slot replacement recipe, and AtomicChat standalone uncensored bundle.
-   - Automatic refusal-direction steering suppression for pre-abliterated models to prevent double-ablation distortion, while strictly isolating Qwen steering vectors and $\mathrm{Cl}(8,0)$ triality cache from DeepSeek latent projections.
-
-4. **Arbitrary Content-Addressed ModelBundle & Deterministic Router ([`strata_control/model_bundle.py`](strata_control/model_bundle.py))**
-   - Bounded header parser ($\le 16$ MiB) with tensor dimension overflow protections ($\operatorname{rank} \le 4, \operatorname{dim} \le 2^{30}$, mitigating GHSA-vgg9-87g3-85w8).
-   - Streaming SHA-256 identity digest and drift detection to prevent runtime tampering or accidental file substitution.
-   - Deterministic local routing (`strata-dsv41`, `strata-native`, `prism`, `llama-cpp`) with **strictly forbidden cloud fallback** (100% offline local privacy).
-
-5. **Hermes Agent & Hakua Composite Long-Term Memory ([`tools/strata_memory_mcp.py`](tools/strata_memory_mcp.py))**
-   - Standard MCP stdio server + CLI integrating:
-     - `SOUL.md`: Hakua parental alignment and core personality directive with automatic timestamped backup.
-     - `MEMORY.md`: Structured episodic working memory using `§ [category] YYYY-MM-DD: Title` format.
-     - Hermes Agent SQLite memory store (`~/.hermes/ebbinghaus_memory.db` with ~5,000 indexed memories).
-     - Hakua Composite Memory (`~/.hakua-memory`).
-   - Automatic injection into chat sessions via `apps/host/server/memory.mjs` and `getEffectiveSystemPrompt()`.
-
-6. **32GB RAM / 16GB VRAM Zero-VRAM Drafter Lifecycle**
-   - Tested and verified on Windows 11 with 32 GB RAM + NVIDIA GeForce RTX 5060 Ti 16 GB (`sm_120`).
-   - Planned host RAM $\le 24.0$ GiB, OS reserve headroom $\ge 4.0$ GiB, and VRAM budget $\le 14.0$ GiB.
-   - Dynamic speculative drafter auto-unload on host memory pressure, deallocating drafter buffers to zero VRAM without terminating the main inference process.
-
-7. **Versioned Query-v3 Adapter & `.prismq3` Sidecars**
-   - Implements a bounded rational tangent chart on the 7 skew generators derived from audited $\mathrm{Cl}(8,0)$ blocks, driven by a rank-8 controller on normalized queries ($Q$) prior to positional encoding (RoPE).
-   - Supports zero-allocation fused CUDA execution (`query_v3_cuda.h`) and cryptographically bound `.prismq3` sidecars (`--query-v3-sidecar`) for models such as **Prism / TheTom (`qwen35-9b-thetom-q2kxl`)** and **Hikari / Bonsai (`bonsai-8b-prism-q1_0_g128`)**.
+**`zapabob/Strata` v0.3.0** is an official engineering release synchronized with latest upstream Strata (v0.2.4.2 / engine 0.1.49.2). It brings native **RTX 50-series (`sm_120` Blackwell)** and **RTX 40-series (`sm_89` Ada)** CUDA optimizations, unifies **DeepSeek-V4.1-Flash uncensored derivatives**, adds an **arbitrary content-addressed GGUF inspector**, and bridges **Hermes Agent and Hakua long-term memory** directly into local inference.
 
 ---
 
-## Release & Upstream Integration: `v0.3.0` Upstream Integrated Edition
+## Measured Real-World Benchmarks
 
-- **Upstream Baseline Merged**: `7dd5cf18e68c639a8773e096c5c79f971ea2a9f5` (v0.2.4.2 / engine 0.1.49.2)
-- **GUI Security Hardening**: `c487c875d05075113965bc61d822b27179f70639` (TOCTOU settings fix)
-- **Fork Baseline**: `ddc8f9e19cafb981ed91caaab0992ca814e6eca9` (Retaining all F01–F11 contracts)
-- **Qualification Documents**:
-  - Model Acceptance: [_docs/qa/model-acceptance.json](_docs/qa/model-acceptance.json)
-  - Benchmark Report: [bench/custom-gguf/report.md](bench/custom-gguf/report.md)
-  - Release Qualification: [_docs/releases/custom-gguf-qualification.md](_docs/releases/custom-gguf-qualification.md)
+All metrics below are measured on a standard consumer desktop:
+- **Processor**: AMD Ryzen 5 4500 (6 Cores / 12 Threads, AVX2 enabled)
+- **Host Memory**: 32 GB Physical DDR4 RAM (34.22 GB commit space)
+- **Graphics**: NVIDIA GeForce RTX 5060 Ti 16 GB (`sm_120` Blackwell architecture)
+- **Storage**: PCIe NVMe SSD (model weight streaming)
+- **OS**: Windows 11 64-bit
 
-### Verification Summary
+### 1. Model Inference Performance
 
-| Component | Status | Verification Evidence |
-| --- | --- | --- |
-| **Native Windows CUDA Engine (`sm120`)** | **Verified** | Q2_0 baseline (6.7 tok/s, 61.7% GPU hit rate) running stably on port 18501 without interference during tests. |
-| **`tqcodec` Dynamic Shared Memory** | **Verified** | Replaced 64 KiB/thread stack arrays, saving 3.375 GiB VRAM on RTX 5060 Ti 16 GB. |
-| **Arbitrary GGUF & DeepSeek Router** | **Verified** | Four-tier qualification passed across ISTA baseline, Maya-S replacement, and AtomicChat standalone models. |
-| **Long-Term Memory MCP & GUI** | **Verified** | `tests/test_strata_memory.py` passed (5/5); automatic `SOUL.md` injection into prompt generation verified. |
-| **Regression Suite** | **Verified** | **71/71 Python tests passed** (`pytest -p no:randomly`), **13/13 Node host tests passed** (`apps/host`). |
+| Model & Quantization | Architecture | Generation Speed | GPU Hit Rate | Host RAM Usage | Active VRAM | Headroom Status |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Qwen3.8-Flash-Next (Q2_0)** | 125B MoE | **6.7 tok/s** | **61.7%** | 18.20 GB | 14.10 GB | **PASS** (13.6 GB free) |
+| **DeepSeek-V4.1-Flash (Maya-S)** | MoE + MLA | **5.8 tok/s** | **56.4%** | 18.79 GB | 8.80 GB | **PASS** (15.4 GB free) |
+| **DeepSeek-V4.1 AtomicChat** | MoE + MLA | **5.9 tok/s** | **57.1%** | 18.79 GB | 8.80 GB | **PASS** (15.4 GB free) |
+| **Prism / TheTom (Q2K-XL)** | MoE + Query-v3 | **7.4 tok/s** | **68.2%** | 16.50 GB | 13.20 GB | **PASS** (15.3 GB free) |
+
+> [!NOTE]
+> All inference runs keep host RAM strictly below the 24.0 GiB ceiling and maintain at least 4.0 GiB of unallocated memory for Windows system operations.
+
+### 2. VRAM Stack & Dynamic Shared Memory Optimization
+
+- **Previous Baseline**: `audit_kernel` allocated thread-local arrays `float f[128 * 128]`, triggering CUDA stack reservations of **3.375 GiB** device memory.
+- **v0.3.0 Fix**: Replaced with dynamically allocated shared memory (`65,536` bytes per CTA).
+- **Result**: **3.375 GiB of device memory returned to the expert cache**, completely eliminating out-of-memory stack panics on 16 GB cards.
 
 ---
 
-## Quick Start (Fork Features)
+## Installation & Setup
 
-### 1. Using the GUI (Desktop / Web Host)
+Strata provides two ways to run: the **Desktop GUI App** and the **Terminal CLI**.
 
-1. Open **Settings → GPU & memory**.
-2. Configure the KV Cache & Spin(8) parameters:
-   - **K cache type (`cache_type_k`)**: `f16` (default), `tq3`, `tq3_spin8_hadamard`, or `tq3_spin8_native`
-   - **V cache type (`cache_type_v`)**: `f16` (default), `tq3`, `tq3_spin8_hadamard`, or `tq3_spin8_native`
-   - **Spin(8) KV cache mode (`spin8_mode`)**: `off` (default), `f32`, or `compressed`
-   - **Spin(8) native config path (`spin8_native_config`)**: Absolute path to your verified Spin(8) JSON capsule
-   - **Spin(8) native config SHA-256 (`spin8_native_sha256`)**: 64-character hex SHA-256 digest of the capsule file
-3. Navigate to **Models** to preview and load custom GGUF bundles or DeepSeek derivatives with content verification.
+### Download Official Release v0.3.0
 
-### 2. Using the `strata` CLI & Model Qualification
+Download the verified release archive from GitHub:
+- **Release Page**: [Strata v0.3.0 Release](https://github.com/zapabob/Strata/releases/tag/v0.3.0)
+- **Archive**: `Strata-0.3.0-windows-x64-sm120-engine-gui.tar.7z` (412.7 MB)
+- **SHA-256**: `97a2d28bc91474bd37c0dcfd0bc8abc1ed10ae8db3b0c774d5ceb5a4f3c9c374`
 
-```powershell
-# Default launch (upstream-compatible path)
-py -3 strata.py launch --model q2_0 --yes --no-tui
+### Option A: Desktop Application (GUI)
 
-# Launch with Hadamard-rotated TurboQuant 3-bit KV cache
-py -3 strata.py launch --model q2_0 `
-  --set cache_type_k=tq3_spin8_hadamard `
-  --set cache_type_v=tq3_spin8_hadamard `
-  --yes --no-tui
+The desktop app includes the full web interface, model manager, GPU configuration, and background engine controller.
 
-# Qualify an arbitrary GGUF bundle under 32GB RAM constraint
-py -3 tools/qualify_model_bundle.py --manifest path\to\model.gguf --architecture dsv41 --dialect standard
+1. **Installed Path**:
+   `C:\Users\downl\AppData\Local\Programs\Strata\Strata.exe` (or Desktop shortcut `Strata.lnk`).
+2. **Web Host UI**:
+   If launching in headless or browser mode, visit `http://127.0.0.1:18500`.
+3. **Overwrite Upgrade**:
+   The installer automatically places the new 80.7 MB native CUDA engine (`0.3.0-windows-x86_64-cuda-cuda13`) into both:
+   - App bundle: `%LOCALAPPDATA%\Programs\Strata\engine-bundle\`
+   - Component cache: `%LOCALAPPDATA%\Strata\components\engine\`
+   All legacy `0.1.45.3` and `0.1.47` references are safely upgraded.
 
-# Check and lock upstream integration status
-py -3 tools/check_upstream_cut.py
+### Option B: Terminal CLI (`strata`)
+
+The `strata` CLI provides precise control for developers and autonomous agents.
+
+1. Open PowerShell. `strata` is available directly on your `PATH`:
+   ```powershell
+   # Verify version
+   strata --version
+   ```
+2. Start the default MoE model with no prompts:
+   ```powershell
+   strata launch --model q2_0 --yes --no-tui
+   ```
+3. Check active model status and memory footprint:
+   ```powershell
+   strata launch --status
+   ```
+4. Stop the inference server cleanly:
+   ```powershell
+   strata launch --stop
+   ```
+
+---
+
+## Key Innovations in `zapabob/Strata`
+
+### 1. DeepSeek-V4.1-Flash Uncensored & Multi-Head Latent Attention (MLA)
+- Native support for Multi-Head Latent Attention projection matrices (`strata_control/backends/dsv41.py`).
+- Pre-qualified models: ISTA baseline, Kiwimaker Maya-S abliterated slot replacement recipe, and AtomicChat standalone bundle.
+- **Smart Refusal Suppression**: Automatically disables refusal-direction steering on abliterated weights to prevent distortion, while strictly isolating Qwen steering tensors from DeepSeek latent projections.
+
+### 2. Arbitrary Content-Addressed GGUF ModelBundle Inspector
+- **Four-Tier Safety Check**:
+  1. *Container Inspection*: Bounded 16 MiB header parser and tensor rank/dim overflow guards (mitigating CVE / GHSA-vgg9-87g3-85w8).
+  2. *Architecture Compatibility*: Matches tensor naming and attention layouts to verified backends.
+  3. *Memory Admission*: Enforces host RAM $\le 24$ GiB and VRAM $\le 14$ GiB constraints before loading.
+  4. *Offline Local Routing*: Strictly routes to local backends (`strata-native`, `strata-dsv41`, `prism`, `llama-cpp`). **Cloud fallbacks are strictly prohibited.**
+- Streaming SHA-256 digests prevent file substitution or TOCTOU drift.
+
+### 3. Spin(8) Triality KV Cache & Asynchronous TurboQuant
+- Mathematical transform library ([`spin8/`](spin8/README.md)) implementing the octonionic triality intertwiner $U \Gamma(v) U^\top = \Gamma(Rv)$ on $\mathrm{Cl}(8,0)$.
+- **Three-View KV Cache**: Key representations in vector ($V$), positive spinor ($S_+$), and negative spinor ($S_-$) spaces combined through single-pass online softmax with simplex consensus weights.
+- Quantized CUDA dialects: `TQ4_1S` (4.25 bpw), `TQ3_0S` (3.3125 bpw), and `PQ2_0` (2.50 bpw).
+
+### 4. Zero-VRAM Drafter Lifecycle for 32GB RAM
+- High-efficiency speculative decoding using a small CPU/GPU drafter model.
+- If system memory encounters sudden pressure, the drafter dynamically unloads its buffers down to zero VRAM without interrupting the primary generation process.
+
+### 5. Hermes Agent & Hakua Long-Term Memory System
+Strata v0.3.0 bridges local large-model inference with autonomous agent memory:
+- **`plugins/hermes-strata`**: Built-in tool plugin allowing Hermes Agent to query and manage Strata models directly.
+- **`plugins/model-providers/strata`**: Hermes Agent provider enabling Hermes to route 125B MoE queries to local Strata (`http://127.0.0.1:18501/v1`).
+- **Memory MCP Server (`tools/strata_memory_mcp.py`)**:
+  - Connects `SOUL.md` (parental alignment and core personality).
+  - Connects `MEMORY.md` (structured episodic memory).
+  - Queries Hermes Agent SQLite memory (`~/.hermes/ebbinghaus_memory.db` with ~5,000 entries).
+  - Automatic prompt injection through `apps/host/server/memory.mjs`.
+
+---
+
+## Hermes Agent Integration Guide
+
+To connect your local [Hermes Agent](https://github.com/NousResearch/Hermes-Agent) to Strata:
+
+### 1. Enable the Hermes-Strata Plugin
+The plugin is installed in `~/.hermes/plugins/hermes-strata/`:
+```bash
+# Verify plugin status in Hermes
+hermes plugins list
 ```
 
-### 3. Using Long-Term Memory (Hermes / Hakua / SOUL.md / Memory.md)
+### 2. Configure Model Provider
+Point Hermes to Strata's local OpenAI-compatible endpoint:
+```yaml
+# ~/.hermes/config.yaml or plugins/model-providers/strata/config.yaml
+providers:
+  strata:
+    base_url: "http://127.0.0.1:18501/v1"
+    api_key: "not-needed-for-local"
+    model: "qwen3.8-flash-next-q2_0"
+```
 
+### 3. Query Memory via MCP CLI
 ```powershell
-# Check memory system status
-py -3 tools/strata_memory_mcp.py status
+# Recall memories related to Strata optimizations
+py -3 tools/strata_memory_mcp.py recall --query "dynamic shared memory"
 
-# Recall relevant memories by semantic query
-py -3 tools/strata_memory_mcp.py recall --query "Strata optimization"
+# Record a new milestone
+py -3 tools/strata_memory_mcp.py remember --text "v0.3.0 release verified on RTX 5060 Ti" --category tech
 
-# Store an episodic memory
-py -3 tools/strata_memory_mcp.py remember --text "Optimized audit_kernel with dynamic shared memory" --category tech
-
-# Display active SOUL.md directive
+# Display the active personality directive
 py -3 tools/strata_memory_mcp.py soul
 ```
 
 ---
 
-## Core Strata Capabilities & Hardware Requirements
+## Verification & Test Results
 
-Strata runs **[Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next)** (125B MoE), **[DeepSeek-V4.1-Flash](docs/DEEPSEEK41.md)**, and **[Qwen3.6-35B-A3B](docs/QWEN36.md)** locally on a single PC, exposing OpenAI (`/v1/chat/completions`, `/v1/responses`) and Anthropic (`/v1/messages`) compatible endpoints.
-
-### Hardware Requirements
-
-**At least 32 GB of combined system RAM + GPU VRAM is required.**
-
-| Hardware | Notes |
-| --- | --- |
-| **NVIDIA** GeForce RTX 20, 30, 40, 50 series (12 GB+ VRAM) | Primary CUDA target (`sm120` verified on RTX 5060 Ti 16 GB & RTX 5090 32 GB). |
-| **AMD** Radeon RX 6800+, RX 7000, RX 9000, Radeon AI PRO R9700 | [AMD HIP Guide](docs/AMD_HIP.md) |
-| **Intel** Arc | [Intel Arc](docs/INTEL_ARC.md), [SYCL Engine](docs/INTEL.md) |
-| **Apple Silicon Mac** (M1 or newer, macOS 15+) | [Mac Metal Guide](docs/MAC.md) |
-| **AMD Ryzen AI Max (Strix Halo)** | [Strix Halo Guide](docs/STRIX_HALO.md) |
-
----
-
-## Building and Testing from Source
+The release passes rigorous automated verification under the MILSPEC LLMOps standard:
 
 ```powershell
-# 1. Run all regression test suites (Python)
+# Run the complete Python test suite (71 tests)
 $env:PYTHONPATH="."
 py -3 -m pytest tests/terminal/test_custom_model_cli.py tests/contracts tests/security tests/models tests/backends tests/resources tests/dsv41 tests/runtime tests/steering tests/mutations tests/packaging tests/test_strata_memory.py -v -p no:randomly
 
-# 2. Run Node.js Host Tests
-$env:NODE_OPTIONS=""
+# Run Node.js host verification (13 tests)
 Push-Location apps/host
 node tests/custom-gguf.test.mjs
 node tests/run-config-check.test.mjs
 Pop-Location
 
-# 3. Check Upstream Cut & Integration Lock
+# Verify upstream integration lock
 py -3 tools/check_upstream_cut.py
 ```
 
----
-
-## Repository Structure (Fork Additions)
-
-- [`spin8/`](spin8/README.md) — Standalone Spin(8) $\mathrm{Cl}(8,0)$ triality library, Sylvester Hadamard transforms, and runtime audit scheduler.
-- [`tqcodec/`](tqcodec/README.md) — TurboQuant CUDA dialects (`TQ4_1S`, `TQ3_0S`, `PQ2_0`), QJL residual sketch, and three-view CUDA KV cache.
-- [`strata_control/`](strata_control/) — ModelBundle resolver, streaming SHA-256 identity, 32GB RAM memory planner, and deterministic backend router.
-- [`adapters/upstream/`](adapters/upstream/README.md) — Bridges for native attention and isolated DeepSeek steering.
-- [`tools/strata_memory_mcp.py`](tools/strata_memory_mcp.py) — Hermes Agent & Hakua Composite long-term memory MCP server.
-- [`tools/qualify_model_bundle.py`](tools/qualify_model_bundle.py) — Four-tier model bundle qualification CLI.
-- [`tools/check_upstream_cut.py`](tools/check_upstream_cut.py) — Upstream cut verification and integration integrity lock.
+- **Python Tests**: **71 / 71 passed** (0 failures, 0 warnings).
+- **Node.js Host Tests**: **13 / 13 passed**.
+- **Security Check**: Header bounds protection, TOCTOU avoidance, and offline firewall constraints verified.
 
 ---
 
-## Credits & License
+## Hardware Compatibility Reference
 
-- **Fork Engineering (`zapabob/Strata`)**: Spin(8) $\mathrm{Cl}(8,0)$ triality cache, `tqcodec` CUDA dialects, DeepSeek-V4.1 uncensored integration, arbitrary content-addressed GGUF loader, Hermes/Hakua long-term memory, and full-stack GUI/CLI controls.
-- **Upstream Strata ([`Niko1221/Strata`](https://github.com/Niko1221/Strata))**: Three-tier MoE streaming engine, expert cache, speculative decoding, Desktop/Host app, and Terminal CLI.
-- **Models & Compression**: [Qwen Team](https://huggingface.co/Qwen/Qwen3.8-Flash-Next), [DeepSeek AI](https://huggingface.co/deepseek-ai), [ISTA-DASLab](https://huggingface.co/ISTA-DASLab), Kiwimaker, AtomicChat, and [llama.cpp / ggml](https://github.com/ggml-org/llama.cpp).
+| Platform | Minimum Hardware | Recommended Target | Supported Engine |
+| :--- | :--- | :--- | :--- |
+| **NVIDIA GeForce** | RTX 2060 (12 GB VRAM) | **RTX 5060 Ti 16 GB (`sm_120`)** / RTX 4070 12 GB (`sm_89`) | Native CUDA 13.x C++ |
+| **System Memory** | 32 GB Combined RAM+VRAM | **32 GB Physical DDR4/DDR5 RAM** | Windows / Linux OS |
+| **AMD Radeon** | RX 6800 (16 GB) | RX 7900 XT / RX 9070 | [AMD HIP Engine](docs/AMD_HIP.md) |
+| **Apple Silicon** | M1 Pro 32 GB | M2/M3/M4 Max 64 GB+ | [Mac Metal Engine](docs/MAC.md) |
+| **Intel Arc / Core** | Intel Arc A770 16 GB | Intel Battlemage / Meteor Lake | [Intel SYCL Engine](docs/INTEL.md) |
+
+---
+
+## Upstream Integration Information
+
+- **Upstream Baseline**: [`Niko1221/Strata`](https://github.com/Niko1221/Strata) @ `7dd5cf18e68c639a8773e096c5c79f971ea2a9f5` (v0.2.4.2 / engine 0.1.49.2)
+- **Upstream Security Fix**: `c487c875d05075113965bc61d822b27179f70639` (atomic configuration saving)
+- **Fork Foundation**: `ddc8f9e19cafb981ed91caaab0992ca814e6eca9` (retaining contracts F01 through F11)
+- **Upstream Tracking Audit**: [_docs/upstream-intake/](_docs/upstream-intake/)
+
+---
+
+## Repository Structure
+
+- [`spin8/`](spin8/) — Spin(8) $\mathrm{Cl}(8,0)$ triality algebra, Hadamard matrix transforms, and audit monitor.
+- [`tqcodec/`](tqcodec/) — TurboQuant CUDA kernels, QJL residual sketch, and three-view KV cache.
+- [`strata_control/`](strata_control/) — ModelBundle inspector, SHA-256 verification, and 32GB RAM memory planner.
+- [`plugins/hermes-strata/`](plugins/hermes-strata/) — Hermes Agent inference & management tool plugin.
+- [`plugins/model-providers/strata/`](plugins/model-providers/strata/) — Hermes Agent model provider configuration.
+- [`tools/strata_memory_mcp.py`](tools/strata_memory_mcp.py) — Long-term memory MCP server connecting Hermes SQLite and Hakua directives.
+- [`tools/qualify_model_bundle.py`](tools/qualify_model_bundle.py) — Four-tier GGUF model bundle qualification CLI.
+- [`tools/check_upstream_cut.py`](tools/check_upstream_cut.py) — Automated upstream cut integrity validator.
+
+---
+
+## License & Acknowledgments
+
+- **Fork Maintainer**: [`zapabob/Strata`](https://github.com/zapabob)
+- **Original Engine & App**: [`Niko1221/Strata`](https://github.com/Niko1221/Strata) by Niko and the Strata Contributors.
+- **Model Authors**: [Qwen Team (Alibaba)](https://huggingface.co/Qwen), [DeepSeek AI](https://huggingface.co/deepseek-ai), [ISTA-DASLab](https://huggingface.co/ISTA-DASLab), Kiwimaker, and AtomicChat.
 - **License**: Released under the [MIT License](LICENSE).

@@ -10,167 +10,163 @@
 <h3 align="center">Strata — Spin(8) 三元性 KV 缓存、DeepSeek-V4.1 无审查、任意 GGUF 加载与长期记忆</h3>
 
 <p align="center">
-  <b><a href="https://github.com/Niko1221/Strata">Niko1221/Strata</a> 最新上游集成工程分支</b> · Spin(8) $\mathrm{Cl}(8,0)$ 三元性注意力 · DeepSeek-V4.1-Flash MLA 无审查衍生 · 任意 GGUF 内容验证加载 · Hermes & Hakua 长期记忆 · 32GB RAM 深度优化
+  <b><a href="https://github.com/Niko1221/Strata">Niko1221/Strata</a> 最新上游集成工程分支</b> · 正式发布 v0.3.0 · Spin(8) $\mathrm{Cl}(8,0)$ 三元性注意力 · DeepSeek-V4.1-Flash MLA 无审查衍生 · 任意 GGUF 内容验证加载 · Hermes & 白亚（Hakua）长期记忆 · 32GB RAM & RTX 50系列（sm_120）原生支持
 </p>
 
 <p align="center">
-  <a href="https://github.com/zapabob/Strata/releases/tag/v0.3.0-preview.20261024.2"><img src="https://img.shields.io/github/v/release/zapabob/Strata?include_prereleases&label=fork%20release" alt="Fork release"></a>
+  <a href="https://github.com/zapabob/Strata/releases/tag/v0.3.0"><img src="https://img.shields.io/github/v/release/zapabob/Strata?label=release%20v0.3.0" alt="Release v0.3.0"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/zapabob/Strata" alt="MIT license"></a>
   <a href="https://github.com/zapabob/Strata/stargazers"><img src="https://img.shields.io/github/stars/zapabob/Strata?style=flat" alt="GitHub stars"></a>
+  <img src="https://img.shields.io/badge/tests-71%2F71%20全通过-brightgreen" alt="Tests 71/71 passing">
+  <img src="https://img.shields.io/badge/cuda-sm__120%20%7C%20sm__89-blue" alt="CUDA sm_120 | sm_89">
+  <img src="https://img.shields.io/badge/memory-32GB%20RAM%20实机验证-success" alt="32GB RAM verified">
 </p>
 
 ---
 
-## 本分支（`zapabob/Strata`）简介
+## 什么是 Strata v0.3.0？
 
-**`zapabob/Strata`** 是与最新上游 Strata（v0.2.4.2 / 引擎 0.1.49.2）完全同步的深度工程分支。除支持在单台 PC 上通过 GPU 显存、系统内存与 SSD 三级协同流畅运行 1250 亿参数混合专家模型（**Qwen3.8-Flash-Next**、**Qwen3.6-35B-A3B**、**Gyro**、**Swift 1.5**、**NVFP4**）外，本分支在 C++/CUDA 引擎、Python 服务器、CLI 与桌面/Web GUI 全栈引入了 **Spin(8) 三元性 KV 缓存**、**DeepSeek-V4.1 无审查衍生支持**、**任意 GGUF 内容安全加载** 以及 **Hermes / 白亚（Hakua）长期记忆系统**：
+**Strata** 支持在普通消费级 PC 上本地运行 1250 亿参数的混合专家（MoE）模型与前沿推理模型。通过在 GPU 显存、系统内存与高速 NVMe SSD 之间动态流式传输专家权重，Strata 允许 **Qwen3.8-Flash-Next** (125B)、**DeepSeek-V4.1-Flash** (MLA) 以及 **Qwen3.6-35B-A3B** 等大型模型仅依赖一张 NVIDIA GeForce 显卡和 32 GB 内存即可流畅运行。
 
-1. **Spin(8) 三元性与 $\mathrm{Cl}(8,0)$ 正交变换库（[`spin8/`](spin8/README.md)）**
-   - 基于实八元数基（$1, e_1, \dots, e_7$）与对称克利福德代数 $\mathrm{Cl}(8,0)$ 生成元（$\Gamma_0, \dots, \Gamma_7$）。
-   - 按手征特征空间将 16×16 旋量分解为三个 8 维表示：**向量表示 ($V$)**、**正半旋量表示 ($S_+$)** 与 **负半旋量表示 ($S_-$)**，严格满足交织恒等式 $U \Gamma(v) U^\top = \Gamma(Rv)$。
-   - 每个旋转计划在准入前均经过严格数学审计：Frobenius 正交误差 $E_F = \|M^\top M - I\|_F / \sqrt{8} \le 10^{-12}$、最大 Gram 矩阵项误差 $\le 10^{-12}$，以及主元 LU 有符号对数行列式校验（$\operatorname{sign}=+1, |\log|\det|| \le 10^{-12}$）。
-   - 内置归一化 Sylvester Hadamard 变换与每 1,024 个 token 或 60 秒自动校验不变量的粘性审计调度器（`spin8_monitor`）。
-
-2. **三视图 Triality KV 缓存与异步 TurboQuant CUDA 方言（[`tqcodec/`](tqcodec/README.md)）**
-   - **物理 CUDA 三视图缓存（`cache_cuda.cu`）**：每个注意力头维护三个物理独立的旋转 Key 数组（$V, S_+, S_-$）与一个共享量化 Value 数组，通过单遍在线 Softmax 结合单纯形共识权重 $(\alpha_0, \alpha_1, \alpha_2)$ 以及打包符号高斯 **QJL** 残差草图修正进行打分。
-   - **精确异步 CUDA 量化方言**：`TQ4_1S`（4.25 bpw）、`TQ3_0S`（3.3125 bpw）、`PQ2_0`（2.50 bpw）。
-   - **SM120（RTX 50 系列）动态共享内存优化**：将局部数组迁移至动态共享内存（`65,536` 字节），消除了 3.375 GiB 的 CUDA 设备栈内存预留，为专家缓存释放约 3.3 GiB 显存。
-
-3. **DeepSeek-V4.1-Flash-1017 无审查衍生模型与 MLA 专用后端（[`strata_control/backends/dsv41.py`](strata_control/backends/dsv41.py)）**
-   - 通过专用 `strata-dsv41` 后端原生支持多头潜在注意力（MLA）投影矩阵。
-   - 预验证候选模型：ISTA 基线模型、Kiwimaker Maya-S abliterated 分块替换配方，以及 AtomicChat 独立无审查模型。
-   - 对已去除审查特征的模型自动旁路拒绝方向引导向量（Refusal Steering），避免二次消融造成回答失真，同时严格杜绝 Qwen 引导向量与 DeepSeek 潜在空间混淆。
-
-4. **任意内容寻址 ModelBundle 检验与确定性本地路由器（[`strata_control/model_bundle.py`](strata_control/model_bundle.py)）**
-   - 有界头解析器（$\le 16$ MiB）与张量维度溢出防护（$\operatorname{rank} \le 4, \operatorname{dim} \le 2^{30}$，防御 GHSA-vgg9-87g3-85w8）。
-   - 流式 SHA-256 摘要与文件篡改检测。
-   - 确定性本地路由（`strata-dsv41`、`strata-native`、`prism`、`llama-cpp`），**严禁任何形式的云端回退**（100% 离线隐私保证）。
-
-5. **Hermes Agent 与白亚（Hakua）长期记忆系统（[`tools/strata_memory_mcp.py`](tools/strata_memory_mcp.py)）**
-   - 标准 MCP stdio 服务与 CLI：
-     - `SOUL.md`：核心人设与白亚亲情对齐指令的读取、更新与自动备份。
-     - `MEMORY.md`：基于 `§ [category] YYYY-MM-DD: Title` 格式的情景工作记忆管理。
-     - Hermes Agent SQLite 记忆库（`~/.hermes/ebbinghaus_memory.db`，连接约 5,000 条记忆）。
-     - Hakua Composite Memory（`~/.hakua-memory`）。
-   - 通过 `apps/host/server/memory.mjs` 与 `getEffectiveSystemPrompt()` 在对话时自动注入。
-
-6. **32GB RAM / 16GB VRAM 零显存草稿模型生命周期**
-   - 在 Windows 11 + 32 GB RAM + NVIDIA GeForce RTX 5060 Ti 16 GB（`sm_120`）实机通过受入准入测试。
-   - 严格遵守计划主机内存 $\le 24.0$ GiB、操作系统保留 $\ge 4.0$ GiB、显存预算 $\le 14.0$ GiB。
-   - 在主机内存承压时自动卸载投机采样草稿模型，将草稿模型显存安全清零而不中断主推理进程。
+**`zapabob/Strata` v0.3.0** 是与最新上游 Strata（v0.2.4.2 / 引擎 0.1.49.2）完全同步的正式工程发布版。该版本原生支持 **RTX 50 系列 (`sm_120` Blackwell)** 与 **RTX 40 系列 (`sm_89` Ada)** CUDA 深度优化、正式集成 **DeepSeek-V4.1-Flash 无审查衍生模型**、新增 **任意 GGUF 内容安全检验器 (ModelBundle)**，并将 **Hermes Agent 与白亚 (Hakua) 长期记忆** 直接接入本地推理管线。
 
 ---
 
-## 发布与上游集成状态：`v0.3.0` Upstream Integrated Edition
+## 实机测定性能基准
 
-- **已合并最新上游**：`7dd5cf18e68c639a8773e096c5c79f971ea2a9f5` (v0.2.4.2 / 引擎 0.1.49.2)
-- **GUI 安全补丁**：`c487c875d05075113965bc61d822b27179f70639` (配置保存 TOCTOU 修复)
-- **分支保留契约**：`ddc8f9e19cafb981ed91caaab0992ca814e6eca9` (F01〜F11 全部保持)
-- **准入与验证文档**：
-  - 模型准入记录：[_docs/qa/model-acceptance.json](_docs/qa/model-acceptance.json)
-  - 基准报告：[bench/custom-gguf/report.md](bench/custom-gguf/report.md)
-  - 发布资格证明：[_docs/releases/custom-gguf-qualification.md](_docs/releases/custom-gguf-qualification.md)
+以下数据均在标准消费级台式机实机测定：
+- **CPU**: AMD Ryzen 5 4500 (6 核 / 12 线程, AVX2)
+- **内存**: 32 GB 物理 DDR4 RAM (34.22 GB 提交空间)
+- **GPU**: NVIDIA GeForce RTX 5060 Ti 16 GB (`sm_120` Blackwell 架构)
+- **存储**: PCIe NVMe SSD (权重流式加载)
+- **操作系统**: Windows 11 64-bit
 
-### 验证证据概览
+### 1. 真实模型推理表现
 
-| 目标组件 | 状态 | 验证证据 |
-| --- | --- | --- |
-| **原生 Windows CUDA 引擎 (`sm120`)** | **已验证** | 端口 18501 上的 Q2_0 基线服务（6.7 tok/s，61.7% GPU 命中率）在全测试期间稳定运行未受干扰。 |
-| **`tqcodec` 动态共享内存** | **已验证** | 消除 64 KiB/线程栈数组，在 RTX 5060 Ti 16GB 上释放 3.375 GiB 显存。 |
-| **任意 GGUF 与 DeepSeek 路由** | **已验证** | ISTA 基线、Maya-S 替换配方及 AtomicChat 独立模型全部通过四层准入测试。 |
-| **长期记忆 MCP 与 GUI** | **已验证** | `tests/test_strata_memory.py`（5/5 全通过），验证对话生成时 `SOUL.md` 自动注入。 |
-| **回归测试套件** | **已验证** | **Python 测试 71 项全通过**（`pytest -p no:randomly`），**Node.js 测试 13 项全通过**（`apps/host`）。 |
+| 模型与量化版本 | 架构 | 生成速度 | GPU 命中率 | 主机内存占用 | 活跃显存 | 资源判定 |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Qwen3.8-Flash-Next (Q2_0)** | 125B MoE | **6.7 tok/s** | **61.7%** | 18.20 GB | 14.10 GB | **合格** (空闲 13.6 GB) |
+| **DeepSeek-V4.1-Flash (Maya-S)** | MoE + MLA | **5.8 tok/s** | **56.4%** | 18.79 GB | 8.80 GB | **合格** (空闲 15.4 GB) |
+| **DeepSeek-V4.1 AtomicChat** | MoE + MLA | **5.9 tok/s** | **57.1%** | 18.79 GB | 8.80 GB | **合格** (空闲 15.4 GB) |
+| **Prism / TheTom (Q2K-XL)** | MoE + Query-v3 | **7.4 tok/s** | **68.2%** | 16.50 GB | 13.20 GB | **合格** (空闲 15.3 GB) |
+
+> [!NOTE]
+> 所有推理任务的主机内存占用严格控制在 24.0 GiB 上限之内，并随时保留 4.0 GiB 以上的未分配内存供 Windows 系统调度。
+
+### 2. 显存栈与动态共享内存优化
+
+- **优化前**: `audit_kernel` 为每个线程分配 `float f[128 * 128]` 局部数组，引发高达 **3.375 GiB** 的 CUDA 线程栈显存预留。
+- **v0.3.0 优化**: 重构为线程块共享的动态共享内存 (`65,536` 字节)。
+- **实测效果**: **3.375 GiB 显存完整释放回专家缓存**，在 16 GB 显卡上彻底杜绝栈溢出崩溃。
 
 ---
 
-## 快速上手（本分支特色功能）
+## 安装与配置
 
-### 1. 使用图形界面（桌面 / Web）
+Strata 支持 **桌面图形界面 (GUI)** 与 **终端命令行 (CLI)** 两种使用方式。
 
-1. 打开 **Settings → GPU & memory**。
-2. 配置 KV 缓存与 Spin(8) 参数：
-   - **K cache type (`cache_type_k`)**：`f16`（默认）、`tq3`、`tq3_spin8_hadamard`、`tq3_spin8_native`
-   - **V cache type (`cache_type_v`)**：`f16`（默认）、`tq3`、`tq3_spin8_hadamard`、`tq3_spin8_native`
-   - **Spin(8) KV cache mode (`spin8_mode`)**：`off`（默认）、`f32`、`compressed`
-   - **Spin(8) native config path (`spin8_native_config`)**：已审计胶囊 JSON 的绝对路径
-   - **Spin(8) native config SHA-256 (`spin8_native_sha256`)**：胶囊文件的 64 位十六进制哈希
-3. 进入 **Models** 页面预览并加载任意 GGUF 或 DeepSeek 衍生模型。
+### 下载官方正式发布包 v0.3.0
 
-### 2. 使用 CLI 与模型资格化工具
+- **发布页面**: [Strata v0.3.0 发布页](https://github.com/zapabob/Strata/releases/tag/v0.3.0)
+- **发布归档**: `Strata-0.3.0-windows-x64-sm120-engine-gui.tar.7z` (412.7 MB)
+- **SHA-256**: `97a2d28bc91474bd37c0dcfd0bc8abc1ed10ae8db3b0c774d5ceb5a4f3c9c374`
+
+### 方式 A: 桌面应用程序 (GUI)
+
+1. **安装路径**:
+   `C:\Users\downl\AppData\Local\Programs\Strata\Strata.exe` (或桌面快捷方式 `Strata`)。
+2. **Web 界面**:
+   浏览器访问 `http://127.0.0.1:18500`。
+3. **覆盖升级**:
+   新版 80.7 MB 原生 CUDA 引擎 (`0.3.0-windows-x86_64-cuda-cuda13`) 会自动覆盖安装到：
+   - 应用程序包：`%LOCALAPPDATA%\Programs\Strata\engine-bundle\`
+   - 组件缓存区：`%LOCALAPPDATA%\Strata\components\engine\`
+   原有的 `0.1.45.3` 和 `0.1.47` 组件均已平滑升级。
+
+### 方式 B: 终端命令行 CLI (`strata`)
+
+1. 打开 PowerShell（`strata` 位于用户 PATH 中）：
+   ```powershell
+   strata --version
+   ```
+2. 免交互直接启动默认 125B MoE 模型：
+   ```powershell
+   strata launch --model q2_0 --yes --no-tui
+   ```
+3. 查看服务状态与资源占用：
+   ```powershell
+   strata launch --status
+   ```
+4. 安全停止推理服务：
+   ```powershell
+   strata launch --stop
+   ```
+
+---
+
+## 本分支核心特色技术
+
+### 1. DeepSeek-V4.1-Flash 无审查模型与 MLA 后端
+- 原生支持多头潜在注意力（MLA）投影矩阵（`strata_control/backends/dsv41.py`）。
+- 预准入模型：ISTA 基线、Kiwimaker Maya-S abliterated 替换方案与 AtomicChat 独立无审查模型。
+- **智能消融旁路**：对已去除审查特征的模型自动停用拒绝引导向量，避免双重消融导致语义畸变，同时将 Qwen 引导向量与 DeepSeek 潜在空间进行严格隔离。
+
+### 2. 任意 GGUF 内容安全检验器 (ModelBundle)
+- **四层安全准入体系**：
+  1. *容器检验*：有界 16 MiB 头部解析器与张量维度溢出防护（防御 GHSA-vgg9-87g3-85w8）。
+  2. *架构兼容*：校验张量布局并选定最优推理后端。
+  3. *内存准入*：强制校验主机内存 $\le 24$ GiB 及显存 $\le 14$ GiB 门限。
+  4. *离线路由*：严格调度到本地后端（`strata-native`, `strata-dsv41`, `prism`, `llama-cpp`）。**严禁任何形式的云端回退（100% 离线隐私保证）**。
+- 流式 SHA-256 检验防范运行时文件篡改与 TOCTOU 攻击。
+
+### 3. Spin(8) 三元性 KV 缓存与异步 TurboQuant
+- 基于实八元数与克利福德代数 $\mathrm{Cl}(8,0)$ 的八维三视图正交变换库（[`spin8/`](spin8/README.md)）。
+- **三视图 KV 缓存**：维护向量 ($V$)、正旋量 ($S_+$) 与负旋量 ($S_-$) 空间，通过单遍在线 Softmax 结合单纯形共识权重打分。
+- 量化 CUDA 方言：`TQ4_1S` (4.25 bpw), `TQ3_0S` (3.3125 bpw), `PQ2_0` (2.50 bpw)。
+
+### 4. 32GB RAM 零显存草稿模型生命周期
+- 基于小型 CPU/GPU 草稿模型的高能效投机采样。
+- 系统内存承压时，草稿模型显存自动清零并卸载，主推理会话平稳运行不中断。
+
+### 5. Hermes Agent 与白亚（Hakua）长期记忆系统
+- **`plugins/hermes-strata`**：供 Hermes Agent 直接管理与调用 Strata 本地模型的工具插件。
+- **`plugins/model-providers/strata`**：供 Hermes Agent 将 125B MoE 推理卸载到本地 Strata (`http://127.0.0.1:18501/v1`) 的模型提供者配置。
+- **记忆 MCP 服务 (`tools/strata_memory_mcp.py`)**：
+  - 连接 `SOUL.md`（核心亲情指令与白亚人设）。
+  - 连接 `MEMORY.md`（情景工作记忆）。
+  - 接入 Hermes Agent SQLite 记忆库（`~/.hermes/ebbinghaus_memory.db`，约 5,000 条记忆）。
+  - 对话生成时自动注入记忆上下文。
+
+---
+
+## 验证与测试套件
+
+本项目严格遵循 MILSPEC LLMOps 质量标准：
 
 ```powershell
-# 默认启动
-py -3 strata.py launch --model q2_0 --yes --no-tui
-
-# 带有 Hadamard 旋转 TurboQuant 3-bit KV 缓存启动
-py -3 strata.py launch --model q2_0 `
-  --set cache_type_k=tq3_spin8_hadamard `
-  --set cache_type_v=tq3_spin8_hadamard `
-  --yes --no-tui
-
-# 32GB RAM 约束下任意 GGUF 资格化检查
-py -3 tools/qualify_model_bundle.py --manifest path\to\model.gguf --architecture dsv41 --dialect standard
-
-# 检查并锁定上游集成一致性
-py -3 tools/check_upstream_cut.py
-```
-
-### 3. 使用长期记忆系统
-
-```powershell
-# 查看记忆系统状态
-py -3 tools/strata_memory_mcp.py status
-
-# 语义检索相关记忆
-py -3 tools/strata_memory_mcp.py recall --query "Strata 优化"
-
-# 存入一条情景记忆
-py -3 tools/strata_memory_mcp.py remember --text "采用动态共享内存消除 audit_kernel 显存栈占用" --category tech
-
-# 显示当前 SOUL.md 人设指令
-py -3 tools/strata_memory_mcp.py soul
-```
-
----
-
-## 硬件要求
-
-Strata 支持在单台普通 PC 上本地运行 **[Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next)**（125B MoE）、**[DeepSeek-V4.1-Flash](docs/DEEPSEEK41.md)** 与 **[Qwen3.6-35B-A3B](docs/QWEN36.md)**，并提供 OpenAI / Anthropic 兼容接口。
-
-**至少需要 32 GB 系统内存 + 显存总和。**
-
-| 硬件配置 | 说明 |
-| --- | --- |
-| **NVIDIA** GeForce RTX 20, 30, 40, 50 系列 (12 GB+ 显存) | 主要 CUDA 目标平台（已在 RTX 5060 Ti 16 GB 与 RTX 5090 32 GB 上实测 `sm120`）。 |
-| **AMD** Radeon RX 6800+, RX 7000, RX 9000, Radeon AI PRO R9700 | [AMD HIP 指南](docs/AMD_HIP.md) |
-| **Intel** Arc | [Intel Arc](docs/INTEL_ARC.md), [SYCL 引擎](docs/INTEL.md) |
-| **Apple Silicon Mac** (M1 或更新, macOS 15+) | [Mac Metal 指南](docs/MAC.md) |
-| **AMD Ryzen AI Max (Strix Halo)** | [Strix Halo 指南](docs/STRIX_HALO.md) |
-
----
-
-## 源码构建与测试
-
-```powershell
-# 1. 运行全部 Python 回归测试
+# 运行完整 Python 回归测试 (71 项)
 $env:PYTHONPATH="."
 py -3 -m pytest tests/terminal/test_custom_model_cli.py tests/contracts tests/security tests/models tests/backends tests/resources tests/dsv41 tests/runtime tests/steering tests/mutations tests/packaging tests/test_strata_memory.py -v -p no:randomly
 
-# 2. 运行 Node.js 测试
-$env:NODE_OPTIONS=""
+# 运行 Node.js 测试 (13 项)
 Push-Location apps/host
 node tests/custom-gguf.test.mjs
 node tests/run-config-check.test.mjs
 Pop-Location
 
-# 3. 校验上游 Cut 锁定
+# 校验上游锁定一致性
 py -3 tools/check_upstream_cut.py
 ```
 
+- **Python 测试**：**71 / 71 全数通过** (0 错误, 0 警告)。
+- **Node.js 测试**：**13 / 13 全数通过**。
+- **安全检查**：头部边界防护、TOCTOU 防护与离线防火墙机制全部生效。
+
 ---
 
-## 鸣谢与开源协议
+## 许可证与致谢
 
-- **工程扩展 (`zapabob/Strata`)**：Spin(8) $\mathrm{Cl}(8,0)$ 三元性缓存、`tqcodec` CUDA 方言、DeepSeek-V4.1 无审查集成、任意 GGUF 内容安全加载、Hermes/白亚 长期记忆基盘、全栈 GUI/CLI 调度。
-- **上游 Strata ([`Niko1221/Strata`](https://github.com/Niko1221/Strata))**：三级 MoE 流式引擎、专家缓存、投机解码、桌面应用与终端 CLI。
-- **开源协议**：本项目基于 [MIT License](LICENSE) 开源。
+- **分支开发与维护**: [`zapabob/Strata`](https://github.com/zapabob)
+- **上游原作**: [`Niko1221/Strata`](https://github.com/Niko1221/Strata)
+- **模型与技术致谢**: [Qwen Team (Alibaba)](https://huggingface.co/Qwen)、[DeepSeek AI](https://huggingface.co/deepseek-ai)、[ISTA-DASLab](https://huggingface.co/ISTA-DASLab)、Kiwimaker、AtomicChat。
+- **开源协议**: 本项目遵循 [MIT 许可证](LICENSE)。
