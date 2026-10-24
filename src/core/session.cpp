@@ -31,6 +31,12 @@
 #endif
 
 namespace strata::core {
+NativeSessionCall::~NativeSessionCall() {
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if (!done) native_session_invalidate(s_);
+#endif
+}
+
 namespace {
 
 constexpr uint64_t SESSION_STATE_ALIGN = 256;
@@ -53,9 +59,15 @@ static uint64_t ple_hist_bytes() {
     return (uint64_t) strata::kernels::NG_HIST * strata::kernels::NG_HC_DIM * sizeof(float);
 }
 
-uint64_t session_bytes(const ModelGeometry& g, int64_t max_cells, int64_t k, int64_t layer_lo, int64_t layer_hi) {
+uint64_t session_bytes(const ModelGeometry& g, int64_t max_cells, int64_t k, int64_t layer_lo, int64_t layer_hi, const NativeSessionConfig* native) {
     if (layer_hi < 0 || layer_hi > g.n_layers) layer_hi = g.n_layers;
     if (layer_lo < 0) layer_lo = 0;
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if(native) {
+        if(layer_lo || layer_hi!=g.n_layers) throw std::invalid_argument("native session: split unsupported");
+        native_session_validate(*native,g,max_cells);
+    }
+#endif
     // QSA layers are `l % interval == interval-1`, so exactly `bound / interval` of them live below `bound`
     const int64_t I = std::max<int64_t>(g.qsa_interval, 1);
     const int64_t q_lo = layer_lo / I, q_hi = layer_hi / I;
@@ -65,6 +77,16 @@ uint64_t session_bytes(const ModelGeometry& g, int64_t max_cells, int64_t k, int
     n += gdn_buffers_bytes(g);
     n += (uint64_t) gdn_n * gdn_state_floats(g) * 4;
     // One QSA state carries the RoPE table; the others borrow it (P7: 64 MiB per layer at 262K).
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if (native) {
+        if (layer_lo || layer_hi != g.n_layers || native->plans.size() != size_t(g.n_qsa_layers()))
+            throw std::invalid_argument("native session requires exact whole-model plans");
+        for (size_t j=0; j<native->plans.size(); ++j)
+            n += qsa_state_bytes(g,max_cells,j==0,0,native_layer_bytes(*native,j));
+    } else
+#else
+    if (native) return 0;
+#endif
     if (g.n_qsa_layers() > 0)
         n += qsa_state_bytes(g, max_cells, true) + (uint64_t) (q_n - 1) * qsa_state_bytes(g, max_cells, false);
     n += qsa_buffers_bytes(g, max_cells);
@@ -75,9 +97,15 @@ uint64_t session_bytes(const ModelGeometry& g, int64_t max_cells, int64_t k, int
 }
 
 uint64_t session_init(const ModelGeometry& g, int64_t max_cells, int64_t k, void* base, SessionState& s,
-                      int64_t layer_lo, int64_t layer_hi) {
+                      int64_t layer_lo, int64_t layer_hi, const NativeSessionConfig* native) {
     if (layer_hi < 0 || layer_hi > g.n_layers) layer_hi = g.n_layers;
     if (layer_lo < 0) layer_lo = 0;
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if(native) {
+        if(layer_lo || layer_hi!=g.n_layers) throw std::invalid_argument("native session: split unsupported");
+        native_session_validate(*native,g,max_cells);
+    }
+#endif
     uint8_t* p = (uint8_t*) base;
     uint64_t used = 0;
     auto take = [&](uint64_t bytes) {
@@ -105,7 +133,18 @@ uint64_t session_init(const ModelGeometry& g, int64_t max_cells, int64_t k, void
     // same way, which is a coupling with nothing to gain.  Only the range's ordinals are initialized; the
     // rest stay value-initialized nulls.  The FIRST ALLOCATED one (the session's primary, ordinal qsa_ord0)
     // owns the RoPE table that the others - and the prefill staging identity, and the MTP drafter - borrow.
-    const uint64_t first = qsa_state_bytes(g, max_cells, true), rest = qsa_state_bytes(g, max_cells, false);
+    uint64_t first = qsa_state_bytes(g, max_cells, true), rest = qsa_state_bytes(g, max_cells, false);
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if (native) {
+        if (layer_lo || layer_hi != g.n_layers || native->plans.size() != size_t(g.n_qsa_layers())) return 0;
+        first=qsa_state_bytes(g,max_cells,true,0,native_layer_bytes(*native,0));
+        rest=qsa_state_bytes(g,max_cells,false,0,native_layer_bytes(*native,0));
+        for(size_t j=1;j<native->plans.size();++j)
+            if(native_layer_bytes(*native,j)!=native_layer_bytes(*native,0)) return 0;
+    }
+#else
+    if(native) return 0;
+#endif
     s.qsa_state_arena = take(g.n_qsa_layers() > 0 ? first + (uint64_t) (s.qsa_alloc - 1) * rest : 0);
     s.qsa_states = new QsaState[(size_t) g.n_qsa_layers()]();
     s.qsa_buf_arena = take(qsa_buffers_bytes(g, max_cells));
@@ -115,7 +154,13 @@ uint64_t session_init(const ModelGeometry& g, int64_t max_cells, int64_t k, void
     // attention read null host pointers at the first request ("illegal memory access"), so the session fails here
     for (int64_t j = 0; j < s.qsa_alloc; ++j)
         if (qsa_state_init(g, max_cells, qp + (j == 0 ? 0 : first + (uint64_t) (j - 1) * rest),
-                           s.qsa_states[s.qsa_ord0 + j], j == 0 ? nullptr : &s.qsa_states[s.qsa_ord0]) == 0)
+                           s.qsa_states[s.qsa_ord0 + j], j == 0 ? nullptr : &s.qsa_states[s.qsa_ord0], 0,
+#if defined(STRATA_WITH_NATIVE_CACHE)
+                           native ? native_layer_bytes(*native,size_t(j)) : 0
+#else
+                           0
+#endif
+                           ) == 0)
             return 0;
     qsa_buffers_init(g, max_cells, s.qsa_buf_arena, s.qsa_bufs);
 
@@ -131,6 +176,9 @@ uint64_t session_init(const ModelGeometry& g, int64_t max_cells, int64_t k, void
 }
 
 void session_release(SessionState& s) {
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    s.native.state.reset(); // caller has already quiesced and destroyed graphs
+#endif
     for (int64_t j = 0; s.qsa_states != nullptr && j < s.qsa_alloc; ++j)
         if (s.qsa_states[j].owns_rope) {
             strata::kernels::rope_table_release(s.qsa_states[j].cos_tab);
@@ -147,6 +195,10 @@ namespace strata::core {
 #endif
 
 void session_zero(SessionState& s, const ModelGeometry& g, const float* R_init, void* stream) {
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if(s.native.state && stream!=s.native.state->stream)
+        throw std::invalid_argument("native session reset requires its bound stream");
+#endif
 #if defined(STRATA_GPU_METAL)
     // the running state lives in the Metal decode window; the session's own device buffers are not read there
     (void) g; (void) R_init; (void) stream;
@@ -179,6 +231,10 @@ void session_zero(SessionState& s, const ModelGeometry& g, const float* R_init, 
     s.ple_prev[0] = -1;
     s.ple_prev[1] = -1;
     s.ple_token = -1;
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    std::string native_error;
+    if (!native_session_reset(s,native_error)) throw std::runtime_error(native_error);
+#endif
 }
 
 /// Sets `s.gdn.state`/`conv_state` for `layer`, which is what makes one layer's GDN state its own.  Shared by
@@ -194,6 +250,10 @@ void gdn_point_at(const ModelGeometry& g, int64_t layer, SessionState& s) {
 /// The per-token staging every QSA layer's captured H2D reads FROM.  Must run before each replay: the graphs
 /// captured the SOURCE POINTER, not the value, and that is exactly why the buffers are pinned and fixed.
 void stage_token(const ModelGeometry& g, int64_t pos, int32_t pos_base, SessionState& s) {
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if(s.native.state && (!s.native.state->valid || pos_base || pos<0 || pos>=s.max_cells))
+        throw std::invalid_argument("native session staging: invalid state/position origin");
+#endif
     const strata::kernels::QsaShapes sh = qsa_shapes(g);
     for (int64_t j = 0; j < s.qsa_alloc; ++j) {
         QsaState& q = s.qsa_states[s.qsa_ord0 + j];
@@ -204,6 +264,12 @@ void stage_token(const ModelGeometry& g, int64_t pos, int32_t pos_base, SessionS
 
 bool session_capture(const WeightTable& tables, const ModelGeometry& g, SessionState& s, const float* parts,
                      SessionGraphs& gr, std::string& err, bool split, int64_t layer_lo, int64_t layer_hi) {
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if(!native_session_ready(s,err)) return false;
+    if(s.native.state && (split || layer_lo>0 || (layer_hi>=0 && layer_hi!=g.n_layers))) {
+        err="native session: split capture unsupported"; return false;
+    }
+#endif
     if (gr.captured) return true;
     if (layer_hi < 0 || layer_hi > g.n_layers) layer_hi = g.n_layers;
     if (layer_lo < 0) layer_lo = 0;
@@ -235,11 +301,16 @@ bool session_capture(const WeightTable& tables, const ModelGeometry& g, SessionS
         auto capture = [&](bool post, cudaGraphExec_t* out, const char* what, int half = 0,
                            int stage_prefix = 0) -> bool {
             cudaStream_t cs = nullptr;
-            if (cudaStreamCreate(&cs) != cudaSuccess) {
+#if defined(STRATA_WITH_NATIVE_CACHE)
+            if (s.native.state) cs=static_cast<cudaStream_t>(s.native.state->stream);
+#endif
+            const bool borrowed=cs!=nullptr;
+            if (!borrowed && cudaStreamCreate(&cs) != cudaSuccess) {
                 err = std::string("session_capture: stream create failed");
                 return false;
             }
             if (cudaStreamBeginCapture(cs, cudaStreamCaptureModeThreadLocal) != cudaSuccess) {
+                if(!borrowed) cudaStreamDestroy(cs);
                 err = "session_capture: begin failed at layer " + std::to_string(l);
                 return false;
             }
@@ -252,18 +323,23 @@ bool session_capture(const WeightTable& tables, const ModelGeometry& g, SessionS
                                                   s.block, (void*) cs, err, s.db, s.ple.ready() ? &s.ple : nullptr,
                                                   half, stage_prefix);
             if (!ok) {
+                cudaGraph_t abandoned=nullptr;
+                cudaStreamEndCapture(cs,&abandoned);
+                if(abandoned) cudaGraphDestroy(abandoned);
+                if(!borrowed) cudaStreamDestroy(cs);
                 err = "session_capture: " + std::string(what) + " layer " + std::to_string(l) + ": " + err;
                 return false;
             }
             cudaGraph_t graph = nullptr;
             const cudaError_t ce = cudaStreamEndCapture(cs, &graph);
-            cudaStreamDestroy(cs);
+            if (!borrowed) cudaStreamDestroy(cs);
             if (ce != cudaSuccess) {
                 err = "session_capture: " + std::string(what) + " layer " + std::to_string(l) + ": " +
                       cudaGetErrorString(ce) + " (a synchronous call in the layer?)";
                 return false;
             }
             if (cudaGraphInstantiate(out, graph, 0) != cudaSuccess) {
+                cudaGraphDestroy(graph);
                 err = "session_capture: instantiate failed at layer " + std::to_string(l);
                 return false;
             }
@@ -291,6 +367,9 @@ bool session_capture(const WeightTable& tables, const ModelGeometry& g, SessionS
 
 bool session_replay(const ModelGeometry& g, int64_t pos, int32_t pos_base, SessionState& s, SessionGraphs& gr,
                     void* stream, std::string& err) {
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if(s.native.state) { err="native session: diagnostic replay unsupported"; return false; }
+#endif
     if (!gr.captured || gr.n != g.n_layers) { err = "session_replay: not captured"; return false; }
     cudaStream_t cs = (cudaStream_t) stream;
     stage_token(g, pos, pos_base, s);
@@ -306,6 +385,9 @@ bool session_replay(const ModelGeometry& g, int64_t pos, int32_t pos_base, Sessi
 
 bool session_replay_full(const ModelGeometry& g, int64_t pos, int32_t pos_base, SessionState& s,
                          SessionGraphs& gr, void* stream, std::string& err) {
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if(s.native.state) { err="native session: diagnostic replay unsupported"; return false; }
+#endif
     if (!gr.captured || gr.n != g.n_layers || gr.posts == nullptr) {
         err = "session_replay_full: not captured with post graphs";
         return false;
@@ -332,6 +414,9 @@ bool session_replay_full(const ModelGeometry& g, int64_t pos, int32_t pos_base, 
 bool session_replay_stages_per_layer(const ModelGeometry& g, int64_t pos, int32_t pos_base, SessionState& s,
                                      SessionGraphs& gr, void* stream, std::vector<double>& mixer_per_layer,
                                      double& ms_ffn, double& ms_post, std::string& err) {
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if(s.native.state) { err="native session: diagnostic replay unsupported"; return false; }
+#endif
     if (!gr.split_captured || gr.preA == nullptr || gr.preB == nullptr) {
         err = "session_replay_stages: not captured with the split";
         return false;
@@ -388,6 +473,9 @@ bool session_replay_stages(const ModelGeometry& g, int64_t pos, int32_t pos_base
 
 bool session_replay_stage_sweep(const ModelGeometry& g, int64_t pos, int32_t pos_base, SessionState& s,
                                 SessionGraphs& gr, void* stream, int k, double& ms, std::string& err) {
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if(s.native.state) { err="native session: diagnostic replay unsupported"; return false; }
+#endif
     if (!gr.split_captured || gr.preP[0] == nullptr) {
         err = "session_replay_stage_sweep: not captured with the split";
         return false;
@@ -429,6 +517,9 @@ bool session_replay_stage_sweep(const ModelGeometry& g, int64_t pos, int32_t pos
 bool session_replay_stage_prefixes(const ModelGeometry& g, int64_t pos, int32_t pos_base, SessionState& s,
                                    SessionGraphs& gr, void* stream, std::vector<double>& stage_ms,
                                    std::vector<double>& mixer_per_layer, std::string& err) {
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if(s.native.state) { err="native session: diagnostic replay unsupported"; return false; }
+#endif
     if (!gr.split_captured || gr.preP[0] == nullptr) {
         err = "session_replay_stage_prefixes: not captured with the split";
         return false;
@@ -592,6 +683,14 @@ void SessionLoopScratch::free() {
 bool session_loop(const ModelGeometry& g, int64_t pos, int32_t pos_base, SessionState& s, SessionGraphs& gr,
                   PoolFn pool, HitFn hits, void* user, bool overlap, void* stream, std::string& err,
                   float* dump_layers, SessionLoopScratch* scratch) {
+    NativeSessionCall native_call(s);
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if (!native_session_ready(s, err)) return false;
+    if (s.native.state && (pos_base != 0 || stream != s.native.state->stream)) {
+        err = "native session: position origin or stream mismatch"; return false;
+    }
+#endif
+
     if (!gr.captured || gr.n != g.n_layers) { err = "session_loop: not captured"; return false; }
     if (gr.parts_dev == nullptr) { err = "session_loop: the graphs were captured without a parts buffer"; return false; }
     if (s.db == nullptr) { err = "session_loop: no doorbell; the loop has nothing to poll"; return false; }
@@ -799,12 +898,24 @@ bool session_loop(const ModelGeometry& g, int64_t pos, int32_t pos_base, Session
         gr.ms_host += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t_ring).count();
     }
     if (cudaStreamSynchronize(cs) != cudaSuccess) { err = "session_loop: final sync"; return false; }
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if (s.native.state && !native_session_observe(s, cudaStreamSynchronize((cudaStream_t)stream)==cudaSuccess, err)) return false;
+#endif
+    native_call.done = true;
     return true;
 }
 
 bool session_token(const WeightTable& tables, const ModelGeometry& g, int64_t pos, int32_t pos_base,
                    SessionState& s, const float* parts, void* stream, bool sync_every_layer,
                    std::string& err) {
+    NativeSessionCall native_call(s);
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if (!native_session_ready(s, err)) return false;
+    if (s.native.state && (pos_base != 0 || stream != s.native.state->stream)) {
+        err = "native session: position origin or stream mismatch"; return false;
+    }
+#endif
+
     cudaStream_t cs = (cudaStream_t) stream;
     int64_t qsa_index = 0;
     int64_t gdn_index = 0;
@@ -843,6 +954,10 @@ bool session_token(const WeightTable& tables, const ModelGeometry& g, int64_t po
             }
         }
     }
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if (s.native.state && !native_session_observe(s, cudaStreamSynchronize((cudaStream_t)stream)==cudaSuccess, err)) return false;
+#endif
+    native_call.done = true;
     return true;
 }
 
@@ -854,6 +969,9 @@ bool session_capture_token(const WeightTable& tables, const ModelGeometry& g, Se
                            const float* y_miss_host, size_t parts_bytes, TokenGraph& tg, std::string& err,
                            const TokenHits* hits) {
     if (hits != nullptr && !hits->on()) { err = "session_capture_token: incomplete hit configuration"; return false; }
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if (!native_session_ready(s, err)) return false;
+#endif
     if (tg.captured) return true;
     if (s.db == nullptr || s.db->d_flag == nullptr || s.db->d_seq == nullptr) {
         err = "session_capture_token: the doorbell has no flag";
@@ -869,9 +987,13 @@ bool session_capture_token(const WeightTable& tables, const ModelGeometry& g, Se
         return false;
     }
     cudaStream_t cs = nullptr;
-    if (cudaStreamCreate(&cs) != cudaSuccess) { err = "session_capture_token: stream create failed"; return false; }
+    bool borrowed = false;
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if (s.native.state) { cs = (cudaStream_t)s.native.state->stream; borrowed = true; }
+#endif
+    if (!borrowed && cudaStreamCreate(&cs) != cudaSuccess) { err = "session_capture_token: stream create failed"; return false; }
     if (cudaStreamBeginCapture(cs, cudaStreamCaptureModeThreadLocal) != cudaSuccess) {
-        cudaStreamDestroy(cs);
+        if (!borrowed) cudaStreamDestroy(cs);
         err = "session_capture_token: begin capture failed";
         return false;
     }
@@ -905,7 +1027,7 @@ bool session_capture_token(const WeightTable& tables, const ModelGeometry& g, Se
     }
     cudaGraph_t graph = nullptr;
     const cudaError_t ce = cudaStreamEndCapture(cs, &graph);
-    cudaStreamDestroy(cs);
+    if (!borrowed) cudaStreamDestroy(cs);
     if (!ok) { if (graph) cudaGraphDestroy(graph); return false; }
     if (ce != cudaSuccess) {
         err = std::string("session_capture_token: end capture: ") + cudaGetErrorString(ce);
@@ -926,6 +1048,14 @@ bool session_capture_token(const WeightTable& tables, const ModelGeometry& g, Se
 
 bool session_run_token(const ModelGeometry& g, int64_t pos, int32_t pos_base, SessionState& s, TokenGraph& tg,
                        PoolFn pool, void* user, float* y_miss_host, void* stream, std::string& err) {
+    NativeSessionCall native_call(s);
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if (!native_session_ready(s, err)) return false;
+    if (s.native.state && (pos_base != 0 || stream != s.native.state->stream)) {
+        err = "native session: position origin or stream mismatch"; return false;
+    }
+#endif
+
     if (!tg.captured) { err = "session_run_token: not captured"; return false; }
     if (y_miss_host != tg.y_src) { err = "session_run_token: the staging buffer is not the captured one"; return false; }
     cudaStream_t cs = (cudaStream_t) stream;
@@ -983,6 +1113,10 @@ bool session_run_token(const ModelGeometry& g, int64_t pos, int32_t pos_base, Se
     if (se != cudaSuccess) { err = std::string("session_run_token: ") + cudaGetErrorString(se); return false; }
     progress_at("decode");
     progress_beat();
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if (s.native.state && !native_session_observe(s, cudaStreamSynchronize((cudaStream_t)stream)==cudaSuccess, err)) return false;
+#endif
+    native_call.done = true;
     return true;
 }
 

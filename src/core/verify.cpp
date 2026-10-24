@@ -675,6 +675,12 @@ bool Verifier::set_logit_bias(const std::vector<float>& bias, std::string& err) 
 
 bool Verifier::init(const WeightTable& wt, const ModelGeometry& g, SessionState& ss, const VerifyHits& hits,
                     const NativeHead* head, int max_t, std::string& err) {
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if(ss.native.state && (ext_stream_!=ss.native.state->stream || !native_session_ready(ss,err))) {
+        if(err.empty()) err="native verifier requires the Session's bound stream before init";
+        return false;
+    }
+#endif
     g_diag_verifier.store(this);
     diag_verify_fn().store(&diag_active_verifier);
     for (auto& slot : g_live) {
@@ -1494,12 +1500,21 @@ bool Verifier::record_window(int T, cudaStream_t cs, std::string& err) {
                                         cudaStream_t sx) {
                     if (native_qsa_enabled()) native_qsa_rms_norm_weighted(data, (const float*) norm->data, data, cols, rows, EPS, sx);
                     else rms_norm_weighted(data, (const float*) norm->data, rows, cols, EPS, sx);
+#if defined(STRATA_WITH_NATIVE_CACHE)
+                    // Query branches normalize on their own stream. The joined main stream
+                    // applies v3 then RoPE exactly once, below, after the original event joins.
+                    if (st.native && norm == wqn) return;
+#endif
                     if (native_rope_enabled()) native_rope_apply(data, data, rows, cols, (int) s.n_rot, rope_scaling(), pos, sx);
                     else rope_neox_apply(data, data, rows, cols, (int) s.n_rot, st.cos_tab, st.sin_tab, pos, sx);
                 };
                 // #783 PR-f (stuchapin909): the per-head RMSNorm and the rope in one launch, bit-identical to the pair
                 // (rope_parity check 6); STRATA_NO_NORM_ROPE=1 keeps the two; off on HIP until its parity check passes
-                const bool fuse_nr = native_qsa_enabled() && native_rope_enabled() && native_norm_rope_usable((int) HD, (int) s.n_rot);
+                const bool fuse_nr =
+#if defined(STRATA_WITH_NATIVE_CACHE)
+                    !st.native &&
+#endif
+                    native_qsa_enabled() && native_rope_enabled() && native_norm_rope_usable((int) HD, (int) s.n_rot);
                 auto norm_rope = [&](float* data, const WeightRef* norm, int rows, int cols, const int32_t* pos) {
                     if (fuse_nr && native_norm_rope_usable(cols, (int) s.n_rot)) {
                         native_qsa_rms_norm_rope(data, cols, (const float*) norm->data, data, rows, cols, (int) s.n_rot, EPS,
@@ -1674,6 +1689,12 @@ bool Verifier::record_window(int T, cudaStream_t cs, std::string& err) {
                 if (!sidem) idx_snap(cs);
                 // #783 PR-d (stuchapin909): the window's K/V cells in one launch per pool instead of one per token (a
                 // batch's rows each have their own K/V, so that case keeps the loop)
+#if defined(STRATA_WITH_NATIVE_CACHE)
+                if (st.native) {
+                    if (!st.native->append(kcur_+tb*NKV*HD,vcur_+tb*NKV*HD,
+                                           step_+tb*kStepCount,size_t(n),err)) return false;
+                } else
+#endif
                 if (dec_batch && !g_no_batch_kv && !batch_rec_) {
                     const int32_t* step_b = step_ + tb * kStepCount;
                     const float* kc_b = kcur_ + tb * NKV * HD;
@@ -1818,6 +1839,18 @@ bool Verifier::record_window(int T, cudaStream_t cs, std::string& err) {
                 }
                 stamp(l, 11, grp);
                 // KV streaming: the n selections' blocks resident (device-side, inside the graph)
+#if defined(STRATA_WITH_NATIVE_CACHE)
+                if (st.native) {
+                    if (qbr) join(0);
+                    if (!st.native->query(qcur_+tb*NH*HD,size_t(n),err)) return false;
+                    if (native_rope_enabled()) native_rope_apply(qcur_+tb*NH*HD,qcur_+tb*NH*HD,
+                        int(n*NH),int(HD),int(s.n_rot),rope_scaling(),pos_+tb*NH,cs);
+                    else rope_neox_apply(qcur_+tb*NH*HD,qcur_+tb*NH*HD,int(n*NH),int(HD),int(s.n_rot),
+                        st.cos_tab,st.sin_tab,pos_+tb*NH,cs);
+                    if (!st.native->attend(qcur_+tb*NH*HD,attn_+tb*NH*HD,sel_+size_t(tb)*cap_,
+                        step_+tb*kStepCount,size_t(n),size_t(cap_),1.f/std::sqrt(float(HD)),err)) return false;
+                } else {
+#endif
                 qsa_kv_resolve(st, *g_, sel_ + (size_t) tb * cap_, step_ + tb * kStepCount, n, cap_, cs);
                 stamp(l, 12, grp);
                 if (qbr) join(0);   // the query, for attention
@@ -1831,6 +1864,9 @@ bool Verifier::record_window(int T, cudaStream_t cs, std::string& err) {
                 qsa_decode_attn_batch(qcur_ + tb * NH * HD, pools, sel_ + (size_t) tb * cap_, step_ + tb * kStepCount, cap_,
                                       s, attn_scratch_ + (size_t) tb * attn_scratch_floats_, attn_ + tb * NH * HD, n, cs);
                 }
+#if defined(STRATA_WITH_NATIVE_CACHE)
+                }
+#endif
                 stamp(l, 13, grp);
                 if (st.kv_rot || st.kv_hybrid) fwht256_inplace_cuda(attn_ + tb * NH * HD, (int64_t) n * NH, cs);   // back: H^-1 = H
                 if (qb) native_qsa_gate_apply(attn_ + tb * NH * HD, qfull_ + tb * NH * 2 * HD, attn32_ + tb * NH * HD,
@@ -2720,6 +2756,10 @@ bool Verifier::run(int T, const int32_t* tokens, int64_t pos0, PoolMultiFn pool,
     if (released_.load()) { err = "verify: an earlier window never finished on the GPU (#267); restart the engine"; return false; }
     const ModelGeometry& g = *g_;
     SessionState& ss = *ss_;
+    NativeSessionCall native_call(ss);
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if (!native_session_ready(ss, err)) return false;
+#endif
     if (pos0 + T > ss.qsa_states[ss.qsa_primary()].max_cells) { err = "verify: the window runs past the context"; return false; }
     // the overlapped split launched this stage's window already: keep the graph variant (#871) chosen for it then,
     // or this thread would serve the window as the other variant
@@ -2965,7 +3005,8 @@ bool Verifier::run(int T, const int32_t* tokens, int64_t pos0, PoolMultiFn pool,
         }
         commit_pending_ = false;
         if (prof_on_ && G == 1) collect_profile();
-        return true;
+        native_call.done = true;
+    return true;
     }
     progress_at("verify window: waiting for the GPU to finish the window (flags A/B/M raised)", (int64_t) T);
     // #267: a window the GPU never finishes (a spin kernel that never sees its flag) holds the host here; the stall
@@ -2983,6 +3024,9 @@ bool Verifier::run(int T, const int32_t* tokens, int64_t pos0, PoolMultiFn pool,
     trace_ev("SYNC", -1, -1, 0);
     const cudaError_t se = cudaStreamSynchronize(cs_);
     trace_ev("SYNCED", -1, -1, (int64_t) se);
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if (ss.native.state && !native_session_observe(ss, se == cudaSuccess, err)) return false;
+#endif
     if (se != cudaSuccess) { err = std::string("verify: ") + cudaGetErrorString(se); return false; }
     if (handoff_failed(err)) return false;   // a stale hand-off: nothing of this window is used
     if (ar_on() && h_plan_err_ != nullptr && *(volatile uint32_t*) h_plan_err_ != 0) {   // #871: refresh_ar saw the table whole
@@ -3061,6 +3105,7 @@ bool Verifier::run(int T, const int32_t* tokens, int64_t pos0, PoolMultiFn pool,
     ++windows;
     progress_at("decode");
     progress_beat();
+    native_call.done = true;
     return true;
 }
 
@@ -3227,6 +3272,10 @@ bool Verifier::commit(int n_keep, std::string& err) {
     return strata::metal_engine::window_commit(metal_, n_keep, err);
 #endif
     const OnDevice on_device(device_);
+    NativeSessionCall native_call(*ss_);
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if (!native_session_ready(*ss_, err)) return false;
+#endif
     if (n_keep < 1 || n_keep > last_t_) { err = "verify: commit count out of range"; return false; }
     const Clock::time_point t0 = Clock::now();
     h_commit_[0] = n_keep;
@@ -3262,6 +3311,9 @@ bool Verifier::commit(int n_keep, std::string& err) {
         // set_commit_async: no wait here - the next window runs on the same stream after it, and the drafter (its own
         // stream) reads only this window's final rows and its own K/V. h_commit_ is next written after the next window's
         // results are read, i.e. after this graph has run.  Everything else waits on commit_done_ (wait_commit).
+#if defined(STRATA_WITH_NATIVE_CACHE)
+        if (!ss_->native.state) {
+#endif
         if (!g_commit_async || next_ != nullptr) {
             const cudaError_t se = cudaStreamSynchronize(cs_);
             if (se != cudaSuccess) { err = std::string("verify: commit: ") + cudaGetErrorString(se); return false; }
@@ -3272,16 +3324,37 @@ bool Verifier::commit(int n_keep, std::string& err) {
             commit_pending_ = true;
         }
     }
+#if defined(STRATA_WITH_NATIVE_CACHE)
+        }
+#endif
+    // Publish even for the legacy T1 self-commit path. The mapped words are
+    // persistent and read on the same stream before the completion event.
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if (ss_->native.state) {
+        std::atomic_thread_fence(std::memory_order_seq_cst);
+        if (!native_session_publish(*ss_, m_commit_, err)) return false;
+        if (!g_commit_async) {
+            if (!native_session_observe(*ss_, cudaStreamSynchronize(cs_) == cudaSuccess, err)) return false;
+        } else {
+            if (cudaEventRecord(commit_done_, cs_) != cudaSuccess) { err="native commit event failed"; return false; }
+            commit_pending_ = true;
+        }
+    }
+#endif
     if (ple_stage())   // stages that share one session must advance it once
         for (int t = 0; t < n_keep; ++t) {
             ss_->ple_prev[0] = ss_->ple_prev[1];
             ss_->ple_prev[1] = last_tokens_[t];
         }
     ms_commit += ms_since(t0);
-    return next_ == nullptr || next_->commit(n_keep, err);
+    native_call.done = next_ == nullptr || next_->commit(n_keep, err);
+    return native_call.done;
 }
 
 bool Verifier::wait_commit(std::string& err) {
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if(ss_ && !native_session_ready(*ss_,err)) return false;
+#endif
 #if defined(STRATA_GPU_METAL)
     (void) err;
     return true;
@@ -3290,6 +3363,9 @@ bool Verifier::wait_commit(std::string& err) {
         const OnDevice on_device(device_);
         commit_pending_ = false;
         const cudaError_t se = cudaEventSynchronize(commit_done_);
+#if defined(STRATA_WITH_NATIVE_CACHE)
+        if (ss_->native.state && !native_session_observe(*ss_, se == cudaSuccess, err)) return false;
+#endif
         if (se != cudaSuccess) { err = std::string("verify: commit: ") + cudaGetErrorString(se); return false; }
     }
     return next_ == nullptr || next_->wait_commit(err);
@@ -3301,6 +3377,9 @@ bool Verifier::wait_commit(std::string& err) {
 bool Verifier::init_slots(const std::vector<SessionState*>& slots, std::string& err) {
     const OnDevice on_device(device_);
     if (g_ == nullptr || ss_ == nullptr) { err = "verify: init_slots before init"; return false; }
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if (ss_->native.state) { err="native session: parallel slots unsupported"; return false; }
+#endif
     if (slots.empty()) {
         err = "verify: init_slots needs at least one session";
         return false;

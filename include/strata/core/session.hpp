@@ -16,6 +16,7 @@
 
 #include "strata/core/hit_hook.hpp"
 #include "strata/core/layer.hpp"
+#include "strata/core/native_cache_runtime.hpp"
 #include "strata/kernels/cpu/pool.hpp"
 
 #include <cuda_runtime.h>
@@ -29,6 +30,7 @@ namespace strata::core {
 /// Everything a sequence needs that is NOT a weight: the per-layer state, the block scratch, and the pinned
 /// handoff between the GPU and the CPU expert pool.
 struct SessionState {
+    NativeSessionHandle native;
     int64_t max_cells = 0;
 
     GdnBuffers gdn;                 ///< the 36 GDN layers share one set of scratch; their STATE is per layer
@@ -96,10 +98,10 @@ struct SessionState {
 /// the default full range is byte-identical to the old whole-model carve.  Pure arithmetic - safe to call for
 /// a candidate range before anything is allocated, which is how the layer-split search prices a placement.
 uint64_t session_bytes(const ModelGeometry& g, int64_t max_cells, int64_t k, int64_t layer_lo = 0,
-                       int64_t layer_hi = -1);
+                       int64_t layer_hi = -1, const NativeSessionConfig* native = nullptr);
 /// Carves `base` (DEVICE memory) into `s`.  Returns the bytes used.  Same range convention as `session_bytes`.
 uint64_t session_init(const ModelGeometry& g, int64_t max_cells, int64_t k, void* base, SessionState& s,
-                      int64_t layer_lo = 0, int64_t layer_hi = -1);
+                      int64_t layer_lo = 0, int64_t layer_hi = -1, const NativeSessionConfig* native = nullptr);
 /// Before the memory `session_init` carved is freed: forgets what points into it from outside the session (the
 /// rope kernels' registered angle table, #280), so a later session never rotates by freed memory.
 void session_release(SessionState& s);

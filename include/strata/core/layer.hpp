@@ -49,6 +49,7 @@
 #include <string>
 
 namespace strata::core {
+class NativeCacheBridge;
 
 /// Select pinned CUDA BF16/F32 projections for SSM gates, routing and the sparse indexer.
 /// Configure before session capture; captured graphs retain the selected implementation.
@@ -207,6 +208,10 @@ bool layer_shared_early();
 /// shorter than the sequence would have `rope_neox_apply` read past it, which is a wrong rotation rather than a
 /// fault.
 struct QsaState {
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    NativeCacheBridge* native = nullptr; // borrowed from SessionState
+    void* native_arena = nullptr;
+#endif
     uint16_t* k_pool = nullptr;      ///< [page][kv_head][page_size][head_dim] fp16 (null in INT8 mode)
     uint16_t* v_pool = nullptr;
     /// Plan v0.3 P7: INT8 KV (qsa_set_kv_int8). Codes [page][kv_head][page_size][head_dim], one FP16 scale per 64.
@@ -276,7 +281,7 @@ struct QsaState {
 /// Plan v0.3 P7: the RoPE cos/sin table (max_cells x n_rot/2 x 2 floats, 64 MiB at 262K) is identical in every
 /// QSA layer. `with_rope = false` sizes a state that borrows it; `share_rope` points `st` at another state's table
 /// instead of building a copy (the session builds it once, in the first QSA layer).
-uint64_t qsa_state_bytes(const ModelGeometry& g, int64_t max_cells, bool with_rope = true, int64_t ring_cells = 0);
+uint64_t qsa_state_bytes(const ModelGeometry& g, int64_t max_cells, bool with_rope = true, int64_t ring_cells = 0, uint64_t native_bytes = 0);
 /// KV streaming: keep `cells` cells of each QSA layer in VRAM and the rest in pinned host memory (0: all in VRAM,
 /// the default). Set before sizing and initializing the session; a context that fits in `cells` is not streamed.
 /// Also puts the MTP drafter's K/V in a ring of its window (`ring_cells` of qsa_state_bytes/init; -1 forces a fully
@@ -324,7 +329,7 @@ inline int qsa_kv_format(const QsaState& st) {
     return st.kv_q4 ? strata::kernels::kKvQ4 : st.kv_int8 ? strata::kernels::kKvInt8 : strata::kernels::kKvF16;
 }
 uint64_t qsa_state_init(const ModelGeometry& g, int64_t max_cells, void* base, QsaState& st,
-                        const QsaState* share_rope = nullptr, int64_t ring_cells = 0);
+                        const QsaState* share_rope = nullptr, int64_t ring_cells = 0, uint64_t native_bytes = 0);
 /// KV streaming: the pools a reader sees (the VRAM slots) and, when streamed, make the selection's blocks resident.
 strata::kernels::QsaAttnPools qsa_attn_pools(const QsaState& st);
 void qsa_kv_resolve(const QsaState& st, const ModelGeometry& g, const int32_t* ids, const int32_t* steps, int64_t n_q,

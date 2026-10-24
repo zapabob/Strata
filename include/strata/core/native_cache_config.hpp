@@ -82,6 +82,7 @@ public:
   const NativeCacheOwnerLayout &layout() const;
   const spin8_query_adapter_layer_spec &geometry() const;
   const tqc_cache_cuda_plan *cache_plan() const;
+  uint64_t capacity() const;
   uint64_t max_queries() const;
   uint64_t max_append_rows() const;
   bool has_adapter() const;

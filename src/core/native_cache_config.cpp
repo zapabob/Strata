@@ -95,7 +95,7 @@ struct NativeCachePlan::Impl {
   spin8_query_adapter_layer_spec geometry{};
   spin8_query_adapter_layer_view view{};
   std::vector<float> identity_parameters;
-  uint64_t max_queries = 0, max_append_rows = 0;
+  uint64_t capacity = 0, max_queries = 0, max_append_rows = 0;
   std::unique_ptr<tqc_cache_cuda_plan, decltype(&tqc_cache_cuda_free)> cache{
       nullptr, tqc_cache_cuda_free};
   std::unique_ptr<spin8_query_adapter, decltype(&spin8_query_adapter_free)>
@@ -197,6 +197,7 @@ NativeCachePlan::bind(const NativeCacheRequested &r,
     }
     p->binding = b;
     p->geometry = b.normal_layers[selected];
+    p->capacity = r.capacity;
     p->max_queries = r.max_queries;
     p->max_append_rows = r.max_append_rows;
     Hash layer("strata-native-cache/logical-layer/v1");
@@ -358,6 +359,7 @@ const spin8_query_adapter_layer_spec &NativeCachePlan::geometry() const {
 const tqc_cache_cuda_plan *NativeCachePlan::cache_plan() const {
   return impl_->cache.get();
 }
+uint64_t NativeCachePlan::capacity() const { return impl_->capacity; }
 uint64_t NativeCachePlan::max_queries() const { return impl_->max_queries; }
 uint64_t NativeCachePlan::max_append_rows() const {
   return impl_->max_append_rows;

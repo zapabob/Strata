@@ -234,3 +234,26 @@ def test_cli_parses_only_the_bytes_it_hashed(
     assert stopped.value.code == 0
     assert calls == [[sys.executable, "original-plan"]]
     assert len(reads) == 1
+
+
+def test_nested_no_console_preserves_child_output(tmp_path: Path) -> None:
+    """A bounded Windows host has no stdin console; preserve both diagnostic pipes."""
+    code = (
+        "import ctypes,sys; from pathlib import Path; "
+        "from native_model_resource_guard import run_owned; "
+        "ctypes.windll.kernel32.SetStdHandle(-10, None); "
+        "r=run_owned([sys.executable,'-B','-c',"
+        "\"import os; os.write(1,b'child-stdout'); os.write(2,b'child-stderr')\"],"
+        "Path(sys.argv[1]),Path(sys.argv[2]),timeout_seconds=10,"
+        "sample=lambda:{'available_physical_bytes':8*1024**3,'available_commit_bytes':8*1024**3}); "
+        "raise SystemExit(r['child_exit_code'])"
+    )
+    child = subprocess.run(
+        [sys.executable, "-B", "-c", code, str(tmp_path/"trace"), str(tmp_path/"result")],
+        cwd=Path(__file__).parent, stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        creationflags=subprocess.CREATE_NO_WINDOW, timeout=15,
+    )
+    assert child.returncode == 0, child.stderr
+    assert child.stdout == b"child-stdout"
+    assert child.stderr == b"child-stderr"

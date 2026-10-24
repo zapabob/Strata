@@ -25,6 +25,9 @@
 #include "strata/core/remote_expert_opt.hpp"
 #include "strata/core/expert_cache.hpp"
 #include "strata/core/conversation_snapshot.hpp"
+#if defined(STRATA_WITH_NATIVE_CACHE)
+#include "strata/core/native_cache_manifest.hpp"
+#endif
 #include "strata/core/conversation_file.hpp"
 #include "strata/core/session_save_reclaim.hpp"
 #include "strata/core/conversation_memory.hpp"
@@ -445,6 +448,9 @@ struct Options {
     bool native_gdn = false;          // pinned CUDA recurrence and preprocessing
     bool native_flash_attn_short = false; // diagnostic pinned attention, context <=256
     std::string spin8_mode = "off";
+    bool spin8_mode_given=false;
+    std::string spin8_native_config, spin8_native_sha, cache_type_k, cache_type_v;
+    bool spin8_native_check = false;
     std::string spin8_profile;
     bool native_qsa_indexer = false;  // pinned F16 key cache and F32 pooling
     bool native_qsa = false;          // pinned F32 QSA norms and gate
@@ -2479,7 +2485,12 @@ int main(int argc, char** argv) {
         else if (a == "--native-moe-combine") o.native_moe_combine = true;
         else if (a == "--native-gdn") o.native_gdn = true;
         else if (a == "--native-flash-attn-short") o.native_flash_attn_short = true;
-        else if (a == "--spin8-mode") o.spin8_mode = next("--spin8-mode");
+        else if (a == "--spin8-mode") { o.spin8_mode = next("--spin8-mode"); o.spin8_mode_given=true; }
+        else if (a == "--spin8-native-check") o.spin8_native_check = true;
+        else if (a == "--spin8-native-config") o.spin8_native_config = next("--spin8-native-config");
+        else if (a == "--spin8-native-sha256") o.spin8_native_sha = next("--spin8-native-sha256");
+        else if (a == "--cache-type-k") o.cache_type_k = next("--cache-type-k");
+        else if (a == "--cache-type-v") o.cache_type_v = next("--cache-type-v");
         else if (a == "--spin8-profile") o.spin8_profile = next("--spin8-profile");
         else if (a == "--native-qsa-indexer") o.native_qsa_indexer = true;
         else if (a == "--native-qsa") o.native_qsa = true;
@@ -3157,6 +3168,27 @@ int main(int argc, char** argv) {
         std::fprintf(stderr, "strata generate: --kv must be fp16, int8, q4_0 or k8v4\n");
         return 2;
     }
+    const bool native_cache_enabled = !o.spin8_native_config.empty();
+    if (!native_cache_enabled && (o.spin8_native_check || !o.spin8_native_sha.empty() || !o.cache_type_k.empty() || !o.cache_type_v.empty())) {
+        std::fprintf(stderr, "strata generate: native cache types/digest require --spin8-native-config\n"); return 2;
+    }
+    if (native_cache_enabled) {
+#if !defined(STRATA_WITH_NATIVE_CACHE)
+        std::fprintf(stderr, "strata generate: native cache backend unavailable\n"); return 2;
+#else
+        if (o.spin8_native_sha.empty() || o.native_preset.empty() || o.spin8_mode != "off" || !o.spin8_profile.empty() ||
+            o.kv != "fp16" || o.kv_resident || o.kv_grow || o.vram_elastic || o.batch || o.serve || o.vision ||
+            o.spec_split || !o.layer_split.empty() || !o.split_device.empty() || o.pipeline_windows > 0 ||
+            !o.mtp.empty() || o.peer_device >= 0 || o.gpu_only_full || o.graph_only || o.gpu_stages ||
+            o.native_flash_attn_short || o.prefill_auto || o.conversation_cache_mib || o.session_save_reclaim ||
+            !o.dump_layers.empty() || !o.dump_halves.empty() || o.prefill_chunk < 1 ||
+            [](const char* name) { const auto* v=std::getenv(name); return v && *v && std::string(v)!="0"; }("STRATA_KV_GROW") ||
+            [](const char* name) { const auto* v=std::getenv(name); return v && *v && std::string(v)!="0"; }("STRATA_KV_ROT") ||
+            [](const char* name) { const auto* v=std::getenv(name); return v && std::atoi(v)!=0; }("STRATA_QFUSE")) {
+            std::fprintf(stderr, "strata generate: native cache requires one resident session, fixed prefill, default KV/origin, no external state, split, legacy Spin or pipeline mode\n"); return 2;
+        }
+#endif
+    }
     strata::core::qsa_set_kv_int8(o.kv == "int8");
     strata::core::qsa_set_kv_q4(o.kv == "q4_0");   // PR #21: 4-bit codes after a Hadamard rotation (kv_q4.hpp)
     // STRATA_KV_ROT=1: INT8 K/V through the Hadamard rotation --kv q4_0 already uses. Opt-in: first-token KL to
@@ -3725,6 +3757,26 @@ int main(int argc, char** argv) {
                              rope_cfg.type == RST::YaRN ? "YaRN" : "--yarn-attn-factor", rope_cfg.mscale());
         }
     }
+    const strata::core::NativeSessionConfig* native_config = nullptr;
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    strata::core::NativeSessionConfig native_config_storage;
+    if (native_cache_enabled) {
+        strata::core::NativeManifestInputs in;
+        in.sources=o.native_shards; in.pack=o.pack; in.geometry=g; in.rope=rope_cfg;
+        in.capacity=(uint64_t)o.max_context; in.rows=(uint64_t)std::max<int64_t>(o.prefill_chunk,o.spec);
+        in.k=o.cache_type_k; in.v=o.cache_type_v; in.explicit_off=o.spin8_mode_given;
+        if (!strata::core::native_manifest_load(o.spin8_native_config,o.spin8_native_sha,in,native_config_storage,err)) {
+            std::fprintf(stderr,"strata generate: %s\n",err.c_str()); return 2;
+        }
+        native_config=&native_config_storage;
+        std::fprintf(stderr,"strata native cache: bound %zu logical QSA layers, rows %zu, cell width %zu, capsule %s\n",
+            native_config->plans.size(),native_config->rows,native_config->selection_width,o.spin8_native_sha.c_str());
+        if(o.spin8_native_check) {
+            std::fprintf(stderr,"strata native cache: admission passed before model/cache allocation\n");
+            return 0;
+        }
+    }
+#endif
     strata::core::NativeEmbed native_embed;
     if (native_pack) {
         if (o.native_preset.empty() || o.spec < 2 || o.keep_canonical ||
@@ -4183,7 +4235,7 @@ int main(int argc, char** argv) {
                                            : (int64_t) lay.max_blob;
             size_t fb = 0, tb = 0;
             cudaMemGetInfo(&fb, &tb);
-            const int64_t session = (int64_t) strata::core::session_bytes(g, o.max_context, K, 0, g.n_layers);
+            const int64_t session = (int64_t) strata::core::session_bytes(g, o.max_context, K, 0, g.n_layers, native_config);
             const int64_t held_back = session + (((int64_t) o.vram_reserve_mib + 1000 + 96) << 20);   // + drafter/head, windows
             const int64_t room = (int64_t) fb - held_back;
             cudaDeviceProp dp{};
@@ -5187,14 +5239,19 @@ int main(int argc, char** argv) {
             strata::core::qsa_set_kv_elastic(on, iv != nullptr && std::atoll(iv) > 0 ? std::atoll(iv) : 16384);
             strata::core::ExpertCache::set_vmm(on);
         }
-        if (cudaMalloc(&sbuf, strata::core::session_bytes(g, o.max_context, K, 0, hi0)) != cudaSuccess) {
+        if (cudaMalloc(&sbuf, strata::core::session_bytes(g, o.max_context, K, 0, hi0, native_config)) != cudaSuccess) {
             std::fprintf(stderr, "strata generate: session state allocation failed\n");
             return 1;
         }
-        if (strata::core::session_init(g, o.max_context, K, sbuf, ss, 0, hi0) == 0) {
+        if (strata::core::session_init(g, o.max_context, K, sbuf, ss, 0, hi0, native_config) == 0) {
             std::fprintf(stderr, "strata generate: session_init failed\n");
             return 1;
         }
+#if defined(STRATA_WITH_NATIVE_CACHE)
+        if (native_config && !strata::core::native_session_attach(ss,g,*native_config,main_cs,err)) {
+            std::fprintf(stderr,"strata generate: %s\n",err.c_str()); return 1;
+        }
+#endif
         if (g.n_qsa_layers() > 0 && ss.qsa_states[ss.qsa_primary()].kv_mode == 1)
             std::fprintf(stderr, "strata generate: KV streaming: %lld of %lld cells per QSA layer in VRAM, the K/V in "
                                  "%.2f GiB of pinned RAM\n",
@@ -6092,7 +6149,7 @@ int main(int argc, char** argv) {
             const int64_t need_b = (((int64_t) at_reserve + prefill_mib) << 20) + mtp_bind + pipe_first + min_slots * blob;
             const int64_t short_mib = std::max<int64_t>(1, (need_b - (int64_t) free_b + (1 << 20) - 1) >> 20);
             const int64_t session_mib =
-                (int64_t) (strata::core::session_bytes(g, o.max_context, K, 0, g.n_layers) >> 20);
+                (int64_t) (strata::core::session_bytes(g, o.max_context, K, 0, g.n_layers, native_config) >> 20);
             const std::string reserve_tip =
                 o.vram_reserve_given && o.vram_reserve_mib > kSmallReserveMib
                     ? ", a smaller --vram-reserve-mib (" + std::to_string(o.vram_reserve_mib) + " now; " +
@@ -15992,6 +16049,9 @@ int main(int argc, char** argv) {
         vh.slot_off = xcache.slot_offsets();   // E-6: the device plan's pointers
         vh.n_slots = xcache.slots();
         if (pcie_balance()) ver.set_pcie_balance(&drive.d.pcie_model);
+#if defined(STRATA_WITH_NATIVE_CACHE)
+        if (ss.native.state) ver.set_stream(static_cast<cudaStream_t>(main_cs));
+#endif
         if (!ver.init(wt, g, ss, vh, native_head.loaded() ? &native_head : nullptr, o.spec, err)) {
             std::fprintf(stderr, "strata generate: %s\n", err.c_str());
             return 1;
@@ -16718,12 +16778,33 @@ int main(int argc, char** argv) {
 
     if (dump != nullptr) std::printf("%-24s %s\n", "logits dumped", o.dump_logits.c_str());
 
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if(ss.native.state) {
+        if(!strata::core::native_session_observe(ss,cudaStreamSynchronize(static_cast<cudaStream_t>(main_cs))==cudaSuccess,err)) {
+            std::fprintf(stderr,"strata native cache: final observation failed: %s\n",err.c_str()); return 1;
+        }
+        for(const auto &layer:ss.native.state->layers) {
+            const auto &state=layer->observed(); const auto &plan=layer->owner().plan();
+            std::fprintf(stderr,"strata native cache: layer %u committed %llu tentative %llu valid %u status %u bytes %zu legacy_history_bytes 0\n",
+                plan.geometry().layer_index,(unsigned long long)state.committed,(unsigned long long)state.tentative,
+                state.valid,state.status,plan.layout().total_bytes);
+        }
+        prefill.reset();
+        strata::core::token_graph_free(tgraph);
+    }
+#endif
     strata::core::session_graphs_free(gr);
     strata::core::doorbell_free(db);
     cudaFree(d_next);
     cudaFree(d_logits);
     cudaFree(d_emb);
     cudaFree(d_parts);
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if (ss.native.state) {
+        if (cudaStreamSynchronize(static_cast<cudaStream_t>(main_cs)) != cudaSuccess) return 1;
+        strata::core::session_release(ss);
+    }
+#endif
     cudaFree(sbuf);
     cudaFree(arena);
     return 0;

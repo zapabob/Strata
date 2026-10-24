@@ -30,6 +30,9 @@
 #include "strata/kernels/native_flash_attn.hpp"
 #if defined(STRATA_WITH_SPIN8)
 #include "strata/core/spin8_attention.hpp"
+#if defined(STRATA_WITH_NATIVE_CACHE)
+#include "strata/core/native_cache_bridge.hpp"
+#endif
 #endif
 #include "strata/kernels/fused_gr.hpp"
 #include "strata/kernels/cvec.hpp"
@@ -774,11 +777,12 @@ int64_t qsa_kv_resident() { return g_kv_resident; }
 int64_t qsa_kv_resident_min() { return 20480; }
 uint64_t qsa_kv_host_bytes() { return g_kv_host_bytes; }
 
-uint64_t qsa_state_bytes(const ModelGeometry& g, int64_t max_cells, bool with_rope, int64_t ring_cells) {
+uint64_t qsa_state_bytes(const ModelGeometry& g, int64_t max_cells, bool with_rope, int64_t ring_cells, uint64_t native_bytes) {
     const QsaShapes s = qsa_shapes(g);
     const KvPlan p = kv_plan(s, max_cells, ring_cells);
     uint64_t n = 0;
-    if (!(g_kv_elastic && p.mode == 0))   // the elastic K/V's pools are in their own VMM range
+    if (native_bytes) n += native_bytes;
+    else if (!(g_kv_elastic && p.mode == 0))   // the elastic K/V's pools are in their own VMM range
         n += kv_pool_bytes(s, p.slots, g_kv_hybrid && ring_cells <= 0,
                            g_kv_int8 || g_kv_hybrid) + 4 * 16;   // K/V pools (the VRAM slots)
     n += (uint64_t) p.pages * 4;                                               // page_table
@@ -790,15 +794,23 @@ uint64_t qsa_state_bytes(const ModelGeometry& g, int64_t max_cells, bool with_ro
     if (with_rope) n += (uint64_t) max_cells * (s.n_rot / 2) * 4 * 2;          // cos + sin tables
     n += strata::kernels::qsa_step_bytes() + 16;                               // counts and aligned attention status
     n += (uint64_t) s.n_head * 4;                                              // pos_dev
-    return align_up16(n) + 256;
+    return native_bytes ? ((n + 511) & ~uint64_t(255)) : align_up16(n) + 256;
 }
 
 uint64_t qsa_state_init(const ModelGeometry& g, int64_t max_cells, void* base, QsaState& st,
-                        const QsaState* share_rope, int64_t ring_cells) {
+                        const QsaState* share_rope, int64_t ring_cells, uint64_t native_bytes) {
     const QsaShapes s = qsa_shapes(g);
     const KvPlan p = kv_plan(s, max_cells, ring_cells);
     const int64_t pages = p.pages;
     Cursor c{(uint8_t*) base};
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if (native_bytes) {
+        if (p.mode || ring_cells || g_kv_elastic || g_kv_int8 || g_kv_q4 || g_kv_hybrid) return 0;
+        st.native_arena = c.take<uint8_t>(native_bytes);
+    }
+#else
+    if (native_bytes) return 0;
+#endif
     st.kv_int8 = g_kv_int8 && !g_kv_q4;
     st.kv_q4 = g_kv_q4;
     // Hybrid K8V4, main layers only (the drafter's state is created with the globals toggled to INT8 -
@@ -814,7 +826,9 @@ uint64_t qsa_state_init(const ModelGeometry& g, int64_t max_cells, void* base, Q
     const uint64_t rows = (uint64_t) p.slots * s.n_head_kv * s.page_size;   // VRAM rows: the slots
     const uint64_t q4_row = strata::kernels::kv_q4_bytes_per_head((int) s.head_dim);
     st.kv_elastic = -1;
-    if (g_kv_elastic && p.mode == 0) {
+    if (native_bytes) {
+        // The three-K/shared-V arena replaces every legacy K/V pool.
+    } else if (g_kv_elastic && p.mode == 0) {
         // the elastic K/V: each array at a chunk boundary of the state's own range, the first cells mapped
         const uint64_t slot_rows = (uint64_t) s.n_head_kv * s.page_size;
         const uint64_t scale_row = (uint64_t) (s.head_dim / strata::kernels::KV_Q8_GROUP) * 2;
@@ -973,6 +987,11 @@ void qsa_state_zero(const QsaState& st, const ModelGeometry& g, void* stream) {
     // an elastic state zeroes what is mapped (the rest is zeroed when it is mapped)
     const int64_t live_slots = st.kv_elastic >= 0 ? pool_slots_mapped(*g_pools[(size_t) st.kv_elastic]) : st.n_slots;
     const size_t rows = (size_t) live_slots * s.n_head_kv * s.page_size;
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if (st.native_arena) {
+        // Reset of the owner and whole-session validity is coordinated by session_zero.
+    } else
+#endif
     if (st.kv_hybrid) {
         cudaMemsetAsync(st.k_q, 0, rows * s.head_dim, cs);
         cudaMemsetAsync(st.k_scale, 0, rows * (s.head_dim / strata::kernels::KV_Q8_GROUP) * 2, cs);
@@ -1135,6 +1154,14 @@ const auto normalize_rotate = [&](float* data, const WeightRef* norm, int rows, 
     try {
         if (native_qsa_enabled()) native_qsa_rms_norm_weighted(data, (const float*) norm->data, data, cols, rows, RMS_EPS, stream);
         else rms_norm_weighted(data, (const float*) norm->data, rows, cols, RMS_EPS, stream);
+#if defined(STRATA_WITH_NATIVE_CACHE)
+        if (st.native && norm == v.get("attn_q_norm.weight")) {
+            if (pos_base != 0 || stream != st.native->owner().context().stream) {
+                err = "native cache: unsupported position origin or stream"; return false;
+            }
+            if (!st.native->query(data,1,err)) return false;
+        }
+#endif
         if (native_rope_enabled()) native_rope_apply(data, data, rows, cols, (int) s.n_rot, rope_scaling(), st.pos_dev, stream);
         else rope_neox_apply(data, data, rows, cols, (int) s.n_rot, st.cos_tab, st.sin_tab, st.pos_dev, stream);
         return true;
@@ -1207,6 +1234,11 @@ if (!gemv_quantized(*w_attnk, p_k, f_k, b.x_q8_0, b.x_q8k, b.kcur, g.n_embd, g.n
 // EVERY ENTRY POINT FROM HERE ON IS THE CAPTURABLE ONE: the per-token counts come from `st.step` and every
 // launch is sized from a capacity in `st`/`b`, so this sequence can be captured and replayed.  The
 // host-scalar wrappers would be correct here today and silently wrong in a graph.
+#if defined(STRATA_WITH_NATIVE_CACHE)
+if (st.native) {
+    if (!st.native->append(b.kcur,b.vcur,st.step,1,err)) return false;
+} else
+#endif
 if (st.kv_hybrid) {
     // K8V4: only V is rotated (kv_q4.hpp's H); the scores pair unrotated q with unrotated INT8 K, and the
     // output - a mix of rotated values - is rotated back after attention. Each append/gather call folds the
@@ -1262,6 +1294,13 @@ int64_t max_blocks = (st.max_cells / s.idx_block) + 2;
     qsa_index_step(st.idx_pooled, b.q_idx, nullptr, s, st.step, max_blocks, b.cell_scores, stream);    topk_512_step(b.cell_scores, s, cap, st.step, b.ids, stream);
     }
     // KV streaming: every block the selection names is made resident before anything reads it
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if (st.native) {
+        if (!st.native->attend(b.qcur,b.attn,b.ids,st.step,1,size_t(cap),
+                               1.f/std::sqrt(float(g.head_dim)),err) ||
+            !st.native->publish_all(err)) return false;
+    } else {
+#endif
     qsa_kv_resolve(st, g, b.ids, st.step, 1, cap, stream);
     if (st.kv_rot) strata::kernels::fwht256_inplace_cuda(b.qcur, g.n_head, stream);   // <Hq, Hk> = <q, k>
     bool strict_spin8 = false;
@@ -1303,6 +1342,9 @@ int64_t max_blocks = (st.max_cells / s.idx_block) + 2;
     }
 } else qsa_attend_step(b.qcur, b.k_scratch, b.v_scratch, st.step, cap, s, b.attn, nullptr, stream);
     }
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    }
+#endif
     if (st.kv_rot || st.kv_hybrid) strata::kernels::fwht256_inplace_cuda(b.attn, g.n_head, stream);   // the output back: H is self-inverse
     dump_slot(dump, g, layer, b.attn, (uint64_t) 2 * g.n_embd + 2 * g.hc,                            (uint64_t) g.n_head * g.head_dim, stream);    {        const uint64_t vs = (uint64_t) 2 * g.n_embd + 2 * g.hc + (uint64_t) g.n_head * g.head_dim +                            (uint64_t) 2 * g.n_head_kv * g.head_dim;        dump_slot(dump, g, layer, (const float*) b.v_scratch, vs,                            (uint64_t) g.n_head_kv * g.head_dim / 2, stream);        dump_slot(dump, g, layer, (const float*) b.ids, vs + (uint64_t) g.n_head_kv * g.head_dim / 2, 4, stream);        dump_slot(dump, g, layer, (const float*) st.step,                            vs + (uint64_t) g.n_head_kv * g.head_dim / 2 + 4, 4, stream);    }
 // ---- 9. Gate the attention output before its projection. Native CUDA keeps F32

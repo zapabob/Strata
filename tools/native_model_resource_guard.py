@@ -16,6 +16,7 @@ import json
 import logging
 from pathlib import Path
 import subprocess
+import sys
 import time
 
 from run_native_validation_step import digest
@@ -101,7 +102,11 @@ def run_owned(
         start = time.monotonic()
         try:
             process = subprocess.Popen(
-                command, creationflags=subprocess.CREATE_NO_WINDOW
+                command, creationflags=subprocess.CREATE_NO_WINDOW,
+                # The outer Windows job host has no console stdin. Supply all
+                # three handles explicitly or CREATE_NO_WINDOW can lose both
+                # diagnostic streams in the nested process.
+                stdin=subprocess.DEVNULL, stdout=sys.stdout, stderr=sys.stderr,
             )
             result["owned_pid"] = (
                 process.pid

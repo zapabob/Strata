@@ -3290,6 +3290,11 @@ bool Prefill::run_impl(const int64_t* tokens, int64_t n, int64_t pos0, std::stri
 #endif
                     const bool host_by_dma = staged && kv_host_dma;
                     const strata::kernels::KvHostPools* host_w = host_by_dma ? nullptr : &st.host;
+#if defined(STRATA_WITH_NATIVE_CACHE)
+                    if (st.native) {
+                        if (!st.native->append(m.Kc,m.Vc,m.steps_dev,size_t(T),err)) return false;
+                    } else
+#endif
                     if (st.kv_hybrid) {   // K8V4: K INT8 unrotated, V rotated Q4_0 (only V and the output rotate)
                         // streamed: each half writes its part of the host copy and of the staging pool
                         strata::kernels::fwht256_inplace_cuda(m.Vc, T * 2, m.cs);
@@ -3323,6 +3328,9 @@ bool Prefill::run_impl(const int64_t* tokens, int64_t n, int64_t pos0, std::stri
                     if (staged) pf_step("reading the prompt (batched, step sync): the K/V append at layer", l);
                     split_q(m.Qf, m.q, T, m.cs);
                     rms_rows(m.q, (const float*) wqn->data, T * 24, 256, 256, EPS, m.cs);
+#if defined(STRATA_WITH_NATIVE_CACHE)
+                    if (st.native && !st.native->query(m.q,size_t(T),err)) return false;
+#endif
                     rope(m.q, T, 24, 256, 6144, p0, strata::kernels::rope_scaling(), m.cs);
                     if (st.kv_rot) strata::kernels::fwht256_inplace_cuda(m.q, T * 24, m.cs);
                     rms_rows(m.q_idx, (const float*) wiqn->data, T * 4, 128, 128, EPS, m.cs);
@@ -3458,6 +3466,12 @@ bool Prefill::run_impl(const int64_t* tokens, int64_t n, int64_t pos0, std::stri
                             }
                         }
                     }
+#if defined(STRATA_WITH_NATIVE_CACHE)
+                    if (st.native) {
+                        if (!st.native->attend(m.q,m.attn,m.sel_ids,m.steps_dev,size_t(T),size_t(m.cap),
+                            1.f/std::sqrt(float(g.head_dim)),err) || !st.native->publish_all(err)) return false;
+                    } else {
+#endif
                     const strata::kernels::QsaAttnPools pools = staged ? pools_of(m.stage, m.ident_table)
                                                                        : core::qsa_attn_pools(st);
                     pt.mark(kPfQsaAttn, cs);
@@ -3474,6 +3488,9 @@ bool Prefill::run_impl(const int64_t* tokens, int64_t n, int64_t pos0, std::stri
                                                                    m.steps_dev + t0 * strata::kernels::kStepCount, m.cap,
                                                                    s, m.attn_scratch, m.attn + t0 * ZV, nb, m.cs);
                         }
+#if defined(STRATA_WITH_NATIVE_CACHE)
+                    }
+#endif
                     if (st.kv_rot || st.kv_hybrid) strata::kernels::fwht256_inplace_cuda(m.attn, T * 24, m.cs);
                     pt.mark(kPfQsa, cs);
                     const int64_t ld_a = pf_pad() && T >= std::max<int64_t>(pf_switch_min_t(), 64) ? ZV + ZV_PAD : 0;
@@ -5091,6 +5108,10 @@ bool Prefill::run(const int64_t* tokens, int64_t n, int64_t pos0, std::string& e
         return ok;
     }
 #endif
+    strata::core::NativeSessionCall native_call(*impl_->ss);
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if (!strata::core::native_session_ready(*impl_->ss, err)) return false;
+#endif
     const bool body_ok = run_impl(tokens, n, pos0, err);
 
     std::string drain_err;
@@ -5101,6 +5122,10 @@ bool Prefill::run(const int64_t* tokens, int64_t n, int64_t pos0, std::string& e
         err = drain_err;
         return false;
     }
+#if defined(STRATA_WITH_NATIVE_CACHE)
+    if (!strata::core::native_session_observe(*impl_->ss, true, err)) return false;
+#endif
+    native_call.done = true;
     // STRATA_MMQ_DIRECT=1 with STRATA_MMQ_DIRECT_LOG=1 (a check, not a default): each stage's totals so far - how many
     // resident experts its prompt MMQ read in their slots, of all its resident and streamed ones
     if (mmq::direct_mode() == 1) {
