@@ -110,15 +110,21 @@ def runtime_resources() -> dict:
     memory.length = ctypes.sizeof(memory)
     if not ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(memory)):
         raise OSError("GlobalMemoryStatusEx failed")
-    gpu = subprocess.check_output(
-        [
-            str(Path(os.environ["SystemRoot"]) / "System32/nvidia-smi.exe"),
-            "--query-gpu=memory.free",
-            "--format=csv,noheader,nounits",
-        ],
-        text=True,
-        creationflags=subprocess.CREATE_NO_WINDOW,
-    )
+    try:
+        gpu = subprocess.check_output(
+            [
+                str(Path(os.environ["SystemRoot"]) / "System32/nvidia-smi.exe"),
+                "--query-gpu=memory.free",
+                "--format=csv,noheader,nounits",
+            ],
+            text=True,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+            timeout=10,
+        )
+    except subprocess.TimeoutExpired as error:
+        # check_output owns and reaps this probe; no inference/guard child has
+        # been launched. Keep this a typed failed preflight, never zero VRAM.
+        raise ValueError("runtime GPU preflight timed out after 10 seconds") from error
     free_gpu_mib = int(gpu.splitlines()[0])
     if memory.free_physical < 4 * 1024**3 or memory.free_commit < 8 * 1024**3:
         raise ValueError("runtime RAM/commit preflight failed")

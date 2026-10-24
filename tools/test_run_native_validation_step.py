@@ -52,7 +52,7 @@ def test_failed_or_unfinished_prerequisite_never_launches(
     assert calls == []
 
 
-@pytest.mark.parametrize("failure", ["binary", "resources"])
+@pytest.mark.parametrize("failure", ["binary", "resources", "gpu_timeout"])
 def test_failed_in_process_preflight_never_launches_guard(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str
 ) -> None:
@@ -125,7 +125,15 @@ def test_failed_in_process_preflight_never_launches_guard(
         raise ValueError("injected memory preflight failure")
 
     monkeypatch.setattr(subprocess, "run", forbidden)
-    monkeypatch.setattr(launcher, "runtime_resources", failed_resources)
+    if failure == "gpu_timeout":
+
+        def stalled_gpu(*args: object, **kwargs: object) -> str:
+            assert kwargs.get("timeout") == 10
+            raise subprocess.TimeoutExpired("nvidia-smi", 10)
+
+        monkeypatch.setattr(subprocess, "check_output", stalled_gpu)
+    else:
+        monkeypatch.setattr(launcher, "runtime_resources", failed_resources)
     label = "failed-" + uuid.uuid4().hex
     with pytest.raises(ValueError, match="SHA-256|preflight"):
         run_step(plan, label, [prior])
