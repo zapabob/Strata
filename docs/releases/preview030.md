@@ -30,7 +30,7 @@ Qwen3.8-Flash-Next GSQ-RCO Q2_0 pack and two matching shards under `models\q2_0`
   --tokens-file .\examples\ready-tokens.txt --max-new 32 --max-context 256 `
   --mmap-experts --expert-cache auto --expert-profile .\data\expert-profile.bin `
   --prefill 32 --eos-ids 248044,248046 --spin8-mode off --check-logits --gpu 0 `
-  --spec 2 --suffix-draft 0 --lookup-chain 0 --vram-reserve-mib 6144
+  --spec 2 --suffix-draft 0 --lookup-chain 0 --vram-reserve-mib 10240
 ```
 
 `ready-tokens.txt` encodes the 30-token diagnostic asking for READY. This is a pretokenised engine
@@ -51,10 +51,16 @@ recommendations for other machines.
 | Hikari/Bonsai, Prism/TheTom integration | Research/integration source exists | No end-to-end claim in this preview | These are not separately qualified executables or model variants |
 | GUI, HTTP, persistence, GPU monitor | Upstream/source components exist | Not qualified by this archive | No GUI installer, HTTP server, reconnect/persistence or monitor acceptance included |
 
-The same final executable produced READY/EOS with the official auto expert-cache policy and
-6144 MiB reserve, context 256 and speculation 2. A prior 4096 MiB-reserve attempt was stopped by
-the unchanged commit-memory guard. These failures remain evidence; a successful two-token answer
-does not establish model quality or a speed improvement. Experimental opt-in modes require a
+The extracted final archive (`dcb40730897432c4a68925be9b9ee0b8c6bda7108143e884ff43df00d493a9d8`,
+408,044,259 bytes) passed `--help` and actual off-mode Q2 generation (`off-clean-reserve10240`) from a
+space-containing path with `PATH` restricted to `C:\Windows\System32` (verified from the child PEB),
+all six bundled CUDA/MSVC DLLs loaded from the extracted directory, `--expert-cache auto` and
+`--vram-reserve-mib 10240` (1,030 expert-cache slots, 1.33 GiB VRAM), decoding `READY` and terminating
+on EOS with exit code 0 and zero remaining owned processes. Earlier runs on the extracted bundle with
+6144 MiB reserve passed when launched through `uv` (`off-final`, which injected Python PATH entries)
+and stopped on the unchanged 2 GiB commit-memory guard (`off-clean-final`) when host commit headroom
+tightened. Prior 4096 MiB-reserve and 9216 MiB-reserve runs are also preserved. A successful two-token
+answer does not establish model quality or a speed improvement. Experimental opt-in modes require a
 manually validated capsule and the source tooling. Machine-specific capsules are not distributed.
 
 Tested platform: Windows 11 Pro 10.0.26300, AMD Ryzen 5 4500, 32 GiB physical RAM,
@@ -65,11 +71,13 @@ The embedded engine version remains 0.1.47; the preview number is distribution m
 
 ## Integrity, source and licences
 
-`preview-manifest.json` gives the frozen source and packaging commits, binary/DLL hashes, exact
+`preview-manifest.json` gives the frozen source (`c121dc8aa004a1eb8313b64ff73eaa512f5f0712`) and
+archive-freeze (`ca0d8c169ce29571b4a3a81d7a55f13f946529ee`) commits, binary/DLL hashes, exact
 file sizes, build-input digest and recursively inspected PE imports. It excludes itself.
 The release's outer SHA-256 covers the final archive. SHA-256 detects corruption; it is not an
 identity signature. The executable is unsigned. The archive is immutable after final verification.
-An external `qualification.json` records the checks performed on the extracted final bytes.
+An external `qualification.json` (`bf6c6de583f4e23aa1bedc343b07614647530a51e15ef7afe38de44cba480a1d`)
+records the checks performed on the extracted final bytes.
 
 Native source corresponds to commit `c121dc8aa004a1eb8313b64ff73eaa512f5f0712`.
 The reused executable SHA-256 is `cb491ae5c0b6636cdb18eb3e1c1840fecda1cfc82d252fb95aae4e98181ee542`;

@@ -31,13 +31,17 @@ synthetic PoC figure and small seed/aggregate files are preserved with hashes; a
 reproduction checks the numerical table and exploratory interval without training or new plots.
 Single-six-bit outperformed the triality arms; the trained-query paired interval includes zero.
 
-The new readonly-contents CPU workflow covers Windows and Linux Spin8/codec contracts and
-packaging boundary tests. It has no publishing credentials or automatic release action.
+The readonly-contents CPU workflow covers Windows and Linux Spin8/codec contracts, PoC
+numerical reproduction and packaging boundary tests. On Linux, the workflow supplies a
+temporary pre-included header that redirects glibc's obsolete global `gamma(double)` symbol
+during `<cmath>` inclusion so `spin8/src/spin8.cpp` compiles without modifying frozen native
+compiler inputs. It has no publishing credentials or automatic release action.
 CPU CI is not CUDA inference qualification.
 
 ## Source and dependency evidence
 
 Native source content is frozen at c121dc8aa004a1eb8313b64ff73eaa512f5f0712.
+The archive-freeze commit is ca0d8c169ce29571b4a3a81d7a55f13f946529ee.
 The reused executable is cb491ae5c0b6636cdb18eb3e1c1840fecda1cfc82d252fb95aae4e98181ee542;
 strata_kq.dll is f3bba767420ee22cbf221b2bceea58f96b10e5713421ec0c58d8f1a730091713.
 No engine rebuild was performed. All 2,061 original build inputs were rechecked. Checkout
@@ -61,7 +65,7 @@ https://visualstudio.microsoft.com/license-terms/vs2022-ga-community/
 https://visualstudio.microsoft.com/license-terms/vs2022-ga-diagnosticbuildtools/
 https://visualstudio.microsoft.com/license-terms/vs2022-cruntime/
 
-## Checks before archive freeze
+## Checks before and after archive freeze
 
 Python commands used uv run --no-project --offline with existing Python 3.12; no dependency
 installation or global environment repair. Packaging unittest: 12 passed. Black formatting
@@ -71,14 +75,28 @@ CPU tqcodec with dialects and Spin8 composition: 10/10 passed in 8.39 seconds.
 Both were fresh builds, --config Release --parallel 1, CUDA OFF, followed by ctest
 --output-on-failure --no-tests=error. No changed native engine was compiled.
 
-The first source audit rejected raw newline drift; a bounded canonical-blob check resolved
-it without modifying source/configuration. An initial ad-hoc dependency inspection had a
-Python parenthesis error and was corrected before use. The first lint run found the intentional
-test-loader E402; annotation then passed. No failed checks were counted as runtime evidence.
+The frozen archive `Strata-0.3.0-preview.20261024.1-windows-x64-sm120-engine.tar.7z`
+(`dcb40730897432c4a68925be9b9ee0b8c6bda7108143e884ff43df00d493a9d8`, 408,044,259 bytes)
+passed `7z t`, two-step extraction into `H:/Strata/build/preview-package-20261024/extracted space/Strata-native-preview`,
+22-file payload hash/size verification, recursive PE import verification and clean-PATH
+(`C:\Windows\System32`) `--help` (exit 0, contained before resume, 0 active processes after cleanup).
 
-Archive extraction, clean-PATH startup and guarded actual-model checks follow this source
-freeze. Final private report records their terminal results and immutable artefact hashes.
-Cloud CPU CI and downloaded-release verification are controller closeout gates.
+Actual extracted-bundle off-mode Q2 inference ran in three preserved stages:
+1. `off-final` (6144 MiB reserve, launched via `uv`): decoded `READY` and EOS (`44061, 248046`),
+   exit 0, all six bundled CUDA/MSVC DLLs loaded from the extracted directory, but PEB inspection
+   showed `uv` injected Python directories into `PATH`.
+2. `off-clean-final` (6144 MiB reserve, launched directly with `PATH=C:\Windows\System32`):
+   PEB confirmed `PATH=C:\Windows\System32` and all six DLLs from the extracted directory, but
+   available commit fell to 2,129,047,552 bytes at 143.125 s (`commit_memory_pressure`), stopping
+   before generation completed (outer Job exit 125, `active_processes_after_cleanup=0`).
+3. `off-clean-reserve10240` (10240 MiB reserve, `--expert-cache auto` selecting 1,030 slots /
+   1.33 GiB VRAM, launched directly with `PATH=C:\Windows\System32`): PEB confirmed
+   `PATH=C:\Windows\System32` (PID 8684), all six bundled CUDA/MSVC DLLs loaded from the extracted
+   directory, 30-token prompt, context 256, spec 2, decoded `READY` and EOS (`44061, 248046`),
+   child exit 0, `owned_child_reaped=true`, `contained_before_resume=true`,
+   `active_processes_after_cleanup=0`.
+`verify_qa.py` verified all receipts and wrote `H:/Strata/releases/0.3.0-preview.20261024.1/qualification.json`
+(`bf6c6de583f4e23aa1bedc343b07614647530a51e15ef7afe38de44cba480a1d`) and `SHA256SUMS.txt`.
 
 ## Risk, containment and self-review
 
@@ -90,5 +108,7 @@ timeouts and owned-process cleanup remain unchanged. No 8080 service is started.
 Known limits: native F32 prefill only, compressed generation unrun, no quality/speed/long-context
 or GUI claim, unsigned nonportable build tested on one machine. Rollback is to stop using this
 separate extracted preview; no installed app/update feed is modified. Evidence is retained.
-Self-review trigger: release preparation and source-byte QA rejection. Corrective scope stays
-in the task's source-binding report and package checks; no governance/skill changes are needed.
+Self-review trigger: release preparation, source-byte QA rejection, `uv` PATH injection in the
+first QA run, and glibc `gamma(double)` collision in Linux CPU CI. Corrective scope stays in
+the task's source-binding report, strict-PATH reserve-adjusted QA run, and workflow CMake flags;
+no governance/skill or frozen native source changes are needed.

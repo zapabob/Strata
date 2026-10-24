@@ -17,6 +17,7 @@ on:
       - 'packaging/native_preview.py'
       - 'packaging/binary_deps.py'
       - 'tests/terminal/test_native_preview.py'
+      - 'docs/research/triality-poc/**'
       - 'tools/*spin8*'
       - '.github/workflows/native-preview.yml'
   pull_request:
@@ -35,6 +36,7 @@ on:
       - 'packaging/native_preview.py'
       - 'packaging/binary_deps.py'
       - 'tests/terminal/test_native_preview.py'
+      - 'docs/research/triality-poc/**'
       - 'tools/*spin8*'
       - '.github/workflows/native-preview.yml'
   workflow_dispatch:
@@ -60,14 +62,39 @@ jobs:
           python-version: '3.12'
       - name: Packaging boundary tests (no runtime downloads)
         run: python -B -m unittest discover -s tests/terminal -p test_native_preview.py
+      - name: PoC numerical aggregation reproduction
+        run: python -B docs/research/triality-poc/reproduce.py
+      - name: Prepare Linux glibc math compatibility header
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          cat << 'EOF' > "${RUNNER_TEMP}/glibc_math_compat.h"
+          #ifdef __cplusplus
+          #define gamma __glibc_obsolete_gamma
+          #include <cmath>
+          #undef gamma
+          #endif
+          EOF
       - name: Configure CPU Spin8
-        run: cmake -S spin8 -B build-preview-spin8 -DSPIN8_ENABLE_CUDA=OFF -DSPIN8_BUILD_TESTS=ON
+        shell: bash
+        run: |
+          EXTRA_FLAGS=()
+          if [ "${RUNNER_OS}" = "Linux" ]; then
+            EXTRA_FLAGS+=("-DCMAKE_CXX_FLAGS=-include ${RUNNER_TEMP}/glibc_math_compat.h")
+          fi
+          cmake -S spin8 -B build-preview-spin8 -DSPIN8_ENABLE_CUDA=OFF -DSPIN8_BUILD_TESTS=ON "${EXTRA_FLAGS[@]}"
       - name: Build CPU Spin8
         run: cmake --build build-preview-spin8 --config Release --parallel 2
       - name: Test CPU Spin8
         run: ctest --test-dir build-preview-spin8 -C Release --output-on-failure --no-tests=error
       - name: Configure CPU codecs
-        run: cmake -S tqcodec -B build-preview-tqcodec -DBUILD_TESTING=ON -DTQCODEC_DIALECTS=ON -DTQCODEC_DIALECTS_CUDA=OFF -DTQCODEC_SPIN8_TESTS=ON
+        shell: bash
+        run: |
+          EXTRA_FLAGS=()
+          if [ "${RUNNER_OS}" = "Linux" ]; then
+            EXTRA_FLAGS+=("-DCMAKE_CXX_FLAGS=-include ${RUNNER_TEMP}/glibc_math_compat.h")
+          fi
+          cmake -S tqcodec -B build-preview-tqcodec -DBUILD_TESTING=ON -DTQCODEC_DIALECTS=ON -DTQCODEC_DIALECTS_CUDA=OFF -DTQCODEC_SPIN8_TESTS=ON "${EXTRA_FLAGS[@]}"
       - name: Build CPU codecs
         run: cmake --build build-preview-tqcodec --config Release --parallel 2
       - name: Test CPU codecs
