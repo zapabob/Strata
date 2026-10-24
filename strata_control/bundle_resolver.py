@@ -57,10 +57,22 @@ def resolve_bundle(
         raise FileNotFoundError(f"Selected model path does not exist: {p}")
 
     # Check for adapter-only artifacts
-    p_name_lower = p.name.lower()
-    if any(k in p_name_lower for k in ("controlvector", "lora", "mmproj", "adapter")):
-        if selection.artifact_kind == "model":
-            raise ValueError(f"Artifact '{p.name}' is an auxiliary adapter, not a runnable base model")
+    is_adapter = False
+    if selection.architecture in ("adapter", "controlvector") or selection.artifact_kind in ("adapter", "controlvector"):
+        is_adapter = True
+    else:
+        try:
+            from strata_control.model_bundle import inspect_gguf_file
+            meta = inspect_gguf_file(p)
+            if meta.architecture in ("adapter", "controlvector"):
+                is_adapter = True
+        except Exception:
+            p_name_lower = p.name.lower()
+            if p_name_lower.startswith("mmproj-") or p_name_lower.endswith((".lora.gguf", ".adapter.gguf", "-adapter.gguf", "_adapter.gguf")):
+                is_adapter = True
+
+    if is_adapter and selection.artifact_kind == "model":
+        raise ValueError(f"Artifact '{p.name}' is an auxiliary adapter, not a runnable base model")
 
     # Detect shard pattern: e.g. model-00002-of-00006.gguf or model.gguf-02-of-04
     split_pattern = re.search(r"(\d+)-of-(\d+)", p.name)
@@ -112,7 +124,7 @@ def resolve_bundle(
         rec_path = Path(recipe.replacement_path)
         if not rec_path.exists():
             raise FileNotFoundError(f"Replacement shard does not exist: {rec_path}")
-        if recipe.slot >= len(files):
+        if recipe.slot < 0 or recipe.slot >= len(files):
             raise IndexError(f"Replacement slot {recipe.slot} out of range ({len(files)} shards)")
         
         # Replace the target slot without modifying original file

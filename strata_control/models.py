@@ -34,7 +34,7 @@ MAX_CONFIGS = 128
 MAX_IMPORT_SHARDS = 128
 SHARD = re.compile(r"(.+)-(\d{5})-of-(\d{5})\.gguf\Z", re.I)
 SUPPORTED_ARCHITECTURES = frozenset({
-    "qwen4exp", "qwen35", "qwen2", "qwen", "llama", "deepseek2", "deepseek", "dsv41", "mistral", "phi"
+    "qwen4exp", "qwen35", "qwen2", "qwen", "llama", "deepseek2", "deepseek", "dsv41", "deepseek41", "qwen35moe", "mistral", "phi"
 })
 SUPPORTED_SELECTIONS = frozenset({"qwen/Q2_0", "qwen/IQ2_XS", "qwen/IQ3_XXS", "qwen/IQ3_S",
                                    "swift/IQ2_XS", "swift/IQ3_XXS", "swift/IQ3_S", "coder/IQ1_M",
@@ -413,7 +413,9 @@ def _assess_projector(path: Path) -> dict:
         size = path.stat().st_size
     except OSError:
         size = -1
-    row = {"name": path.name, "status": "unreadable", "pinned": PINNED_PROJECTORS.get(path.name.lower()) == size}
+    pinned_size = PINNED_PROJECTORS.get(path.name.lower())
+    is_pinned = pinned_size is not None and abs(pinned_size - size) <= 4096
+    row = {"name": path.name, "status": "unreadable", "pinned": is_pinned}
     try:
         info = inspect_metadata(path)
     except ProfileError:
@@ -715,23 +717,48 @@ def plan_import(raw_path: str) -> dict:
         candidate = _candidate_by_header(shards, observed_tensor_count, observed_payload, observed_experts)
     if candidate is None and metadata is not None and not issues:
         arch = metadata.get("architecture")
-        if arch in ("qwen35", "prism") or any("PQ2_0" in t for t in metadata.get("tensor_types", {})):
+        if arch in ("dsv41", "deepseek", "deepseek2", "deepseek41"):
             candidate = {
-                "family": "prism",
-                "model": "hikari-27b-pq2_0",
-                "basis": "prism_pq2_0_descriptor",
-                "expected_expert_types": list(observed_experts),
-                "expected_tensor_count": observed_tensor_count,
-                "setup_args_hint": ["--family", "prism", "--model", "hikari-27b-pq2_0", "--gguf-dir", str(shards[0].parent)],
-            }
-        elif arch in ("dsv41", "deepseek", "deepseek2"):
-            candidate = {
-                "family": "deepseek",
-                "model": "dsv41-flash",
+                "family": "deepseek41",
+                "model": "IST-DAS-2.00bpw",
                 "basis": "deepseek_v4_1_descriptor",
                 "expected_expert_types": list(observed_experts),
                 "expected_tensor_count": observed_tensor_count,
-                "setup_args_hint": ["--family", "deepseek", "--model", "dsv41-flash", "--gguf-dir", str(shards[0].parent)],
+                "setup_args_hint": ["--family", "deepseek41", "--model", "IST-DAS-2.00bpw", "--gguf-dir", str(shards[0].parent)],
+            }
+        elif arch in ("qwen35moe",):
+            candidate = {
+                "family": "qwen36",
+                "model": "UD-Q4_K_XL",
+                "basis": "qwen35moe_descriptor",
+                "expected_expert_types": list(observed_experts),
+                "expected_tensor_count": observed_tensor_count,
+                "setup_args_hint": ["--family", "qwen36", "--model", "UD-Q4_K_XL", "--gguf-dir", str(shards[0].parent)],
+            }
+        elif arch == "qwen4exp" or (arch in ("qwen2", "qwen", "qwen35") and any("flash" in p.name.lower() or "swift" in p.name.lower() for p in shards)):
+            is_swift = any("swift" in p.name.lower() for p in shards)
+            fam = "swift" if is_swift else "qwen"
+            mod = "IQ2_XS"
+            for q_name in ("IQ2_XS", "IQ3_XXS", "IQ3_S", "Q2_0", "Q2_K", "Q4_K", "Q8_0"):
+                if any(q_name.lower() in p.name.lower() for p in shards):
+                    mod = q_name
+                    break
+            candidate = {
+                "family": fam,
+                "model": mod,
+                "basis": "qwen4exp_descriptor",
+                "expected_expert_types": list(observed_experts),
+                "expected_tensor_count": observed_tensor_count,
+                "setup_args_hint": ["--family", fam, "--model", mod, "--gguf-dir", str(shards[0].parent)],
+            }
+        elif arch in ("qwen35", "prism") or any("PQ2_0" in t for t in metadata.get("tensor_types", {})):
+            candidate = {
+                "family": "qwen",
+                "model": "Q2_0",
+                "basis": "prism_pq2_0_descriptor",
+                "expected_expert_types": list(observed_experts),
+                "expected_tensor_count": observed_tensor_count,
+                "setup_args_hint": ["--family", "qwen", "--model", "Q2_0", "--gguf-dir", str(shards[0].parent)],
             }
     if "multiple_model_groups" in issues:
         candidate = None                                  # nothing is chosen for the person

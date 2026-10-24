@@ -27,6 +27,18 @@ class MinimalGgufBuilder:
         self.metadata.append((key, 8, payload))
         return self
 
+    def add_array_string(self, key: str, values: list[str]) -> MinimalGgufBuilder:
+        """Add an array of strings (type 9, element type 8)."""
+        buf = io.BytesIO()
+        buf.write(struct.pack("<I", 8))  # Element type = STRING
+        buf.write(struct.pack("<Q", len(values)))  # Array length
+        for v in values:
+            enc = v.encode("utf-8")
+            buf.write(struct.pack("<Q", len(enc)))
+            buf.write(enc)
+        self.metadata.append((key, 9, buf.getvalue()))
+        return self
+
     def add_tensor(self, name: str, dims: list[int], type_id: int, offset: int, data: bytes = b"") -> MinimalGgufBuilder:
         self.tensors.append((name, dims, type_id, offset, data))
         return self
