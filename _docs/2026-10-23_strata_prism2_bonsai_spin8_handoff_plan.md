@@ -2,7 +2,7 @@
 
 作成日: 2026-10-23
 対象: Strata 0.3.0 実装・Windows配布・正式公開
-状態: 引き継ぎ用計画。実装完了やRelease承認を示す記録ではない。
+状態: 2026-10-23時点の基幹計画。最新の実行状態（G1 PASS、G2起動後停止、H:空き容量の再確認要）は [2026-10-24_strata_030_handoff_implementation_plan_Codex.md](2026-10-24_strata_030_handoff_implementation_plan_Codex.md) を参照する。この計画単独で実装完了やRelease承認を示すものではない。
 
 ## 目的
 
