@@ -314,12 +314,12 @@ __device__ bool finite_input(const float *x) {
       return false;
   return true;
 }
-__global__ void append_kernel(tqc_cache_cuda_device p,
-                              tqc_cache_cuda_append r) {
+__global__ void append_kernel(tqc_cache_cuda_device p, tqc_cache_cuda_append r,
+                              size_t call_capacity) {
   if (!ready(p))
     return;
   const size_t count = command(p)->append_rows, first = state(p)->tentative;
-  if (count > p.config.max_append_rows || count > p.config.capacity - first) {
+  if (count > call_capacity || count > p.config.capacity - first) {
     fail(p, TQC_CC_CAPACITY);
     return;
   }
@@ -397,11 +397,10 @@ __global__ void append_kernel(tqc_cache_cuda_device p,
           position(r.positions, row / p.config.kv_heads);
   }
 }
-__global__ void finish_append(tqc_cache_cuda_device p) {
+__global__ void finish_append(tqc_cache_cuda_device p, size_t call_capacity) {
   if (!threadIdx.x && !blockIdx.x && ready(p)) {
     size_t n = command(p)->append_rows;
-    if (n > p.config.max_append_rows ||
-        n > p.config.capacity - state(p)->tentative) {
+    if (n > call_capacity || n > p.config.capacity - state(p)->tentative) {
       fail(p, TQC_CC_CAPACITY);
       return;
     }
@@ -447,12 +446,13 @@ __device__ void decoded(tqc_cache_cuda_device p, bool value, int view,
     turbo_decode(dialect, src, out);
 }
 __global__ void attend_kernel(tqc_cache_cuda_device p,
-                              tqc_cache_cuda_attention r) {
+                              tqc_cache_cuda_attention r,
+                              size_t call_capacity) {
   const size_t row = size_t(blockIdx.x) * blockDim.x + threadIdx.x,
                nq = command(p)->query_rows;
   if (!ready(p))
     return;
-  if (nq > p.config.max_queries) {
+  if (nq > call_capacity) {
     fail(p, TQC_CC_CAPACITY);
     return;
   }
@@ -571,8 +571,9 @@ __global__ void attend_kernel(tqc_cache_cuda_device p,
   }
 }
 } // namespace
-extern "C" int tqc_cache_cuda_append_rows(const tqc_cache_cuda_context *c,
-                                          const tqc_cache_cuda_append *r) {
+static int append_rows_impl(const tqc_cache_cuda_context *c,
+                            const tqc_cache_cuda_append *r,
+                            size_t call_capacity, bool legacy) {
   int rc = context(c);
   if (rc)
     return rc;
@@ -581,10 +582,14 @@ extern "C" int tqc_cache_cuda_append_rows(const tqc_cache_cuda_context *c,
   if (r->version != 1 || r->size != sizeof(*r))
     return TQC_D_VERSION;
   auto cfg = c->plan->config;
-  size_t rows = size_t(cfg.max_append_rows) * cfg.kv_heads;
+  if (legacy)
+    call_capacity = size_t(cfg.max_append_rows);
+  if (!call_capacity || call_capacity > cfg.max_append_rows)
+    return TQC_D_INVALID;
+  size_t rows = call_capacity * cfg.kv_heads;
   tqc_dialect_v1_span spans[] = {r->k, r->v, r->positions};
   for (int i = 0; i < 3; ++i) {
-    rc = span_check(spans[i], i == 2 ? size_t(cfg.max_append_rows) : rows,
+    rc = span_check(spans[i], i == 2 ? call_capacity : rows,
                     i == 2 ? 8 : cfg.columns * 4, i == 2 ? 8 : 4, false);
     if (rc)
       return rc;
@@ -596,11 +601,11 @@ extern "C" int tqc_cache_cuda_append_rows(const tqc_cache_cuda_context *c,
   auto p = device(c);
   append_kernel<<<unsigned(std::min<size_t>(
                       65535, (rows * (cfg.columns / 128) + 31) / 32)),
-                  32, 0, stream>>>(p, *r);
+                  32, 0, stream>>>(p, *r, call_capacity);
   rc = launch_status();
   if (rc)
     return rc;
-  finish_append<<<1, 1, 0, stream>>>(p);
+  finish_append<<<1, 1, 0, stream>>>(p, call_capacity);
   return launch_status();
 }
 extern "C" int tqc_cache_cuda_control(const tqc_cache_cuda_context *c,
@@ -614,8 +619,9 @@ extern "C" int tqc_cache_cuda_control(const tqc_cache_cuda_context *c,
                                                                     op);
   return launch_status();
 }
-extern "C" int tqc_cache_cuda_attend(const tqc_cache_cuda_context *c,
-                                     const tqc_cache_cuda_attention *r) {
+static int attend_impl(const tqc_cache_cuda_context *c,
+                       const tqc_cache_cuda_attention *r, size_t call_capacity,
+                       bool legacy) {
   int rc = context(c);
   if (rc)
     return rc;
@@ -626,7 +632,11 @@ extern "C" int tqc_cache_cuda_attend(const tqc_cache_cuda_context *c,
   if (r->causal > 1 || r->reserved || !std::isfinite(r->scale))
     return TQC_D_INVALID;
   const auto cfg = c->plan->config;
-  const size_t nq = size_t(cfg.max_queries), rows = nq * cfg.q_heads;
+  if (legacy)
+    call_capacity = size_t(cfg.max_queries);
+  if (!call_capacity || call_capacity > cfg.max_queries)
+    return TQC_D_INVALID;
+  const size_t nq = call_capacity, rows = nq * cfg.q_heads;
   if ((r->indices.data &&
        (!r->selection_width || r->selection_width > cfg.capacity)) ||
       (!r->indices.data && r->selection_width))
@@ -647,7 +657,8 @@ extern "C" int tqc_cache_cuda_attend(const tqc_cache_cuda_context *c,
   if (rc)
     return rc;
   attend_kernel<<<unsigned((rows + 31) / 32), 32, 0,
-                  static_cast<cudaStream_t>(c->stream)>>>(device(c), *r);
+                  static_cast<cudaStream_t>(c->stream)>>>(device(c), *r,
+                                                          call_capacity);
   return launch_status();
 }
 
@@ -783,4 +794,24 @@ extern "C" int tqc_cache_cuda_resources_query(const tqc_cache_cuda_context *c,
   }
   *out = result;
   return 0;
+}
+
+extern "C" int tqc_cache_cuda_append_rows(const tqc_cache_cuda_context *c,
+                                          const tqc_cache_cuda_append *r) {
+  return append_rows_impl(c, r, 0, true);
+}
+extern "C" int
+tqc_cache_cuda_append_rows_bounded(const tqc_cache_cuda_context *c,
+                                   const tqc_cache_cuda_append *r,
+                                   size_t bound) {
+  return append_rows_impl(c, r, bound, false);
+}
+extern "C" int tqc_cache_cuda_attend(const tqc_cache_cuda_context *c,
+                                     const tqc_cache_cuda_attention *r) {
+  return attend_impl(c, r, 0, true);
+}
+extern "C" int tqc_cache_cuda_attend_bounded(const tqc_cache_cuda_context *c,
+                                             const tqc_cache_cuda_attention *r,
+                                             size_t bound) {
+  return attend_impl(c, r, bound, false);
 }

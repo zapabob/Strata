@@ -20,6 +20,10 @@ int main(void) {
   c.position[0] = 1;
   if (tqc_cache_cuda_create(&c, &p) != TQC_D_OK || !p)
     return 1;
+  /* Compile and link new functions with the unchanged v1 request types. */
+  if (tqc_cache_cuda_append_rows_bounded(0, 0, 1) != TQC_D_INVALID ||
+      tqc_cache_cuda_attend_bounded(0, 0, 1) != TQC_D_INVALID)
+    return 2;
   tqc_cache_cuda_free(p);
   return 0;
 }

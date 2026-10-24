@@ -630,6 +630,148 @@ static void lifecycle() {
   invalid.columns = 192;
   CHECK(tqc_cache_cuda_create(&invalid, &unchanged) == TQC_D_UNSUPPORTED);
 }
+static void bounded_calls() {
+  auto cfg = config();
+  cfg.max_queries = 3; // both plan maxima exceed the true two-token buffers
+  Cache c(cfg);
+  const size_t row = cfg.columns * 4, heads = cfg.q_heads, kv = cfg.kv_heads;
+  std::vector<float> k(2 * kv * cfg.columns, .125f),
+      v(2 * kv * cfg.columns, .25f), q(2 * heads * cfg.columns, .03125f),
+      out(q.size(), -99);
+  int64_t positions[2] = {0, 1};
+  Buffer dk(k.size() * 4, c.stream), dv(v.size() * 4, c.stream),
+      dq(q.size() * 4, c.stream), dout(out.size() * 4, c.stream),
+      dp(sizeof(positions), c.stream), dqp(sizeof(positions), c.stream);
+  dk.put(k.data());
+  dv.put(v.data());
+  dq.put(q.data());
+  dout.put(out.data());
+  dp.put(positions);
+  dqp.put(positions);
+  tqc_cache_cuda_append app{1, sizeof(app), dk.span(row), dv.span(row),
+                            dp.span(8)};
+  tqc_cache_cuda_attention att{
+      1, sizeof(att), 0, 0, .125f, dq.span(row), dout.span(row), dqp.span(8)};
+  // Truly smaller external allocations: the old entry points still require max.
+  CHECK(tqc_cache_cuda_append_rows(&c.ctx, &app) == TQC_D_CAPACITY);
+  CHECK(tqc_cache_cuda_attend(&c.ctx, &att) == TQC_D_CAPACITY);
+  c.cmd(1, 1);
+  CHECK(tqc_cache_cuda_append_rows_bounded(&c.ctx, &app, 2) == 0);
+  CHECK(tqc_cache_cuda_control(&c.ctx, TQC_CC_COMMIT) == 0);
+  CHECK(tqc_cache_cuda_attend_bounded(&c.ctx, &att, 2) == 0);
+  c.good(1, 1);
+  dout.get(out.data());
+  for (size_t i = 0; i < out.size(); ++i)
+    CHECK(i < heads * cfg.columns ? std::isfinite(out[i]) && out[i] != -99
+                                  : out[i] == -99);
+  c.reset();
+  c.cmd(2, 2);
+  CHECK(tqc_cache_cuda_append_rows_bounded(&c.ctx, &app, 2) == 0);
+  CHECK(tqc_cache_cuda_attend_bounded(&c.ctx, &att, 2) == 0);
+  c.good(0, 2);
+  c.reset();
+  c.cmd(0, 0);
+  CHECK(tqc_cache_cuda_append_rows_bounded(&c.ctx, &app, 2) == 0);
+  CHECK(tqc_cache_cuda_attend_bounded(&c.ctx, &att, 2) == 0);
+  c.good(0, 0);
+  auto before = c.image();
+  for (size_t bound : {size_t(0), size_t(4), SIZE_MAX}) {
+    CHECK(tqc_cache_cuda_append_rows_bounded(&c.ctx, &app, bound) ==
+          TQC_D_INVALID);
+    CHECK(tqc_cache_cuda_attend_bounded(&c.ctx, &att, bound) == TQC_D_INVALID);
+    CHECK(c.image() == before);
+  }
+  // Above call bound, within BOTH plan maximum and cache capacity. No payload
+  // or positions may be read/written and no tentative prefix may be published.
+  c.cmd(3, 0);
+  before = c.image();
+  CHECK(tqc_cache_cuda_append_rows_bounded(&c.ctx, &app, 2) == 0);
+  auto state = c.state();
+  CHECK(!state.valid && state.status == TQC_CC_CAPACITY &&
+        state.tentative == 0);
+  auto after = c.image();
+  for (size_t i = 0; i < before.size(); ++i)
+    if (i < c.l.state || i >= c.l.state + sizeof(state))
+      CHECK(before[i] == after[i]);
+  c.reset();
+  c.cmd(1, 3);
+  CHECK(tqc_cache_cuda_append_rows_bounded(&c.ctx, &app, 2) == 0);
+  std::fill(out.begin(), out.end(), -99.f);
+  dout.put(out.data());
+  CHECK(tqc_cache_cuda_attend_bounded(&c.ctx, &att, 2) == 0);
+  state = c.state();
+  CHECK(!state.valid && state.status == TQC_CC_CAPACITY);
+  dout.get(out.data());
+  for (float x : out)
+    CHECK(x == -99);
+  // The same graph observes current persistent counts on each replay.
+  c.reset();
+  c.cmd(1, 1);
+  cudaGraph_t graph{};
+  cudaGraphExec_t executable{};
+  CUDA(cudaStreamBeginCapture(c.stream, cudaStreamCaptureModeThreadLocal));
+  CHECK(tqc_cache_cuda_append_rows_bounded(&c.ctx, &app, 2) == 0);
+  CHECK(tqc_cache_cuda_control(&c.ctx, TQC_CC_COMMIT) == 0);
+  CHECK(tqc_cache_cuda_attend_bounded(&c.ctx, &att, 2) == 0);
+  CUDA(cudaStreamEndCapture(c.stream, &graph));
+  CUDA(cudaGraphInstantiate(&executable, graph, 0));
+  CUDA(cudaGraphLaunch(executable, c.stream));
+  c.good(1, 1);
+  c.cmd(2, 2);
+  CUDA(cudaGraphLaunch(executable, c.stream));
+  c.good(3, 3);
+  c.cmd(3, 1);
+  CUDA(cudaGraphLaunch(executable, c.stream));
+  state = c.state();
+  CHECK(!state.valid && state.tentative == 3);
+  CUDA(cudaGraphExecDestroy(executable));
+  CUDA(cudaGraphDestroy(graph));
+}
+static void bounded_query_replay() {
+  auto cfg = config();
+  cfg.max_queries = 3;
+  Cache c(cfg);
+  const size_t row = cfg.columns * 4;
+  std::vector<float> kv(cfg.kv_heads * cfg.columns, .125f),
+      q(2 * cfg.q_heads * cfg.columns, .25f), out(q.size(), -99.f);
+  int64_t pos[2] = {0, 0};
+  Buffer dk(kv.size() * 4, c.stream), dv(kv.size() * 4, c.stream),
+      dq(q.size() * 4, c.stream), dout(out.size() * 4, c.stream),
+      dp(8, c.stream), dqp(16, c.stream);
+  dk.put(kv.data());
+  dv.put(kv.data());
+  dq.put(q.data());
+  dout.put(out.data());
+  dp.put(pos);
+  dqp.put(pos);
+  tqc_cache_cuda_append app{1, sizeof(app), dk.span(row), dv.span(row),
+                            dp.span(8)};
+  tqc_cache_cuda_attention att{
+      1, sizeof(att), 0, 0, .125f, dq.span(row), dout.span(row), dqp.span(8)};
+  c.cmd(1, 1);
+  CHECK(tqc_cache_cuda_append_rows_bounded(&c.ctx, &app, 1) == 0);
+  cudaGraph_t graph{};
+  cudaGraphExec_t executable{};
+  CUDA(cudaStreamBeginCapture(c.stream, cudaStreamCaptureModeThreadLocal));
+  CHECK(tqc_cache_cuda_attend_bounded(&c.ctx, &att, 2) == 0);
+  CUDA(cudaStreamEndCapture(c.stream, &graph));
+  CUDA(cudaGraphInstantiate(&executable, graph, 0));
+  CUDA(cudaGraphLaunch(executable, c.stream));
+  c.good(0, 1);
+  c.cmd(0, 2);
+  CUDA(cudaGraphLaunch(executable, c.stream));
+  c.good(0, 1);
+  dout.put(out.data());
+  c.cmd(0, 3);
+  CUDA(cudaGraphLaunch(executable, c.stream));
+  auto state = c.state();
+  CHECK(!state.valid && state.status == TQC_CC_CAPACITY);
+  dout.get(out.data());
+  for (auto x : out)
+    CHECK(x == -99.f);
+  CUDA(cudaGraphExecDestroy(executable));
+  CUDA(cudaGraphDestroy(graph));
+}
 static void alpha_contract() {
   auto invalid = config();
   std::fill_n(invalid.alpha, 3, 0.0);
@@ -639,6 +781,14 @@ static void alpha_contract() {
 }
 int main(int argc, char **argv) {
   try {
+    if (argc > 1 && std::strcmp(argv[1], "--bounded") == 0) {
+      bounded_calls();
+      bounded_query_replay();
+      std::printf("%zu bounded-call checks\n", checks);
+      return 0;
+    }
+    bounded_calls();
+    bounded_query_replay();
     alpha_contract();
     lifecycle();
     if (argc > 1 && std::strcmp(argv[1], "--lifecycle") == 0) {

@@ -131,6 +131,17 @@ int tqc_cache_cuda_append_rows(const tqc_cache_cuda_context *,
                                const tqc_cache_cuda_append *);
 int tqc_cache_cuda_attend(const tqc_cache_cuda_context *,
                           const tqc_cache_cuda_attention *);
+/* Additive bounded calls use the existing v1 descriptor. call_row_capacity is
+ * positive and <= the corresponding plan maximum. Every external span covers
+ * this capacity (tokens, not flattened heads). GPU command counts above it
+ * invalidate BEFORE any tensor read/publication. Layout/identity and legacy
+ * calls are unchanged; device buffers survive completion and graph replay. */
+int tqc_cache_cuda_append_rows_bounded(const tqc_cache_cuda_context *,
+                                       const tqc_cache_cuda_append *,
+                                       size_t call_row_capacity);
+int tqc_cache_cuda_attend_bounded(const tqc_cache_cuda_context *,
+                                  const tqc_cache_cuda_attention *,
+                                  size_t call_row_capacity);
 /* Attention reads tentative rows for speculative verification. Commit exposes
  * all successful rows. Cancel drops tentative; truncate uses target<=committed.
  * These operations never recover invalid state; initialise is required. */
