@@ -258,3 +258,7 @@ def inspect_gguf(
         metadata=metadata,
         is_metadata_only=is_metadata_only,
     )
+
+
+# Backward-compatible alias
+inspect_gguf_file = inspect_gguf
