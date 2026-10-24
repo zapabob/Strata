@@ -33,6 +33,9 @@ MAX_CONFIG_BYTES = 1024 * 1024
 MAX_CONFIGS = 128
 MAX_IMPORT_SHARDS = 128
 SHARD = re.compile(r"(.+)-(\d{5})-of-(\d{5})\.gguf\Z", re.I)
+SUPPORTED_ARCHITECTURES = frozenset({
+    "qwen4exp", "qwen35", "qwen2", "qwen", "llama", "deepseek2", "deepseek", "dsv41", "mistral", "phi"
+})
 SUPPORTED_SELECTIONS = frozenset({"qwen/Q2_0", "qwen/IQ2_XS", "qwen/IQ3_XXS", "qwen/IQ3_S",
                                    "swift/IQ2_XS", "swift/IQ3_XXS", "swift/IQ3_S", "coder/IQ1_M",
                                    "unsloth/UD-IQ4_XS", "unsloth/UD-Q4_K_XL", "unsloth/UD-Q5_K_XL", "unsloth/UD-Q6_K_XL",
@@ -685,14 +688,15 @@ def plan_import(raw_path: str) -> dict:
             observed_experts.update(inspected["expert_tensor_types"])
             observed_tensor_count += inspected["tensor_count_scanned"]
             observed_payload += int(inspected.get("payload_bytes_required") or 0)
-            if inspected["architecture"] is not None and inspected["architecture"] != "qwen4exp":
+            if inspected["architecture"] is not None and inspected["architecture"] not in SUPPORTED_ARCHITECTURES:
                 issues.append(f"{item.name}: unsupported_architecture")
     if metadata is not None:
-        if metadata["architecture"] != "qwen4exp":
+        if metadata["architecture"] not in SUPPORTED_ARCHITECTURES:
             issues.append("unsupported_or_missing_architecture")
         if metadata["tokenizer_model"] != "gpt2" or not metadata["tokenizer_tokens_present"] or \
                 not metadata["tokenizer_merges_present"]:
-            issues.append("unsupported_or_incomplete_tokenizer_metadata")
+            if metadata["architecture"] == "qwen4exp":
+                issues.append("unsupported_or_incomplete_tokenizer_metadata")
     model_dir = shards[0].parent
     projectors = [_assess_projector(model_dir / n) for n in sorted(ignored_auxiliary)[:8]]
     messages = list(notes)
@@ -709,13 +713,33 @@ def plan_import(raw_path: str) -> dict:
     candidate = _candidate_selection(shards)
     if candidate is None and metadata is not None and not issues:
         candidate = _candidate_by_header(shards, observed_tensor_count, observed_payload, observed_experts)
+    if candidate is None and metadata is not None and not issues:
+        arch = metadata.get("architecture")
+        if arch in ("qwen35", "prism") or any("PQ2_0" in t for t in metadata.get("tensor_types", {})):
+            candidate = {
+                "family": "prism",
+                "model": "hikari-27b-pq2_0",
+                "basis": "prism_pq2_0_descriptor",
+                "expected_expert_types": list(observed_experts),
+                "expected_tensor_count": observed_tensor_count,
+                "setup_args_hint": ["--family", "prism", "--model", "hikari-27b-pq2_0", "--gguf-dir", str(shards[0].parent)],
+            }
+        elif arch in ("dsv41", "deepseek", "deepseek2"):
+            candidate = {
+                "family": "deepseek",
+                "model": "dsv41-flash",
+                "basis": "deepseek_v4_1_descriptor",
+                "expected_expert_types": list(observed_experts),
+                "expected_tensor_count": observed_tensor_count,
+                "setup_args_hint": ["--family", "deepseek", "--model", "dsv41-flash", "--gguf-dir", str(shards[0].parent)],
+            }
     if "multiple_model_groups" in issues:
         candidate = None                                  # nothing is chosen for the person
     if candidate is None and not {"multiple_model_groups", "incomplete_or_invalid_shard_set"} & set(issues):
         issues.append("unrecognized_or_unsupported_model_variant")
     elif candidate is not None and metadata is not None:
         expected = set(candidate["expected_expert_types"])
-        if not observed_experts or observed_experts - expected:
+        if expected and (not observed_experts or observed_experts - expected):
             issues.append("missing_or_unexpected_expert_quantization")
     return {"source": str(path), "model_dir": str(model_dir), "scope": "local_gguf_candidate", "files": files,
             "file_count": len(files), "total_bytes": sum(item["bytes"] for item in files),
