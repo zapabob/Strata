@@ -182,3 +182,91 @@ code change is warranted by the corrected result. The next gate is the
 controller's separate CUDA/release validation. Reverting this commit restores
 the repository tooling state; the archived original script permits exact
 manual restoration of the explicitly authorized external script if needed.
+
+## Review fix round 1 — 24 October 2026
+
+FIX_BASE is `7ac9d164f030953257669c4f0dd8745d098c2c87`. Both Important findings
+in the Task 1 review were reproduced before correction. The initial commit's
+direct spinor comparison covered only the first construction sample and its
+errors did not enter the acceptance gate. Whole-matrix negation of a later
+plus or minus block preserved its determinant and Gram matrix and passed the
+other invariants. Separately, NaN loopback errors could disappear inside max
+reductions because un-emitted F32/inverse/block arrays were not finite-checked.
+These were reference/probe verification defects, not demonstrated library
+transform defects. This addendum supersedes any implication in the initial
+entry that those two cases had already been covered.
+
+The Python reference now accumulates direct plus/minus coefficient errors
+over every construction sample, maps either chirality order correctly, and
+requires both maxima at most 1e-12. Two integration regressions alter the
+second sample's entire 8x8 plus/minus block and require the trial family and
+overall verdict to fail. Their explicit `SPIN8_REFERENCE_TEST_PROBE` input was
+set first to the retained deterministic probe for RED, then to the new fresh
+probe for GREEN. Neither integration case was skipped in recorded runs.
+
+The probe now checks every forward and inverse trial, extended F64 and
+Hadamard-block F32/F64 output immediately after the transform, before passing
+forward output to an inverse and before error reductions. Failure identifies
+the stage and element index and exits 2. A separate test-only executable in
+`probe_finite_fault.cpp` intercepts the real probe's calls and injects NaN or
+infinity at the last output element while retaining SPIN8_OK. The Python driver
+requires the actual probe path to exit 2 with the matching non-finite stage.
+Its 44 cases cover trial F32/F64, extended F64, both directions and block sizes
+8, 16, 64 and 128 in both dtypes/directions. The normal probe and production
+library contain no injector. Per-case partial JSON and diagnostic logs remain
+retained in the new evidence root.
+
+New evidence root is `H:/Strata/build/task5a-g1-reaudit-20261024-r1`; initial
+free bytes were 28,853,153,792. Original round-0 receipts/binaries and all old
+evidence were preserved. No cleanup/deletion was attempted. Every Python
+execution used uv with the same existing Python 3.12.10, `-B` and/or
+`PYTHONDONTWRITEBYTECODE=1`; package metadata warning noise remains qualified.
+The Python command prefix was `uv run --no-project --offline --python
+C:/Users/downl/AppData/Local/Programs/Python/Python312/python.exe python -B`.
+
+RED commands ran `-m pytest -q tools/test_spin8_reference_compare.py -k
+later_constructed` with plugin autoload disabled, then configured and built
+only `spin8_reference_probe_fault` in `cpu-red` with `--parallel 1`, and ran
+`tools/spin8_reference_probe/test_finite_outputs.py --executable
+<r1>/cpu-red/Release/spin8_reference_probe_fault.exe --output-dir <r1>/red-faults`.
+Results: 2 Python failures in 8.31 s; all 44 fault injections escaped the old
+probe and failed the rejection tests (exit 1). The RED executable and source
+snapshot remain retained. GREEN configured a separate `cpu-green`, built
+`spin8_reference_probe` and `spin8_reference_probe_fault`, also one job and
+MSVC `/W4 /WX /fp:strict`, then passed all 44 fault cases (exit 0).
+
+The fresh normal probe ran seed 20261023, 5000 trials and 1000 Python checks,
+exit 0. The final 274-test owned Python suite passed in 8.64 s with the fresh
+probe fixture. The final fault-driver run passed 44/44. The corrected reference
+on that fresh output passed all 12 families, all 15000 supplied rotation-view
+signs and all 1000 direct spinor construction comparisons. Both direct plus
+and minus error maxima were exactly 0. The deterministic probe bytes again
+matched the retained earlier output. Black, flake8 and clang-format checks
+passed. No unrelated CTest/model/CUDA suite was rerun; this round changes only
+reference/probe gates, and the focused runtime regressions exercise them.
+
+New Python reference SHA-256 is
+`f6c0650d56d8ca1c890b8a77a3be8d832ff8702cfa3b3dc7bde1fadfa20bc289`;
+probe source is `59739035debf422885197366b039cad86b5c4907a8c4362986602878440c3f5d`;
+fresh reference report is
+`69e5588dca8f009d5e734a143c8723cceaaef52703f1a98102a4b50ec619e87f`;
+ordinary probe executable is
+`56ec6ceea0496c079081ec24acdabf9337af459bffabdad428e36787d15516d5`;
+fault executable is
+`35f87f11690f886e41da64fc96fc1b8d0fefbf3d8edbb6b3542bb419f8135cc8`.
+The new master manifest binds receipts, sources, tests and binaries. The same
+SDD task report carries complete commands, outputs, final capacity/hash data
+and the fix commit. Evidence before that manifest was approximately 111.4 MB,
+below 256 MiB, with 28,689,797,120 bytes free at the final pre-log measurement.
+
+Self-review-event: type=qa_defect scope=tools/spin8_reference_compare.py category=qa-coverage evidence=H:/Strata/build/task5a-g1-reaudit-20261024-r1/red-spinor.log
+
+Self-review-event: type=qa_defect scope=tools/spin8_reference_probe/probe_spin8.cpp category=correctness evidence=H:/Strata/build/task5a-g1-reaudit-20261024-r1/red-finite.log
+
+Self-review verified all-sample accumulation, acceptance thresholds, injection
+at the final array element, exact failure stages, separation of test-only
+injection from normal behavior, and preservation of initial artifacts.
+Regression additions are the narrow prevention measure; no governance or
+production changes were made. CUDA/model/release qualification remains outside
+this CPU task. The initial incidental external Python cache remains in place
+under the controller's prior direction; this round did not retry its cleanup.

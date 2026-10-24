@@ -444,8 +444,8 @@ def trial_checks(
             "logabsdet": 0.0,
             "audit_reprod": 0.0,
             "eigs_match": 0.0,
-            "blocks_direct_plus": -1.0,
-            "blocks_direct_minus": -1.0,
+            "blocks_direct_plus": 0.0,
+            "blocks_direct_minus": 0.0,
             "fwd_action_vs_R": 0.0,
             "loopback_f64": 0.0,
             "loopback_f32": 0.0,
@@ -512,16 +512,17 @@ def trial_checks(
             abs(aud_v["max"] - vec_aud["max_error"]),
             abs(aud_v["log_abs_det"] - vec_aud["log_abs_det"]),
         )
-        if chi_plus_first is not None and rep["blocks_direct_plus"] < 0.0:
+        if chi_plus_first is not None:
             top = top8(u)
             bot = bottom8(u)
-            key = "plus" if chi_plus_first else "minus"
-            d_top, _ = is_close(top, square8(t[key]), 1e-12)
-            d_bot, _ = is_close(
-                bot, square8(t["minus" if key == "plus" else "plus"]), 1e-12
+            plus_expected, minus_expected = (top, bot) if chi_plus_first else (bot, top)
+            rep["blocks_direct_plus"] = max(
+                rep["blocks_direct_plus"], is_close(plus_expected, plus_lib, 1e-12)[0]
             )
-            rep["blocks_direct_plus"] = d_top
-            rep["blocks_direct_minus"] = d_bot
+            rep["blocks_direct_minus"] = max(
+                rep["blocks_direct_minus"],
+                is_close(minus_expected, minus_lib, 1e-12)[0],
+            )
         rep["eigs_match"] = max(
             rep["eigs_match"],
             eigens_compare_max(top8(u), plus_lib),
@@ -1289,6 +1290,8 @@ def run_reference(probe: Record) -> Record:
                 t["conjugation"],
                 t["u_orth"],
                 t["group_inverse"],
+                t["blocks_direct_plus"],
+                t["blocks_direct_minus"],
             )
             <= 1e-12
             and t["det_ok"]
@@ -1425,9 +1428,14 @@ def main(argv: list[str] | None = None) -> int:
             [
                 Path(__file__).resolve(),
                 root / "tools" / "test_spin8_reference_compare.py",
-                root / "tools" / "spin8_reference_probe" / "probe_spin8.cpp",
-                root / "tools" / "spin8_reference_probe" / "CMakeLists.txt",
             ]
+        )
+        sources.extend(
+            sorted(
+                p
+                for p in (root / "tools" / "spin8_reference_probe").rglob("*")
+                if p.is_file() and p.suffix in (".cpp", ".h", ".py", ".txt", ".md")
+            )
         )
         source_hashes = {str(p.relative_to(root)): file_hash(p) for p in sources}
         input_hash = file_hash(args.probe)

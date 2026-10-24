@@ -1,6 +1,10 @@
 """Independent determinant regressions for the CPU Spin8 reference."""
 
+import copy
+import json
 import math
+import os
+from pathlib import Path
 
 import pytest
 
@@ -140,3 +144,33 @@ def test_incomplete_or_invalid_probe_rejected(defect: str) -> None:
         probe["trials"][0]["vector"] = [1.0]
     with pytest.raises(ValueError):
         ref.validate_probe(probe)
+
+
+@pytest.mark.parametrize("view", ["plus", "minus"])
+def test_later_constructed_spinor_sign_flip_fails(view: str) -> None:
+    # An existing full deterministic probe is an explicit optional integration
+    # input. Its first two construction samples cover both healthy and altered
+    # records without rebuilding a library just to exercise this Python gate.
+    fixture = os.environ.get("SPIN8_REFERENCE_TEST_PROBE")
+    if fixture is None:
+        pytest.skip("set SPIN8_REFERENCE_TEST_PROBE for construction integration")
+    probe = json.loads(Path(fixture).read_text(encoding="utf-8"))
+    probe["trials"] = probe["trials"][:2]
+    probe["trials_total"] = probe["python_check"] = 2
+    good = ref.run_reference(probe)
+    assert good["verdict"] == "PASS"
+    changed = copy.deepcopy(probe)
+    matrix = ref.square8(changed["trials"][1][view])
+    changed["trials"][1][view] = [-x for x in changed["trials"][1][view]]
+    flipped = ref.square8(changed["trials"][1][view])
+    assert ref.lu_sign_logdet(matrix)[0] == ref.lu_sign_logdet(flipped)[0] == 1
+    assert ref.mat_mul(ref.mat_t(matrix), matrix) == ref.mat_mul(
+        ref.mat_t(flipped), flipped
+    )
+    bad = ref.run_reference(changed)
+    assert bad["trial"][f"blocks_direct_{view}"] > 1e-12
+    assert (
+        next(check for check in bad["checks"] if check["name"] == "trial")["pass"]
+        is False
+    )
+    assert bad["verdict"] == "FAIL"

@@ -19,7 +19,9 @@ ctest --test-dir <output>/cpu -C Release --output-on-failure -j 1
 <output>/cpu/Release/spin8_reference_probe.exe --out <output>/probe.json --trials 5000 --python-check 1000 --seed 20261023
 uv run --no-project --offline --python <python312> python tools/spin8_reference_compare.py --probe <output>/probe.json --report <output>/reference.json --input-mode fresh --artifact <output>/cpu/Release/spin8_reference_probe.exe --artifact <output>/cpu/spin8/Release/spin8.lib --artifact <output>/cpu/CMakeCache.txt
 $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1'
-uv run --no-project --offline --python <python312> python -m pytest -q tools/test_spin8_reference_compare.py
+$env:PYTHONDONTWRITEBYTECODE = '1'
+$env:SPIN8_REFERENCE_TEST_PROBE = '<output>/probe.json'
+uv run --no-project --offline --python <python312> python -B -m pytest -q tools/test_spin8_reference_compare.py
 ```
 
 On single-configuration generators, omit `Release/` from executable and library
@@ -37,6 +39,26 @@ independent Clifford construction, group/inverse, Triality and action checks.
 The first 100 checked samples retain separate rational sign spot checks. Their
 denominator limit of 10**12 approximates the FP64 entries; it is not an exact
 certificate for those original floating-point values.
+
+Both spinor blocks are compared coefficient by coefficient for every full
+construction sample, with maximum error at most 1e-12. The integration
+regressions use the explicit `SPIN8_REFERENCE_TEST_PROBE` fixture path and
+negate a later sample's entire plus or minus block. This preserves determinant
+and Gram matrix, so only a proper coefficient comparison can reject it.
+
+Every trial, extended-loopback and Hadamard-block forward/inverse output is
+checked for finite entries immediately after the transform. NaN/Inf failures
+exit with a stage and element index before inverse calls or error reductions.
+The separate test-only executable intercepts the real probe's transform calls,
+returns SPIN8_OK and injects NaN/Inf into the last output element. Its 44 cases
+cover F64/F32, both directions and all four Hadamard block sizes. It contains
+the injector; the ordinary probe and library do not. Run it with a new output
+directory to retain each failed sample and diagnostic:
+
+```powershell
+cmake --build <output>/cpu --config Release --target spin8_reference_probe_fault --parallel 1
+uv run --no-project --offline --python <python312> python -B tools/spin8_reference_probe/test_finite_outputs.py --executable <output>/cpu/Release/spin8_reference_probe_fault.exe --output-dir <output>/finite-regressions
+```
 
 The probe retains the original deterministic numerical cases: chirality,
 2pi/4pi, identity, F32/F64 loopback, Hadamard blocks, reduce, matrix multiply,

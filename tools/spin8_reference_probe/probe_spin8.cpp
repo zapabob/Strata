@@ -100,6 +100,19 @@ void must(spin8_status s, const char *what) {
   }
 }
 
+template <typename Value>
+void require_finite_outputs(const Value *values, size_t count,
+                            const std::string &scope) {
+  // NaN comparisons cannot be used in max-error reductions. Check every
+  // output immediately, including arrays which are not written to JSON.
+  for (size_t i = 0; i < count; ++i) {
+    if (!std::isfinite(values[i])) {
+      std::fprintf(stdout, "FAIL nonfinite %s index=%zu\n", scope.c_str(), i);
+      std::exit(2);
+    }
+  }
+}
+
 double u01(std::mt19937_64 &rng) {
   std::uniform_real_distribution<double> d(0.0, 1.0);
   return d(rng);
@@ -191,9 +204,11 @@ LoopBuffers run_f64_loopback(const spin8_plan *plan, spin8_view view,
   must(spin8_transform(plan, view, SPIN8_F64, lb.src.data(), cols,
                        lb.fwd.data(), cols, rows, cols, 0),
        "transform_f64_fwd");
+  require_finite_outputs(lb.fwd.data(), rows * cols, "extended-f64-forward");
   must(spin8_transform(plan, view, SPIN8_F64, lb.fwd.data(), cols,
                        lb.inv.data(), cols, rows, cols, 1),
        "transform_f64_inv");
+  require_finite_outputs(lb.inv.data(), rows * cols, "extended-f64-inverse");
   for (size_t i = 0; i < rows * cols; ++i) {
     double e = std::fabs(lb.src[i] - lb.inv[i]);
     if (e > lb.max_err) {
@@ -294,9 +309,11 @@ int main(int argc, char **argv) {
       must(spin8_transform(plan, SPIN8_VECTOR, SPIN8_F64, src, 8, fwd, 8, 3, 8,
                            0),
            "transform_trial_vector");
+      require_finite_outputs(fwd, 24, "trial-f64-forward");
       must(spin8_transform(plan, SPIN8_VECTOR, SPIN8_F64, fwd, 8, inv, 8, 3, 8,
                            1),
            "transform_trial_vector_inv");
+      require_finite_outputs(inv, 24, "trial-f64-inverse");
       double maxerr = 0.0;
       for (int i = 0; i < 24; ++i) {
         maxerr = std::max(maxerr, std::fabs(src[i] - inv[i]));
@@ -311,9 +328,11 @@ int main(int argc, char **argv) {
       must(spin8_transform(plan, SPIN8_VECTOR, SPIN8_F32, fsrc, 8, fsrc, 8, 3,
                            8, 0),
            "transform_trial_f32_fwd");
+      require_finite_outputs(fsrc, 24, "trial-f32-forward");
       must(spin8_transform(plan, SPIN8_VECTOR, SPIN8_F32, fsrc, 8, finv, 8, 3,
                            8, 1),
            "transform_trial_f32_inv");
+      require_finite_outputs(finv, 24, "trial-f32-inverse");
       double f32err = 0.0;
       for (int i = 0; i < 24; ++i) {
         f32err = std::max(f32err, std::fabs(static_cast<double>(fbase[i]) -
@@ -455,9 +474,15 @@ int main(int argc, char **argv) {
         must(spin8_hadamard_block(dt, fsrc.data(), block, fsrc.data(), block, 3,
                                   block, block, nullptr, 0),
              "hadamard_f32_fwd");
+        require_finite_outputs(fsrc.data(), elems_per,
+                               "block-" + std::to_string(block) +
+                                   "-f32-forward");
         must(spin8_hadamard_block(dt, fsrc.data(), block, finv.data(), block, 3,
                                   block, block, nullptr, 1),
              "hadamard_f32_inv");
+        require_finite_outputs(finv.data(), elems_per,
+                               "block-" + std::to_string(block) +
+                                   "-f32-inverse");
         for (size_t i = 0; i < elems_per; ++i) {
           max_err = std::max(max_err, std::fabs(static_cast<double>(fbase[i]) -
                                                 static_cast<double>(finv[i])));
@@ -466,9 +491,15 @@ int main(int argc, char **argv) {
         must(spin8_hadamard_block(dt, src.data(), block, fwd.data(), block, 3,
                                   block, block, nullptr, 0),
              "hadamard_f64_fwd");
+        require_finite_outputs(fwd.data(), elems_per,
+                               "block-" + std::to_string(block) +
+                                   "-f64-forward");
         must(spin8_hadamard_block(dt, fwd.data(), block, inv.data(), block, 3,
                                   block, block, nullptr, 1),
              "hadamard_f64_inv");
+        require_finite_outputs(inv.data(), elems_per,
+                               "block-" + std::to_string(block) +
+                                   "-f64-inverse");
         for (size_t i = 0; i < elems_per; ++i) {
           max_err = std::max(max_err, std::fabs(src[i] - inv[i]));
         }
