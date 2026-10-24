@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ModelBundle",
+  "description": "Canonical manifest schema for single or multi-part GGUF bundles and replacement overlays",
+  "type": "object",
+  "properties": {
+    "schema_version": { "type": "string", "enum": ["1.0"] },
+    "model_set_id": { "type": "string" },
+    "artifact_kind": { "type": "string", "enum": ["model", "adapter", "replacement_recipe", "mmproj"] },
+    "architecture": { "type": "string" },
+    "dialect": { "type": "string" },
+    "split_total": { "type": "integer", "minimum": 1 },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "role": { "type": "string", "enum": ["shard", "metadata", "engram", "adapter", "tokenizer"] },
+          "ordinal": { "type": "integer", "minimum": 0 },
+          "path": { "type": "string" },
+          "file_size": { "type": "integer", "minimum": 0 },
+          "sha256": { "type": "string" }
+        },
+        "required": ["role", "ordinal", "path", "file_size"]
+      }
+    },
+    "parent_model_set_id": { "type": ["string", "null"] },
+    "replacement_slot": { "type": ["integer", "null"] }
+  },
+  "required": ["schema_version", "model_set_id", "artifact_kind", "architecture", "files"]
+}
