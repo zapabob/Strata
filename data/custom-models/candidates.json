@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.0",
+  "candidates": [
+    {
+      "candidate_id": "deepseek-v4.1-flash-ista-standard",
+      "friendly_name": "DeepSeek-V4.1-Flash (Standard ISTA)",
+      "repo_id": "ISTA-DASLab/DeepSeek-V4.1-Flash-GGUF",
+      "revision": "main@7e4a1b0",
+      "kind": "base_model",
+      "architecture": "dsv41",
+      "dialect": "standard",
+      "layout": "4-part",
+      "uncensored": false
+    },
+    {
+      "candidate_id": "deepseek-maya-s-kiwimaker-abliterated",
+      "friendly_name": "DeepSeek-Maya-S Abliterated (Kiwimaker)",
+      "repo_id": "Kiwimaker/DeepSeek-Maya-S-Abliterated",
+      "revision": "main@3c8f901",
+      "kind": "replacement_recipe",
+      "architecture": "dsv41",
+      "dialect": "standard",
+      "target_slot": 1,
+      "uncensored": true
+    },
+    {
+      "candidate_id": "deepseek-v4.1-atomicchat-uncensored",
+      "friendly_name": "DeepSeek-V4.1 Uncensored (AtomicChat)",
+      "repo_id": "AtomicChat/DeepSeek-V4.1-Uncensored-GGUF",
+      "revision": "main@a5f221e",
+      "kind": "standalone_model",
+      "architecture": "dsv41",
+      "dialect": "standard",
+      "uncensored": true
+    }
+  ]
+}
