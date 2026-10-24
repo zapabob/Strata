@@ -1,0 +1,814 @@
+{
+  "scope": "trained tiny synthetic autoregressive Transformer; NOT 27B/Strata/NLP quality evidence",
+  "environment": {
+    "torch": "2.10.0+cpu",
+    "python": "3.13.5",
+    "device": "cpu",
+    "cuda_build": null,
+    "gpu": null
+  },
+  "args": {
+    "device": "cpu",
+    "out": "evidence/tiny_lm",
+    "seeds": [
+      0,
+      1,
+      2
+    ],
+    "teacher_steps": 350,
+    "adapter_steps": 160,
+    "batch": 16,
+    "sequence": 32
+  },
+  "runs": [
+    {
+      "seed": 0,
+      "config": {
+        "vocab": 24,
+        "heads": 4,
+        "kv_heads": 2,
+        "head_dim": 16,
+        "layers": 3,
+        "ff_mult": 2,
+        "adapter_rank": 8
+      },
+      "total_parameters": 104884,
+      "adapter_parameters": 2388,
+      "data_hashes": {
+        "pretrain": "2999f0de7a5b63e6af6c0168278c872bd4eef0be1b66241cd36df887441f2f26",
+        "train": "10d3668a3a98fa0406f941f7824b464682453b14419228a77d191c6471e8b071",
+        "validation": "70cc741b9d7786d3c04a22c9e6b048c3e55a71a11c676019da74354179e2112d",
+        "test": "1d91faf293744067cb77007d30f9ac87f3f2e9333fcc0890ae880dc6a71765e6"
+      },
+      "arms": {
+        "teacher_exact": {
+          "nll": 0.7562399506568909,
+          "accuracy_suffix": 0.9975000023841858,
+          "perplexity": 2.130251292915075,
+          "sequences": 128
+        },
+        "single2": {
+          "nll": 0.9228107333183289,
+          "accuracy_suffix": 0.9453125596046448,
+          "teacher_kl": 0.15379783511161804,
+          "teacher_argmax_agreement": 0.889892578125,
+          "hidden_relative_mse": [
+            0.00980566069483757,
+            0.05660490319132805,
+            0.11129170656204224
+          ],
+          "perplexity": 2.516353257309127,
+          "sequences": 128
+        },
+        "single6": {
+          "nll": 0.7564560770988464,
+          "accuracy_suffix": 0.9975000023841858,
+          "teacher_kl": 2.8324075174168684e-05,
+          "teacher_argmax_agreement": 0.996337890625,
+          "hidden_relative_mse": [
+            1.0945852409349754e-05,
+            5.70109550608322e-05,
+            8.610071381554008e-05
+          ],
+          "perplexity": 2.1307117463037684,
+          "sequences": 128
+        },
+        "triality3x2": {
+          "nll": 0.7860539555549622,
+          "accuracy_suffix": 0.9925000071525574,
+          "teacher_kl": 0.02521277405321598,
+          "teacher_argmax_agreement": 0.951416015625,
+          "hidden_relative_mse": [
+            0.003691195510327816,
+            0.02351551130414009,
+            0.039575863629579544
+          ],
+          "perplexity": 2.194718858322321,
+          "sequences": 128
+        },
+        "generic3x2": {
+          "nll": 0.7935692667961121,
+          "accuracy_suffix": 0.986875057220459,
+          "teacher_kl": 0.03536786139011383,
+          "teacher_argmax_agreement": 0.939697265625,
+          "hidden_relative_mse": [
+            0.0034682340919971466,
+            0.023949217051267624,
+            0.046954914927482605
+          ],
+          "perplexity": 2.211274987938967,
+          "sequences": 128
+        },
+        "triality3x2_v3": {
+          "nll": 0.7899460196495056,
+          "accuracy_suffix": 0.9931250214576721,
+          "teacher_kl": 0.029159720987081528,
+          "teacher_argmax_agreement": 0.927734375,
+          "hidden_relative_mse": [
+            0.005974918138235807,
+            0.0319833941757679,
+            0.05234144628047943
+          ],
+          "perplexity": 2.203277489354726,
+          "sequences": 128
+        },
+        "triality_trained": {
+          "nll": 0.7795634865760803,
+          "accuracy_suffix": 0.9934375286102295,
+          "teacher_kl": 0.02234041318297386,
+          "teacher_argmax_agreement": 0.946044921875,
+          "hidden_relative_mse": [
+            0.007545515429228544,
+            0.03173445537686348,
+            0.04470721632242203
+          ],
+          "perplexity": 2.1805202313733574,
+          "sequences": 128
+        },
+        "triality_trained_exact_kv": {
+          "nll": 0.7565888166427612,
+          "accuracy_suffix": 0.9984374642372131,
+          "teacher_kl": 0.003911234904080629,
+          "teacher_argmax_agreement": 0.967041015625,
+          "hidden_relative_mse": [
+            0.004221583250910044,
+            0.009745901450514793,
+            0.009629268199205399
+          ],
+          "perplexity": 2.13099459478136,
+          "sequences": 128
+        },
+        "generic_trained": {
+          "nll": 0.7912099957466125,
+          "accuracy_suffix": 0.9915624856948853,
+          "teacher_kl": 0.032774657011032104,
+          "teacher_argmax_agreement": 0.933837890625,
+          "hidden_relative_mse": [
+            0.007045865058898926,
+            0.03102097660303116,
+            0.05033111199736595
+          ],
+          "perplexity": 2.2060641401955867,
+          "sequences": 128
+        }
+      },
+      "training": {
+        "triality": {
+          "initial_validation_kl": 0.032264593988657,
+          "best_validation_kl": 0.024735774844884872,
+          "best_step": 160,
+          "curve": [
+            {
+              "step": 20,
+              "train_loss": 0.02121187560260296,
+              "validation_teacher_kl": 0.029336530715227127
+            },
+            {
+              "step": 40,
+              "train_loss": 0.019009515643119812,
+              "validation_teacher_kl": 0.027316244319081306
+            },
+            {
+              "step": 60,
+              "train_loss": 0.017299460247159004,
+              "validation_teacher_kl": 0.026082588359713554
+            },
+            {
+              "step": 80,
+              "train_loss": 0.01596112735569477,
+              "validation_teacher_kl": 0.02677425742149353
+            },
+            {
+              "step": 100,
+              "train_loss": 0.013212129473686218,
+              "validation_teacher_kl": 0.02739439345896244
+            },
+            {
+              "step": 120,
+              "train_loss": 0.013962463475763798,
+              "validation_teacher_kl": 0.02509322203695774
+            },
+            {
+              "step": 140,
+              "train_loss": 0.02031744085252285,
+              "validation_teacher_kl": 0.02482348494231701
+            },
+            {
+              "step": 160,
+              "train_loss": 0.016034595668315887,
+              "validation_teacher_kl": 0.024735774844884872
+            }
+          ],
+          "base_weights_unchanged": true,
+          "training_quantizer": "explicit straight-through estimator"
+        },
+        "generic": {
+          "initial_validation_kl": 0.03194178268313408,
+          "best_validation_kl": 0.027453474700450897,
+          "best_step": 20,
+          "curve": [
+            {
+              "step": 20,
+              "train_loss": 0.02573261223733425,
+              "validation_teacher_kl": 0.027453474700450897
+            },
+            {
+              "step": 40,
+              "train_loss": 0.018410533666610718,
+              "validation_teacher_kl": 0.030059782788157463
+            },
+            {
+              "step": 60,
+              "train_loss": 0.026789413765072823,
+              "validation_teacher_kl": 0.028678039088845253
+            },
+            {
+              "step": 80,
+              "train_loss": 0.020464783534407616,
+              "validation_teacher_kl": 0.02821604534983635
+            },
+            {
+              "step": 100,
+              "train_loss": 0.01749153435230255,
+              "validation_teacher_kl": 0.029445216059684753
+            },
+            {
+              "step": 120,
+              "train_loss": 0.016822829842567444,
+              "validation_teacher_kl": 0.030474426224827766
+            },
+            {
+              "step": 140,
+              "train_loss": 0.0315074659883976,
+              "validation_teacher_kl": 0.032668232917785645
+            },
+            {
+              "step": 160,
+              "train_loss": 0.025774110108613968,
+              "validation_teacher_kl": 0.03340381383895874
+            }
+          ],
+          "base_weights_unchanged": true,
+          "training_quantizer": "explicit straight-through estimator"
+        }
+      },
+      "teacher_training_curve": [
+        {
+          "step": 50,
+          "train_nll": 2.8829948902130127
+        },
+        {
+          "step": 100,
+          "train_nll": 1.2183423042297363
+        },
+        {
+          "step": 150,
+          "train_nll": 0.9484249353408813
+        },
+        {
+          "step": 200,
+          "train_nll": 0.7978898286819458
+        },
+        {
+          "step": 250,
+          "train_nll": 0.7103918790817261
+        },
+        {
+          "step": 300,
+          "train_nll": 0.692079484462738
+        },
+        {
+          "step": 350,
+          "train_nll": 0.6718700528144836
+        }
+      ],
+      "elapsed_seconds": 18.882996438999953
+    },
+    {
+      "seed": 1,
+      "config": {
+        "vocab": 24,
+        "heads": 4,
+        "kv_heads": 2,
+        "head_dim": 16,
+        "layers": 3,
+        "ff_mult": 2,
+        "adapter_rank": 8
+      },
+      "total_parameters": 104884,
+      "adapter_parameters": 2388,
+      "data_hashes": {
+        "pretrain": "797bae00a4e40c6ab8b9e2d48ab099ee0be9c3d778a36d57a3f6c52bb939fc2e",
+        "train": "1e4d67d3c4a973974c77a20167e89cecef0a6f5e6948db51da85ea55e667e556",
+        "validation": "de1ecdbca5d7acf91915c690179ce9e5581daa4ca70a3c762dc4825e18062b5e",
+        "test": "a993c2be162c013dbc4f940a36e00bd96c1400b6c5a4977aeac1fe31b6b4523f"
+      },
+      "arms": {
+        "teacher_exact": {
+          "nll": 0.7455994486808777,
+          "accuracy_suffix": 1.0,
+          "perplexity": 2.107704517058892,
+          "sequences": 128
+        },
+        "single2": {
+          "nll": 0.8879507184028625,
+          "accuracy_suffix": 0.9500000476837158,
+          "teacher_kl": 0.13782212138175964,
+          "teacher_argmax_agreement": 0.8984375,
+          "hidden_relative_mse": [
+            0.010825131088495255,
+            0.05535434931516647,
+            0.09781405329704285
+          ],
+          "perplexity": 2.4301444946483444,
+          "sequences": 128
+        },
+        "single6": {
+          "nll": 0.7457013130187988,
+          "accuracy_suffix": 1.0,
+          "teacher_kl": 2.6327326850150712e-05,
+          "teacher_argmax_agreement": 0.998291015625,
+          "hidden_relative_mse": [
+            1.1682015610858798e-05,
+            5.5035441619111225e-05,
+            7.595276110805571e-05
+          ],
+          "perplexity": 2.10791922791956,
+          "sequences": 128
+        },
+        "triality3x2": {
+          "nll": 0.7663909196853638,
+          "accuracy_suffix": 0.9959375262260437,
+          "teacher_kl": 0.020252542570233345,
+          "teacher_argmax_agreement": 0.958984375,
+          "hidden_relative_mse": [
+            0.0041836961172521114,
+            0.024851614609360695,
+            0.035287126898765564
+          ],
+          "perplexity": 2.151985532982925,
+          "sequences": 128
+        },
+        "generic3x2": {
+          "nll": 0.772374153137207,
+          "accuracy_suffix": 0.9934374094009399,
+          "teacher_kl": 0.02509489469230175,
+          "teacher_argmax_agreement": 0.95751953125,
+          "hidden_relative_mse": [
+            0.004332296084612608,
+            0.0238041989505291,
+            0.03917679190635681
+          ],
+          "perplexity": 2.16489996130449,
+          "sequences": 128
+        },
+        "triality3x2_v3": {
+          "nll": 0.7711558938026428,
+          "accuracy_suffix": 0.9962499737739563,
+          "teacher_kl": 0.024753516539931297,
+          "teacher_argmax_agreement": 0.94970703125,
+          "hidden_relative_mse": [
+            0.006417593918740749,
+            0.031567398458719254,
+            0.045184481889009476
+          ],
+          "perplexity": 2.1622641575904678,
+          "sequences": 128
+        },
+        "triality_trained": {
+          "nll": 0.7613368630409241,
+          "accuracy_suffix": 0.9965624809265137,
+          "teacher_kl": 0.01874133199453354,
+          "teacher_argmax_agreement": 0.955078125,
+          "hidden_relative_mse": [
+            0.006117954850196838,
+            0.029122700914740562,
+            0.03728894889354706
+          ],
+          "perplexity": 2.141136714565664,
+          "sequences": 128
+        },
+        "triality_trained_exact_kv": {
+          "nll": 0.7432559728622437,
+          "accuracy_suffix": 0.9996874928474426,
+          "teacher_kl": 0.0019262877758592367,
+          "teacher_argmax_agreement": 0.978271484375,
+          "hidden_relative_mse": [
+            0.0019533089362084866,
+            0.004967625718563795,
+            0.004628084599971771
+          ],
+          "perplexity": 2.102770945600926,
+          "sequences": 128
+        },
+        "generic_trained": {
+          "nll": 0.7666049003601074,
+          "accuracy_suffix": 0.9949999451637268,
+          "teacher_kl": 0.02355540543794632,
+          "teacher_argmax_agreement": 0.951904296875,
+          "hidden_relative_mse": [
+            0.0071946922689676285,
+            0.029224861413240433,
+            0.042383819818496704
+          ],
+          "perplexity": 2.152446065570091,
+          "sequences": 128
+        }
+      },
+      "training": {
+        "triality": {
+          "initial_validation_kl": 0.01783640682697296,
+          "best_validation_kl": 0.015492459759116173,
+          "best_step": 20,
+          "curve": [
+            {
+              "step": 20,
+              "train_loss": 0.031189609318971634,
+              "validation_teacher_kl": 0.015492459759116173
+            },
+            {
+              "step": 40,
+              "train_loss": 0.01185762882232666,
+              "validation_teacher_kl": 0.017970843240618706
+            },
+            {
+              "step": 60,
+              "train_loss": 0.017472906038165092,
+              "validation_teacher_kl": 0.01693311706185341
+            },
+            {
+              "step": 80,
+              "train_loss": 0.011077349074184895,
+              "validation_teacher_kl": 0.01850162073969841
+            },
+            {
+              "step": 100,
+              "train_loss": 0.011545577086508274,
+              "validation_teacher_kl": 0.016437310725450516
+            },
+            {
+              "step": 120,
+              "train_loss": 0.015808092430233955,
+              "validation_teacher_kl": 0.016739919781684875
+            },
+            {
+              "step": 140,
+              "train_loss": 0.011090576648712158,
+              "validation_teacher_kl": 0.017001084983348846
+            },
+            {
+              "step": 160,
+              "train_loss": 0.025294968858361244,
+              "validation_teacher_kl": 0.01644032448530197
+            }
+          ],
+          "base_weights_unchanged": true,
+          "training_quantizer": "explicit straight-through estimator"
+        },
+        "generic": {
+          "initial_validation_kl": 0.02118620276451111,
+          "best_validation_kl": 0.019659293815493584,
+          "best_step": 60,
+          "curve": [
+            {
+              "step": 20,
+              "train_loss": 0.019251573830842972,
+              "validation_teacher_kl": 0.022128775715827942
+            },
+            {
+              "step": 40,
+              "train_loss": 0.020768186077475548,
+              "validation_teacher_kl": 0.02129240147769451
+            },
+            {
+              "step": 60,
+              "train_loss": 0.013530322350561619,
+              "validation_teacher_kl": 0.019659293815493584
+            },
+            {
+              "step": 80,
+              "train_loss": 0.014244779013097286,
+              "validation_teacher_kl": 0.02342330291867256
+            },
+            {
+              "step": 100,
+              "train_loss": 0.0130764776840806,
+              "validation_teacher_kl": 0.0246584415435791
+            },
+            {
+              "step": 120,
+              "train_loss": 0.01305174920707941,
+              "validation_teacher_kl": 0.023463759571313858
+            },
+            {
+              "step": 140,
+              "train_loss": 0.013912530615925789,
+              "validation_teacher_kl": 0.024356424808502197
+            },
+            {
+              "step": 160,
+              "train_loss": 0.01281212829053402,
+              "validation_teacher_kl": 0.023149309679865837
+            }
+          ],
+          "base_weights_unchanged": true,
+          "training_quantizer": "explicit straight-through estimator"
+        }
+      },
+      "teacher_training_curve": [
+        {
+          "step": 50,
+          "train_nll": 2.847935914993286
+        },
+        {
+          "step": 100,
+          "train_nll": 1.1712924242019653
+        },
+        {
+          "step": 150,
+          "train_nll": 0.9131826758384705
+        },
+        {
+          "step": 200,
+          "train_nll": 0.7473894953727722
+        },
+        {
+          "step": 250,
+          "train_nll": 0.6899524927139282
+        },
+        {
+          "step": 300,
+          "train_nll": 0.6818172335624695
+        },
+        {
+          "step": 350,
+          "train_nll": 0.6769778728485107
+        }
+      ],
+      "elapsed_seconds": 17.682619853000006
+    },
+    {
+      "seed": 2,
+      "config": {
+        "vocab": 24,
+        "heads": 4,
+        "kv_heads": 2,
+        "head_dim": 16,
+        "layers": 3,
+        "ff_mult": 2,
+        "adapter_rank": 8
+      },
+      "total_parameters": 104884,
+      "adapter_parameters": 2388,
+      "data_hashes": {
+        "pretrain": "312382c04fc562ae0d86964a92919ee478f330aedc6e05a01b8a532cf20a4b08",
+        "train": "5c59eea82c07fd4b3d2af5b636bdf13eca4ac79d938e58fe0f9fea2283d69300",
+        "validation": "8ede556455a5ecca0c76fde4c006a165f8409cabe67b34486f3c61294a2eef3b",
+        "test": "00b389f01000a5885b9aca462751874413bd78b07884ced644bf062cc4ba9aba"
+      },
+      "arms": {
+        "teacher_exact": {
+          "nll": 0.7687560319900513,
+          "accuracy_suffix": 0.9984374642372131,
+          "perplexity": 2.1570812440356018,
+          "sequences": 128
+        },
+        "single2": {
+          "nll": 0.9890615940093994,
+          "accuracy_suffix": 0.9212499856948853,
+          "teacher_kl": 0.2181585431098938,
+          "teacher_argmax_agreement": 0.86572265625,
+          "hidden_relative_mse": [
+            0.007289784960448742,
+            0.04599040374159813,
+            0.12399619072675705
+          ],
+          "perplexity": 2.6887101863860754,
+          "sequences": 128
+        },
+        "single6": {
+          "nll": 0.7688548564910889,
+          "accuracy_suffix": 0.9984374642372131,
+          "teacher_kl": 3.719215601449832e-05,
+          "teacher_argmax_agreement": 0.997314453125,
+          "hidden_relative_mse": [
+            8.318718755617738e-06,
+            4.7249122872017324e-05,
+            8.818274363875389e-05
+          ],
+          "perplexity": 2.15729442704692,
+          "sequences": 128
+        },
+        "triality3x2": {
+          "nll": 0.8082678914070129,
+          "accuracy_suffix": 0.9856249690055847,
+          "teacher_kl": 0.03827422857284546,
+          "teacher_argmax_agreement": 0.943603515625,
+          "hidden_relative_mse": [
+            0.0027265059761703014,
+            0.019489213824272156,
+            0.04521884024143219
+          ],
+          "perplexity": 2.244017736077378,
+          "sequences": 128
+        },
+        "generic3x2": {
+          "nll": 0.8133383989334106,
+          "accuracy_suffix": 0.9834374785423279,
+          "teacher_kl": 0.04025094211101532,
+          "teacher_argmax_agreement": 0.93994140625,
+          "hidden_relative_mse": [
+            0.0027981093153357506,
+            0.01894054189324379,
+            0.04886925220489502
+          ],
+          "perplexity": 2.2554249406157925,
+          "sequences": 128
+        },
+        "triality3x2_v3": {
+          "nll": 0.8127749562263489,
+          "accuracy_suffix": 0.9850000739097595,
+          "teacher_kl": 0.04315395653247833,
+          "teacher_argmax_agreement": 0.9345703125,
+          "hidden_relative_mse": [
+            0.004658765159547329,
+            0.025433797389268875,
+            0.05790027230978012
+          ],
+          "perplexity": 2.2541544958267132,
+          "sequences": 128
+        },
+        "triality_trained": {
+          "nll": 0.7910584211349487,
+          "accuracy_suffix": 0.9912499785423279,
+          "teacher_kl": 0.029784390702843666,
+          "teacher_argmax_agreement": 0.94140625,
+          "hidden_relative_mse": [
+            0.005871620494872332,
+            0.02687658742070198,
+            0.04805847257375717
+          ],
+          "perplexity": 2.205729782220961,
+          "sequences": 128
+        },
+        "triality_trained_exact_kv": {
+          "nll": 0.7646898627281189,
+          "accuracy_suffix": 0.9987499713897705,
+          "teacher_kl": 0.004853580147027969,
+          "teacher_argmax_agreement": 0.96044921875,
+          "hidden_relative_mse": [
+            0.00326493289321661,
+            0.009875625371932983,
+            0.009222818538546562
+          ],
+          "perplexity": 2.148327994742542,
+          "sequences": 128
+        },
+        "generic_trained": {
+          "nll": 0.7958656549453735,
+          "accuracy_suffix": 0.9900000691413879,
+          "teacher_kl": 0.03230544924736023,
+          "teacher_argmax_agreement": 0.93896484375,
+          "hidden_relative_mse": [
+            0.006142491474747658,
+            0.029175205156207085,
+            0.05323797091841698
+          ],
+          "perplexity": 2.216358768548735,
+          "sequences": 128
+        }
+      },
+      "training": {
+        "triality": {
+          "initial_validation_kl": 0.040196072310209274,
+          "best_validation_kl": 0.026289481669664383,
+          "best_step": 100,
+          "curve": [
+            {
+              "step": 20,
+              "train_loss": 0.02159392088651657,
+              "validation_teacher_kl": 0.032271210104227066
+            },
+            {
+              "step": 40,
+              "train_loss": 0.03256925940513611,
+              "validation_teacher_kl": 0.029007162898778915
+            },
+            {
+              "step": 60,
+              "train_loss": 0.022370796650648117,
+              "validation_teacher_kl": 0.02811073698103428
+            },
+            {
+              "step": 80,
+              "train_loss": 0.025060007348656654,
+              "validation_teacher_kl": 0.03040475770831108
+            },
+            {
+              "step": 100,
+              "train_loss": 0.02133459784090519,
+              "validation_teacher_kl": 0.026289481669664383
+            },
+            {
+              "step": 120,
+              "train_loss": 0.021753409877419472,
+              "validation_teacher_kl": 0.02656782791018486
+            },
+            {
+              "step": 140,
+              "train_loss": 0.020035171881318092,
+              "validation_teacher_kl": 0.03031955286860466
+            },
+            {
+              "step": 160,
+              "train_loss": 0.02129099704325199,
+              "validation_teacher_kl": 0.027971286326646805
+            }
+          ],
+          "base_weights_unchanged": true,
+          "training_quantizer": "explicit straight-through estimator"
+        },
+        "generic": {
+          "initial_validation_kl": 0.04079093784093857,
+          "best_validation_kl": 0.033432457596063614,
+          "best_step": 160,
+          "curve": [
+            {
+              "step": 20,
+              "train_loss": 0.031223107129335403,
+              "validation_teacher_kl": 0.03855649009346962
+            },
+            {
+              "step": 40,
+              "train_loss": 0.02648147940635681,
+              "validation_teacher_kl": 0.036166295409202576
+            },
+            {
+              "step": 60,
+              "train_loss": 0.05086829885840416,
+              "validation_teacher_kl": 0.03406146913766861
+            },
+            {
+              "step": 80,
+              "train_loss": 0.03268514201045036,
+              "validation_teacher_kl": 0.03640442714095116
+            },
+            {
+              "step": 100,
+              "train_loss": 0.023140784353017807,
+              "validation_teacher_kl": 0.03492971509695053
+            },
+            {
+              "step": 120,
+              "train_loss": 0.0245406161993742,
+              "validation_teacher_kl": 0.036924153566360474
+            },
+            {
+              "step": 140,
+              "train_loss": 0.028729094192385674,
+              "validation_teacher_kl": 0.03605563938617706
+            },
+            {
+              "step": 160,
+              "train_loss": 0.018343469128012657,
+              "validation_teacher_kl": 0.033432457596063614
+            }
+          ],
+          "base_weights_unchanged": true,
+          "training_quantizer": "explicit straight-through estimator"
+        }
+      },
+      "teacher_training_curve": [
+        {
+          "step": 50,
+          "train_nll": 2.8941376209259033
+        },
+        {
+          "step": 100,
+          "train_nll": 1.17235267162323
+        },
+        {
+          "step": 150,
+          "train_nll": 0.8987235426902771
+        },
+        {
+          "step": 200,
+          "train_nll": 0.7171692252159119
+        },
+        {
+          "step": 250,
+          "train_nll": 0.7129079699516296
+        },
+        {
+          "step": 300,
+          "train_nll": 0.6930884718894958
+        },
+        {
+          "step": 350,
+          "train_nll": 0.6602542996406555
+        }
+      ],
+      "elapsed_seconds": 18.095924771
+    }
+  ]
+}

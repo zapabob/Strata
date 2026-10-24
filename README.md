@@ -1,3 +1,18 @@
+# Strata fork: unfinished native CLI preview
+
+**TL;DR:** This fork provides an unfinished native CLI preview for AI engineers investigating quantisation and attention optimisation. The Windows x64 artefact contains the engine executable and required DLLs, tested on a Ryzen 5 4500 with an RTX 5060 Ti. It consumes pretokenised IDs and an existing native model pack; it is not a free-text chat application or HTTP server. Default/off Q2 generation produced READY and EOS in a bounded diagnostic. Experimental three-view generation, Bonsai, quality, long-context performance and GUI integration remain unqualified. Download the complete archive, read its limits, and keep experimental modes off.
+
+[Download the fork preview](https://github.com/zapabob/Strata/releases/tag/v0.3.0-preview.20261024.1) ·
+[Setup, evidence and remaining work](docs/releases/preview030.md) ·
+[Research PoC with negative findings](docs/research/triality-poc/README.md)
+
+The preview is unsigned and is **not a completed 0.3.0 release**. Its distribution number is independent
+of upstream's app and engine numbers. It includes neither a GUI installer nor model weights.
+Use the `.tar.7z` bundle: the executable alone is insufficient. The original upstream introduction
+below describes the wider app and Terminal; those installers do not install this fork preview.
+
+---
+
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="apps/host/public/brand/strata-lockup-dark.svg">
@@ -21,7 +36,7 @@
 <sub>A voxel pagoda garden, 1 shot prompt running on an RTX 5070 with Strata (IQ3_S, 128K context) ·
 <a href="https://github.com/Niko1221/Strata/releases/download/v0.1.10/Pagoda.mp4">full video (49 s)</a></sub></p>
 
-Strata — fork TL;DR (zapabob): this edition targets PrismL 2-bit dialect codec, Hikari07-family Bonsai 27B PQ2_0 and Spin8/Triality ops on the V0.3.0 track; formal quality gates remain open per the record at [_docs/2026-10-23_strata_030_execution_Codex.md](_docs/2026-10-23_strata_030_execution_Codex.md) — runs **[Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next)**, a 125-billion-parameter model that
+Upstream Strata runs **[Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next)**, a 125-billion-parameter model that
 normally needs a server, on a normal PC. It chats, writes code, reads pictures and works with your apps and coding
 agents. Your chats and files stay on your PC.
 

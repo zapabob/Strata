@@ -1,0 +1,74 @@
+name: Native preview CPU checks
+
+on:
+  push:
+    paths:
+      - 'spin8/**'
+      - 'tqcodec/**'
+      - 'src/core/spin8*'
+      - 'src/core/native_cache*'
+      - 'src/core/layer.cpp'
+      - 'tests/core/**'
+      - 'src/program/generate.cpp'
+      - 'include/**'
+      - 'cmake/**'
+      - 'CMakeLists.txt'
+      - 'data/spin8/**'
+      - 'packaging/native_preview.py'
+      - 'packaging/binary_deps.py'
+      - 'tests/terminal/test_native_preview.py'
+      - 'tools/*spin8*'
+      - '.github/workflows/native-preview.yml'
+  pull_request:
+    paths:
+      - 'spin8/**'
+      - 'tqcodec/**'
+      - 'src/core/spin8*'
+      - 'src/core/native_cache*'
+      - 'src/core/layer.cpp'
+      - 'tests/core/**'
+      - 'src/program/generate.cpp'
+      - 'include/**'
+      - 'cmake/**'
+      - 'CMakeLists.txt'
+      - 'data/spin8/**'
+      - 'packaging/native_preview.py'
+      - 'packaging/binary_deps.py'
+      - 'tests/terminal/test_native_preview.py'
+      - 'tools/*spin8*'
+      - '.github/workflows/native-preview.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cpu:
+    name: CPU contracts (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Packaging boundary tests (no runtime downloads)
+        run: python -B -m unittest discover -s tests/terminal -p test_native_preview.py
+      - name: Configure CPU Spin8
+        run: cmake -S spin8 -B build-preview-spin8 -DSPIN8_ENABLE_CUDA=OFF -DSPIN8_BUILD_TESTS=ON
+      - name: Build CPU Spin8
+        run: cmake --build build-preview-spin8 --config Release --parallel 2
+      - name: Test CPU Spin8
+        run: ctest --test-dir build-preview-spin8 -C Release --output-on-failure --no-tests=error
+      - name: Configure CPU codecs
+        run: cmake -S tqcodec -B build-preview-tqcodec -DBUILD_TESTING=ON -DTQCODEC_DIALECTS=ON -DTQCODEC_DIALECTS_CUDA=OFF -DTQCODEC_SPIN8_TESTS=ON
+      - name: Build CPU codecs
+        run: cmake --build build-preview-tqcodec --config Release --parallel 2
+      - name: Test CPU codecs
+        run: ctest --test-dir build-preview-tqcodec -C Release --output-on-failure --no-tests=error
