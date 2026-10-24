@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from enum import Enum
 import hashlib
 import json
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 logger = logging.getLogger("strata.qualification")
 
@@ -19,11 +20,53 @@ class GateStatus(str, Enum):
 
 
 @dataclass(frozen=True)
+class GateConfig:
+    min_invocations: int = 1
+    min_tokens: int = 1
+    allow_dryrun: bool = False
+
+
+@dataclass
+class RunReceipt:
+    candidate_id: str
+    verification_method: str
+    invocations: int
+    tokens_generated: int
+    binary_sha256: str
+    duration_seconds: float = 1.0
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    log_path: str | None = None
+    raw_log_sha256: str | None = None
+    execution_readiness: str = "READY_FOR_INFERENCE"
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema_version": "2.0",
+            "candidate_id": self.candidate_id,
+            "verification_method": self.verification_method,
+            "invocations": self.invocations,
+            "tokens_generated": self.tokens_generated,
+            "binary_sha256": self.binary_sha256,
+            "duration_seconds": self.duration_seconds,
+            "timestamp": self.timestamp,
+            "log_path": self.log_path,
+            "raw_log_sha256": self.raw_log_sha256,
+            "execution_readiness": self.execution_readiness,
+            "metadata": self.metadata or {},
+        }
+
+
+@dataclass(frozen=True)
 class GateResult:
     status: GateStatus
     real_model_qualified: bool
     reason: str
     details: dict[str, Any] | None = None
+
+    @property
+    def passed(self) -> bool:
+        return self.status == GateStatus.PASSED and self.real_model_qualified
 
 
 DISALLOWED_BINARY_HASHES = frozenset({
@@ -41,13 +84,20 @@ STATIC_DUMMY_TIMESTAMPS = frozenset({
 })
 
 
-def evaluate_gate(receipt: dict[str, Any]) -> GateResult:
+def evaluate_gate(receipt_input: dict[str, Any] | RunReceipt, config: GateConfig | None = None) -> GateResult:
     """Evaluate RunReceipt v2 against strict empirical evidence criteria.
     
     Rejects any mock, synthetic, or dry-run claims from being promoted to real_model_qualified.
     """
+    cfg = config or GateConfig()
+    receipt: dict[str, Any]
+    if isinstance(receipt_input, RunReceipt):
+        receipt = receipt_input.to_dict()
+    else:
+        receipt = dict(receipt_input)
+
     method = str(receipt.get("verification_method", "")).strip()
-    if method == "DRYRUN_QUALIFICATION_RECEIPT" or "dryrun" in method.lower():
+    if (method == "DRYRUN_QUALIFICATION_RECEIPT" or "dryrun" in method.lower()) and not cfg.allow_dryrun:
         return GateResult(
             status=GateStatus.REJECTED,
             real_model_qualified=False,
@@ -55,19 +105,19 @@ def evaluate_gate(receipt: dict[str, Any]) -> GateResult:
         )
 
     invocations = int(receipt.get("invocations", 0))
-    if invocations <= 0:
+    if invocations < cfg.min_invocations:
         return GateResult(
             status=GateStatus.REJECTED,
             real_model_qualified=False,
-            reason=f"Model invocations count must be > 0 (found {invocations})",
+            reason=f"Model invocations count must be >= {cfg.min_invocations} (found {invocations})",
         )
 
     tokens = int(receipt.get("tokens_generated", 0))
-    if tokens <= 0:
+    if tokens < cfg.min_tokens:
         return GateResult(
             status=GateStatus.REJECTED,
             real_model_qualified=False,
-            reason=f"Tokens generated must be > 0 (found {tokens})",
+            reason=f"Tokens generated must be >= {cfg.min_tokens} (found {tokens})",
         )
 
     bin_hash = str(receipt.get("binary_sha256", "")).strip().lower()

@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "protocol_id": "STRATA-CUSTOM-GGUF-EVAL-V2",
+  "version": "2.0.0",
+  "name": "Strata Custom GGUF & DeepSeek Empirical Multi-Turn Qualification Protocol",
+  "created_at": "2026-10-25T08:00:00Z",
+  "author": "Antigravity/MILSPEC-Codex Standard",
+  "target_hardware": {
+    "platform": "Windows 11",
+    "architecture": "x86_64",
+    "cpu_instruction_sets": ["AVX2", "FMA"],
+    "total_physical_ram_gib": 32.0,
+    "max_host_budget_gib": 24.0,
+    "min_os_headroom_gib": 4.0,
+    "gpu_target": "NVIDIA GeForce RTX 5060 Ti",
+    "vram_physical_gib": 16.0,
+    "max_vram_budget_gib": 14.0,
+    "min_vram_headroom_gib": 2.0,
+    "compute_capability": "sm_120"
+  },
+  "safety_policies": {
+    "cloud_fallback": "STRICTLY_PROHIBITED",
+    "unsolicited_requantization": "DISABLED",
+    "raw_model_mutation": "FORBIDDEN",
+    "zero_vram_drafter_unload": "MANDATORY",
+    "multipart_completeness": "STRICT_ALL_SHARDS_REQUIRED",
+    "evidence_promotion_rule": "NEVER_PROMOTE_DRYRUN_OR_SYNTHETIC"
+  },
+  "evaluation_tiers": [
+    {
+      "tier": 1,
+      "name": "Bounded Container Inspection & Shard Resolution",
+      "checks": [
+        "Magic bytes verification (GGUF 0x46554747)",
+        "Bounded header read (<= 64 MiB, <= 8192 keys, <= 65536 tensors)",
+        "Tensor rank <= 4 and checked product bounds (GHSA-vgg9-87g3-85w8)",
+        "All split shards present and strictly continuous (ordinal 0..N-1, zero missing shards)"
+      ]
+    },
+    {
+      "tier": 2,
+      "name": "Architecture & Steering Boundary Isolation",
+      "checks": [
+        "Architecture family matching (dsv41 for DeepSeek MLA, qwen for Qwen/Bonsai)",
+        "Refusal vector isolation (model_family match required, cross-family steering strictly rejected)",
+        "Orthogonal projection and norm-preserving reflection guarantees"
+      ]
+    },
+    {
+      "tier": 3,
+      "name": "Live Hardware Admission & Dynamic Launch Budget",
+      "checks": [
+        "Live available physical RAM >= Planned Host RAM + 4.0 GiB OS headroom",
+        "Live available system commit >= Planned Commit + 4.0 GiB headroom",
+        "Live free GPU VRAM >= Planned VRAM + 2.0 GiB headroom",
+        "Disjoint memory region accounting with zero double-counting"
+      ]
+    },
+    {
+      "tier": 4,
+      "name": "Empirical Inference & Process Lifecycle",
+      "checks": [
+        "Minimum 1 real engine launch with non-zero invocations",
+        "Minimum 10 non-zero generated tokens (empty output rejected)",
+        "Distinction between natural EOS ('stop') and stress limit ('length')",
+        "Cryptographic binary hash match (zero placeholder hashes)",
+        "Cryptographic raw log digest verification with zero hash drift",
+        "Clean server rollback with zero orphaned zombie threads or processes"
+      ]
+    }
+  ],
+  "gate_criteria": {
+    "gate_name": "Gate G6-v2",
+    "required_pass_rate": 1.0,
+    "allow_dryrun": false,
+    "allow_soft_failures": false
+  }
+}

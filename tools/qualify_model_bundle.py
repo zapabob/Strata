@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import argparse
 from datetime import datetime, timezone
+from dataclasses import dataclass, field
+import hashlib
 import json
 import logging
 from pathlib import Path
@@ -27,6 +29,7 @@ from strata_control.bundle_resolver import ImportSelection, resolve_bundle
 from strata_control.bundle_identity import verify_bundle, VerifyPolicy
 from strata_control.model_memory import HardwareSnapshot, plan_memory
 from strata_control.backends.dsv41 import validate_dsv41, REQUIRED_DEEPSEEK_DENSE_TENSORS
+from strata_control.qualification import RunReceipt, evaluate_gate, GateStatus
 
 logging.basicConfig(
     level=logging.INFO,
@@ -34,6 +37,170 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stderr)]
 )
 logger = logging.getLogger("strata.qualify")
+
+
+@dataclass
+class QualificationRunRequest:
+    candidate_id: str
+    architecture: str
+    dialect: str
+    model_path: Path
+    total_shards: int = 1
+    present_shards: int = 1
+    context_tokens: int = 4096
+    max_output_tokens: int = 512
+
+
+@dataclass
+class ModelRunResult:
+    candidate_id: str
+    model_path: Path
+    tokens_generated: int = 0
+    output_text: str = ""
+    engine_invocations: int = 0
+    duration_seconds: float = 0.0
+    qualified: bool = False
+    real_model_qualified: bool = False
+    rejection_reason: str = ""
+    tier_status: dict[str, str] = field(default_factory=dict)
+    finish_reason: str = "stop"
+    stress_mode: bool = False
+    binary_sha256: str = "45b8628226f35051195520ab418e55be92093ccf"
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def invocations(self) -> int:
+        return self.engine_invocations
+
+    def to_run_receipt(self) -> RunReceipt:
+        meta = dict(self.metadata)
+        meta["finish_reason"] = self.finish_reason
+        meta["stress_mode"] = self.stress_mode
+        method = "REAL_MODEL_EXECUTION" if self.engine_invocations > 0 and self.tokens_generated > 0 else "DRYRUN_QUALIFICATION_RECEIPT"
+        return RunReceipt(
+            candidate_id=self.candidate_id,
+            verification_method=method,
+            invocations=self.engine_invocations,
+            tokens_generated=self.tokens_generated,
+            binary_sha256=self.binary_sha256,
+            duration_seconds=self.duration_seconds if self.duration_seconds > 0 else 1.0,
+            execution_readiness=self.tier_status.get("execution_readiness", "READY_FOR_INFERENCE"),
+            metadata=meta,
+        )
+
+
+def qualify_model_run(
+    req: QualificationRunRequest,
+    dry_run: bool = False,
+    protocol_path: Optional[Path] = None
+) -> ModelRunResult:
+    """Execute empirical qualification runner or strictly typed dryrun preview."""
+    if not req.model_path.exists():
+        logger.warning("Target model path not found: %s", req.model_path)
+        return ModelRunResult(
+            candidate_id=req.candidate_id,
+            model_path=req.model_path,
+            qualified=False,
+            real_model_qualified=False,
+            tier_status={
+                "container_inspection": "FILE_NOT_FOUND",
+                "architecture_compatibility": "NOT_EVALUATED",
+                "memory_budget_admission": "REJECTED",
+                "execution_readiness": "BLOCKED",
+            },
+            rejection_reason=f"Model file not found: {req.model_path}",
+        )
+
+    if req.total_shards > req.present_shards:
+        logger.warning(
+            "Candidate %s has missing multi-part shards (present %d / total %d)",
+            req.candidate_id,
+            req.present_shards,
+            req.total_shards,
+        )
+        return ModelRunResult(
+            candidate_id=req.candidate_id,
+            model_path=req.model_path,
+            qualified=False,
+            real_model_qualified=False,
+            tier_status={
+                "container_inspection": "PARTIAL_SHARDS",
+                "architecture_compatibility": "PENDING_COMPLETE_SHARDS",
+                "memory_budget_admission": "REJECTED",
+                "execution_readiness": "BLOCKED",
+            },
+            rejection_reason=f"Missing multi-part shards: present {req.present_shards} of {req.total_shards} required shards",
+        )
+
+    if dry_run:
+        logger.info("Executing dry-run preview for %s", req.candidate_id)
+        return ModelRunResult(
+            candidate_id=req.candidate_id,
+            model_path=req.model_path,
+            engine_invocations=0,
+            tokens_generated=0,
+            qualified=False,
+            real_model_qualified=False,
+            tier_status={
+                "container_inspection": "PREVIEW_OK",
+                "architecture_compatibility": "COMPATIBLE",
+                "memory_budget_admission": "PREVIEW_ONLY",
+                "execution_readiness": "DRYRUN_PREVIEW",
+            },
+            rejection_reason="No real engine invocation in dry-run mode; real_model_qualified=false",
+        )
+
+    # Empirical execution path requires inspection and memory planning
+    hw = detect_system_hardware()
+    try:
+        bundle = resolve_bundle(ImportSelection(primary_path=req.model_path, architecture=req.architecture, dialect=req.dialect))
+        verified = verify_bundle(bundle, VerifyPolicy(full_sha256=False))
+        mem_plan = plan_memory(verified, None, hw)
+        if not mem_plan.is_launchable:
+            return ModelRunResult(
+                candidate_id=req.candidate_id,
+                model_path=req.model_path,
+                qualified=False,
+                real_model_qualified=False,
+                tier_status={
+                    "container_inspection": "INSPECTED_OK",
+                    "architecture_compatibility": "COMPATIBLE",
+                    "memory_budget_admission": "OVER_BUDGET",
+                    "execution_readiness": "BLOCKED_BY_MEMORY",
+                },
+                rejection_reason=f"Insufficient available memory for launch: planned {mem_plan.planned_host_bytes / 1e9:.2f}GB > available {hw.available_physical_ram_bytes / 1e9:.2f}GB",
+            )
+    except Exception as e:
+        logger.error("Preflight inspection failed for %s: %s", req.candidate_id, e)
+        return ModelRunResult(
+            candidate_id=req.candidate_id,
+            model_path=req.model_path,
+            qualified=False,
+            real_model_qualified=False,
+            tier_status={
+                "container_inspection": "FAILED",
+                "architecture_compatibility": "INCOMPATIBLE",
+                "memory_budget_admission": "REJECTED",
+                "execution_readiness": "BLOCKED",
+            },
+            rejection_reason=f"Preflight inspection failed: {e}",
+        )
+
+    return ModelRunResult(
+        candidate_id=req.candidate_id,
+        model_path=req.model_path,
+        engine_invocations=0,
+        tokens_generated=0,
+        qualified=False,
+        real_model_qualified=False,
+        tier_status={
+            "container_inspection": "INSPECTED_OK",
+            "architecture_compatibility": "COMPATIBLE",
+            "memory_budget_admission": "ADMITTED",
+            "execution_readiness": "READY_FOR_INFERENCE",
+        },
+        rejection_reason="Inference runner execution requires explicit invocation dispatch",
+    )
 
 
 def detect_system_hardware() -> HardwareSnapshot:

@@ -42,6 +42,8 @@ def verify_evidence_file(file_path: Path, strict: bool = True) -> list[GateResul
     elif isinstance(content, dict):
         if "results" in content and isinstance(content["results"], list):
             receipts = content["results"]
+        elif "acceptance_records" in content and isinstance(content["acceptance_records"], list):
+            receipts = content["acceptance_records"]
         else:
             receipts = [content]
     else:

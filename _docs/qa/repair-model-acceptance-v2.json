@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "schema_version": "2.0",
+  "protocol": "STRATA-CUSTOM-GGUF-EVAL-V2",
+  "generated_at": "2026-10-25T08:15:00Z",
+  "verifier": "Antigravity/MILSPEC-Codex Standard",
+  "hardware_target": {
+    "platform": "Windows 11 x64",
+    "total_physical_ram_gib": 32.0,
+    "gpu": "NVIDIA GeForce RTX 5060 Ti 16GB",
+    "compute_capability": "sm_120"
+  },
+  "acceptance_records": [
+    {
+      "candidate_id": "deepseek-v4.1-flash-ista-standard",
+      "architecture": "dsv41",
+      "dialect": "standard",
+      "kind": "base_model",
+      "uncensored": false,
+      "tier_status": {
+        "container_inspection": "PARTIAL_SHARDS",
+        "architecture_compatibility": "COMPATIBLE",
+        "memory_budget_admission": "REJECTED",
+        "execution_readiness": "BLOCKED"
+      },
+      "shards_summary": {
+        "required_shards": 6,
+        "present_shards": 1,
+        "missing_shards": [2, 3, 4, 5, 6],
+        "present_paths": [
+          "H:\\Strata\\models\\DeepSeek-V4.1-Flash-1017-Uncensored-2.67bpw-IQ1_M-00001-of-00006.gguf"
+        ]
+      },
+      "invocations": 0,
+      "tokens_generated": 0,
+      "qualified": false,
+      "real_model_qualified": false,
+      "verification_method": "AUDITED_PHYSICAL_STORAGE_INSPECTION",
+      "rejection_reason": "Missing multi-part shards: present 1 of 6 required shards on disk. Full inference physically blocked until shards 2-6 are acquired."
+    },
+    {
+      "candidate_id": "deepseek-maya-s-kiwimaker-abliterated",
+      "architecture": "dsv41",
+      "dialect": "standard",
+      "kind": "replacement_recipe",
+      "uncensored": true,
+      "tier_status": {
+        "container_inspection": "PENDING_BASE_SHARDS",
+        "architecture_compatibility": "COMPATIBLE",
+        "memory_budget_admission": "REJECTED",
+        "execution_readiness": "BLOCKED"
+      },
+      "invocations": 0,
+      "tokens_generated": 0,
+      "qualified": false,
+      "real_model_qualified": false,
+      "verification_method": "AUDITED_PHYSICAL_STORAGE_INSPECTION",
+      "rejection_reason": "Replacement recipe target shard and parent shards missing from physical storage."
+    },
+    {
+      "candidate_id": "deepseek-v4.1-atomicchat-uncensored",
+      "architecture": "dsv41",
+      "dialect": "standard",
+      "kind": "standalone_model",
+      "uncensored": true,
+      "tier_status": {
+        "container_inspection": "FILE_NOT_FOUND",
+        "architecture_compatibility": "NOT_EVALUATED",
+        "memory_budget_admission": "REJECTED",
+        "execution_readiness": "BLOCKED"
+      },
+      "invocations": 0,
+      "tokens_generated": 0,
+      "qualified": false,
+      "real_model_qualified": false,
+      "verification_method": "AUDITED_PHYSICAL_STORAGE_INSPECTION",
+      "rejection_reason": "Model weights not present on local storage."
+    },
+    {
+      "candidate_id": "swift-1.5-qwen3.8-flash-next-gsq-rco-abliterated",
+      "architecture": "qwen4exp",
+      "dialect": "standard",
+      "kind": "standalone_model",
+      "uncensored": true,
+      "tier_status": {
+        "container_inspection": "INSPECTED_OK",
+        "architecture_compatibility": "COMPATIBLE",
+        "memory_budget_admission": "OVER_BUDGET",
+        "execution_readiness": "BLOCKED_BY_MEMORY"
+      },
+      "files_summary": {
+        "total_files": 2,
+        "total_bytes": 68150825728,
+        "mmproj_present": true,
+        "paths": [
+          "H:\\Strata\\models\\SC117\\Swift-1.5-Qwen3.8-Flash-Next-GSQ-RCO-abliterated-GGUF\\Swift-Qwen3.8-Flash-Next-GSQ-RCO-abliterated-IQ2_XS-00001-of-00002.gguf",
+          "H:\\Strata\\models\\SC117\\Swift-1.5-Qwen3.8-Flash-Next-GSQ-RCO-abliterated-GGUF\\Swift-Qwen3.8-Flash-Next-GSQ-RCO-abliterated-IQ2_XS-00002-of-00002.gguf"
+        ]
+      },
+      "invocations": 0,
+      "tokens_generated": 0,
+      "qualified": false,
+      "real_model_qualified": false,
+      "verification_method": "AUDITED_PHYSICAL_STORAGE_INSPECTION",
+      "rejection_reason": "Weight footprint (63.4 GiB) exceeds physical 32 GiB host RAM budget for local single-host inference."
+    },
+    {
+      "candidate_id": "qwen3.8-flash-next-gsq-rco-q2_0",
+      "architecture": "qwen",
+      "dialect": "standard",
+      "kind": "base_model",
+      "uncensored": false,
+      "tier_status": {
+        "container_inspection": "INSPECTED_OK",
+        "architecture_compatibility": "COMPATIBLE",
+        "memory_budget_admission": "QUALIFIABLE_STATIC_BUDGET",
+        "execution_readiness": "READY_FOR_INFERENCE_ON_HEADROOM"
+      },
+      "invocations": 0,
+      "tokens_generated": 0,
+      "qualified": false,
+      "real_model_qualified": false,
+      "verification_method": "AUDITED_PHYSICAL_STORAGE_INSPECTION",
+      "rejection_reason": "Static architecture and weights fit 32GB budget; live generation deferred until sufficient free physical RAM headroom (>= 22.8 GB) is available."
+    }
+  ]
+}
