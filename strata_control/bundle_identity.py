@@ -45,8 +45,19 @@ def verify_bundle(bundle: ModelBundle, policy: VerifyPolicy | None = None) -> Ve
         if not p.exists():
             raise FileNotFoundError(f"Bundle file missing during verification: {p}")
 
+        if not policy.allow_symlinks and p.is_symlink():
+            raise ValueError(f"Symlinks not permitted by verify policy: {p}")
+
         # Compute or check sha256
-        sha = compute_file_sha256(p, chunk_size=policy.chunk_size) if policy.full_sha256 else fm.sha256
+        if policy.full_sha256:
+            sha = compute_file_sha256(p, chunk_size=policy.chunk_size)
+        else:
+            if not fm.sha256:
+                raise ValueError(
+                    f"Cannot verify bundle file {p}: full_sha256 is False and no trusted precomputed sha256 was provided"
+                )
+            sha = fm.sha256
+
         if fm.sha256 and sha != fm.sha256:
             raise ValueError(
                 f"Content drift detected in {p}: expected {fm.sha256}, actual {sha}"
