@@ -229,8 +229,10 @@ later_constructed` with plugin autoload disabled, then configured and built
 only `spin8_reference_probe_fault` in `cpu-red` with `--parallel 1`, and ran
 `tools/spin8_reference_probe/test_finite_outputs.py --executable
 <r1>/cpu-red/Release/spin8_reference_probe_fault.exe --output-dir <r1>/red-faults`.
-Results: 2 Python failures in 8.31 s; all 44 fault injections escaped the old
-probe and failed the rejection tests (exit 1). The RED executable and source
+Results: 2 Python failures in 8.31 s. The old probe's 22 forward cases returned
+2 and its 22 inverse cases returned 0. All 44 rejection tests failed because
+none produced the required nonfinite-stage diagnostic (driver exit 1).
+The RED executable and source
 snapshot remain retained. GREEN configured a separate `cpu-green`, built
 `spin8_reference_probe` and `spin8_reference_probe_fault`, also one job and
 MSVC `/W4 /WX /fp:strict`, then passed all 44 fault cases (exit 0).
@@ -270,3 +272,13 @@ Regression additions are the narrow prevention measure; no governance or
 production changes were made. CUDA/model/release qualification remains outside
 this CPU task. The initial incidental external Python cache remains in place
 under the controller's prior direction; this round did not retry its cleanup.
+
+## Documentation-only RED evidence correction
+
+Approved re-review identified an inaccurate summary of the retained
+`red-finite.log`: the 22 forward cases exited 2 and the 22 inverse cases exited
+0; they did not all exit 0 or escape the old probe. All 44 rejection tests
+still failed because none produced the required nonfinite-stage diagnostic.
+The round-1 wording and SDD report were corrected accordingly. No code, tests
+or old receipts were changed or rerun. The controller's separate model-hash
+preflight commit `e56321a7dd36fe68d31e3145a814045bccfcd037` was preserved.
