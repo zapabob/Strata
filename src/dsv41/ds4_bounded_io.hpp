@@ -32,35 +32,49 @@ public:
         return 1ULL * 1024 * 1024 * 1024; // 1 GiB for drafter if loaded
     }
 
+    void unload_drafter() {
+        config_.drafter_mode = DrafterMode::DisabledUnloaded;
+    }
+
+    void load_drafter() {
+        config_.drafter_mode = DrafterMode::AlwaysOn;
+    }
+
     bool reserve_io(uint64_t bytes) {
-        uint64_t curr = current_in_flight_bytes_.load();
-        if (curr + bytes > config_.max_pending_io_bytes) {
-            return false;
-        }
-        current_in_flight_bytes_ += bytes;
+        uint64_t curr = current_in_flight_bytes_.load(std::memory_order_relaxed);
+        do {
+            // Guard against overflow or exceeding limit
+            if (curr + bytes > config_.max_pending_io_bytes || (curr + bytes < curr)) {
+                return false;
+            }
+        } while (!current_in_flight_bytes_.compare_exchange_weak(
+            curr, curr + bytes, std::memory_order_acq_rel, std::memory_order_relaxed));
         return true;
     }
 
     void release_io(uint64_t bytes) {
-        if (current_in_flight_bytes_ >= bytes) {
-            current_in_flight_bytes_ -= bytes;
-        } else {
-            current_in_flight_bytes_ = 0;
-        }
+        uint64_t curr = current_in_flight_bytes_.load(std::memory_order_relaxed);
+        uint64_t next = 0;
+        do {
+            next = (curr >= bytes) ? (curr - bytes) : 0;
+        } while (!current_in_flight_bytes_.compare_exchange_weak(
+            curr, next, std::memory_order_acq_rel, std::memory_order_relaxed));
     }
 
     void cancel_pending(uint64_t expected_generation_id) {
-        // Increment generation ID so all stale I/O packets are discarded
-        current_generation_id_.fetch_add(1);
-        current_in_flight_bytes_.store(0);
+        uint64_t expected = expected_generation_id;
+        if (current_generation_id_.compare_exchange_strong(
+                expected, expected + 1, std::memory_order_acq_rel)) {
+            current_in_flight_bytes_.store(0, std::memory_order_release);
+        }
     }
 
     uint64_t active_generation_id() const {
-        return current_generation_id_.load();
+        return current_generation_id_.load(std::memory_order_acquire);
     }
 
     uint64_t in_flight_bytes() const {
-        return current_in_flight_bytes_.load();
+        return current_in_flight_bytes_.load(std::memory_order_acquire);
     }
 
 private:
