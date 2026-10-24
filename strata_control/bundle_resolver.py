@@ -58,18 +58,19 @@ def resolve_bundle(
 
     # Check for adapter-only artifacts
     is_adapter = False
+    p_name_lower = p.name.lower()
     if selection.architecture in ("adapter", "controlvector") or selection.artifact_kind in ("adapter", "controlvector"):
+        is_adapter = True
+    elif "mmproj" in p_name_lower or p_name_lower.endswith((".lora.gguf", ".adapter.gguf", "-adapter.gguf", "_adapter.gguf")):
         is_adapter = True
     else:
         try:
-            from strata_control.model_bundle import inspect_gguf_file
-            meta = inspect_gguf_file(p)
-            if meta.architecture in ("adapter", "controlvector"):
+            from strata_control.model_bundle import inspect_gguf
+            meta = inspect_gguf(p)
+            if meta.architecture in ("adapter", "controlvector", "clip"):
                 is_adapter = True
         except Exception:
-            p_name_lower = p.name.lower()
-            if p_name_lower.startswith("mmproj-") or p_name_lower.endswith((".lora.gguf", ".adapter.gguf", "-adapter.gguf", "_adapter.gguf")):
-                is_adapter = True
+            pass
 
     if is_adapter and selection.artifact_kind == "model":
         raise ValueError(f"Artifact '{p.name}' is an auxiliary adapter, not a runnable base model")
