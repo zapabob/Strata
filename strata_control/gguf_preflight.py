@@ -192,3 +192,31 @@ def inspect_metadata(path: Path) -> dict:
                     "payload_extent_valid": True}
     except OSError:
         raise ProfileError("GGUF metadata could not be read", 5) from None
+
+def check_tensor_dimensions(
+    dims: list[int],
+    type_size: int = 2,
+    max_tensor_bytes: int = 64 * 1024 * 1024 * 1024,
+) -> int:
+    """Validate tensor shape product against 64-bit integer overflow and size limits (GHSA-vgg9-87g3-85w8)."""
+    if not dims:
+        return 0
+    total_elements = 1
+    max_safe = (1 << 63) - 1
+    for d in dims:
+        if d < 0:
+            raise ValueError(f"Negative dimension {d}")
+        if d != 0 and total_elements > max_safe // d:
+            raise ValueError(f"Tensor dimensions overflow: {dims}")
+        total_elements *= d
+
+    if type_size < 0 or (type_size != 0 and total_elements > max_safe // type_size):
+        raise ValueError(f"Tensor byte size overflow: {dims} with type_size {type_size}")
+
+    total_bytes = total_elements * type_size
+    if total_bytes > max_tensor_bytes:
+        raise ValueError(
+            f"Tensor byte size {total_bytes} exceeds maximum allowed tensor size {max_tensor_bytes}"
+        )
+    return total_bytes
+
