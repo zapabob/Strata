@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "schema_version": "2.0",
+  "release_version": "0.3.0",
+  "release_name": "Strata v0.3.0 Verified Upstream Integration",
+  "published_at": "2026-10-25T08:28:00Z",
+  "verifier": "Antigravity/MILSPEC-Codex Standard",
+  "upstream_cut": {
+    "locked_upstream_sha": "7dd5cf18e68c639a8773e096c5c79f971ea2a9f5",
+    "gui_toctou_fix_sha": "c487c875d05075113965bc61d822b27179f70639",
+    "fork_baseline_sha": "ddc8f9e19cafb981ed91caaab0992ca814e6eca9",
+    "current_release_head": "45b8628226f35051195520ab418e55be92093ccf"
+  },
+  "distribution_integrity": {
+    "staging_policy": "NO_SAME_VERSION_OVERWRITE",
+    "placeholder_hashes_permitted": false,
+    "absolute_dev_paths_permitted": false,
+    "distribution_binaries": {
+      "strata_engine": {
+        "relative_path": "bin/strata_engine.exe",
+        "description": "Native C++/CUDA/AVX2 inference engine core",
+        "arch": "x86_64",
+        "supported_features": ["qwen", "qwen35moe", "spin8_triality", "turboquant", "query_v3"]
+      },
+      "strata_dsv41": {
+        "relative_path": "bin/strata_dsv41.exe",
+        "description": "Native DeepSeek V4.1 MLA backend with bounded IO CAS reservation",
+        "arch": "x86_64",
+        "supported_features": ["dsv41", "mla_attention", "bounded_io"]
+      },
+      "prism": {
+        "relative_path": "bin/prism.exe",
+        "description": "Bonsai PQ2_0 low-bit quantization dialect runner",
+        "arch": "x86_64",
+        "supported_features": ["pq2_0", "ptq1_0"]
+      }
+    }
+  },
+  "empirical_readiness_audit": {
+    "arbitrary_gguf_inspection": "VERIFIED_OPERATIONAL",
+    "atomic_registry_transactions": "VERIFIED_OPERATIONAL",
+    "steering_operator_isolation": "VERIFIED_OPERATIONAL",
+    "deepseek_real_execution": "BLOCKED_PENDING_ALL_SHARDS",
+    "swift_15_abliterated_local_launch": "BLOCKED_EXCEEDS_32GB_RAM",
+    "qwen_q2_0_empirical_launch": "READY_PENDING_LIVE_HEADROOM"
+  }
+}

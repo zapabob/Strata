@@ -19,7 +19,7 @@
   <a href="https://github.com/zapabob/Strata/stargazers"><img src="https://img.shields.io/github/stars/zapabob/Strata?style=flat" alt="GitHub stars"></a>
   <img src="https://img.shields.io/badge/tests-71%2F71%20passing-brightgreen" alt="Tests 71/71 passing">
   <img src="https://img.shields.io/badge/cuda-sm__120%20%7C%20sm__89-blue" alt="CUDA sm_120 | sm_89">
-  <img src="https://img.shields.io/badge/memory-32GB%20RAM%20verified-success" alt="32GB RAM verified">
+  <img src="https://img.shields.io/badge/memory-32GB%20RAM%20budgeted-blue" alt="32GB RAM budgeted">
 </p>
 
 ---
@@ -46,12 +46,13 @@ All metrics below are measured on a standard consumer desktop:
 | Model & Quantization | Architecture | Generation Speed | GPU Hit Rate | Host RAM Usage | Active VRAM | Headroom Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Qwen3.8-Flash-Next (Q2_0)** | 125B MoE | **6.7 tok/s** | **61.7%** | 18.20 GB | 14.10 GB | **PASS** (13.6 GB free) |
-| **DeepSeek-V4.1-Flash (Maya-S)** | MoE + MLA | **5.8 tok/s** | **56.4%** | 18.79 GB | 8.80 GB | **PASS** (15.4 GB free) |
-| **DeepSeek-V4.1 AtomicChat** | MoE + MLA | **5.9 tok/s** | **57.1%** | 18.79 GB | 8.80 GB | **PASS** (15.4 GB free) |
+| **DeepSeek-V4.1-Flash (Maya-S)** | MoE + MLA | *Pending Shards* | *Pending Shards* | 18.79 GB (Est) | 8.80 GB (Est) | **BLOCKED (Shards 2-6 Missing)** |
+| **DeepSeek-V4.1 AtomicChat** | MoE + MLA | *Pending Shards* | *Pending Shards* | 18.79 GB (Est) | 8.80 GB (Est) | **BLOCKED (Weights Missing)** |
 | **Prism / TheTom (Q2K-XL)** | MoE + Query-v3 | **7.4 tok/s** | **68.2%** | 16.50 GB | 13.20 GB | **PASS** (15.3 GB free) |
 
 > [!NOTE]
-> All inference runs keep host RAM strictly below the 24.0 GiB ceiling and maintain at least 4.0 GiB of unallocated memory for Windows system operations.
+> All active inference runs keep host RAM strictly below the 24.0 GiB ceiling and maintain at least 4.0 GiB of unallocated memory for Windows system operations.
+> Per corrective plan Protocol v2, DeepSeek-V4.1 speed benchmarks are designated as pending empirical token generation once full multi-part shard sets (shards 2–6) are downloaded to storage.
 
 ### 2. VRAM Stack & Dynamic Shared Memory Optimization
 
