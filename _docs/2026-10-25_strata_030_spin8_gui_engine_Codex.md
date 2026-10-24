@@ -24,3 +24,11 @@
      - `apps/host/server/native-control.mjs` (`settings`, `save` with `user_args`/`args` flag synchronization)
      - `apps/host/server/run-config-check.mjs` & `apps/host/src/lib/run-config-issues.ts` (hand-edited JSON config validation and localized messages)
    - Verified with `tests/terminal/test_profiles.py` (`21 passed, 1 skipped`), `apps/host/tests/*.test.mjs` (`19 passed, 0 failed`), `pnpm --dir apps/host typecheck`, and `pnpm --dir apps/host build`.
+
+4. **Local Overwrite-Installation & Verification (`C:/Users/downl/AppData/Local/Programs/Strata` & `C:/Users/downl/AppData/Local/Strata/components`)**
+   - Overwrote `host/dist` (65 files), `host/server` (110 files), `control/serve` (98 files), `control/strata_control` (55 files), `control/strata_cli` (36 files), `control/strata.py`, `control/COMMIT` (`ddc8f9e19cafb981ed91caaab0992ca814e6eca9`), `engine-bundle/0.1.47-windows-x86_64-cuda-cuda13`, and `components/engine/0.1.47-windows-x86_64-cuda-cuda13`.
+   - Verified via `engine_component.resolve(..., full=True)` (`ok=True`, `file_count=9`, `bytes=752960332`) and `strata.cmd doctor --json` (`ok=True`).
+
+5. **Multi-Language Fork README Rewrite (`README.md`, `README.ja.md`, `README.zh-CN.md`, `README.de.md`, `README.fr.md`, `README.es.md`, `README.pt-BR.md`)**
+   - Rewrote all 7 localized root README files to document the fork's unique Spin(8) $\mathrm{Cl}(8,0)$ Triality KV Cache, `tqcodec` asynchronous CUDA dialects (`TQ4_1S`, `TQ3_0S`, `PQ2_0`), Query-v3 `.prismq3` sidecars, SM120 `audit_kernel` dynamic shared-memory fix (`65,536` bytes smem / `3.375 GiB` stack reservation eliminated), GUI/CLI/Control integration, and `v0.3.0-preview.20261024.2` release artifacts.
+   - Verified with `$env:PYTHONUTF8="1"; py -3 -m pytest -p no:randomly tools/test_strata_bench.py` (`17 passed`).

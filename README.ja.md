@@ -7,379 +7,181 @@
 
 <p align="center"><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a> · <b>日本語</b> · <a href="README.de.md">Deutsch</a> · <a href="README.fr.md">Français</a> · <a href="README.es.md">Español</a> · <a href="README.pt-BR.md">Português</a></p>
 
-<h3 align="center">最先端のモデルを、手元のゲーミングPCで動かす</h3>
-
-<p align="center">NVIDIA、AMD、Intel に対応 · Windows、Linux、Mac · 無料のオープンソース</p>
+<h3 align="center">Strata — Spin(8) Triality KV キャッシュ・TurboQuant CUDA ダイアレクト・ネイティブ MoE 推論エンジン</h3>
 
 <p align="center">
-  <a href="https://github.com/Niko1221/Strata/releases"><img src="https://img.shields.io/github/v/release/Niko1221/Strata?include_prereleases&label=release" alt="Latest release"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/Niko1221/Strata" alt="MIT license"></a>
-  <a href="https://github.com/Niko1221/Strata/stargazers"><img src="https://img.shields.io/github/stars/Niko1221/Strata?style=flat" alt="GitHub stars"></a>
+  <b><a href="https://github.com/Niko1221/Strata">Niko1221/Strata</a> 拡張フォーク</b> · Spin(8) $\mathrm{Cl}(8,0)$ Triality Attention · 3ビュー量子化 KV キャッシュ · Query-v3 `.prismq3` サイドカー · GUI & CLI 完全統合
 </p>
 
-<p align="center"><a href="https://github.com/Niko1221/Strata/releases/download/v0.1.10/Pagoda.mp4"><img src="docs/media/pagoda-preview.webp" width="720" alt="A voxel pagoda garden that Strata's model wrote, running in the browser"></a><br>
-<sub>ボクセルの塔の庭園。1回のプロンプトで生成し、RTX 5070 上の Strata で動かしています（IQ3_S、128K コンテキスト） ·
-<a href="https://github.com/Niko1221/Strata/releases/download/v0.1.10/Pagoda.mp4">動画全体（49秒）</a></sub></p>
+<p align="center">
+  <a href="https://github.com/zapabob/Strata/releases/tag/v0.3.0-preview.20261024.2"><img src="https://img.shields.io/github/v/release/zapabob/Strata?include_prereleases&label=fork%20release" alt="Fork release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/zapabob/Strata" alt="MIT license"></a>
+  <a href="https://github.com/zapabob/Strata/stargazers"><img src="https://img.shields.io/github/stars/zapabob/Strata?style=flat" alt="GitHub stars"></a>
+</p>
 
-Strata は **[Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next)** を動かします。1250億パラメータのモデルで、
-ふつうはサーバーが必要ですが、Strata なら一般的なPCで使えます。チャット、コード作成、画像の読み取りができ、
-お使いのアプリやコーディングエージェントとも連携します。チャットとファイルはPCの外に出ません。
+---
 
-**はじめての方へ。** まず[必要な環境](#必要な環境)を確認して、[アプリをインストール](#方法a-strata-アプリ)してください。
+## このフォーク（`zapabob/Strata`）の概要
 
-- **ゲーミングPCで動きます。** RAMとグラフィックスメモリの合計が32 GBあれば始められます。
-- **お使いのツールと連携します。** OpenAI と Anthropic の API に対応しているので、Claude Code、Codex CLI、OpenCode などのエージェントから接続できます。
-- **画像を読めます。** 初期設定でオンです。
-- **無料です。** MIT ライセンス。アカウントもクラウドも不要です。
-- **プライバシーを守ります。** テレメトリはありません。Strata が何をダウンロードするか、いつインターネットを使うか、ダウンロードをどう検証するかは [docs/SAFETY.md](docs/SAFETY.md) に書いてあります。
+**`zapabob/Strata`** は、1250億パラメータの MoE モデル（**Qwen3.8-Flash-Next**、**Qwen3.6-35B-A3B**、**Gyro**、**Swift 1.5**、**NVFP4**）を GPU VRAM・システム RAM・SSD の3階層協調で1台のPC上で高速実行する [Strata](https://github.com/Niko1221/Strata)（v0.2.2 / engine 0.1.47）をベースに、**Spin(8) Triality（三元性）変換と TurboQuant 量子化 KV キャッシュ機構**を C++/CUDA エンジン・Python サーバー・CLI・デスクトップ/Web GUI の全階層へ統合した独自フォークです。
 
-バージョン 0.2.2 · エンジン 0.1.47
+### 本フォーク独自の4大機能
 
-## 必要な環境
+1. **Spin(8) Triality & $\mathrm{Cl}(8,0)$ 直交変換ライブラリ（[`spin8/`](spin8/README.md)）**
+   - 実八元数基底（$1, e_1, \dots, e_7$）および対称クリフォード代数 $\mathrm{Cl}(8,0)$ 生成子（$\Gamma_0, \dots, \Gamma_7$）に基づく厳密な8次元3ビュー表現を実装。
+   - 16×16 スピノルをカイラリティ固有空間によって **ベクトル表現 ($V$)**・**正カイラル半スピン表現 ($S_+$)**・**負カイラル半スピン表現 ($S_-$)** の3つの8次元空間へ分解し、随伴インターツイナー関係 $U \Gamma(v) U^\top = \Gamma(Rv)$ を満たします。
+   - すべての変換プランは適用前に数学的監査（フロベニウス直交誤差 $E_F = \|M^\top M - I\|_F / \sqrt{8} \le 10^{-12}$、最大グラム要素誤差 $\le 10^{-12}$、ピボット付き LU 分解による符号付き対数行列式 $\operatorname{sign}=+1, |\log|\det|| \le 10^{-12}$）を通過する必要があります。
+   - 2のべき乗ブロック（$1 \dots 1024$、8要素 Spin(8) 符号マスクおよび 128要素 Bonsai ブロックを含む）の正規化 Sylvester Hadamard 変換と、1,024トークンまたは60秒ごとに不変量を検査するスティッキー監査スケジューラ（`spin8_monitor`）を備えています。
 
-**RAMとグラフィックスメモリ（VRAM）の合計が、少なくとも32 GB必要です。** MacやRyzen AI Maxでは、ユニファイドメモリがその量にあたります。
-メモリが多いほど、大きなモデルを使えたり、速く動いたりします。
+2. **3ビュー Triality KV キャッシュ & 非同期 TurboQuant CUDA ダイアレクト（[`tqcodec/`](tqcodec/README.md)）**
+   - **物理 CUDA 3ビューキャッシュ（`cache_cuda.cu`）**: Attention ヘッドごとに物理的に独立した3つの回転済み Key 配列（$V, S_+, S_-$）と共有量子化 Value 配列を保持。単一パスのオンライン Softmax 上でシンプレックス合意重み $(\alpha_0, \alpha_1, \alpha_2)$ による重み付き統合と、パック化符号ガウス投影 **QJL** による残差スケッチ補正を実行します。
+   - **非同期 CUDA 量子化ダイアレクト**:
+     - `TQ4_1S`（4.25 bits/weight）
+     - `TQ3_0S`（3.3125 bits/weight）
+     - `PQ2_0`（2.50 bits/weight）
+   - **SM120（RTX 50シリーズ）向け `audit_kernel` 動的共有メモリ最適化**: スレッドローカルな `float f[128 * 128]`（64 KiB/thread）配列を動的共有メモリ（`65,536` bytes）へ移行したことで、`tqc_cache_cuda_initialize` 時に発生していた **3.375 GiB（`3,623,878,656 B`）** の CUDA デバイススタック予約を解消（`audit_local=0`, `audit_delta=0`）。エキスパートキャッシュ用に約 3.3 GiB の VRAM を解放し、16 GiB GPU / 32 GiB RAM 環境で3ビューすべて（`off`, `f32`, `compressed`）の Q2 実モデル生成が安定動作します。
 
-- RAM 32 GBのPCに12〜16 GBのグラフィックスカードがあれば、Coder が動きます。
-- RAM 64 GBなら、どのサイズも動きます。
+3. **Query-v3 有理接空間アダプタ & `.prismq3` サイドカー**
+   - 監査済み $\mathrm{Cl}(8,0)$ ブロックから導出された7個の歪対称生成子上で有界有理接空間チャートを構成し、位置エンコーディング（RoPE）適用前の正規化済み Query ($Q$) に対してランク8コントローラを適用します。
+   - 動的メモリ確保ゼロの融合 CUDA カーネル（`query_v3_cuda.h`）および SHA-256 バインド済み `.prismq3` サイドカー（`--query-v3-sidecar`）をサポートし、**Prism / TheTom (`qwen35-9b-thetom-q2kxl`)** や **Hikari / Bonsai (`bonsai-8b-prism-q1_0_g128`)** の検証に対応しています。
 
-| お使いのPC | 詳細 |
-| --- | --- |
-| **NVIDIA** GeForce RTX 20、30、40、50 シリーズ（12 GB以上） | アプリまたはターミナル版をインストールしてください。 |
-| **AMD** Radeon RX 6800 以降、Radeon AI PRO R9700（12 GB以上） | [AMD のカード](docs/AMD_HIP.md) |
-| **Intel** Arc | [Intel Arc](docs/INTEL_ARC.md)、[Intel エンジン](docs/INTEL.md) |
-| **Apple Silicon の Mac**（M1 以降、macOS 15 以降） | [Mac](docs/MAC.md) |
-| **AMD Ryzen AI Max（Strix Halo）** などのユニファイドメモリ搭載機 | [Strix Halo](docs/STRIX_HALO.md) |
-| 古いカードやプロセッサ | [古いGPU](docs/OLDER_GPUS.md)、[古いCPU](docs/INSTALL.md#older-cpus-experimental) |
+4. **GUI・CLI・Control プレーンのシームレス統合**
+   - **デスクトップ / Web GUI (`apps/host`)**: **Settings → GPU & memory** 内に **K cache type**、**V cache type**（`f16`, `tq3`, `tq3_spin8_hadamard`, `tq3_spin8_native`）、**Spin(8) KV cache mode**（`off`, `f32`, `compressed`）、**Spin(8) native config path**、**Spin(8) native config SHA-256** を違和感なく統合。起動前のリアルタイムプリフライト検証（`run-config-check.mjs`）も備えています。
+   - **CLI & Python サーバー (`strata_cli`, `strata_control`, `serve/server.py`)**: `strata launch --set ...` や `strata serve` からすべての Spin(8) / KV キャッシュ設定を指定でき、起動前にカプセル JSON と SHA-256 ハッシュを厳密に検証します。
 
-そのほかに必要なもの:
+---
 
-- 約80 GBの空きディスク容量（SSDなら初回の起動がずっと速くなります）
-- Windows 10 / 11、Linux、または macOS
-- 最新のグラフィックスドライバー
+## 最新フォークリリース: `v0.3.0-preview.20261024.2`
 
-同じメーカーのカードを2〜3枚使って、1つのモデルを動かせます（[マルチGPU](docs/MULTI_GPU.md)）。NVIDIA と AMD のカードにまたがってモデルを分けることはありません。
-一覧は [docs/INSTALL.md](docs/INSTALL.md#what-you-need) にあります。
+- **リリースページ**: [GitHub Release `v0.3.0-preview.20261024.2`](https://github.com/zapabob/Strata/releases/tag/v0.3.0-preview.20261024.2)
+- **Engine + GUI + Control 統合アーカイブ**: `Strata-0.3.0-preview.20261024.2-windows-x64-sm120-engine-gui.tar.7z`
+  - **ファイルサイズ**: `412,311,508` bytes
+  - **アーカイブ SHA-256**: `7639fb8ffb3c8fd13857a59c6b5d9d8b392c8b82a496442f0486a9405fd16e21`
+  - **エンジン本体 (`strata.exe`) SHA-256**: `564e23b5bcd2b0670d0a2d82e7cd2c20cd5afedf85ddca7c653bea11403727db`
+- **先行 CLI プレビュー**: [`v0.3.0-preview.20261024.1`](https://github.com/zapabob/Strata/releases/tag/v0.3.0-preview.20261024.1) · [リリース検証記録](docs/releases/preview030.md) · [Triality PoC 研究記録](research/triality_poc/README.md)
 
-## インストール
+### `v0.3.0-preview.20261024.2` における検証済み項目
 
-3つの方法から1つ選んでください。どれも同じエンジンを起動し、同じモデルを使います。
-
-### 方法A: Strata アプリ
-
-いちばん簡単な方法です。エンジンはアプリに入っているので、インストールしてモデルを選べばチャットを始められます。お使いのOSとグラフィックスカードに合うファイルを
-[リリースページ](https://github.com/Niko1221/Strata/releases/latest)からダウンロードしてください。どれか分からない場合は、表の下の説明を見てください。
-
-| OS | グラフィックスカード | ダウンロードするファイル |
+| 対象コンポーネント | 状態 | 検証エビデンス |
 | --- | --- | --- |
-| **Windows 10 / 11** | NVIDIA RTX、ドライバー 580 以降 | [`Strata-0.2.2-windows-cuda13.exe`](https://github.com/Niko1221/Strata/releases/latest/download/Strata-0.2.2-windows-cuda13.exe) |
-| | NVIDIA、古いカード、またはドライバーが 580 より古い場合 | [`Strata-0.2.2-windows-cuda12.exe`](https://github.com/Niko1221/Strata/releases/latest/download/Strata-0.2.2-windows-cuda12.exe) |
-| | AMD Radeon RX 9000 シリーズまたは Radeon AI PRO R9700 | [`Strata-0.2.2-windows-hip.exe`](https://github.com/Niko1221/Strata/releases/latest/download/Strata-0.2.2-windows-hip.exe) |
-| | AMD Radeon RX 7000 シリーズまたは Ryzen AI Max (Strix Halo) | [`Strata-0.2.2-windows-hip-rdna3.exe`](https://github.com/Niko1221/Strata/releases/latest/download/Strata-0.2.2-windows-hip-rdna3.exe) |
-| **Linux** | NVIDIA RTX、ドライバー 580 以降 | [`Strata-0.2.2-linux-nvidia-cuda13.AppImage`](https://github.com/Niko1221/Strata/releases/latest/download/Strata-0.2.2-linux-nvidia-cuda13.AppImage) |
-| | NVIDIA、古いカード、またはドライバーが 580 より古い場合 | [`Strata-0.2.2-linux-nvidia-cuda12.AppImage`](https://github.com/Niko1221/Strata/releases/latest/download/Strata-0.2.2-linux-nvidia-cuda12.AppImage) |
-| | AMD Radeon RX 9000 シリーズまたは Radeon AI PRO R9700 | [`Strata-0.2.2-linux-amd-rx9070.AppImage`](https://github.com/Niko1221/Strata/releases/latest/download/Strata-0.2.2-linux-amd-rx9070.AppImage) |
-| | AMD Radeon RX 7000 シリーズ | [`Strata-0.2.2-linux-amd-rx7900.AppImage`](https://github.com/Niko1221/Strata/releases/latest/download/Strata-0.2.2-linux-amd-rx7900.AppImage) |
-| | AMD Ryzen AI Max (Strix Halo) | [`Strata-0.2.2-linux-amd-strixhalo.AppImage`](https://github.com/Niko1221/Strata/releases/latest/download/Strata-0.2.2-linux-amd-strixhalo.AppImage) |
-| **Mac**（Apple Silicon、macOS 15 以降） | 内蔵 | [`Strata-0.2.2-mac.dmg`](https://github.com/Niko1221/Strata/releases/latest/download/Strata-0.2.2-mac.dmg) |
+| **ネイティブ Windows CUDA エンジン (`sm120`)** | **検証済み** | Q2 (`Qwen3.8-Flash-Next-GSQ-RCO-Q2_0`) による診断生成において、`--spin8-mode off` / `f32` / `compressed` の全3ビューすべてで `READY` デコードおよび EOS 正常終了（`exit 0`, `--vram-reserve-mib 10240`）を確認。 |
+| **`tqcodec` CUDA `audit_kernel` 修正** | **検証済み** | 動的共有メモリ（`65,536` bytes）化により 3.375 GiB の CUDA スタック予約を解消（`audit_local=0`, `audit_delta=0`）。`tqc_cache_cuda_test.exe`（28,068 checks）および `strata_spin8_native_owner_test.exe`（17,361 checks）パス（`exit 0`）。 |
+| **Host GUI & プリフライト検証** | **検証済み** | `pnpm --dir apps/host typecheck`（エラー 0）、`pnpm --dir apps/host build` 完了、`node --test`（`native-settings`, `spin8-backend`, `kv-settings`, `kv-engine` 計19テスト全パス）。 |
+| **Control & Terminal CLI** | **検証済み** | `pytest tests/terminal/test_profiles.py`（21 passed）、`strata doctor --json`（`ok: true`）、および `engine_component.resolve(..., full=True)` による全ファイル SHA-256 完全一致を確認。 |
 
-**迷ったときは:** NVIDIA の場合、ドライバーがバージョン 580 以降なら `cuda13`、それより古ければ `cuda12` を選びます。`cuda12` は古いカードと古いドライバー向けです。
-`hip` と `amd` のファイルは AMD のカード用です。それ以外の AMD カード（RX 6000）には、まだ用意されたアプリがありません。
-[AMD のカード](docs/AMD_HIP.md)を見てください。
+---
 
-そのあとの手順:
+## クイックスタート（本フォーク独自機能の使い方）
 
-- **Windows:** `.exe` を実行します。ユーザー単位でインストールされ、管理者権限は不要です。「Windows によってPCが保護されました」と表示されたら、
-  **詳細情報**を選び、**実行**を選んでください（インストーラーにはまだコード署名がありません）。
-- **Linux:** ファイルを実行可能にして（`chmod +x`）起動します。FUSE 2 が必要です。`sudo apt install libfuse2`（Ubuntu 22.04）
-  または `libfuse2t64`（Ubuntu 24.04 以降）を実行してください。
-- **Mac:** `.dmg` を開き、Strata を「アプリケーション」にドラッグします。
+### 1. GUI（デスクトップ / Web Host）での設定
 
-最初の画面で、アプリがPCを調べて合うモデルをすすめます。インストールを押してください。モデルは大きく（約40〜70 GB）、中断しても続きからダウンロードできます。
-ウィンドウを閉じると、Strata とエンジンが止まります。
+1. `Strata-0.3.0-preview.20261024.2-windows-x64-sm120-engine-gui.tar.7z` を展開（`.7z` 展開後に `.tar` を展開）するか、ローカルの `%LOCALAPPDATA%\Programs\Strata` および `%LOCALAPPDATA%\Strata\components\engine\0.1.47-windows-x86_64-cuda-cuda13` に上書き配置します。
+2. アプリの **Settings（設定） → GPU & memory** を開きます。
+3. 以下の項目から KV キャッシュおよび Spin(8) モードを選択できます：
+   - **K cache type (`cache_type_k`)**: `f16`（既定）、`tq3`、`tq3_spin8_hadamard`、`tq3_spin8_native`
+   - **V cache type (`cache_type_v`)**: `f16`（既定）、`tq3`、`tq3_spin8_hadamard`、`tq3_spin8_native`
+   - **Spin(8) KV cache mode (`spin8_mode`)**: `off`（既定）、`f32`、`compressed`
+   - **Spin(8) native config path (`spin8_native_config`)**: 検証済み Spin(8) カプセル JSON の絶対パス（`f32` / `compressed` または `tq3_spin8_native` 選択時に必須）
+   - **Spin(8) native config SHA-256 (`spin8_native_sha256`)**: カプセル JSON の 64文字 Hex SHA-256 ダイジェスト
 
-### 方法B: ターミナル（1行）
-
-ターミナル版は `strata` コマンドです。スクリプトやサーバー、AI エージェント向けです。
-
-Linux と Mac:
-
-```sh
-curl -fsSL https://github.com/Niko1221/Strata/releases/latest/download/install.sh | sh
-```
-
-Windows（PowerShell）:
+### 2. `strata` CLI / サーバーからの起動
 
 ```powershell
-irm https://github.com/Niko1221/Strata/releases/latest/download/install.ps1 | iex
-```
-
-スクリプトはPCを調べ、ターミナル版をダウンロードし、SHA-256 を検証して、ホームフォルダに展開します。管理者権限は不要です。Windows では、終わったら
-新しいターミナルを開いてください。そのあと Strata を起動します。
-
-```sh
-strata launch
-```
-
-質問は1つずつ表示されます。モデル、コンテキスト、画像、接続を許可する相手の順です。そのあと、お使いのグラフィックスカード用のエンジン
-（署名付きで、使う前にテスト起動します）とモデルをダウンロードして、サーバーを開始します。スクリプトや AI エージェントからは、フラグを使います。
-
-```sh
+# 既定起動（アップストリーム互換・変更なし）
 strata launch --model q2_0 --yes --no-tui
+
+# Hadamard 回転付き TurboQuant 3-bit KV キャッシュを有効化して起動
+strata launch --model q2_0 \
+  --set cache_type_k=tq3_spin8_hadamard \
+  --set cache_type_v=tq3_spin8_hadamard \
+  --yes --no-tui
+
+# SHA-256 検証済み Spin(8) 3ビュー圧縮カプセルを指定して起動
+strata launch --model q2_0 \
+  --set cache_type_k=tq3_spin8_native \
+  --set cache_type_v=tq3_spin8_native \
+  --set spin8_mode=compressed \
+  --set spin8_native_config=C:\path\to\capsule.json \
+  --set spin8_native_sha256=<64-hex-sha256> \
+  --yes --no-tui
 ```
 
-実行前にインストールスクリプトを読みたい場合は、先に `curl -fsSL <address> -o install.sh` でダウンロードし、内容を確認してから
-`sh install.sh` を実行してください。すべての画面とフラグは [docs/TERMINAL_LAUNCH.md](docs/TERMINAL_LAUNCH.md) にあります。
+### 3. ネイティブエンジン (`strata.exe`) の直接実行
 
-### 方法C: AI にセットアップを任せる
+事前トークン化済みファイルとネイティブパックを用いた3ビュー検証コマンド：
 
-Claude Code、Cursor、Codex、GitHub Copilot などのコーディングアシスタントに、次の文を貼り付けます。
-
-```text
-Set up Strata on this PC for me: https://github.com/Niko1221/Strata - follow docs/AI_SETUP.md in that repository.
+```powershell
+# Compressed Spin(8) 3ビューモード実行例
+.\strata.exe --pack .\models\q2_0\native-pack `
+  --native .\models\q2_0\Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf `
+  --ple-gguf .\models\q2_0\Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00002-of-00002.gguf `
+  --tokens-file .\examples\ready-tokens.txt --max-new 32 --max-context 256 `
+  --mmap-experts --expert-cache auto --expert-profile .\data\expert-profile.bin `
+  --prefill 32 --eos-ids 248044,248046 --spin8-mode compressed `
+  --spin8-native-config .\capsules\q2_0-compressed-capsule.json `
+  --spin8-native-sha256 <64-hex-sha256> `
+  --check-logits --gpu 0 --spec 2 --suffix-draft 0 --lookup-chain 0 --vram-reserve-mib 10240
 ```
 
-AI はグラフィックスカード、RAM、ディスクを調べ、合うモデルを選んで、インストールと起動をし、アプリの接続方法を教えてくれます。
-AI ツールは [MCP サーバー](docs/MCP_SERVER.md)を通じて、Strata のインストール、起動、停止もできます。
+---
 
-自分でビルドしたい方は[ソースからビルド](#ソースからビルド)を見てください。
+## Strata の基本機能と推奨ハードウェア
 
-## モデル
+Strata は **[Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next)**（125B MoE）や **[Qwen3.6-35B-A3B](docs/QWEN36.md)** をローカルPC上で動作させ、OpenAI 互換 API（`/v1/chat/completions`, `/v1/responses`）および Anthropic 互換 API（`/v1/messages`）を提供します。Claude Code、Codex CLI、OpenCode などのエージェントからそのまま接続できます。
 
-アプリと `strata launch` は、メモリ量に合うモデルをすすめます。モデルは1つで、圧縮の度合いが違う複数のサイズがあります。
-小さいサイズは速く、大きいサイズは少し賢くなります。
+### 必要なハードウェア環境
 
-### メモリが少ないなら Gyro
+**システム RAM と GPU VRAM の合計が 32 GB 以上必要です**（Mac や Ryzen AI Max ではユニファイドメモリ）。
 
-[Gyro](https://huggingface.co/agentionai/Qwen3.8-Flash-Next-Gyro-GGUF)（agentionai 製）は、このモデルをいちばん小さく動かせる方法です。
-
-| サイズ | 必要なメモリ（RAM + VRAM） | ダウンロード | 内容 |
-| --- | ---: | ---: | --- |
-| **Gyro-S** | 27.6 GB | 58.5 GB | ほかのサイズが入らないPC向け。品質は IQ2_XS より下がります。 |
-| **Gyro-M** | 35 GB | 92.0 GB | 品質は IQ3_XXS 程度で、GPUメモリの使用量は約20%少なくなります。回答の書き出しは Q2_0 より、12 GBの RTX 3060 で16%、R9700 で21%遅くなります。 |
-
-Gyro は NVIDIA と AMD のカード（AMD は実験的）、および Linux 上の Intel Arc カード（Arc A750 で確認）で動きます。0.2.2 からは Apple Silicon の Mac でも動きます（32 GB の Mac mini で Gyro-S は 9 トークン/秒、エキスパートは SSD から読み込み）。詳細と測定結果は
-[docs/GYRO.md](docs/GYRO.md) にあります。`strata launch --model gyro-s` で起動します。
-
-### ほかのサイズ
-
-| メモリ（RAM + VRAM） | 選ぶモデル | 備考 |
-| --- | --- | --- |
-| **32 GB** | **Gyro-S**、またはコード向けの **[Coder](docs/MODELS.md#coder)** | Coder はRAM 32 GBが必要で、エキスパートを半分だけ保持するため、コード以外は弱くなります |
-| **40 GB** | **[Swift 1.5](docs/MODELS.md#swift-15)** IQ2_XS（39.2 GB）、または **Gyro-M**（35 GB） | Swift は答える前に考える時間が短くなります。Gyro-M は品質が IQ3_XXS に近いものの、回答の書き出しは Q2_0 より16〜21%遅くなります |
-| **48 GB** | **IQ3_XXS**（47.0 GB） | 遅くなりますが、品質は上がります |
-| **64 GB** | **IQ3_S**（54.8 GB）、オリジナルまたは Swift 1.5 | いちばん遅く、いちばん高品質です。公開されているテストでは完全版と同等です |
-| **96 GB 以上** | Unsloth の **UD-IQ4_XS**（RAM 約72 GB）から **Q8_0**（約136 GB）まで、4〜8ビット | 完全版に近づきます。RAM が足りないと、Strata は一部を SSD から読むため、ずっと遅くなります |
-
-表の行より RAM が少なくても動くことがあります。Strata は自動で[低RAMモード](docs/MODELS.md#a-big-graphics-card-and-little-ram)に切り替わります。
-速度は落ち、グラフィックスカードが小さいとさらに大きく落ちます。
-
-そのほかの選択肢:
-
-- **[Swift 1.5](docs/MODELS.md#swift-15)** はファインチューン版で、答える前に考える時間が短くなります。品質と RAM の必要量はほぼ同じです。
-- **[NVFP4](docs/NVFP4.md)** は NVIDIA カード向けの NVIDIA 製4ビット版です。すべてのエキスパートを RAM に置くには、約80 GBの RAM が必要です。
-- **[Qwen3.6-35B-A3B](docs/QWEN36.md)** は、より小さい別のモデルです。画像を読め、複数のリクエストに同時に答えられます。
-- **[OrcaRouter の Uncensored IQ3_XXS](docs/MODELS.md#orcarouter-uncensored-iq3_xxs)** は手動で設定します。
-
-すべてのサイズ、ダウンロード、どの構成で何が動くかは [docs/MODELS.md](docs/MODELS.md) にあります。
-
-## どのくらい速い？
-
-12 GBのグラフィックスカード（RTX 5070、Ryzen 5 7600、RAM 64 GB）での数値です。ほかのカードの結果は
-[各モデルの速度](docs/MODELS.md#how-fast-is-each-size)、[コミュニティの結果](docs/COMMUNITY_BENCHMARKS.md)を見てください。
-
-| モデル | 回答が出る速さ | プロンプトを読む速さ |
-| --- | --- | --- |
-| **Q2_0** | `████████████` 94 tokens/s | `████████████` 2,650 tokens/s |
-| **IQ2_XS** | `██████████░░` 79 tokens/s | `█████████░░░` 2,090 tokens/s |
-| **IQ3_XXS** | `████████░░░░` 62 tokens/s | `████████░░░░` 1,750 tokens/s |
-| **IQ3_S** | `███████░░░░░` 53 tokens/s | `███████░░░░░` 1,620 tokens/s |
-| **Coder** | `███████░░░░░` 55 tokens/s | `██████████░░` 2,180 tokens/s |
-
-1トークンは英単語の約¾にあたるので、毎秒60トークンは読む速さより速くなります。「プロンプトを読む速さ」は、長い文書やコード、チャット履歴を Strata が取り込む速さです。
-
-16 GBの AMD カード（RX 9070 XT、Ryzen 9 3900X、RAM 47 GB）での測定値:
-
-| モデル | 回答が出る速さ | プロンプトを読む速さ |
-| --- | --- | --- |
-| **Q2_0** | `████████░░░░` 60 tokens/s | `█████░░░░░░░` 1,160 tokens/s |
-| **IQ2_XS** | `███████░░░░░` 52 tokens/s | `█████░░░░░░░` 1,110 tokens/s |
-| **Coder** | `██████░░░░░░` 44 tokens/s | `██████░░░░░░` 1,420 tokens/s |
-
-バーは2つの表で同じ目盛りです。VRAM が多いカードほど速くなり、RTX 3090（24 GB）なら毎秒100〜140トークンほどになるはずです。各数値のエンジンのバージョンは
-[DETAILS.md](docs/DETAILS.md#speed-measured) にあります。
-
-## 使い方
-
-### アプリで
-
-アプリには、**チャット**、モデルとGPU・CPU・RAMの状態を見る**モニター**、**モデル**ページ、**設定**があります。チャットはPC上のフォルダで作業できます。
-**手動**モードでは、ファイルを変更したりコマンドを実行したりする前に確認します。`/loop 10m <やること>` と入力すると、チャットを開いている間、メッセージを10分ごとに繰り返し送ります。
-
-チャットは DuckDuckGo（または Bing）でウェブ検索ができ、アカウントは不要です。**設定、ツール**で検索キーを追加することもできます。
-検索は、PCの外に何かを送る唯一の機能で、送られるのは検索語です。
-
-2つのモデルを動かすには、**複数のモデルを実行**をオンにして、それぞれのモデルに同じメーカーのカードを1枚ずつ割り当てます。
-
-<p align="center"><img src="docs/media/app-chat.png" width="900" alt="The Strata app: a chat where the agent built a small voxel pagoda garden, with the page open in the preview on the right"><br>
-<sub>Strata アプリでのチャット。エージェントが小さなボクセルの塔の庭を 1 つの HTML ファイルとして書き、そのページが会話の横のプレビューで開きます</sub></p>
-
-### ターミナルで
-
-<p align="center"><img src="docs/media/terminal-monitor.png" width="900" alt="The Strata Terminal monitor overview while the model writes a reply"><br>
-<sub>モデルが返信を書いている間の <code>strata monitor</code>。速度、GPU、メモリ、最近のリクエストが表示されます</sub></p>
-
-```sh
-strata launch                                  # ガイド付きの画面: モデル、コンテキスト、画像、アクセス、そして開始
-strata launch --model q2_0 --yes --no-tui     # 質問なし: 開始し、アドレスを表示して戻る
-strata launch --plan --model q2_0              # 実行内容を表示するだけで、何も変更しない
-strata launch --status                         # 今、何が動いているか
-strata launch --stop                           # 停止する
-strata monitor --url http://127.0.0.1:8080     # 速度、GPU、メモリ、リクエストを見る
-strata update --check                          # 新しいエンジンがあるか確認（strata update でインストール）
-strata doctor                                  # インストール済みのエンジンファイルを調べる
-```
-
-`strata --help` ですべてのコマンドを確認できます。起動とサーバーの稼働では、何もダウンロードしません。ダウンロードするのは、インストール、
-`strata launch`（モデルを選んだとき）、`strata update` だけです。スマートフォンや別のPCから Strata に接続するには、
-`strata launch --access lan` を使います。API キーが作られ、キーがない状態ではネットワーク上で起動しません。`--open` を付けない限り、ブラウザは開きません。
-ガイド: [docs/TERMINAL_LAUNCH.md](docs/TERMINAL_LAUNCH.md)。クライアント全体: [docs/TERMINAL.md](docs/TERMINAL.md)。
-
-### AI エージェントと使う
-
-エージェントは、方法Bの1行コマンドで Strata をインストールし、
-`strata launch --model NAME --yes --no-tui` を実行します。手順、フラグ、終了コードは [docs/AI_SETUP.md](docs/AI_SETUP.md) に、
-リポジトリのルールは [AGENTS.md](AGENTS.md) にあります。
-
-### ほかのアプリをつなぐ
-
-| アプリの種類 | ベース URL |
+| ハードウェア | 対応状況・備考 |
 | --- | --- |
-| OpenAI 互換（ほとんどのアプリとエージェント） | `http://127.0.0.1:8080/v1`（API キーもモデル名も何でも可） |
-| Anthropic API（Claude Code など） | `http://127.0.0.1:8080`、`/v1` は付けません。これらのアプリは `/v1/messages` を自分で付けます。Claude Code: `ANTHROPIC_BASE_URL=http://127.0.0.1:8080` |
-| OpenAI Responses API（Codex CLI） | `http://127.0.0.1:8080/v1/responses`（[設定方法](docs/DETAILS.md#the-responses-api-and-codex-cli)） |
+| **NVIDIA** GeForce RTX 20 / 30 / 40 / 50 シリーズ（12 GB VRAM 以上） | メインの CUDA ターゲット（SM120 ネイティブ Spin(8) プレビューは RTX 5060 Ti 16 GB および RTX 5090 32 GB で実機検証済み）。 |
+| **AMD** Radeon RX 6800 以降、RX 7000 / 9000、Radeon AI PRO R9700 | [AMD HIP ガイド](docs/AMD_HIP.md) |
+| **Intel** Arc | [Intel Arc](docs/INTEL_ARC.md)、[SYCL エンジン](docs/INTEL.md) |
+| **Apple Silicon Mac**（M1 以降、macOS 15 以降） | [Mac Metal ガイド](docs/MAC.md) |
+| **AMD Ryzen AI Max (Strix Halo)** | [Strix Halo ガイド](docs/STRIX_HALO.md) |
 
-`strata connect` は、OpenCode、Codex CLI、Claude Code、oh-my-pi、pi、Hermes Agent、OpenClaw の正確な設定を表示します。
-`strata connect opencode --write` は、確認したうえでファイルを書き込み、バックアップを残します。
+### メモリ容量別の推奨モデル
 
-### 画像
+| 合計メモリ (RAM + VRAM) | 推奨モデル | 特徴 |
+| --- | --- | --- |
+| **28〜32 GB** | **[Gyro-S](docs/GYRO.md)** (27.6 GB) または **[Coder](docs/MODELS.md#coder)** | Gyro-S は最小メモリ構成向け。Coder はコーディング特化でエキスパートを半減。 |
+| **35〜40 GB** | **[Swift 1.5](docs/MODELS.md#swift-15)** IQ2_XS (39.2 GB) または **Gyro-M** (35 GB) | Swift 1.5 は思考トークンを短縮。Gyro-M は約20%少ない VRAM で IQ3_XXS に迫る品質。 |
+| **48 GB** | **IQ3_XXS** (47.0 GB) | 2-bit 系より高い推論品質。 |
+| **64 GB** | **IQ3_S** (54.8 GB) または **Q2_0** | IQ3_S はフルモデル同等のベンチマーク精度。Q2_0 は最高速（RTX 5070 で 94 tok/s）。 |
+| **96 GB 以上** | **UD-IQ4_XS** (72 GB) 〜 **Q8_0** (136 GB)、**[NVFP4](docs/NVFP4.md)** | 全エキスパートを RAM に保持できる大容量環境向けの 4〜8 bit モデル。 |
 
-画像を読めるモデルでは、画像は初期設定でオンです。チャットに画像を添付または貼り付けるか、アプリから送ってください。
-グラフィックスカードが24 GB未満のときは、画像リーダーがプロセッサで動きます（画像1枚につき数秒、カードのメモリは使いません）。24 GB以上のときはグラフィックスカードで動きます。
-このルールは NVIDIA と AMD で同じです。画像はモデルごとにオフにでき、`--vision off`、`--vision gpu`、`--vision cpu` でリーダーを選べます。
+---
 
-このルールの根拠となる数値です。Radeon AI PRO R9700 では、カードのリーダーは260トークンの画像に57 ms、プロセッサのリーダーは3.1秒かかりました。
-16 GBのカード（Tesla P100 と RTX A4000、Linux）では、カードのリーダーを使うとテキストの速度が3〜5%下がりました。
-本来モデルが使う約1.4 GBをリーダーが占めるためです。Mac ではメモリ量にかかわらず GPU が読み取ります（32 GB の M4 で260トークンの画像に0.45秒、共有メモリを約1.2 GB使います）。プロセッサでは1枚あたり約50秒かかるため、`--vision cpu` を指定したときだけ使います。
+## ソースからのビルドとテスト
 
-### 知っておくと便利なこと
+```powershell
+# 1. Spin(8) 単体ライブラリ（CPU）のビルドとテスト
+cmake -S spin8 -B build\spin8-cpu -G "Visual Studio 17 2022" -A x64 -DSPIN8_ENABLE_CUDA=OFF
+cmake --build build\spin8-cpu --config Release
+ctest --test-dir build\spin8-cpu -C Release --output-on-failure
 
-- 思考のレベル（**off、low、medium、high**）は、チャットのメニューか、お使いのアプリの「reasoning effort」で選びます。off がいちばん速くなります。
-- Strata は初期設定では、一度に1つのリクエストに答えます。同時に複数処理するには、`strata launch` で `--parallel N` を使うか、設定に
-  `"parallel": 2` を書きます（[BATCHING.md](docs/BATCHING.md)）。12 GBのカードでは、1つずつの回答が遅くなります。
-- Strata はチャットの最初のメッセージを全文読みます。30,000トークンあたり約1分かかります。続きのメッセージは数秒で始まります。
-- チャットの保存場所と API 全体: [docs/INSTALL.md](docs/INSTALL.md#where-things-are-stored)、[docs/DETAILS.md](docs/DETAILS.md#using-it)。
+# 2. tqcodec（CPU + CUDA + Spin8 結合テスト）のビルドとテスト
+cmake -S tqcodec -B build\tqcodec-cuda -G "Visual Studio 17 2022" -A x64 -DTQCODEC_ENABLE_CUDA=ON -DTQCODEC_SPIN8_TESTS=ON
+cmake --build build\tqcodec-cuda --config Release
+ctest --test-dir build\tqcodec-cuda -C Release --output-on-failure
 
-## ソースからビルド
+# 3. ネイティブ CUDA エンジン (strata.exe / spin8_verify) のビルド
+cmake -S . -B build\engine-cuda -G "Visual Studio 17 2022" -A x64 -DSTRATA_CUDA=ON
+cmake --build build\engine-cuda --config Release --target strata spin8_verify
 
-<details>
-<summary>リポジトリから Windows、Linux、Mac 用にビルドする</summary>
-
-[Strata をダウンロード](https://github.com/Niko1221/Strata/archive/refs/heads/main.zip)して展開するか、`git clone` します。
-**Windows:** `START-HERE.bat` をダブルクリックします。**Linux:** Strata フォルダで `./setup.sh` を実行します。
-
-**Mac（Apple Silicon、macOS 15 以降）:** 最初に一度、`xcode-select --install` で Apple のコマンドラインツールをインストールします
-（Xcode 本体は不要です）。Strata フォルダでターミナルを開き、`./setup.sh` を実行します。Mac 用エンジンをお使いの Mac 上でビルドし
-（約7分）、同じ質問をして、モデルをダウンロードし、起動します。2回目以降は `./setup.sh` ですぐに起動します。
-お使いの Mac に合うサイズは [docs/MAC.md](docs/MAC.md) を見てください。
-
-インストーラーはカードを見つけて、合うエンジンを設定します。どのモデルとサイズにするか、コンテキストをどれだけにするか（モデルが一度に覚えておけるテキストの量）、
-画像を読ませるかを聞かれます。おすすめの答えでよければ Enter を押します。そのあとモデル（約70 GB）をダウンロードして起動します。
-ダウンロードが止まったら、もう一度実行すると続きから再開します。ブラウザで `http://127.0.0.1:8080` の Strata ページが開きます。
-
-> モデルの起動中は、PCが1〜3分ほど（初回がいちばん長い）遅くなったり、応答しなくなったりすることがあります。Strata は35〜55 GBをRAMに読み込み、
-> その一部をグラフィックスカード用に固定するためです。ウィンドウを閉じずに待ってください。
-
-次回からは `START-HERE.bat`（または `./setup.sh`）をもう一度実行するだけです。すぐに起動し、同じものを2回ダウンロードすることはありません。ウィンドウを閉じるとモデルが止まります。
-`UPDATE.bat`（`./update.sh`）は、起動せずに Strata を更新します。更新、Docker、複数のカード、ファイルの保存先、すべてのオプションは
-[docs/INSTALL.md](docs/INSTALL.md) にあります。
-
-PCの性能を測るには、`BENCH.bat`（`./bench.sh`）を実行します。5〜10分かかり、共有できるレポートが作られます
-（[方法](docs/COMMUNITY_BENCHMARKS.md#run-the-benchmark)）。
-
-**オプション: モデル全体がRAMに入るとき、1枚のカードをさらに速くする。** RubenTorney による、自分でオンにする2つの設定です（#1904、#1905）。
-グラフィックスカードが1枚で、RAM がすべてのエキスパートを保持できるときに効果があります。たとえば64 GBのPCでの Q2_0 や IQ3_XXS です。
-Strata のデータフォルダにある `strata-<model>.json`（[場所](docs/INSTALL.md#where-things-are-stored)）を開いて、次を追加します。
-
-- `"args"` のリストに `"--adapt-async", "1"` を追加します。エキスパートキャッシュが、回答を止めずに補助スレッドで更新されます。
-  RTX 5070（Windows、Q2_0）での測定: デコードが4〜5%、コードや長い文書では7〜10%速くなりました。回答は初期設定と少し違うことがありますが、実行ごとの結果は変わりません。
-- `"env"` ブロックに `"STRATA_PIN_BY_NEED": "1"` を追加します（Windows）。Windows ではグラフィックスカード用に固定できる RAM が半分ほどしかありません。
-  この設定は、カードが最初に必要とするエキスパートを優先して固定します。RTX 5070 での測定: プロンプトの読み取りが4.4%速くなりました。
-
-```json
-"args": [ ..., "--adapt-async", "1" ],
-"env": { "STRATA_PIN_BY_NEED": "1" }
+# 4. Host GUI & Control テスト
+pnpm --dir apps/host typecheck
+pnpm --dir apps/host build
+node --test apps/host/tests/native-settings.test.mjs apps/host/tests/spin8-backend.test.mjs apps/host/tests/kv-settings.test.mjs apps/host/tests/kv-engine.test.mjs
+py -3 -m pytest -p no:randomly tests/terminal/test_profiles.py
 ```
 
-変更したら Strata を再起動してください。元に戻すには、2つの項目を削除します。
-
-</details>
-
-## 仕組み
-
-このようなモデルは、ふつう数百GBのグラフィックスメモリを持つサーバーで動きます。お使いのグラフィックスカードは12〜24 GBです。Strata は、PC全体で作業を分担して、モデルを収めます。
-図書館にたとえてみます。
-
-- モデルは、24,576人の小さな専門家（「エキスパート」）からなるチームです。24,576冊の参考書のようなものです。1つの単語に必要なのは、そのうち10冊だけです。
-- **グラフィックスカードは机です。** 小さくて速く、最もよく使う約4,000冊が開いて置いてあります。
-- **RAM は閲覧室の書棚です。** 24,576冊すべてがここにあります。単語に必要な本が机になければ、プロセッサがすぐに書棚から読み、その間もカードは作業を続けます。
-- **SSD は書庫です。** 29 GBの参照テーブルがしまってあります。モデルは単語ごとにその数行だけを読むので、RAM に置いておく必要はありません。
-
-<p align="center"><img src="docs/media/how-it-works.svg" width="860" alt="The model's 24,576 experts: the busiest on the graphics card, all of them in RAM, a lookup table on the SSD"></p>
-
-小さな助手が、次の数単語も予想します。大きなモデルがそれをまとめて確認し、正しいものだけを残します。答えは同じで、1.6〜1.8倍早く返ります。
-長い文章は、一度に最大8,192トークンの大きな塊で、毎秒1,000トークンを超える速さで読みます。
-
-<p align="center"><img src="docs/media/guess-and-check.svg" width="860" alt="A small helper guesses the next words; the big model checks them all at once and keeps the right ones"></p>
-
-詳しい説明は [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md) にあります。各部分と数値は
-[詳細](docs/DETAILS.md#how-it-works)と[論文](docs/paper/Strata-Paper.pdf)を見てください。
-
-## うまくいかないとき
-
-- **Strata を初めて起動したときに、PCが固まりました。** モデルを RAM に読み込んでいます。ウィンドウを閉じずに待ってください。10分たっても固まったままなら、
-  PCを再起動し、ほかのプログラムを閉じてからもう一度試すか、小さいサイズを選んでください。
-- **ダウンロードやインストールの途中で止まりました。** アプリか `strata launch` をもう一度起動するか、`START-HERE.bat`（または
-  `./setup.sh`）をもう一度実行してください。止まったところから再開します。
-- **とても遅い、ディスクのランプが点滅し続ける、または「エンジンが予期せず停止しました」と表示される。** PCの空き RAM が足りません。
-  ほかのプログラムを閉じるか（ブラウザはメモリを多く使います）、Q2_0 や IQ2_XS のような小さいサイズを選んでください。
-- **このPCに合うエンジンがないと表示される。** アプリでは、**設定、エンジン**を開いて**エンジンを更新**を押します。ターミナルでは
-  `strata update` を実行します。`strata doctor` で、どのエンジンファイルがインストールされているか分かります。
-- **ポート 8080 はすでに使われていると表示される。** Strata がすでに動いています。ウィンドウを探してください。
-
-そのほかの問題と対処法は [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) にあります。それでも解決しない場合は、
-[issue](https://github.com/Niko1221/Strata/issues) を作成してください。アプリでは、**設定、エンジン、診断、ログを見る、ログを保存**で作られるファイルを添付します。
-ターミナルでは、`strata doctor` の出力を貼り付けます。ソースから動かしている場合は、Strata フォルダの `strata-<model>.log` を添付してください。
-セキュリティ上の問題は、非公開で報告してください: [SECURITY.md](SECURITY.md)。
+---
 
 ## クレジットとライセンス
 
-モデルは Qwen チームの [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) です。圧縮は
-[ISTA-DASLab](https://huggingface.co/ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF)、UkisAI（Swift 1.5）、agentionai（Gyro）、
-Unsloth が行いました。Strata は [llama.cpp / ggml](https://github.com/ggml-org/llama.cpp) の一部を使っています。すべてのクレジットは
-[docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md#credits) にあります。Strata は [MIT ライセンス](LICENSE)のオープンソースです。一部のコンポーネントと
-すべてのモデルには、それぞれのライセンスがあります（[該当するもの](docs/HOW_IT_WORKS.md#license)）。
-
-## コントリビューション
-
-バグを見つけた、変更やベンチマークを送りたい、という方は、先に [CONTRIBUTING.md](CONTRIBUTING.md) を読んでください。
-ほかの人があなたの成果を確認できるように、何を書くべきかが説明してあります。
-
-## Strata を応援する
-
-Strata は無料で、MIT ライセンスです。私が入手できるハードウェアで開発とテストをしています。お使いのPCで快適に動いたなら、コーヒー1杯分の支援は、
-新しいカードのテストと、報告いただいた不具合の修正を続ける助けになります。無理のない範囲で大丈夫です。使って、気づいたことを報告してもらえるだけでも同じように助かります。
-
-<a href="https://buymeacoffee.com/strataengine"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50"></a>
-
-Strata のスポンサーに関心がある方は、[GitHub](https://github.com/Niko1221) から連絡してください。
+- **フォーク開発 (`zapabob/Strata`)**: Spin(8) $\mathrm{Cl}(8,0)$ Triality KV キャッシュ、`tqcodec` CUDA ダイアレクト、Query-v3 `.prismq3` サイドカー統合、SM120 `audit_kernel` 動的共有メモリ最適化、および GUI/CLI フルスタック統合。
+- **アップストリーム ([`Niko1221/Strata`](https://github.com/Niko1221/Strata))**: 3階層 MoE ストリーミングエンジン、エキスパートキャッシュ、投機的デコーディング、デスクトップ/Host アプリ、Terminal CLI。
+- **モデル・量子化**: [Qwen Team](https://huggingface.co/Qwen/Qwen3.8-Flash-Next)、[ISTA-DASLab](https://huggingface.co/ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF)、UkisAI (Swift 1.5)、agentionai (Gyro)、Unsloth、および [llama.cpp / ggml](https://github.com/ggml-org/llama.cpp)。
+- **ライセンス**: [MIT License](LICENSE) の下で公開されています。リリースアーカイブに同梱される CUDA/cuBLAS および Microsoft Visual C++ ランタイム DLL には各ベンダーの再配布規約が適用されます。
