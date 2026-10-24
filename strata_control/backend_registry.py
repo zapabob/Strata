@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+from pathlib import Path
 from typing import Any
 
 from strata_control.bundle_identity import VerifiedBundle
@@ -10,6 +11,7 @@ from strata_control.backend_contracts import (
     LoadRequest,
     ResolvedBackend,
 )
+from strata_control.backend_probe import probe_backend_binary
 
 
 class BackendRegistry:
@@ -57,7 +59,7 @@ class BackendRegistry:
 
         # Automatic deterministic selection based on geometry and dialect
         # Priority 1: DeepSeek architecture -> strata-dsv41
-        if arch in ("dsv41", "deepseek", "deepseek2") and "strata-dsv41" in self._backends:
+        if arch in ("dsv41", "deepseek", "deepseek2", "deepseek41") and "strata-dsv41" in self._backends:
             ds_backend = self._backends["strata-dsv41"]
             return ResolvedBackend(
                 backend_id="strata-dsv41",
@@ -74,13 +76,13 @@ class BackendRegistry:
                 decision_reason="Selected prism backend for PQ2_0 dialect",
             )
 
-        # Priority 3: Native Qwen / Spin8 -> strata-native
-        if arch in ("qwen2", "qwen") and "strata-native" in self._backends:
+        # Priority 3: Native Qwen / Spin8 / Swift -> strata-native
+        if arch in ("qwen4exp", "qwen2", "qwen", "qwen35", "qwen35moe") and "strata-native" in self._backends:
             native_backend = self._backends["strata-native"]
             return ResolvedBackend(
                 backend_id="strata-native",
                 capabilities=native_backend,
-                decision_reason="Selected strata-native backend for Qwen architecture",
+                decision_reason="Selected strata-native backend for Qwen/Swift architecture",
             )
 
         # Priority 4: Standard Dense GGUF -> llama-cpp
@@ -98,49 +100,52 @@ class BackendRegistry:
         )
 
 
-def create_default_registry() -> BackendRegistry:
-    """Create registry populated with standard Strata backends."""
+def create_default_registry(root_dir: Path | None = None) -> BackendRegistry:
+    """Create registry populated with standard Strata backends, cryptographically probed if root_dir is given."""
     reg = BackendRegistry()
+    bin_base = Path(root_dir) / "bin" if root_dir else Path("bin")
+
     reg.register_backend(
-        BackendCapabilities(
-            schema_version="1.0",
+        probe_backend_binary(
+            binary_path=bin_base / "strata-native",
             backend_id="strata-native",
-            binary_path="bin/strata-native",
-            binary_sha256="native-sha",
-            supported_architectures=("qwen2", "qwen"),
+            supported_architectures=("qwen4exp", "qwen2", "qwen", "qwen35", "qwen35moe"),
             supported_dialects=("standard", "tq4_1s", "tq3_0s"),
+            supports_cuda=True,
+            supports_cpu=True,
             supports_spin8=True,
+            supports_steering=True,
         )
     )
     reg.register_backend(
-        BackendCapabilities(
-            schema_version="1.0",
+        probe_backend_binary(
+            binary_path=bin_base / "strata-dsv41",
             backend_id="strata-dsv41",
-            binary_path="bin/strata-dsv41",
-            binary_sha256="dsv41-sha",
-            supported_architectures=("dsv41", "deepseek", "deepseek2"),
+            supported_architectures=("dsv41", "deepseek", "deepseek2", "deepseek41"),
             supported_dialects=("standard", "iq4_nl"),
+            supports_cuda=True,
+            supports_cpu=True,
+            supports_steering=True,
         )
     )
     reg.register_backend(
-        BackendCapabilities(
-            schema_version="1.0",
+        probe_backend_binary(
+            binary_path=bin_base / "prism",
             backend_id="prism",
-            binary_path="bin/prism",
-            binary_sha256="prism-sha",
-            supported_architectures=("qwen2", "llama"),
+            supported_architectures=("qwen2", "qwen", "qwen35", "prism", "llama"),
             supported_dialects=("pq2_0", "ptq1_0"),
+            supports_cuda=True,
+            supports_cpu=True,
         )
     )
     reg.register_backend(
-        BackendCapabilities(
-            schema_version="1.0",
+        probe_backend_binary(
+            binary_path=bin_base / "llama-server",
             backend_id="llama-cpp",
-            binary_path="bin/llama-server",
-            binary_sha256="llama-sha",
-            supported_architectures=("llama", "mistral", "phi3"),
+            supported_architectures=("llama", "mistral", "phi3", "qwen2"),
             supported_dialects=("standard", "q4_k_m"),
+            supports_cuda=True,
+            supports_cpu=True,
         )
     )
     return reg
-
