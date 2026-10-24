@@ -1,18 +1,19 @@
-"""strata_control/gguf_dialects.py - Quantization dialects and architecture definitions."""
+"""strata_control/gguf_dialects.py - Strict GGUF quant dialect typing, byte computation, and overflow bounds."""
 from __future__ import annotations
 
+from dataclasses import dataclass
 from enum import Enum
-from typing import NamedTuple
+from typing import Any
 
 
 class DialectType(str, Enum):
     STANDARD = "standard"
     PRISM = "prism"
     TURBOQUANT = "turboquant"
-    DEEPSEEK_DSV41 = "dsv41"
 
 
-class QuantDialect(NamedTuple):
+@dataclass(frozen=True)
+class QuantDialect:
     type_id: int
     name: str
     dialect: DialectType
@@ -39,6 +40,8 @@ PRISM_DIALECTS = {
     2002: QuantDialect(2002, "TQ3_0S", DialectType.TURBOQUANT, 32, 15),
 }
 
+TURBOQUANT_DIALECTS = {k: v for k, v in PRISM_DIALECTS.items() if v.dialect == DialectType.TURBOQUANT}
+
 
 def resolve_dialect_type(type_id: int, explicit_dialect: str | None = None) -> QuantDialect:
     """Resolve a numeric quant type id into its QuantDialect, requiring explicit dialect on collisions."""
@@ -57,6 +60,10 @@ def resolve_dialect_type(type_id: int, explicit_dialect: str | None = None) -> Q
         return STANDARD_DIALECTS[type_id]
 
     raise ValueError(f"Unknown quantization type id: {type_id} (explicit_dialect={explicit_dialect})")
+
+
+# Alias for compatibility
+get_dialect_descriptor = resolve_dialect_type
 
 
 def compute_tensor_bytes(dims: list[int], block_size: int, type_size: int) -> int:
