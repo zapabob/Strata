@@ -581,7 +581,8 @@ class Telemetry:
         }
         self._disk_prev = None
         self._stop = threading.Event()
-        threading.Thread(target=self._loop, daemon=True).start()
+        self._thread = threading.Thread(target=self._loop, daemon=True, name=f"telemetry-sampler-{id(self)}(_loop)")
+        self._thread.start()
 
     def _disk(self):
         if not self.ps:
@@ -636,9 +637,12 @@ class Telemetry:
                 pass
         return s
 
-    def close(self):
+    def close(self, timeout: float = 2.0):
         """Ends the sampler thread (a server that stops, a test's service): it used to run for the life of the process."""
         self._stop.set()
+        thread = getattr(self, "_thread", None)
+        if thread is not None and thread.is_alive():
+            thread.join(timeout=timeout)
 
     def _loop(self):
         while not self._stop.is_set():
