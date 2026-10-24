@@ -1,0 +1,55 @@
+{
+  "schema_version": "1.0",
+  "task": "R00",
+  "symbols": {
+    "gguf_inspection": {
+      "producer": "strata_control/model_bundle.py::inspect_gguf",
+      "consumers": [
+        "strata_control/models.py",
+        "strata_control/bundle_resolver.py",
+        "tools/qualify_model_bundle.py",
+        "apps/host/server/native-control.mjs"
+      ],
+      "status": "in_progress_repair_R03"
+    },
+    "bundle_identity": {
+      "producer": "strata_control/bundle_identity.py::verify_bundle",
+      "consumers": [
+        "strata_control/bundle_resolver.py",
+        "strata_control/runtime.py"
+      ],
+      "status": "pending_repair_R06"
+    },
+    "qualification_gate": {
+      "producer": "tools/verify_run_evidence.py::evaluate_gate",
+      "consumers": [
+        "tools/qualify_model_bundle.py",
+        "ci_workflows"
+      ],
+      "status": "pending_repair_R01"
+    },
+    "memory_budget": {
+      "producer": "strata_control/model_memory.py::plan_memory",
+      "consumers": [
+        "strata_control/runtime.py",
+        "tools/qualify_model_bundle.py"
+      ],
+      "status": "pending_repair_R08"
+    },
+    "dsv41_preparation": {
+      "producer": "strata_control/backends/dsv41.py::prepare_model",
+      "consumers": [
+        "strata_control/runtime.py"
+      ],
+      "status": "pending_repair_R09"
+    },
+    "telemetry_sampler": {
+      "producer": "serve/telemetry.py::SamplerLifecycle",
+      "consumers": [
+        "serve/test_responses.py",
+        "serve/server.py"
+      ],
+      "status": "pending_repair_R02"
+    }
+  }
+}

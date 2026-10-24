@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "task": "R00",
+  "observation_timestamp": "2026-10-25T06:26:00+09:00",
+  "active_server_running": false,
+  "status_message": "Nothing from `strata launch` is running.",
+  "listening_ports_checked": [8000, 8080, 5000, 11434, 18000],
+  "restore_recipe": {
+    "recommended_launch_command": "py -3 strata.py launch --model q2_0 --no-tui",
+    "required_model_path": "H:\\Strata\\models\\q2_0\\Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf",
+    "restore_port": 8000,
+    "state_dir": "AppData/Local/Strata/state"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "schema_version": "1.0",
+  "task": "R00",
+  "audit_baseline": {
+    "commit": "45b8628226f35051195520ab418e55be92093ccf",
+    "commit_message": "Strata v0.3.0 release assets and integration",
+    "differences_to_head": {
+      "commit_count": 1,
+      "commits": [
+        {
+          "sha": "6952b12e2f8cdd96af382be47ce83a6d2185aefd",
+          "subject": "[Engine] Support Prism PQ2_0 (142) tensor decoding and Hikari qwen35 architecture in local import preview",
+          "files": [
+            "strata_control/models.py",
+            "tools/deploy_host.ps1",
+            "tools/gguf_reader.py"
+          ]
+        }
+      ],
+      "working_tree_dirty": {
+        "strata_control/model_bundle.py": "Bounded GGUF v2/v3 reader draft implementation"
+      }
+    }
+  },
+  "hardware_observed": {
+    "total_visible_ram_bytes": 34224869376,
+    "free_physical_ram_bytes": 10155778048,
+    "total_virtual_memory_bytes": 68584607744,
+    "free_virtual_memory_bytes": 20420206592,
+    "gpu_model": "NVIDIA GeForce RTX 5060 Ti",
+    "gpu_total_vram_mib": 16311,
+    "gpu_used_vram_mib": 3515,
+    "gpu_free_vram_mib": 12796
+  }
+}

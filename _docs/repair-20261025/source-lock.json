@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0",
+  "task": "R00",
+  "recorded_at": "2026-10-25T06:26:00+09:00",
+  "audit_baseline_commit": "45b8628226f35051195520ab418e55be92093ccf",
+  "current_head_commit": "6952b12e2f8cdd96af382be47ce83a6d2185aefd",
+  "head_author_date": "2026-10-25T06:19:02+09:00",
+  "git_branch": "main",
+  "worktree_root": "C:/Users/downl/Documents/ChatGPT/Strata",
+  "dirty_files": [
+    "strata_control/model_bundle.py"
+  ],
+  "untracked_paths": [
+    "scratch/"
+  ],
+  "upstream_cut": {
+    "u1": "7dd5cf18e68c639a8773e096c5c79f971ea2a9f5",
+    "c1": "c487c875d05075113965bc61d822b27179f70639"
+  },
+  "submodules": [],
+  "toolchain": {
+    "os": "Windows 11 x64",
+    "python": "3.12.10 (py -3)",
+    "cmake": "4.4.0",
+    "git": "2.56.0.windows.2",
+    "node": "v26.10.0",
+    "pnpm": "10.31.0",
+    "nvcc": "13.3.73",
+    "nvidia_driver": "616.92",
+    "cuda_umd": "13.4"
+  },
+  "candidate_paths": {
+    "source_tree": "C:\\Users\\downl\\Documents\\ChatGPT\\Strata",
+    "data_root": "H:\\Strata",
+    "data_root_exists": true,
+    "models_dir_exists": true,
+    "releases_dir_exists": true
+  }
+}

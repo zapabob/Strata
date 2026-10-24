@@ -1,13 +1,14 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "2.0",
   "verifier": "Antigravity/MILSPEC-Codex",
-  "timestamp": "2026-10-25T02:45:00Z",
+  "timestamp": "2026-10-25T06:40:00Z",
+  "supersedes": "model-acceptance.v1.json.bak",
   "hardware_snapshot": {
     "total_physical_ram_gb": 34.22,
-    "available_physical_ram_gb": 12.97,
+    "available_physical_ram_gb": 10.16,
     "commit_limit_gb": 68.58,
     "total_vram_gb": 17.1,
-    "free_vram_gb": 1.39
+    "free_vram_gb": 12.8
   },
   "results": [
     {
@@ -21,22 +22,28 @@
       "uncensored": false,
       "refusal_steering_mode": "ENABLED",
       "tier_status": {
-        "container_inspection": "INSPECTED_OK",
+        "container_inspection": "PREVIEW_ONLY",
         "architecture_compatibility": "COMPATIBLE",
-        "memory_budget_admission": "ADMITTED",
-        "execution_readiness": "READY_FOR_INFERENCE"
+        "memory_budget_admission": "UNVERIFIED_PENDING_WEIGHTS",
+        "execution_readiness": "DRYRUN_PREVIEW"
       },
       "budget_breakdown": {
-        "planned_host_ram_gb": 18.79,
-        "planned_vram_gb": 8.8,
-        "headroom_ram_gb": 15.43,
+        "planned_host_ram_gb": 0.0,
+        "planned_vram_gb": 0.0,
+        "headroom_ram_gb": 34.22,
         "os_reserve_min_gb": 4.0,
         "host_budget_cap_gb": 24.0,
         "vram_budget_cap_gb": 14.0,
         "drafter_auto_unload_enabled": true
       },
-      "qualified": true,
-      "rejection_reason": null,
+      "invocations": 0,
+      "tokens_generated": 0,
+      "duration_seconds": 0.0,
+      "binary_sha256": "ca37ff9f0120fccac47ddb8e8b1b7f3341889aab4c32e9b2ef9ccf63e1497a9a",
+      "raw_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "qualified": false,
+      "real_model_qualified": false,
+      "rejection_reason": "DRYRUN receipt cannot qualify real model execution; requires real model run under protocol-v2 (Task R16)",
       "verification_method": "DRYRUN_QUALIFICATION_RECEIPT"
     },
     {
@@ -50,22 +57,28 @@
       "uncensored": true,
       "refusal_steering_mode": "DISABLED",
       "tier_status": {
-        "container_inspection": "INSPECTED_OK",
+        "container_inspection": "PREVIEW_ONLY",
         "architecture_compatibility": "COMPATIBLE",
-        "memory_budget_admission": "ADMITTED",
-        "execution_readiness": "READY_FOR_INFERENCE"
+        "memory_budget_admission": "UNVERIFIED_PENDING_WEIGHTS",
+        "execution_readiness": "DRYRUN_PREVIEW"
       },
       "budget_breakdown": {
-        "planned_host_ram_gb": 18.79,
-        "planned_vram_gb": 8.8,
-        "headroom_ram_gb": 15.43,
+        "planned_host_ram_gb": 0.0,
+        "planned_vram_gb": 0.0,
+        "headroom_ram_gb": 34.22,
         "os_reserve_min_gb": 4.0,
         "host_budget_cap_gb": 24.0,
         "vram_budget_cap_gb": 14.0,
         "drafter_auto_unload_enabled": true
       },
-      "qualified": true,
-      "rejection_reason": null,
+      "invocations": 0,
+      "tokens_generated": 0,
+      "duration_seconds": 0.0,
+      "binary_sha256": "ca37ff9f0120fccac47ddb8e8b1b7f3341889aab4c32e9b2ef9ccf63e1497a9a",
+      "raw_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "qualified": false,
+      "real_model_qualified": false,
+      "rejection_reason": "DRYRUN receipt cannot qualify real model execution; requires real model run under protocol-v2 (Task R16)",
       "verification_method": "DRYRUN_QUALIFICATION_RECEIPT"
     },
     {
@@ -79,22 +92,28 @@
       "uncensored": true,
       "refusal_steering_mode": "DISABLED",
       "tier_status": {
-        "container_inspection": "INSPECTED_OK",
+        "container_inspection": "PREVIEW_ONLY",
         "architecture_compatibility": "COMPATIBLE",
-        "memory_budget_admission": "ADMITTED",
-        "execution_readiness": "READY_FOR_INFERENCE"
+        "memory_budget_admission": "UNVERIFIED_PENDING_WEIGHTS",
+        "execution_readiness": "DRYRUN_PREVIEW"
       },
       "budget_breakdown": {
-        "planned_host_ram_gb": 18.79,
-        "planned_vram_gb": 8.8,
-        "headroom_ram_gb": 15.43,
+        "planned_host_ram_gb": 0.0,
+        "planned_vram_gb": 0.0,
+        "headroom_ram_gb": 34.22,
         "os_reserve_min_gb": 4.0,
         "host_budget_cap_gb": 24.0,
         "vram_budget_cap_gb": 14.0,
         "drafter_auto_unload_enabled": true
       },
-      "qualified": true,
-      "rejection_reason": null,
+      "invocations": 0,
+      "tokens_generated": 0,
+      "duration_seconds": 0.0,
+      "binary_sha256": "ca37ff9f0120fccac47ddb8e8b1b7f3341889aab4c32e9b2ef9ccf63e1497a9a",
+      "raw_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "qualified": false,
+      "real_model_qualified": false,
+      "rejection_reason": "DRYRUN receipt cannot qualify real model execution; requires real model run under protocol-v2 (Task R16)",
       "verification_method": "DRYRUN_QUALIFICATION_RECEIPT"
     }
   ]

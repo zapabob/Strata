@@ -5,6 +5,7 @@ Strictly conforms to MILSPEC-Codex standard: logging only, zero print, strict ty
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import json
 import logging
 from pathlib import Path
@@ -107,6 +108,7 @@ def qualify_single_manifest(
             "architecture": architecture,
             "dialect": dialect,
             "qualified": False,
+            "real_model_qualified": False,
             "tier_status": {
                 "container_inspection": "FILE_NOT_FOUND",
                 "architecture_compatibility": "NOT_EVALUATED",
@@ -125,6 +127,7 @@ def qualify_single_manifest(
             "architecture": architecture,
             "dialect": dialect,
             "qualified": False,
+            "real_model_qualified": False,
             "tier_status": {
                 "container_inspection": "RESOLUTION_FAILED",
                 "architecture_compatibility": "INCOMPATIBLE",
@@ -164,10 +167,15 @@ def qualify_single_manifest(
         "planned_host_ram_gb": round(mem_plan.planned_host_bytes / 1e9, 2),
         "headroom_ram_gb": round(mem_plan.headroom_bytes / 1e9, 2),
         "planned_vram_gb": round(mem_plan.planned_vram_bytes / 1e9, 2),
-        "qualified": mem_plan.is_launchable,
-        "rejection_reason": mem_plan.rejection_reason,
+        "invocations": 0,
+        "tokens_generated": 0,
+        "duration_seconds": 0.0,
+        "qualified": False,
+        "real_model_qualified": False,
+        "rejection_reason": "Single manifest inspection does not execute real inference; real_model_qualified=false",
+        "verification_method": "MANIFEST_INSPECTION_ONLY",
     }
-    logger.info("Qualification finished for %s. Qualified: %s", manifest_path.stem, mem_plan.is_launchable)
+    logger.info("Inspection finished for %s.", manifest_path.stem)
     return report
 
 
@@ -192,19 +200,15 @@ def main() -> None:
         data = json.loads(batch_path.read_text(encoding="utf-8"))
         candidates = data.get("candidates", [])
         for c in candidates:
-            # Synthetic / dry-run evaluation for registered candidates
             candidate_id = c.get("candidate_id", "unknown")
             arch = c.get("architecture", "dsv41")
             dialect = c.get("dialect", "standard")
             uncensored = c.get("uncensored", False)
             kind = c.get("kind", "standalone_model")
 
-            # Simulate memory planning for 32GB RAM profile
-            # Base 27B / DeepSeek Flash model footprint in GGUF Q4_K_M ~ 17.5 GB host, 8.2 GB VRAM
-            planned_host = 17.5 * 1024**3
-            planned_vram = 8.2 * 1024**3
-            headroom = hw.total_physical_ram_bytes - planned_host
-            is_launchable = (headroom >= 4.0 * 1024**3) and (planned_host <= 24.0 * 1024**3)
+            planned_host = 0
+            planned_vram = 0
+            headroom = hw.total_physical_ram_bytes
 
             rec = {
                 "candidate_id": candidate_id,
@@ -217,22 +221,26 @@ def main() -> None:
                 "uncensored": uncensored,
                 "refusal_steering_mode": "DISABLED" if uncensored else "ENABLED",
                 "tier_status": {
-                    "container_inspection": "INSPECTED_OK",
+                    "container_inspection": "PREVIEW_ONLY",
                     "architecture_compatibility": "COMPATIBLE",
-                    "memory_budget_admission": "ADMITTED" if is_launchable else "REJECTED_OVER_BUDGET",
-                    "execution_readiness": "READY_FOR_INFERENCE" if is_launchable else "BLOCKED_BY_MEMORY"
+                    "memory_budget_admission": "UNVERIFIED_PENDING_WEIGHTS",
+                    "execution_readiness": "DRYRUN_PREVIEW"
                 },
                 "budget_breakdown": {
-                    "planned_host_ram_gb": round(planned_host / 1e9, 2),
-                    "planned_vram_gb": round(planned_vram / 1e9, 2),
+                    "planned_host_ram_gb": 0.0,
+                    "planned_vram_gb": 0.0,
                     "headroom_ram_gb": round(headroom / 1e9, 2),
                     "os_reserve_min_gb": 4.0,
                     "host_budget_cap_gb": 24.0,
                     "vram_budget_cap_gb": 14.0,
                     "drafter_auto_unload_enabled": True
                 },
-                "qualified": is_launchable,
-                "rejection_reason": None if is_launchable else "Host RAM headroom below 4.0 GiB minimum",
+                "invocations": 0,
+                "tokens_generated": 0,
+                "duration_seconds": 0.0,
+                "qualified": False,
+                "real_model_qualified": False,
+                "rejection_reason": "DRYRUN batch preview does not execute real inference; real_model_qualified=false",
                 "verification_method": "DRYRUN_QUALIFICATION_RECEIPT"
             }
             results.append(rec)
@@ -245,9 +253,9 @@ def main() -> None:
         sys.exit(1)
 
     out_data = {
-        "schema_version": "1.0",
+        "schema_version": "2.0",
         "verifier": "Antigravity/MILSPEC-Codex",
-        "timestamp": "2026-10-25T02:45:00Z",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "hardware_snapshot": {
             "total_physical_ram_gb": round(hw.total_physical_ram_bytes / 1e9, 2),
             "available_physical_ram_gb": round(hw.available_physical_ram_bytes / 1e9, 2),

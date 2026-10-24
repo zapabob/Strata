@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RunReceiptV2",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "candidate_id",
+    "verification_method",
+    "binary_sha256",
+    "raw_log_sha256",
+    "invocations",
+    "tokens_generated",
+    "qualified",
+    "real_model_qualified"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["2.0"]
+    },
+    "candidate_id": {
+      "type": "string"
+    },
+    "friendly_name": {
+      "type": "string"
+    },
+    "architecture": {
+      "type": "string"
+    },
+    "verification_method": {
+      "type": "string",
+      "enum": [
+        "REAL_MODEL_EXECUTION",
+        "DRYRUN_QUALIFICATION_RECEIPT",
+        "UNIT_TEST",
+        "SYNTHETIC"
+      ]
+    },
+    "timestamp": {
+      "type": "string"
+    },
+    "duration_seconds": {
+      "type": "number",
+      "minimum": 0.0
+    },
+    "invocations": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "tokens_generated": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "binary_sha256": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{64}$"
+    },
+    "raw_log_sha256": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{64}$"
+    },
+    "log_path": {
+      "type": "string"
+    },
+    "qualified": {
+      "type": "boolean"
+    },
+    "real_model_qualified": {
+      "type": "boolean"
+    },
+    "rejection_reason": {
+      "type": ["string", "null"]
+    },
+    "hardware_snapshot": {
+      "type": "object"
+    },
+    "budget_breakdown": {
+      "type": "object"
+    }
+  }
+}

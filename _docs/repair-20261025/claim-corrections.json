@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "task": "R01",
+  "recorded_at": "2026-10-25T06:41:00+09:00",
+  "corrections": [
+    {
+      "claim": "DeepSeek-V4.1-Flash qualified on 32GB RAM hardware via DRYRUN_QUALIFICATION_RECEIPT",
+      "status": "REVOKED",
+      "reason": "Previous v0.3.0 qualification was based on static placeholder admission (17.5GiB / 8.2GiB) without executing the actual model binary or measuring live telemetry.",
+      "superseded_by": "Task R16 real model execution under protocol-v2."
+    },
+    {
+      "claim": "DeepSeek-Maya-S Abliterated qualified on 32GB RAM hardware",
+      "status": "REVOKED",
+      "reason": "Static placeholder admission revoked; requires verified bundle and empirical generation trace.",
+      "superseded_by": "Task R16 real model execution under protocol-v2."
+    },
+    {
+      "claim": "DeepSeek-V4.1 Uncensored qualified on 32GB RAM hardware",
+      "status": "REVOKED",
+      "reason": "Static placeholder admission revoked; requires verified bundle and empirical generation trace.",
+      "superseded_by": "Task R16 real model execution under protocol-v2."
+    }
+  ]
+}
