@@ -3,7 +3,7 @@
 - **日付**: 2026-10-25
 - **実装AI**: Antigravity (Advanced Agentic Pair-Programming AI)
 - **対象リポジトリ**: `C:\Users\downl\Documents\ChatGPT\Strata`
-- **統合ブランチ**: `integration/upstream-u1-dsv41-gguf`
+- **統合ブランチ**: `integration/upstream-u1-dsv41-gguf` -> `main`
 - **上流コミット基準**:
   - `U1`: `7dd5cf18e68c639a8773e096c5c79f971ea2a9f5` (最新上流Strata完全取り込み)
   - `C1`: `c487c875d05075113965bc61d822b27179f70639` (GUI TOCTOUセキュリティパッチ)
@@ -15,7 +15,7 @@
 
 ユーザー指示「全部承認まかせたい」に基づき、`Strata_最新上流統合_DeepSeek派生_任意GGUF_計画一式_20261025.zip` の実装計画書（T00〜T21、Gate G0〜G7）および長期記憶管理（Hermes / Hakua / SOUL.md / Memory.md）の完全自律遂行を完了しました。
 
-本実装では、最新上流Strata（U1/C1）のコードベースと同期を取りつつ、当フォーク独自の11機能（F01〜F11: Spin(8) Triality, TurboQuant, Query-v3, Windows fail-closed, Hikari 27B PQ2_0 Bonsai, Steering, 多言語README, 長期記憶等）を完全保持し、DeepSeek-V4.1-Flash-1017無検閲派生モデルおよび任意ユーザーGGUFモデルの内容ベースロード・32GB RAM / 16GB VRAM（RTX 5060 Ti）環境での安全動作を実証しました。
+本実装では、最新上流Strata（U1/C1）のコードベースと同期を取りつつ、当フォーク独自の11機能（F01〜F11: Spin(8) Triality, TurboQuant, Query-v3, Windows fail-closed, Hikari 27B PQ2_0 Bonsai, Steering, 多言語README, 長期記憶等）を完全保持し、DeepSeek-V4.1-Flash-1017無検閲派生モデルおよび任意ユーザーGGUFモデルの内容ベースロード・32GB RAM / 16GB VRAM（RTX 5060 Ti）環境での安全動作を実証しました。また、7言語の多言語READMEを最新仕様に合わせて更新し、メインブランチへコミット・プッシュしました。
 
 ---
 
@@ -89,6 +89,10 @@
    - `tools/check_upstream_cut.py`: U1, C1, F01〜F11, 7言語READMEの完全存在を検証し、ステータスを `LOCKED` として確定。
    - `tests/packaging/test_backend_packages.py` を作成。
    - `_docs/releases/custom-gguf-qualification.md` を作成。Gate G7 PASS。
+4. **多言語READMEの全面更新とメインブランチ同期**:
+   - `README.md`, `README.ja.md`, `README.zh-CN.md`, `README.de.md`, `README.es.md`, `README.fr.md`, `README.pt-BR.md` の全7言語版を更新。
+   - 最新上流（v0.2.4.2 / エンジン 0.1.49.2）、DeepSeek-V4.1 MLA 無検閲派生、任意GGUF内容検査ロード、Hermes/白亜長期記憶、32GB RAM最適化仕様を完全反映。
+   - コミット `eccc83be` にて `main` ブランチへコミット・プッシュを完了。
 
 ---
 
@@ -117,4 +121,4 @@
 
 ## 4. 結論
 
-Strata最新上流統合・DeepSeek派生／任意GGUF対応 Implementation Plan（T00〜T21、Gate G0〜G7）および長期記憶管理基盤の実装がすべて完了し、品質基準（MILSPEC-Codex Standard / logging使用 / print厳禁 / 型厳格）を満たした状態で検証完了しました。
+Strata最新上流統合・DeepSeek派生／任意GGUF対応 Implementation Plan（T00〜T21、Gate G0〜G7）および長期記憶管理基盤の実装がすべて完了し、品質基準（MILSPEC-Codex Standard / logging使用 / print厳禁 / 型厳格）を満たした状態で検証完了しました。多言語READMEも最新の状態へ更新され、リモートリポジトリへ同期されました。
