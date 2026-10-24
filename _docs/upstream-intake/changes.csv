@@ -1,0 +1,485 @@
+status,path,classification,notes
+M,.github/ISSUE_TEMPLATE/bug_report.yml,APPLIED_UPSTREAM,Upstream baseline update
+M,.github/workflows/docker-images.yml,APPLIED_UPSTREAM,Upstream baseline update
+A,.github/workflows/metal-build.yml,APPLIED_UPSTREAM,Upstream baseline update
+M,AGENTS.md,APPLIED_UPSTREAM,Upstream baseline update
+M,CMakeLists.txt,APPLIED_UPSTREAM,Upstream baseline update
+M,Dockerfile,APPLIED_UPSTREAM,Upstream baseline update
+M,README.de.md,ADAPTED_EQUIVALENT,Fork-specific multi-language README preserved
+M,README.es.md,ADAPTED_EQUIVALENT,Fork-specific multi-language README preserved
+M,README.fr.md,ADAPTED_EQUIVALENT,Fork-specific multi-language README preserved
+M,README.ja.md,ADAPTED_EQUIVALENT,Fork-specific multi-language README preserved
+M,README.md,ADAPTED_EQUIVALENT,Fork-specific multi-language README preserved
+M,README.pt-BR.md,ADAPTED_EQUIVALENT,Fork-specific multi-language README preserved
+M,README.zh-CN.md,ADAPTED_EQUIVALENT,Fork-specific multi-language README preserved
+M,SECURITY.md,APPLIED_UPSTREAM,Upstream security hardening
+M,apps/desktop/package.json,APPLIED_UPSTREAM,Upstream baseline update
+M,apps/desktop/src-tauri/Cargo.lock,APPLIED_UPSTREAM,Upstream baseline update
+M,apps/desktop/src-tauri/Cargo.toml,APPLIED_UPSTREAM,Upstream baseline update
+M,apps/host/package-lock.json,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/package.json,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/scripts/context-e2e.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/server/agent/README.md,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/server/agent/agent-bridge.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/server/agent/context-budget.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/server/agent/context-fit.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/server/agent/custom-command-run.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/server/agent/custom-tools-mcp.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/server/agent/engine-progress.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/server/agent/events.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/server/agent/harness-runtime.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/server/agent/plan.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/server/agent/plugins/strata-context.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/server/agent/plugins/strata-gate.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/server/agent/preset.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/server/agent/profile.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/server/agent/tools-settings.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/server/bundled-engine.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/server/control-runtime.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/server/index.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/server/mcp-names.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/server/missing-files.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/server/native-control.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/server/native-resources.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/server/native-settings.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/server/oversize.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/server/store.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/server/system-ca.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/server/update-messages.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/server/updates.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/src/components/Markdown.tsx,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/src/components/NativeMcpEditor.tsx,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/src/components/NativeModels.tsx,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/src/components/NativeOperations.tsx,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/src/components/SettingsUpdates.tsx,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/src/components/ui.tsx,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/src/lib/app-version.ts,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/src/lib/chat-metrics.ts,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/src/lib/context-recovery.ts,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/src/lib/drafting.ts,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/src/lib/gpu-roles.ts,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/src/lib/i18n.ts,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/src/lib/markdown-images.ts,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/src/lib/mcp-names.ts,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/src/lib/native-job-diagnostics.ts,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/src/lib/native.ts,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/src/lib/plain-errors.ts,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/src/lib/router.ts,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/src/lib/session-persist.ts,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/src/lib/store.ts,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/src/lib/types.ts,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/src/locales/de.json,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/src/locales/en.json,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/src/locales/es.json,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/src/locales/ja.json,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/src/locales/ko.json,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/src/locales/pt.json,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/src/locales/ru.json,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/src/locales/tools-de.json,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/src/locales/tools-en.json,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/src/locales/tools-es.json,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/src/locales/tools-ja.json,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/src/locales/tools-ko.json,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/src/locales/tools-pt.json,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/src/locales/tools-ru.json,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/src/locales/tools-zh.json,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/src/locales/zh.json,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/src/screens/Chat.tsx,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/src/styles/app.css,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/tests/agent-compaction.test.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/tests/agent-context.test.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/tests/agent-events.test.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/tests/agent-tools.test.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/tests/agent-watchdog.test.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/tests/bundled-engine.test.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/tests/component-updates.test.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/tests/context-ui.test.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/tests/custom-command-tools.test.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/tests/draft-layer.test.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/tests/drafting.test.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/tests/engine-progress.test.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/tests/functional-fixes.test.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/tests/gate-fail-closed.test.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/tests/helpers/scripted-worker.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/tests/markdown-images.test.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/tests/mcp-rows.test.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/tests/model-directory-default.test.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/tests/native-gpu-roles.test.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/tests/native-job-diagnostics.test.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/tests/native-onboarding.test.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/tests/oversize.test.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/tests/plain-errors.test.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/tests/qa1-storage.test.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/tests/resource-ram.test.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/tests/router-view-transition.test.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/tests/session-persist.test.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/tests/system-ca.test.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,apps/host/tests/tools-locales.test.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+M,apps/host/tests/user-args.test.mjs,APPLIED_UPSTREAM,Upstream UI/host enhancements
+A,data/dsv41/profile-2.00.bin,APPLIED_UPSTREAM,Upstream baseline update
+A,data/dsv41/profile-2.00.bin.sha256,APPLIED_UPSTREAM,Upstream baseline update
+A,data/dsv41/profile-2.25.bin,APPLIED_UPSTREAM,Upstream baseline update
+A,data/dsv41/profile-2.25.bin.sha256,APPLIED_UPSTREAM,Upstream baseline update
+M,docker/Dockerfile,APPLIED_UPSTREAM,Upstream baseline update
+M,docker/build.sh,APPLIED_UPSTREAM,Upstream baseline update
+M,docker/compose/.env.example,APPLIED_UPSTREAM,Upstream baseline update
+M,docker/compose/MAC.md,APPLIED_UPSTREAM,Upstream baseline update
+M,docker/compose/docker-compose.amd.yml,APPLIED_UPSTREAM,Upstream baseline update
+M,docker/compose/docker-compose.intel.yml,APPLIED_UPSTREAM,Upstream baseline update
+M,docker/compose/docker-compose.nvidia.yml,APPLIED_UPSTREAM,Upstream baseline update
+M,docker/fetch-engines.py,APPLIED_UPSTREAM,Upstream baseline update
+M,docker/publish.sh,APPLIED_UPSTREAM,Upstream baseline update
+M,docs/AI_SETUP.md,APPLIED_UPSTREAM,Upstream baseline update
+M,docs/AMD_HIP.md,APPLIED_UPSTREAM,Upstream baseline update
+A,docs/DEEPSEEK41.md,APPLIED_UPSTREAM,Upstream baseline update
+M,docs/DETAILS.md,APPLIED_UPSTREAM,Upstream baseline update
+M,docs/DOCKER.md,APPLIED_UPSTREAM,Upstream baseline update
+M,docs/GYRO.md,APPLIED_UPSTREAM,Upstream baseline update
+M,docs/INSTALL.md,APPLIED_UPSTREAM,Upstream baseline update
+M,docs/INTEL.md,APPLIED_UPSTREAM,Upstream baseline update
+M,docs/INTEL_ARC.md,APPLIED_UPSTREAM,Upstream baseline update
+M,docs/MULTI_GPU.md,APPLIED_UPSTREAM,Upstream baseline update
+M,docs/STRIX_HALO.md,APPLIED_UPSTREAM,Upstream baseline update
+M,docs/TERMINAL_LAUNCH.md,APPLIED_UPSTREAM,Upstream baseline update
+A,docs/release-notes-0.2.3.1.md,APPLIED_UPSTREAM,Upstream baseline update
+A,docs/release-notes-0.2.3.md,APPLIED_UPSTREAM,Upstream baseline update
+A,docs/release-notes-0.2.4.1.md,APPLIED_UPSTREAM,Upstream baseline update
+A,docs/release-notes-0.2.4.2.md,APPLIED_UPSTREAM,Upstream baseline update
+A,docs/release-notes-0.2.4.md,APPLIED_UPSTREAM,Upstream baseline update
+M,include/strata/core/conversation_memory.hpp,APPLIED_UPSTREAM,Upstream baseline update
+A,include/strata/core/dflash2.hpp,APPLIED_UPSTREAM,Upstream baseline update
+A,include/strata/core/draft_cap.hpp,APPLIED_UPSTREAM,Upstream baseline update
+M,include/strata/core/mtp.hpp,APPLIED_UPSTREAM,Upstream baseline update
+M,include/strata/core/nv_defaults.hpp,APPLIED_UPSTREAM,Upstream baseline update
+M,include/strata/core/verify.hpp,APPLIED_UPSTREAM,Upstream baseline update
+A,include/strata/dsv41/exl3.hpp,APPLIED_UPSTREAM,Upstream baseline update
+A,include/strata/dsv41/exl3_cpu.hpp,APPLIED_UPSTREAM,Upstream baseline update
+A,include/strata/dsv41/hip_extra.h,APPLIED_UPSTREAM,Upstream baseline update
+A,include/strata/dsv41/hip_or_cuda.h,APPLIED_UPSTREAM,Upstream baseline update
+A,include/strata/dsv41/moe_win.hpp,APPLIED_UPSTREAM,Upstream baseline update
+A,include/strata/dsv41/sampler.hpp,APPLIED_UPSTREAM,Upstream baseline update
+M,include/strata/kernels/cpu/iq_avx2.hpp,APPLIED_UPSTREAM,Upstream baseline update
+M,include/strata/kernels/cpu/iq_avx512.hpp,APPLIED_UPSTREAM,Upstream baseline update
+M,include/strata/kernels/cpu/native_expert.hpp,APPLIED_UPSTREAM,Upstream baseline update
+M,include/strata/kernels/cpu/tq_cpu.hpp,APPLIED_UPSTREAM,Upstream baseline update
+A,include/strata/kernels/dflash2.hpp,APPLIED_UPSTREAM,Upstream baseline update
+M,include/strata/kernels/verify_kernels.hpp,APPLIED_UPSTREAM,Upstream baseline update
+M,include/strata/prefill/prefill.hpp,APPLIED_UPSTREAM,Upstream baseline update
+M,include/strata/spec/draft_policy.hpp,APPLIED_UPSTREAM,Upstream baseline update
+M,metal/CMakeLists.txt,APPLIED_UPSTREAM,Upstream baseline update
+A,metal/src/engine/stubs_023.cpp,APPLIED_UPSTREAM,Upstream baseline update
+A,metal/tests/serve_probe.py,APPLIED_UPSTREAM,Upstream baseline update
+M,packaging/ENGINE-COMPONENT.md,APPLIED_UPSTREAM,Upstream baseline update
+M,packaging/README.md,APPLIED_UPSTREAM,Upstream baseline update
+M,packaging/UPDATES.md,APPLIED_UPSTREAM,Upstream baseline update
+M,packaging/build_cuda_linux.sh,APPLIED_UPSTREAM,Upstream baseline update
+A,packaging/build_dsv41_cuda.sh,APPLIED_UPSTREAM,Upstream baseline update
+A,packaging/build_dsv41_windows.bat,APPLIED_UPSTREAM,Upstream baseline update
+M,packaging/build_hip_linux.sh,APPLIED_UPSTREAM,Upstream baseline update
+A,packaging/build_sycl_linux.sh,APPLIED_UPSTREAM,Upstream baseline update
+A,packaging/build_vision_windows.bat,APPLIED_UPSTREAM,Upstream baseline update
+M,packaging/feed_tool.py,APPLIED_UPSTREAM,Upstream baseline update
+M,packaging/install.ps1,APPLIED_UPSTREAM,Upstream baseline update
+M,packaging/install.sh,APPLIED_UPSTREAM,Upstream baseline update
+M,packaging/locks/runtime-darwin-arm64-cp312.txt,APPLIED_UPSTREAM,Upstream baseline update
+M,packaging/locks/runtime-linux-x86_64-cp312.txt,APPLIED_UPSTREAM,Upstream baseline update
+M,packaging/locks/runtime-windows-x86_64-cp312.txt,APPLIED_UPSTREAM,Upstream baseline update
+M,packaging/package_engine.py,APPLIED_UPSTREAM,Upstream baseline update
+M,packaging/package_terminal.py,APPLIED_UPSTREAM,Upstream baseline update
+M,requirements.txt,APPLIED_UPSTREAM,Upstream baseline update
+A,serve/dsml.py,APPLIED_UPSTREAM,Upstream baseline update
+A,serve/fixtures/deepseek41/chat_template.jinja,APPLIED_UPSTREAM,Upstream baseline update
+A,serve/fixtures/deepseek41/golden.json,APPLIED_UPSTREAM,Upstream baseline update
+M,serve/frontend.py,APPLIED_UPSTREAM,Upstream baseline update
+M,serve/responses.py,APPLIED_UPSTREAM,Upstream baseline update
+M,serve/server.py,APPLIED_UPSTREAM,Upstream baseline update
+A,serve/test_dsv41.py,APPLIED_UPSTREAM,Upstream baseline update
+M,serve/test_family_name.py,APPLIED_UPSTREAM,Upstream baseline update
+A,serve/test_native_tool_parser.py,APPLIED_UPSTREAM,Upstream baseline update
+M,serve/test_responses.py,APPLIED_UPSTREAM,Upstream baseline update
+M,serve/test_server.py,APPLIED_UPSTREAM,Upstream baseline update
+M,serve/test_tool_call_envelope.py,APPLIED_UPSTREAM,Upstream baseline update
+A,serve/test_tool_call_unclosed.py,APPLIED_UPSTREAM,Upstream baseline update
+A,serve/test_vision_start_error.py,APPLIED_UPSTREAM,Upstream baseline update
+A,serve/test_vision_token_limit.py,APPLIED_UPSTREAM,Upstream baseline update
+A,serve/test_vision_tool_image.py,APPLIED_UPSTREAM,Upstream baseline update
+A,serve/test_web_api_key.py,APPLIED_UPSTREAM,Upstream baseline update
+M,serve/web/app.css,APPLIED_UPSTREAM,Upstream baseline update
+M,serve/web/app.js,APPLIED_UPSTREAM,Upstream baseline update
+M,setup.py,APPLIED_UPSTREAM,Upstream baseline update
+M,src/core/conversation_memory_test.cpp,APPLIED_UPSTREAM,Upstream baseline update
+A,src/core/dflash2.cpp,APPLIED_UPSTREAM,Upstream baseline update
+A,src/core/dflash2_attn_bench.cpp,APPLIED_UPSTREAM,Upstream baseline update
+A,src/core/dflash2_bw_bench.cu,APPLIED_UPSTREAM,Upstream baseline update
+A,src/core/dflash2_gemm_bench.cpp,APPLIED_UPSTREAM,Upstream baseline update
+A,src/core/dflash2_launch_bench.cu,APPLIED_UPSTREAM,Upstream baseline update
+A,src/core/dflash2_parity.cpp,APPLIED_UPSTREAM,Upstream baseline update
+A,src/core/dflash2_small_bench.cpp,APPLIED_UPSTREAM,Upstream baseline update
+A,src/core/draft_cap_test.cpp,APPLIED_UPSTREAM,Upstream baseline update
+M,src/core/mtp.cpp,APPLIED_UPSTREAM,Upstream baseline update
+M,src/core/native_dense.cpp,APPLIED_UPSTREAM,Upstream baseline update
+M,src/core/nv_defaults.cpp,APPLIED_UPSTREAM,Upstream baseline update
+M,src/core/verify.cpp,APPLIED_UPSTREAM,Upstream baseline update
+A,src/dsv41/ds4_attn_split.cuh,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/ds4_engram_io.hpp,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/ds4_gg_cpu.cpp,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/ds4_gguf.cu,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/ds4_gguf.cuh,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/ds4_gguf_cpu.cpp,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/ds4_gguf_cpu.hpp,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/ds4_iq.cu,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/ds4_iq.cuh,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/ds4_iq1m_codes.inc,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/ds4_iq_cpu.cpp,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/ds4_iq_hip.inc,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/ds4_iq_hip_r.inc,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/ds4_iq_hip_s.inc,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/ds4_kernels.cu,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/ds4_kernels.cuh,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/ds4_main.cpp,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/ds4_model.cu,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/ds4_model.hpp,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/ds4_mx_kern.inc,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/ds4_numerics.cuh,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/ds4_os.hpp,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/ds4_packinfo.cpp,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/ds4_packinfo.hpp,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/ds4_pool.hpp,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/ds4_q6k.cuh,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/ds4_slotmeta.hpp,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/ds4_store.hpp,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/ds4_tq.cu,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/ds4_tq_cpu.cpp,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/ds4_tqw.cuh,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/ds4_vision.cu,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/ds4_vision.cuh,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/vendor/exl3.cu,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/vendor/exl3_cpu.cpp,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/vendor/exl3_legacy.cu,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/vendor/moe_win.cu,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,src/dsv41/vendor/sampler.cu,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+M,src/kernels/cpu/expert_layout.cpp,APPLIED_UPSTREAM,Upstream baseline update
+M,src/kernels/cpu/iq_avx2.cpp,APPLIED_UPSTREAM,Upstream baseline update
+M,src/kernels/cpu/iq_avx2_rows.inl,APPLIED_UPSTREAM,Upstream baseline update
+M,src/kernels/cpu/iq_avx512.cpp,APPLIED_UPSTREAM,Upstream baseline update
+M,src/kernels/cpu/native_expert.cpp,APPLIED_UPSTREAM,Upstream baseline update
+M,src/kernels/cpu/tq_avx2.cpp,APPLIED_UPSTREAM,Upstream baseline update
+M,src/kernels/cpu/tq_avx512.cpp,APPLIED_UPSTREAM,Upstream baseline update
+A,src/kernels/cpu/tq_computed.hpp,APPLIED_UPSTREAM,Upstream baseline update
+M,src/kernels/cpu/tq_cpu.cpp,APPLIED_UPSTREAM,Upstream baseline update
+A,src/kernels/cuda/dflash2.cu,APPLIED_UPSTREAM,Upstream baseline update
+M,src/kernels/cuda/gr.cu,APPLIED_UPSTREAM,Upstream baseline update
+M,src/kernels/cuda/iq_kernels.cu,APPLIED_UPSTREAM,Upstream baseline update
+M,src/kernels/cuda/verify_kernels.cu,APPLIED_UPSTREAM,Upstream baseline update
+M,src/kernels/native_expert_bench.cpp,APPLIED_UPSTREAM,Upstream baseline update
+M,src/prefill/gemm.cu,APPLIED_UPSTREAM,Upstream baseline update
+M,src/prefill/prefill.cpp,APPLIED_UPSTREAM,Upstream baseline update
+M,src/program/generate.cpp,ADAPTED_EQUIVALENT,Preserve spin8/triality/tq generation hooks while adopting upstream fixes
+M,src/spec/draft_policy.cpp,APPLIED_UPSTREAM,Upstream baseline update
+M,strata.py,APPLIED_UPSTREAM,Upstream baseline update
+M,strata_cli/__init__.py,APPLIED_UPSTREAM,Upstream baseline update
+M,strata_cli/bench_standard.py,APPLIED_UPSTREAM,Upstream baseline update
+M,strata_cli/cli.py,APPLIED_UPSTREAM,Upstream baseline update
+A,strata_cli/drafting_cmd.py,APPLIED_UPSTREAM,Upstream baseline update
+M,strata_cli/handover.py,APPLIED_UPSTREAM,Upstream baseline update
+M,strata_cli/launch/access.py,APPLIED_UPSTREAM,Upstream baseline update
+M,strata_cli/launch/adopt.py,APPLIED_UPSTREAM,Upstream baseline update
+M,strata_cli/launch/app.py,APPLIED_UPSTREAM,Upstream baseline update
+M,strata_cli/launch/catalog.py,APPLIED_UPSTREAM,Upstream baseline update
+M,strata_cli/launch/cmd.py,APPLIED_UPSTREAM,Upstream baseline update
+M,strata_cli/launch/modelstate.py,APPLIED_UPSTREAM,Upstream baseline update
+M,strata_cli/launch/params.py,APPLIED_UPSTREAM,Upstream baseline update
+M,strata_cli/launch/runner.py,APPLIED_UPSTREAM,Upstream baseline update
+M,strata_cli/launch/screens.py,APPLIED_UPSTREAM,Upstream baseline update
+M,strata_cli/launch/settings.py,APPLIED_UPSTREAM,Upstream baseline update
+M,strata_cli/launch/store.py,APPLIED_UPSTREAM,Upstream baseline update
+M,strata_cli/monitor_commands.py,APPLIED_UPSTREAM,Upstream baseline update
+M,strata_cli/update_cmd.py,APPLIED_UPSTREAM,Upstream baseline update
+M,strata_control/components.py,APPLIED_UPSTREAM,Upstream baseline update
+M,strata_control/discovery.py,APPLIED_UPSTREAM,Upstream baseline update
+A,strata_control/drafting.py,APPLIED_UPSTREAM,Upstream baseline update
+A,strata_control/drafting_fetch.py,APPLIED_UPSTREAM,Upstream baseline update
+A,strata_control/dsv41_engine.py,APPLIED_UPSTREAM,Upstream baseline update
+A,strata_control/dsv41_fit.py,APPLIED_UPSTREAM,Upstream baseline update
+M,strata_control/engine_component.py,APPLIED_UPSTREAM,Upstream baseline update
+M,strata_control/feed.py,APPLIED_UPSTREAM,Upstream baseline update
+A,strata_control/folders.py,APPLIED_UPSTREAM,Upstream baseline update
+M,strata_control/gpu_roles.py,APPLIED_UPSTREAM,Upstream baseline update
+M,strata_control/models.py,APPLIED_UPSTREAM,Upstream baseline update
+M,strata_control/procs.py,APPLIED_UPSTREAM,Upstream baseline update
+M,strata_control/runtime.py,APPLIED_UPSTREAM,Upstream baseline update
+A,strata_control/tls.py,APPLIED_UPSTREAM,Upstream baseline update
+M,strata_control/transfer.py,APPLIED_UPSTREAM,Upstream baseline update
+M,strata_control/updater.py,APPLIED_UPSTREAM,Upstream baseline update
+M,strata_control/vision_reader.py,APPLIED_UPSTREAM,Upstream baseline update
+M,sycl/include/dpct/blas_utils.hpp,APPLIED_UPSTREAM,Upstream baseline update
+M,sycl/include/dpct/detail/memory_detail.hpp,APPLIED_UPSTREAM,Upstream baseline update
+M,sycl/setup_intel.py,APPLIED_UPSTREAM,Upstream baseline update
+M,sycl/src/program/generate.cpp,APPLIED_UPSTREAM,Upstream baseline update
+M,sycl/tools/fixups.py,APPLIED_UPSTREAM,Upstream baseline update
+M,tests/data/gpu_roles_vectors.json,APPLIED_UPSTREAM,Upstream baseline update
+M,tests/desktop/test_tester_readme.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/dsv41/ds4_cpu_bench.cpp,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/dsv41/ds4_gguf_test.cu,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/dsv41/ds4_mx_bench.cpp,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/dsv41/gg_dot_bench.cpp,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/dsv41/iq_expert_test.cpp,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/dsv41/slot_test.cpp,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/dsv41/store_test.cpp,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/dsv41/tq_expert_test.cpp,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/dsv41/tqw_hip_test.cpp,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/fixtures/dsv41/engram-final-header.gguf,APPLIED_UPSTREAM,Upstream baseline update
+M,tests/terminal/test_bench_standard.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/terminal/test_bundle_imports.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/terminal/test_bundle_tools_paths.py,APPLIED_UPSTREAM,Upstream baseline update
+M,tests/terminal/test_docker_files.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/terminal/test_drafting.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/terminal/test_dsv41_engine.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/terminal/test_dsv41_own_files_and_mmproj.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/terminal/test_dsv41_tui_items.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/terminal/test_dsv41_tune.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/terminal/test_dsv41_upgrade.py,APPLIED_UPSTREAM,Upstream baseline update
+M,tests/terminal/test_engine_manifest.py,APPLIED_UPSTREAM,Upstream baseline update
+M,tests/terminal/test_engine_smoke.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/terminal/test_folders_home.py,APPLIED_UPSTREAM,Upstream baseline update
+M,tests/terminal/test_install_scripts_env.py,APPLIED_UPSTREAM,Upstream baseline update
+M,tests/terminal/test_launch.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/terminal/test_launch_dsv41.py,APPLIED_UPSTREAM,Upstream baseline update
+M,tests/terminal/test_launch_engine_first.py,APPLIED_UPSTREAM,Upstream baseline update
+M,tests/terminal/test_launch_tui.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/terminal/test_launch_tui_walk.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/terminal/test_make_guard.py,APPLIED_UPSTREAM,Upstream baseline update
+M,tests/terminal/test_models.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/terminal/test_pack_gguf_engram.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/terminal/test_picture_reader_package.py,APPLIED_UPSTREAM,Upstream baseline update
+M,tests/terminal/test_release_matrix.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/terminal/test_round8_fixes.py,APPLIED_UPSTREAM,Upstream baseline update
+M,tests/terminal/test_runtime.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/terminal/test_setup_failure_words.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/terminal/test_sycl_package.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/terminal/test_tls_trust.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/terminal/test_tui2_023_install.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/terminal/test_tui2_023_messages.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/terminal/test_tui2_023_old_launcher.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/terminal/test_tui2_023_plan.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/terminal/test_tui2_023_shards.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/terminal/test_tui2_023_versions.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/terminal/test_tui3.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/terminal/test_tui_stress.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/terminal/test_tui_stress_launch.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tests/terminal/test_tui_stress_screens.py,APPLIED_UPSTREAM,Upstream baseline update
+M,tests/terminal/test_tuiqa_version.py,APPLIED_UPSTREAM,Upstream baseline update
+M,tests/terminal/test_update_feed.py,APPLIED_UPSTREAM,Upstream baseline update
+M,tests/terminal/test_updater.py,APPLIED_UPSTREAM,Upstream baseline update
+A,third_party/project-maya/LICENSE,APPLIED_UPSTREAM,Upstream baseline update
+A,third_party/project-maya/NOTICE.md,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/dflash2/README.md,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/dflash2/analyze2.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/dflash2/dflash2_ref.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/dflash2/final_tables.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/dflash2/mk_parity_case.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/dflash2/mk_prompts.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/dflash2/orch.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/dflash2/q8test.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/dflash2/run_all2.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/dflash2/run_eval.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/dflash2/run_one.ps1,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/dflash2/test_port.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/dflash2_pack.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/dsv41/build_hip_linux.sh,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/bytecheck.sh,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/compare.py,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/dense_requant.py,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/download-3.5bpw.json,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/download.json,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/download_gguf.json,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/drafter_pack.py,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/dspark_ref.py,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/dumpcmp.py,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/dumpscan.py,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/dumpscan_y.py,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/engram_fold.py,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/engram_hash.py,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/engram_iq4nl_bench.py,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/ista_intake.py,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/make_imatrix.py,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/mkimg.py,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/mkprompts.py,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/pack_gguf.py,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/recipe_maya_s_test.json,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/ref.py,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/ref_gguf.py,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/requant_gguf.py,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/serve_prompts.py,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/slot_keep_test.py,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/smoke.py,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/st.py,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/test_prompt_skip.py,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/tok.py,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/tq_convert.py,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/tune.py,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/vision_pack.py,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/win/build_hip_win.bat,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/win/build_umaprobe.bat,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/win/cachesim.py,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/win/h100sim.py,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/win/hwbench.cu,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/win/predsim.py,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41/win/umaprobe.cpp,APPLIED_UPSTREAM,DeepSeek-V4.1-Flash official backend and packing tools
+A,tools/dsv41_lab/attn_split.cuh,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/dsv41_lab/build.sh,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/dsv41_lab/code_sqnr.cpp,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/dsv41_lab/computed_codes.hpp,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/dsv41_lab/ds4_lab.cu,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/dsv41_lab/hip/README.md,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/dsv41_lab/hip/tqk_gemv_wmma.hip.cpp,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/dsv41_lab/hip/wmma_probe.hip.cpp,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/dsv41_lab/tqk_gemv.cuh,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/dsv41_lab/tqk_gemv3.cuh,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/dsv41_lab/tqk_gemv_c.cuh,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/dsv41_lab/tqk_lab.cu,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/dsv41_lab/tqk_repack.hpp,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/dsv41_lab/wmma_emu.hpp,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/dsv41_lab/wmma_emu_test.cpp,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/harness_reuse_probe.py,APPLIED_UPSTREAM,Upstream baseline update
+M,tools/hf_pin_fetch.py,APPLIED_UPSTREAM,Upstream baseline update
+M,tools/mtp_fetch.py,APPLIED_UPSTREAM,Upstream baseline update
+M,tools/strata_mcp.py,APPLIED_UPSTREAM,Upstream baseline update
+M,tools/strata_tokenizer.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/test_dflash2_pack.py,APPLIED_UPSTREAM,Upstream baseline update
+M,tools/test_setup_amd.py,APPLIED_UPSTREAM,Upstream baseline update
+M,tools/test_setup_bench_tips.py,APPLIED_UPSTREAM,Upstream baseline update
+M,tools/test_setup_choices.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/test_setup_dsv41.py,APPLIED_UPSTREAM,Upstream baseline update
+M,tools/test_setup_model_pins.py,APPLIED_UPSTREAM,Upstream baseline update
+M,tools/test_setup_pins.py,APPLIED_UPSTREAM,Upstream baseline update
+M,tools/test_setup_sycl.py,APPLIED_UPSTREAM,Upstream baseline update
+M,tools/test_strata_mcp.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/tqenc.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/trellis/README.md,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/trellis/blockldl.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/trellis/build.sh,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/trellis/build_swap.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/trellis/fetch_orig.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/trellis/gyro_column_profile.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/trellis/gyro_error_profile.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/trellis/gyro_reencode.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/trellis/gyro_vs_original.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/trellis/hf_slice.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/trellis/make_corpus.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/trellis/merge_dumps.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/trellis/pilot.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/trellis/pilot_summary.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/trellis/proxy_diag_error.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/trellis/proxy_ldl.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/trellis/run_parts.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/trellis/sanity_greedy.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/trellis/swap_compare.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/trellis/test_blockldl.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/trellis/test_tqenc_py.py,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/trellis/tqenc.cpp,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/trellis/tqenc.hpp,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/trellis/tqenc_hip.cpp,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/trellis/tqenc_hip_test.cpp,APPLIED_UPSTREAM,Upstream baseline update
+A,tools/trellis/tqenc_test.cpp,APPLIED_UPSTREAM,Upstream baseline update
+M,tools/vision/strata_vision.cpp,APPLIED_UPSTREAM,Upstream baseline update
