@@ -1,0 +1,72 @@
+{
+  "schema_version": "1.0",
+  "created_at": "2026-10-24T17:10:13.428631+00:00",
+  "contracts": [
+    {
+      "id": "F01",
+      "name": "Clifford/Spin(8)/Triality KV Cache",
+      "invariants": "Strict Cl(8,0) triality automorphism; version-isolated proxy boundary.",
+      "verification": "CPU/CUDA reference equivalence, zero loss on parity check."
+    },
+    {
+      "id": "F02",
+      "name": "Query-v3 & Identity Initialization",
+      "invariants": "Identity init, input-dependent Q modulation, sidecar binding without degrading base weights.",
+      "verification": "Zero intervention test, nonzero gradient/shape audit."
+    },
+    {
+      "id": "F03",
+      "name": "TurboQuant Dialects (TQ4_1S / TQ3_0S / PQ2_0)",
+      "invariants": "Independent K/V, shared V, byte oracle fidelity, transactional view creation.",
+      "verification": "Online attention oracle test, bitwise precision verification."
+    },
+    {
+      "id": "F04",
+      "name": "Dynamic Shared Audit Fix & Guard Contract",
+      "invariants": "CUDA resource counter, fault detection, fail-safe fallbacks without crash.",
+      "verification": "Resource allocation audit, crash-free fault injection."
+    },
+    {
+      "id": "F05",
+      "name": "Model/Pack/Position/Hash Snapshot Integrity",
+      "invariants": "Anti-TOCTOU, snapshot immutability, rejection of mismatched layer configurations.",
+      "verification": "Checksum validation, restoration test."
+    },
+    {
+      "id": "F06",
+      "name": "GUI/CLI Fork-Specific Settings & Clean OFF",
+      "invariants": "Clean OFF states without side effects; atomic configuration snapshot.",
+      "verification": "Snapshot diffing, default argument parity."
+    },
+    {
+      "id": "F07",
+      "name": "Windows Ownership, Job Guard & Fail-Closed",
+      "invariants": "Safe process/job management, non-elevated safety, immediate rollback on error.",
+      "verification": "Process kill isolation, clean cancellation."
+    },
+    {
+      "id": "F08",
+      "name": "Hikari 27B PQ2_0 & Nimble Existing Weights",
+      "invariants": "Model bundle hashes preserved; zero regression on Hikari inference.",
+      "verification": "Hash match, Prism backend regression test."
+    },
+    {
+      "id": "F09",
+      "name": "Research PoC, Negative Results & Ledger",
+      "invariants": "Reproducible aggregation, strict isolation of legacy vs newly measured metrics.",
+      "verification": "Ledger audit."
+    },
+    {
+      "id": "F10",
+      "name": "Refusal-Direction / Control Vector Steering",
+      "invariants": "Project semantics preserved, opt-in research mode.",
+      "verification": "Steering activation test."
+    },
+    {
+      "id": "F11",
+      "name": "Arbitrary GGUF & DeepSeek Derivative Integration",
+      "invariants": "Inspection -> ModelBundle -> Backend Router -> Verified Inference pipeline.",
+      "verification": "DeepSeek-V4.1-Flash derivative qualification, 32GB RAM headroom check."
+    }
+  ]
+}

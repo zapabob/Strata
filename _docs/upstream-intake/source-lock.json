@@ -1,0 +1,44 @@
+{
+  "timestamp": "2026-10-24T17:10:13.428631+00:00",
+  "active_branch": "codex/strata-030-completion",
+  "head_commit": "72a046f33018c6589c565bad369afc977a5c7f73",
+  "milestones": {
+    "U0_common_ancestor": "011c9e600a93bbc9fd451c563501b5831c32bbca",
+    "F0_fork_base": "ddc8f9e19cafb981ed91caaab0992ca814e6eca9",
+    "U1_upstream_target": "7dd5cf18e68c639a8773e096c5c79f971ea2a9f5",
+    "C1_upstream_fix": "c487c875d05075113965bc61d822b27179f70639"
+  },
+  "hardware": {
+    "os": "Windows 11 (10.0.26300)",
+    "cpu": "AMD Ryzen 5 4500 (6 cores, 12 threads)",
+    "instruction_sets": {
+      "avx": false,
+      "avx2": true,
+      "avx512": false
+    },
+    "system_ram_gb": 31.87,
+    "commit_limit_gb": 63.87,
+    "gpu": {
+      "name": "NVIDIA GeForce RTX 5060 Ti",
+      "vram_mib": 16311,
+      "compute_capability": "12.0 (sm_120)",
+      "driver_version": "616.92",
+      "nvcc_version": "13.3.73"
+    },
+    "storage": {
+      "primary": "C: NVMe SSD (14.4 GB free)",
+      "strata_data_root": "H: SATA SSD (128.1 GB free)"
+    }
+  },
+  "git_status_porcelain_v2": [
+    "1 .M N... 100644 100644 100644 890b9d6b5c7f160bba25ce68ad78b5c387acb553 890b9d6b5c7f160bba25ce68ad78b5c387acb553 _docs/2026-10-23_strata_030_execution_Codex.md",
+    "1 .M N... 100644 100644 100644 c671981a7d727ab745e786e2fcf72a29cd7e868d c671981a7d727ab745e786e2fcf72a29cd7e868d _docs/2026-10-23_strata_prism2_bonsai_spin8_handoff_plan.md",
+    "1 .M N... 100644 100644 100644 f8d638ad7a1e394f530c69027c91c1cc0243f761 f8d638ad7a1e394f530c69027c91c1cc0243f761 apps/host/server/index.mjs",
+    "? _docs/2026-10-24_strata_030_handoff_implementation_plan_Codex.md",
+    "? _docs/2026-10-24_strata_030_preview_handoff_implementation_Codex.md",
+    "? apps/host/server/memory.mjs",
+    "? tests/test_strata_memory.py",
+    "? tools/generate_t00_intake.py",
+    "? tools/strata_memory_mcp.py"
+  ]
+}

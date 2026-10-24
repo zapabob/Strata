@@ -1,0 +1,19 @@
+{
+  "timestamp": "2026-10-24T17:10:13.428631+00:00",
+  "engine_status": "ready",
+  "port": 18501,
+  "current_model": "Qwen3.8-Flash-Next-Q2_0",
+  "measured_metrics": {
+    "decode_speed_tok_s": 6.7,
+    "warmup_latency_ms": 150,
+    "gpu_cache_hit_rate_pct": 61.7,
+    "gpu_cache_hits": 246,
+    "ram_blobs_transferred": 122,
+    "vram_free_mib": 1696,
+    "resident_budget_gib": 4,
+    "vram_reserve_mib": 2048,
+    "kv_cache_config": "k8v4",
+    "io_mode": "direct"
+  },
+  "regression_gate_0": "PASSED"
+}
