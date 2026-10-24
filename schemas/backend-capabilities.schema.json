@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "BackendCapabilities",
+  "description": "Schema for declared and probed backend capabilities in Strata",
+  "type": "object",
+  "properties": {
+    "schema_version": { "type": "string", "enum": ["1.0"] },
+    "backend_id": { "type": "string" },
+    "binary_path": { "type": "string" },
+    "binary_sha256": { "type": "string" },
+    "supported_architectures": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "supported_dialects": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "supports_cuda": { "type": "boolean" },
+    "supports_cpu": { "type": "boolean" },
+    "supports_spin8": { "type": "boolean" },
+    "supports_steering": { "type": "boolean" }
+  },
+  "required": [
+    "schema_version",
+    "backend_id",
+    "supported_architectures",
+    "supported_dialects"
+  ]
+}
