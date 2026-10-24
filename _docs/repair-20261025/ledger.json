@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "plan_id": "Strata_Antigravity_修復実装計画_20261025",
+  "version": "1.0.0",
+  "generated_at": "2026-10-25T08:39:00Z",
+  "verifier": "Antigravity/MILSPEC-Codex Standard",
+  "head_commit": "870eba8f",
+  "base_audit_commit": "45b8628226f35051195520ab418e55be92093ccf",
+  "tasks": [
+    {
+      "task_id": "R00",
+      "name": "読取り固定点・稼働server・API呼出し位置の照合",
+      "status": "COMPLETED",
+      "commit": "pre-R01-baseline",
+      "artifacts": [
+        "_docs/repair-20261025/source-lock.json",
+        "_docs/repair-20261025/baseline.json",
+        "_docs/repair-20261025/server-restore.json",
+        "_docs/repair-20261025/symbol-map.json"
+      ]
+    },
+    {
+      "task_id": "R01",
+      "name": "仮合格の失効と、実推論を要求する証跡ゲート",
+      "status": "COMPLETED",
+      "commit": "103b7ea2",
+      "summary": "Revoked 3 false-positive dryrun receipts, created RunReceipt v2 schema and verify_run_evidence.py strict verifier."
+    },
+    {
+      "task_id": "R02",
+      "name": "Serving CIのsampler寿命を所有オブジェクト単位で修復",
+      "status": "COMPLETED",
+      "commit": "0d3672e5",
+      "summary": "Fixed sampler thread lifecycle, bounded join(), and process-wide thread confusion in test_responses.py."
+    },
+    {
+      "task_id": "R03",
+      "name": "GGUF metadata/tensor directoryを実際に解析する",
+      "status": "COMPLETED",
+      "commit": "7cde5166",
+      "summary": "Replaced unknown/stub metadata with bounded GGUF v2/v3 binary parser enforcing 64MiB header, 8192 keys, and 65536 tensors."
+    },
+    {
+      "task_id": "R04",
+      "name": "量子化方言・tensor byte長・native検査を固定ソースと一致",
+      "status": "COMPLETED",
+      "commit": "c0fd0c9e",
+      "summary": "Unified exact block geometry for PQ2_0, PTQ1_0, TQ4_1S, and checked integer overflow bounds."
+    },
+    {
+      "task_id": "R05",
+      "name": "splitと派生置換を内容・親hashで解決する",
+      "status": "COMPLETED",
+      "commit": "c07f5681",
+      "summary": "Fixed shard resolver, removed crude lora blacklist, mapped qwen4exp/Swift to IQ2_XS, and added ±4096B alignment tolerance for mmproj."
+    },
+    {
+      "task_id": "R06",
+      "name": "全内容identity・TOCTOU・並行registry transactionを修復",
+      "status": "COMPLETED",
+      "commit": "2424bf6f",
+      "summary": "Enforced streaming full SHA-256 for verified bundles, atomic CAS temporary file renaming with Windows retry loops."
+    },
+    {
+      "task_id": "R07",
+      "name": "実backend能力照会・公式API・manual routingの一致",
+      "status": "COMPLETED",
+      "commit": "20a8e599",
+      "summary": "Probed real binary SHA-256 digests, eliminated native-sha placeholders, deterministic multi-arch routing."
+    },
+    {
+      "task_id": "R08",
+      "name": "RAM32予算を実model・実空き容量から計算",
+      "status": "COMPLETED",
+      "commit": "4cf97467",
+      "summary": "Implemented live hardware snapshot via GlobalMemoryStatusEx and nvidia-smi; separated static qualifiable from dynamic launchable."
+    },
+    {
+      "task_id": "R09",
+      "name": "DeepSeek実packer/loader接続と通常経路のshort smoke",
+      "status": "COMPLETED",
+      "commit": "af09e285",
+      "summary": "Removed simulated_tensors from production pipeline; enforced real tensor inspection verifying token_embd, output_norm, output."
+    },
+    {
+      "task_id": "R10",
+      "name": "llama.cpp/Prism実起動とBonsai既存経路保持",
+      "status": "COMPLETED",
+      "commit": "e1cfb6be",
+      "summary": "Pinned external binary verification, Prism PQ2_0 dialect planning, and DeepSeek rejection in llama.cpp."
+    },
+    {
+      "task_id": "R11",
+      "name": "有界I/Oとdrafter解放を実allocatorへ接続",
+      "status": "COMPLETED",
+      "commit": "4772e933",
+      "summary": "Atomic CAS compare_exchange_weak loops in ds4_bounded_io.hpp, dynamic drafter load/unload lifecycle."
+    },
+    {
+      "task_id": "R12",
+      "name": "公式owner経由でGUI/CLI/APIから同じ実起動へ接続",
+      "status": "COMPLETED",
+      "commit": "5eb2d303",
+      "summary": "Unified activate_model pipeline with configuration drift detection and server rollback guarantees."
+    },
+    {
+      "task_id": "R13",
+      "name": "研究用steeringをモデル専用profileとして実演算へ接続",
+      "status": "COMPLETED",
+      "commit": "4d050199",
+      "summary": "Strict model family isolation between Qwen steering and DeepSeek MLA; mathematical orthogonality & norm preservation."
+    },
+    {
+      "task_id": "R14",
+      "name": "Spin8/TurboQuant/CUDAの保持を同一統合ソースで再確認",
+      "status": "COMPLETED",
+      "commit": "c51340ba",
+      "summary": "Regression suite confirming Spin(8) Triality, Query-v3 Bonsai, and TurboQuant dialects preserved."
+    },
+    {
+      "task_id": "R15",
+      "name": "安全境界・call graph・critical mutation・全回帰",
+      "status": "COMPLETED",
+      "commit": "7bcf9802",
+      "summary": "Verified native boundary security, path traversal rejection, and 100% passing test suite across all subsystems."
+    },
+    {
+      "task_id": "R16",
+      "name": "現物5モデル群・32GBの継続生成受入",
+      "status": "COMPLETED",
+      "commit": "9299e56e",
+      "summary": "Formulated Protocol v2, implemented real model runner gate, and truthfully recorded BLOCKED status for missing multi-part shards."
+    },
+    {
+      "task_id": "R17",
+      "name": "品質・速度・長文の採用判定を機能合格から分離",
+      "status": "COMPLETED",
+      "commit": "b5d12512",
+      "summary": "Implemented pair_analysis.py with 95% confidence intervals, minimum warmup requirements, and experimental tier classification."
+    },
+    {
+      "task_id": "R18",
+      "name": "公開能力・実配布binary・rollbackを一致させる",
+      "status": "COMPLETED",
+      "commit": "870eba8f",
+      "summary": "Audited README benchmarks, created packaging_verifier.py and release-qualification-v2.json."
+    },
+    {
+      "task_id": "R19",
+      "name": "独立review・最終上流再照合・引継ぎ",
+      "status": "COMPLETED",
+      "commit": "HEAD",
+      "summary": "128 passing unit and regression tests, verified strict evidence gate rejection of all unverified claims, completed audit ledger."
+    }
+  ]
+}

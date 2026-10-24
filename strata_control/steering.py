@@ -15,6 +15,10 @@ class SteeringProfile:
     hidden_dim: int = 4096
     model_family: str = "qwen"  # qwen, swift, deepseek41
 
+    def __post_init__(self) -> None:
+        if self.vector and self.hidden_dim == 4096 and len(self.vector) != 4096:
+            object.__setattr__(self, "hidden_dim", len(self.vector))
+
 
 def apply_steering_transform(
     hidden_state: list[float],
