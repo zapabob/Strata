@@ -1,5 +1,7 @@
 """Resource policy and retained-handle termination for native diagnostics."""
 
+import hashlib
+import io
 import json
 from pathlib import Path
 import subprocess
@@ -173,3 +175,62 @@ def test_cli_binding_failure_never_starts_process(
     with pytest.raises(ValueError, match="SHA-256"):
         guard.main()
     assert calls == []
+
+
+@pytest.mark.parametrize("encoding", ["utf-8", "utf-8-sig"])
+def test_cli_parses_only_the_bytes_it_hashed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, encoding: str
+) -> None:
+    """A deterministic second-read substitution must never alter parsed arguments."""
+    plan_path = tmp_path / "plan.json"
+    original = {
+        "binary": sys.executable,
+        "binary_sha256": guard.digest(Path(sys.executable)),
+        "command_args": ["original-plan"],
+        "timeout_seconds": 10,
+    }
+    original_bytes = json.dumps(original).encode(encoding)
+    replacement_bytes = json.dumps(
+        dict(original, command_args=["replacement-plan"])
+    ).encode(encoding)
+    plan_path.write_bytes(original_bytes)
+    original_open = Path.open
+    reads = []
+    calls = []
+
+    def substituted_open(path: Path, *args: object, **kwargs: object) -> object:
+        if path != plan_path:
+            return original_open(path, *args, **kwargs)
+        reads.append(path)
+        payload = original_bytes if len(reads) == 1 else replacement_bytes
+        mode = args[0] if args else kwargs.get("mode", "r")
+        if "b" in mode:
+            return io.BytesIO(payload)
+        return io.StringIO(payload.decode("utf-8-sig"))
+
+    def capture_owned(command: list[str], *args: object, **kwargs: object) -> dict:
+        calls.append(command)
+        return {"status": "exited", "reason": None, "child_exit_code": 0}
+
+    monkeypatch.setattr(Path, "open", substituted_open)
+    monkeypatch.setattr(guard, "run_owned", capture_owned)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "native_model_resource_guard",
+            "--plan",
+            str(plan_path),
+            "--plan-sha256",
+            hashlib.sha256(original_bytes).hexdigest(),
+            "--trace",
+            str(tmp_path / "trace"),
+            "--result",
+            str(tmp_path / "result"),
+        ],
+    )
+    with pytest.raises(SystemExit) as stopped:
+        guard.main()
+    assert stopped.value.code == 0
+    assert calls == [[sys.executable, "original-plan"]]
+    assert len(reads) == 1

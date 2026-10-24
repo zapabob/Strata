@@ -11,6 +11,7 @@ import argparse
 from collections.abc import Callable
 import ctypes
 from datetime import datetime, timezone
+import hashlib
 import json
 import logging
 from pathlib import Path
@@ -166,9 +167,11 @@ def main() -> None:
     parser.add_argument("--result", type=Path, required=True)
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO)
-    if digest(args.plan) != args.plan_sha256:
+    plan_bytes = args.plan.read_bytes()
+    if hashlib.sha256(plan_bytes).hexdigest() != args.plan_sha256:
         raise ValueError("model plan SHA-256 differs from expected value")
-    plan = json.loads(args.plan.read_text(encoding="utf-8-sig"))
+    # Parse the verified bytes; reopening the path could consume a replacement.
+    plan = json.loads(plan_bytes.decode("utf-8-sig"))
     binary = Path(plan["binary"])
     if not binary.is_absolute() or digest(binary) != plan["binary_sha256"]:
         raise ValueError("model executable SHA-256 differs from expected value")
