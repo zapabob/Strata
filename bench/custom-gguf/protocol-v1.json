@@ -1,0 +1,71 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "protocol_id": "STRATA-CUSTOM-GGUF-EVAL-V1",
+  "version": "1.0.0",
+  "name": "Strata Arbitrary GGUF and DeepSeek Derivative Real-World Qualification Protocol",
+  "created_at": "2026-10-25T02:46:00Z",
+  "author": "Antigravity/MILSPEC-Codex",
+  "target_hardware": {
+    "platform": "Windows 11",
+    "architecture": "x86_64",
+    "cpu_instruction_sets": ["AVX2", "FMA"],
+    "total_physical_ram_gib": 32.0,
+    "max_host_budget_gib": 24.0,
+    "min_os_headroom_gib": 4.0,
+    "gpu_target": "NVIDIA GeForce RTX 5060 Ti",
+    "vram_physical_gib": 16.0,
+    "max_vram_budget_gib": 14.0,
+    "compute_capability": "sm_120"
+  },
+  "safety_policies": {
+    "cloud_fallback": "STRICTLY_PROHIBITED",
+    "unsolicited_requantization": "DISABLED",
+    "raw_model_mutation": "FORBIDDEN",
+    "zero_vram_drafter_unload": "MANDATORY"
+  },
+  "evaluation_tiers": [
+    {
+      "tier": 1,
+      "name": "Container Inspection",
+      "checks": [
+        "Magic bytes verification (GGUF 0x46554747)",
+        "Bounded header read (<= 16 MiB)",
+        "Tensor rank <= 4 and dimensions <= 2^30 (GHSA-vgg9-87g3-85w8 overflow guard)",
+        "Streaming SHA-256 identity calculation"
+      ]
+    },
+    {
+      "tier": 2,
+      "name": "Architecture & Dialect Compatibility",
+      "checks": [
+        "Multi-Head Latent Attention (MLA) verification for dsv41",
+        "Refusal vector isolation (reject Qwen steering on DeepSeek)",
+        "No double-ablation on pre-abliterated models"
+      ]
+    },
+    {
+      "tier": 3,
+      "name": "32GB RAM / 16GB VRAM Memory Planning",
+      "checks": [
+        "Planned Host RAM <= 24.0 GiB",
+        "Predicted OS Headroom >= 4.0 GiB",
+        "Planned VRAM <= 14.0 GiB",
+        "Disjoint memory region accounting (zero double-counting)"
+      ]
+    },
+    {
+      "tier": 4,
+      "name": "Execution & Lifecycle Validation",
+      "checks": [
+        "Preflight drift detection and automatic rollback",
+        "Zero zombie processes on model unload",
+        "Live server isolation (port 18501 baseline stability preserved)"
+      ]
+    }
+  ],
+  "gate_criteria": {
+    "gate_name": "Gate G6",
+    "required_pass_rate": 1.0,
+    "allow_soft_failures": false
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-10-25T02:41:00Z",
+  "test_suites": [
+    {
+      "name": "contracts",
+      "test_files": [
+        "tests/contracts/test_upstream_compatibility.py",
+        "tests/contracts/test_extension_resolution.py",
+        "tests/contracts/test_backend_resolution.py",
+        "tests/contracts/test_fork_feature_matrix.py"
+      ],
+      "status": "PASSED"
+    },
+    {
+      "name": "security",
+      "test_files": [
+        "tests/security/test_gguf_admission_limits.py",
+        "tests/security/test_local_model_boundary.py"
+      ],
+      "status": "PASSED"
+    },
+    {
+      "name": "models",
+      "test_files": [
+        "tests/models/test_gguf_descriptor.py",
+        "tests/models/test_bundle_resolver.py",
+        "tests/models/test_bundle_identity.py",
+        "tests/models/test_registry_transaction.py",
+        "tests/models/test_derivative_recipes.py"
+      ],
+      "status": "PASSED"
+    },
+    {
+      "name": "backends",
+      "test_files": [
+        "tests/backends/test_dsv41_adapter.py",
+        "tests/backends/test_external_backend_contracts.py"
+      ],
+      "status": "PASSED"
+    },
+    {
+      "name": "runtime_and_resources",
+      "test_files": [
+        "tests/resources/test_model_memory.py",
+        "tests/dsv41/test_drafter_lifecycle.py",
+        "tests/dsv41/test_steering_contract.py",
+        "tests/runtime/test_custom_model_activation.py",
+        "tests/runtime/test_model_switch_rollback.py",
+        "tests/runtime/test_session_identity.py"
+      ],
+      "status": "PASSED"
+    },
+    {
+      "name": "mutations",
+      "test_files": [
+        "tests/mutations/test_critical_mutants.py"
+      ],
+      "status": "PASSED"
+    }
+  ]
+}

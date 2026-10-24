@@ -22,6 +22,9 @@ class BackendRegistry:
     def get(self, backend_id: str) -> BackendCapabilities | None:
         return self._backends.get(backend_id)
 
+    def list_backends(self) -> list[str]:
+        return list(self._backends.keys())
+
     def select_backend(
         self,
         bundle: VerifiedBundle,
@@ -93,3 +96,51 @@ class BackendRegistry:
         raise ValueError(
             f"No suitable local backend found for architecture '{arch}' and dialect '{dialect}'. Cloud fallback is forbidden."
         )
+
+
+def create_default_registry() -> BackendRegistry:
+    """Create registry populated with standard Strata backends."""
+    reg = BackendRegistry()
+    reg.register_backend(
+        BackendCapabilities(
+            schema_version="1.0",
+            backend_id="strata-native",
+            binary_path="bin/strata-native",
+            binary_sha256="native-sha",
+            supported_architectures=("qwen2", "qwen"),
+            supported_dialects=("standard", "tq4_1s", "tq3_0s"),
+            supports_spin8=True,
+        )
+    )
+    reg.register_backend(
+        BackendCapabilities(
+            schema_version="1.0",
+            backend_id="strata-dsv41",
+            binary_path="bin/strata-dsv41",
+            binary_sha256="dsv41-sha",
+            supported_architectures=("dsv41", "deepseek", "deepseek2"),
+            supported_dialects=("standard", "iq4_nl"),
+        )
+    )
+    reg.register_backend(
+        BackendCapabilities(
+            schema_version="1.0",
+            backend_id="prism",
+            binary_path="bin/prism",
+            binary_sha256="prism-sha",
+            supported_architectures=("qwen2", "llama"),
+            supported_dialects=("pq2_0", "ptq1_0"),
+        )
+    )
+    reg.register_backend(
+        BackendCapabilities(
+            schema_version="1.0",
+            backend_id="llama-cpp",
+            binary_path="bin/llama-server",
+            binary_sha256="llama-sha",
+            supported_architectures=("llama", "mistral", "phi3"),
+            supported_dialects=("standard", "q4_k_m"),
+        )
+    )
+    return reg
+
