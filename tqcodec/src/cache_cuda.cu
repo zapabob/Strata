@@ -148,7 +148,8 @@ __global__ void audit_kernel(tqc_cache_cuda_device p, Baseline base) {
   }
   // Audit the actual fwht primitive/constant storage, including normalization.
   // Store only this fixed 128x128 operator, never K/V history or QxK scores.
-  float f[128 * 128], x[128];
+  extern __shared__ float f[];
+  float x[128];
   a->finite[3] = 1;
   a->drift[3] = 0;
   a->ef[3] = 0;
@@ -216,12 +217,35 @@ __global__ void init_state(tqc_cache_cuda_device p) {
 int launch_status() {
   return cudaPeekAtLastError() == cudaSuccess ? 0 : TQC_DC_RUNTIME;
 }
+constexpr size_t kAuditDynamicSharedBytes = 128 * 128 * sizeof(float);
+int configure_audit_kernel(int device) {
+  int optin = 0;
+  if (cudaDeviceGetAttribute(&optin, cudaDevAttrMaxSharedMemoryPerBlockOptin,
+                             device) != cudaSuccess)
+    return TQC_DC_RUNTIME;
+  if (optin < 0 || size_t(optin) < kAuditDynamicSharedBytes)
+    return TQC_D_UNSUPPORTED;
+  if (cudaFuncSetAttribute(
+          audit_kernel, cudaFuncAttributeMaxDynamicSharedMemorySize,
+          static_cast<int>(kAuditDynamicSharedBytes)) != cudaSuccess)
+    return TQC_DC_RUNTIME;
+  return 0;
+}
 } // namespace
 extern "C" int tqc_cache_cuda_audit_device(const tqc_cache_cuda_context *c) {
   int rc = tqc_cache_detail::context(c);
   if (rc)
     return rc;
-  audit_kernel<<<1, 1, 0, static_cast<cudaStream_t>(c->stream)>>>(
+  auto stream = static_cast<cudaStream_t>(c->stream);
+  cudaStreamCaptureStatus capture = cudaStreamCaptureStatusNone;
+  if (cudaStreamIsCapturing(stream, &capture) != cudaSuccess)
+    return TQC_DC_RUNTIME;
+  if (capture == cudaStreamCaptureStatusNone) {
+    rc = configure_audit_kernel(c->device_ordinal);
+    if (rc)
+      return rc;
+  }
+  audit_kernel<<<1, 1, kAuditDynamicSharedBytes, stream>>>(
       device(c), baseline(c->plan));
   return launch_status();
 }
@@ -775,6 +799,9 @@ extern "C" int tqc_cache_cuda_resources_query(const tqc_cache_cuda_context *c,
       overlap(out, sizeof(*out), c->plan, sizeof(*c->plan)) ||
       overlap(out, sizeof(*out), c->arena, c->arena_bytes))
     return TQC_D_OVERLAP;
+  rc = configure_audit_kernel(c->device_ordinal);
+  if (rc)
+    return rc;
   const void *functions[] = {reinterpret_cast<const void *>(audit_kernel),
                              reinterpret_cast<const void *>(append_kernel),
                              reinterpret_cast<const void *>(finish_append),
@@ -787,7 +814,8 @@ extern "C" int tqc_cache_cuda_resources_query(const tqc_cache_cuda_context *c,
     if (cudaFuncGetAttributes(&a, functions[i]) != cudaSuccess)
       return TQC_DC_RUNTIME;
     result.local_bytes[i] = a.localSizeBytes;
-    result.shared_bytes[i] = a.sharedSizeBytes;
+    result.shared_bytes[i] =
+        a.sharedSizeBytes + (i == 0 ? kAuditDynamicSharedBytes : 0);
     result.constant_bytes[i] = a.constSizeBytes;
     result.registers[i] = a.numRegs;
     result.max_threads[i] = a.maxThreadsPerBlock;

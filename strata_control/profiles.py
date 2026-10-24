@@ -23,8 +23,11 @@ from pathlib import Path
 
 
 PROFILE_ID = re.compile(r"[a-z][a-z0-9_-]{0,63}\Z")
+CACHE_TYPES = ("f16", "bf16", "q8_0", "q4_0", "turbo2", "turbo3", "turbo4", "turbo5", "turbo6")
+SPIN8_MODES = ("off", "codec_only", "vector", "spinor_plus", "spinor_minus", "consensus")
 OVERRIDE_KEYS = frozenset({"host", "port", "parallel", "batch_groups", "max_queue", "queue_timeout", "offline",
-                           "batch_telemetry"})
+                           "batch_telemetry", "cache_type_k", "cache_type_v", "spin8_mode",
+                           "spin8_native_config", "spin8_native_sha256"})
 
 
 class ProfileError(ValueError):
@@ -91,11 +94,11 @@ def parse_assignment(text: str) -> tuple[str, object]:
         value = raw == "true"
     else:
         value = raw
-    validate_overrides({key: value})
+    validate_overrides({key: value}, partial=True)
     return key, value
 
 
-def validate_overrides(overrides: object) -> dict:
+def validate_overrides(overrides: object, *, partial: bool = False) -> dict:
     if not isinstance(overrides, dict) or set(overrides) - OVERRIDE_KEYS:
         raise ProfileError("overrides must contain only supported serving settings")
     for key, value in overrides.items():
@@ -114,6 +117,22 @@ def validate_overrides(overrides: object) -> dict:
             raise ProfileError("batch_groups must be auto or in 1..1024")
         if key in ("offline", "batch_telemetry") and type(value) is not bool:
             raise ProfileError(f"{key} must be true or false")
+        if key in ("cache_type_k", "cache_type_v") and (not isinstance(value, str) or value not in CACHE_TYPES):
+            raise ProfileError(f"{key} must be one of {', '.join(CACHE_TYPES)}")
+        if key == "spin8_mode" and (not isinstance(value, str) or value not in SPIN8_MODES):
+            raise ProfileError(f"spin8_mode must be one of {', '.join(SPIN8_MODES)}")
+        if key == "spin8_native_config" and (not isinstance(value, str) or not value.strip()
+                                             or any(ord(c) < 32 for c in value)):
+            raise ProfileError("spin8_native_config must be a nonempty path without control characters")
+        if key == "spin8_native_sha256" and (not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{64}", value)):
+            raise ProfileError("spin8_native_sha256 must be 64 lowercase hex characters")
+    if not partial:
+        has_cfg = "spin8_native_config" in overrides
+        has_sha = "spin8_native_sha256" in overrides
+        if has_cfg != has_sha:
+            raise ProfileError("spin8_native_config and spin8_native_sha256 must be set together")
+        if overrides.get("spin8_mode") == "off" and has_cfg:
+            raise ProfileError("spin8_native_config cannot be used when spin8_mode is off")
     return overrides
 
 

@@ -56,6 +56,11 @@ def parser() -> argparse.ArgumentParser:
     serve.add_argument("--queue-timeout", type=float, help="seconds to wait for the first engine turn (0.1..600)")
     serve.add_argument("--batch-telemetry", action=argparse.BooleanOptionalAction, default=None,
                        help="sample actual engine decode-window rows for the monitor (opt-in)")
+    serve.add_argument("--cache-type-k", help="native KV cache K type (f16, bf16, q8_0, q4_0, turbo2..turbo6)")
+    serve.add_argument("--cache-type-v", help="native KV cache V type (f16, bf16, q8_0, q4_0, turbo2..turbo6)")
+    serve.add_argument("--spin8-mode", help="native Spin(8) KV rotation mode")
+    serve.add_argument("--spin8-native-config", help="verified Spin(8) native capsule JSON path")
+    serve.add_argument("--spin8-native-sha256", help="expected lowercase SHA-256 of --spin8-native-config")
     serve.add_argument("--offline", action="store_true", help="disable remote image fetches and MCP/tool subprocesses")
     serve.add_argument("--ready-file", help="absolute path for a new instance record (use a private directory)")
     serve.add_argument("--shutdown-timeout", type=float, default=30,
@@ -746,7 +751,9 @@ def _effective(cfg: dict, saved: dict | None, cli: argparse.Namespace | None = N
     origins = {}
     for key, default in (("host", "127.0.0.1"), ("port", 8095), ("parallel", None),
                          ("batch_groups", None), ("max_queue", None), ("queue_timeout", None),
-                         ("offline", False), ("batch_telemetry", False)):
+                         ("offline", False), ("batch_telemetry", False),
+                         ("cache_type_k", None), ("cache_type_v", None), ("spin8_mode", None),
+                         ("spin8_native_config", None), ("spin8_native_sha256", None)):
         explicit = getattr(cli, key, None) if cli is not None else None
         if key == "offline" and explicit is False:
             explicit = None
@@ -763,7 +770,8 @@ def _effective(cfg: dict, saved: dict | None, cli: argparse.Namespace | None = N
         values[key], origins[key] = value, origin
     profiles.validate_overrides({key: value for key, value in values.items() if key in
                                   ("host", "port", "parallel", "batch_groups", "max_queue", "queue_timeout",
-                                   "offline", "batch_telemetry")
+                                   "offline", "batch_telemetry", "cache_type_k", "cache_type_v",
+                                   "spin8_mode", "spin8_native_config", "spin8_native_sha256")
                                   and value is not None})
     if values["queue_timeout"] is not None and values["max_queue"] is None:
         raise ProfileError("queue_timeout requires max_queue to bound pending calls")
@@ -772,6 +780,13 @@ def _effective(cfg: dict, saved: dict | None, cli: argparse.Namespace | None = N
             raise ProfileError("parallel override conflicts with --batch/--slots in run config args")
     if values["batch_groups"] is not None and "--batch-groups" in cfg["args"]:
         raise ProfileError("batch_groups override conflicts with --batch-groups in run config args")
+    for key, flags in (("cache_type_k", ("--cache-type-k", "-ctk")),
+                       ("cache_type_v", ("--cache-type-v", "-ctv")),
+                       ("spin8_mode", ("--spin8-mode",)),
+                       ("spin8_native_config", ("--spin8-native-config",)),
+                       ("spin8_native_sha256", ("--spin8-native-sha256",))):
+        if values[key] is not None and origins[key] != "run_config" and any(f in cfg["args"] for f in flags):
+            raise ProfileError(f"{key} override conflicts with {flags[0]} in run config args")
     if values["offline"] and (cfg.get("mcp_servers") or cfg.get("before_load")):
         raise ProfileError("offline serving requires MCP servers and before_load to be absent")
     return values, origins
@@ -794,7 +809,10 @@ def _launch_plan(ref: str, cli: argparse.Namespace | None = None) -> tuple[dict,
     if cli is not None:
         server_args += ["--shutdown-timeout", str(cli.shutdown_timeout)]
     for key, flag in (("parallel", "--parallel"), ("batch_groups", "--batch-groups"),
-                      ("max_queue", "--max-queue"), ("queue_timeout", "--queue-timeout")):
+                      ("max_queue", "--max-queue"), ("queue_timeout", "--queue-timeout"),
+                      ("cache_type_k", "--cache-type-k"), ("cache_type_v", "--cache-type-v"),
+                      ("spin8_mode", "--spin8-mode"), ("spin8_native_config", "--spin8-native-config"),
+                      ("spin8_native_sha256", "--spin8-native-sha256")):
         if values[key] is not None and origins[key] != "run_config":
             server_args += [flag, str(values[key])]
     if values["offline"]:
@@ -811,10 +829,16 @@ def _launch_plan(ref: str, cli: argparse.Namespace | None = None) -> tuple[dict,
         effective_cfg["parallel"] = values["parallel"]
     if values["batch_groups"] is not None:
         effective_cfg["args"] += ["--batch-groups", str(values["batch_groups"])]
+    for key in ("cache_type_k", "cache_type_v", "spin8_mode", "spin8_native_config", "spin8_native_sha256"):
+        if values[key] is not None:
+            effective_cfg[key] = values[key]
     from serve.server import engine_args
     notes = io.StringIO()
-    with contextlib.redirect_stdout(notes):
-        engine_argv = engine_args(effective_cfg)
+    try:
+        with contextlib.redirect_stdout(notes):
+            engine_argv = engine_args(effective_cfg)
+    except ValueError as exc:
+        raise ProfileError(str(exc)) from None
     plan = {"profile": saved["id"] if saved else None, "profile_revision": revision,
             "source_config": str(path), "model_name": cfg.get("model_name"),
             "effective": values, "origin": origins, "server_argv": server_args,

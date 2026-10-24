@@ -1,4 +1,6 @@
 /** Editable native keys. Unknown config keys and program paths stay intact. */
+export const NATIVE_CACHE_TYPES=['f16','bf16','q8_0','q4_0','turbo2','turbo3','turbo4','turbo5','turbo6'];
+export const NATIVE_SPIN8_MODES=['off','codec_only','vector','spinor_plus','spinor_minus','consensus'];
 export const NATIVE_FIELDS=[
  {id:'reasoning_budget_tokens',label:'Thinking token budget',group:'Responses',type:'number',min:0,max:1048576,hint:'Leave blank for the model default.'},
  {id:'fit_max_tokens',label:'Fit output to remaining context',group:'Responses',type:'boolean',hint:'Shortens the requested output cap when the prompt leaves less room.'},
@@ -17,6 +19,11 @@ export const NATIVE_FIELDS=[
  {id:'split_skip_if_fits',label:'Use one GPU when the model fits',group:'GPU & memory',type:'boolean'},
  {id:'vram_elastic',label:'Elastic GPU expert cache',group:'GPU & memory',type:'boolean'},
  {id:'vram_reserve_mib',label:'GPU memory for other apps (MiB)',group:'GPU & memory',type:'number',min:0,max:131072,hint:'Applied as --vram-reserve-mib when loading.'},
+ {id:'cache_type_k',label:'KV cache K format',group:'GPU & memory',type:'enum',choices:NATIVE_CACHE_TYPES,hint:'Leave Default to use the model KV format, or pick a native K cache quantization (--cache-type-k).'},
+ {id:'cache_type_v',label:'KV cache V format',group:'GPU & memory',type:'enum',choices:NATIVE_CACHE_TYPES,hint:'Leave Default to use the model KV format, or pick a native V cache quantization (--cache-type-v).'},
+ {id:'spin8_mode',label:'Spin(8) KV rotation mode',group:'GPU & memory',type:'enum',choices:NATIVE_SPIN8_MODES,hint:'Optional native Spin(8) KV cache transform (--spin8-mode).'},
+ {id:'spin8_native_config',label:'Spin(8) capsule JSON path',group:'GPU & memory',type:'string',hint:'Optional verified Spin(8) native capsule JSON path (--spin8-native-config). Requires Spin(8) capsule SHA-256.'},
+ {id:'spin8_native_sha256',label:'Spin(8) capsule SHA-256',group:'GPU & memory',type:'string',hint:'Expected 64-character lowercase SHA-256 digest of the Spin(8) capsule JSON (--spin8-native-sha256).'},
  {id:'vision_tokens',label:'Maximum image tokens',group:'Image reading',type:'number',min:1,max:16384},
  {id:'vision_min_tokens',label:'Minimum image tokens',group:'Image reading',type:'number',min:0,max:16384},
  {id:'mcp_timeout_s',label:'Tool timeout (seconds)',group:'Tools',type:'number',min:1,max:3600},
@@ -47,8 +54,12 @@ export function validateNativeSettings(values){
   if(field.type==='enum'&&!field.choices.includes(value))throw new Error(`${field.label}: choose a supported option.`);
   if(field.type==='array'&&(!Array.isArray(value)||value.length>24||value.some(v=>typeof v!=='string'||!v.trim()||v.length>80)||new Set(value).size!==value.length))throw new Error('Choose distinct model aliases, up to 80 characters each.');
   if(key==='layer_split'&&value!=='auto'){const points=value.split(',').map(Number);if(!points.length||points.some((n,i)=>!Number.isInteger(n)||n<1||n>=48||(i>0&&n<=points[i-1])))throw new Error('Layer split points must increase from 1 to 47, for example 16,32.');}
+  if(key==='spin8_native_config'){if(!value.trim()||/[\x00-\x1f]/.test(value))throw new Error('Spin(8) capsule JSON path: enter a valid file path.');result[key]=value.trim();continue;}
+  if(key==='spin8_native_sha256'&&!/^[0-9a-f]{64}$/.test(value))throw new Error('Spin(8) capsule SHA-256: enter 64 lowercase hexadecimal characters.');
   result[key]=value;
  }
+ if(Boolean(result.spin8_native_config)!==Boolean(result.spin8_native_sha256))throw new Error('Spin(8) capsule JSON path and SHA-256 must be provided together.');
+ if(result.spin8_mode==='off'&&result.spin8_native_config)throw new Error('Spin(8) capsule JSON path cannot be used when Spin(8) mode is off.');
  return result;
 }
 const MASK='••••••••';

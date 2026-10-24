@@ -443,6 +443,48 @@ class OperatorProfileTests(unittest.TestCase):
             from strata_cli.cli import _launch_plan
             _launch_plan("local")
 
+    def test_native_cache_and_spin8_overrides_drive_serve_plan_and_fail_closed(self):
+        digest = "b" * 64
+        profiles.create("spin8-prof", str(self.config))
+        for bad in ("cache_type_k=turbo9", "cache_type_v=int4", "spin8_mode=spinor-plus",
+                    "spin8_native_sha256=not-hex", "spin8_native_config=   "):
+            with self.assertRaises(profiles.ProfileError):
+                profiles.set_values("spin8-prof", [bad])
+        with self.assertRaisesRegex(profiles.ProfileError, "must be set together"):
+            profiles.set_values("spin8-prof", ["spin8_native_config=/tmp/capsule.json"])
+        with self.assertRaisesRegex(profiles.ProfileError, "cannot be used when spin8_mode is off"):
+            profiles.set_values("spin8-prof", [
+                "spin8_mode=off",
+                "spin8_native_config=/tmp/capsule.json",
+                f"spin8_native_sha256={digest}",
+            ])
+        code, _ = self.command(
+            "profile", "set", "spin8-prof",
+            "cache_type_k=turbo4", "cache_type_v=q8_0", "spin8_mode=consensus",
+            "spin8_native_config=/tmp/capsule.json", f"spin8_native_sha256={digest}",
+            "--output", "json",
+        )
+        self.assertEqual(code, 0)
+        with mock.patch("serve.server.main", side_effect=AssertionError("server started")):
+            code, planned = self.command("serve", "--profile", "spin8-prof", "--plan", "--output", "json")
+        self.assertEqual(code, 0)
+        plan = planned["plan"]
+        self.assertEqual(plan["effective"]["cache_type_k"], "turbo4")
+        self.assertEqual(plan["effective"]["cache_type_v"], "q8_0")
+        self.assertEqual(plan["effective"]["spin8_mode"], "consensus")
+        self.assertEqual(plan["effective"]["spin8_native_config"], "/tmp/capsule.json")
+        self.assertEqual(plan["effective"]["spin8_native_sha256"], digest)
+        self.assertEqual(
+            plan["engine_argv"][-10:],
+            [
+                "--cache-type-k", "turbo4",
+                "--cache-type-v", "q8_0",
+                "--spin8-mode", "consensus",
+                "--spin8-native-config", "/tmp/capsule.json",
+                "--spin8-native-sha256", digest,
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

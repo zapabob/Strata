@@ -379,6 +379,8 @@ static void lifecycle() {
         !caps.coefficient_bf16);
   tqc_cache_cuda_resources resources{1, sizeof(resources)};
   CHECK(tqc_cache_cuda_resources_query(&source.ctx, &resources) == 0);
+  CHECK(resources.local_bytes[0] < 4096 &&
+        resources.shared_bytes[0] >= 128 * 128 * sizeof(float));
   for (int i = 0; i < 6; ++i)
     std::printf("kernel %d local=%zu shared=%zu constant=%zu registers=%d "
                 "maxthreads=%d\n",

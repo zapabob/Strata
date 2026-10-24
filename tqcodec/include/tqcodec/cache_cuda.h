@@ -108,8 +108,9 @@ typedef struct tqc_cache_cuda_capabilities {
 } tqc_cache_cuda_capabilities;
 int tqc_cache_cuda_query(tqc_cache_cuda_capabilities *);
 /* Per-kernel compiler/runtime resources in order: audit,append,finish,control,
- * attend,copy. Local bytes are per CUDA thread (including fixed audit F
- * matrix), shared/constant are static bytes; registers are per thread. Driver
+ * attend,copy. Local bytes are per CUDA thread, shared bytes include static
+ * plus required dynamic shared memory (including fixed audit F matrix), and
+ * constant bytes are static; registers are per thread. Driver
  * module, context/allocator reservations and external tensors are additional.
  * This is a quiescent metadata query, not a total GPU-peak measurement. */
 typedef struct tqc_cache_cuda_resources {

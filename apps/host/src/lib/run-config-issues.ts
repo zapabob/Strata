@@ -24,6 +24,9 @@ export function issueText(issue: RunConfigIssue): string {
       case 'choice': return tr('"{0}" must be one of {1}, not {2}.', [p.key, p.choices, p.value]);
       case 'text': return tr('"{0}" must be short text, or a list of short names.', [p.key]);
       case 'layer-split': return tr('"layer_split" points must increase from 1 to 47, for example "16,32", or be "auto".');
+      case 'spin8-sha256': return tr('"spin8_native_sha256" must be 64 lowercase hexadecimal characters.');
+      case 'spin8-pair': return tr('"spin8_native_config" and "spin8_native_sha256" must be set together.');
+      case 'spin8-off-capsule': return tr('"spin8_native_config" cannot be used when "spin8_mode" is "off".');
       case 'gpu': return tr('"gpu" must be a graphics card number such as 0, or a list such as [0, 1].');
       default: return issue.message;
     }

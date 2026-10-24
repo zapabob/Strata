@@ -119,6 +119,12 @@ export function checkRunConfig(text, { known = KNOWN_KEYS } = {}) {
         const points = value.split(',').map(Number);
         if (!points.length || points.some((n, i) => !Number.isInteger(n) || n < 1 || n >= 48 || (i > 0 && n <= points[i - 1]))) add('error', 'layer-split', key, {}, '"layer_split" points must increase from 1 to 47, for example "16,32", or be "auto".');
       }
+      if (key === 'spin8_native_config' && typeof value === 'string' && (!value.trim() || /[\x00-\x1f]/.test(value))) {
+        add('error', 'text', key, { key }, '"spin8_native_config" must be a non-empty file path.');
+      }
+      if (key === 'spin8_native_sha256' && typeof value === 'string' && !/^[0-9a-f]{64}$/.test(value)) {
+        add('error', 'spin8-sha256', key, { key, value: show(value) }, '"spin8_native_sha256" must be 64 lowercase hexadecimal characters.');
+      }
     } else if (BOOLS.has(key)) {
       if (typeof value !== 'boolean') add('error', 'bool', key, { key, value: show(value) }, `"${key}" must be true or false, not ${show(value)}.`);
     } else if (key in NUMBERS) {
@@ -130,6 +136,14 @@ export function checkRunConfig(text, { known = KNOWN_KEYS } = {}) {
       const ok = Number.isInteger(value) && value >= 0 || Array.isArray(value) && value.length > 0 && value.every(n => Number.isInteger(n) && n >= 0);
       if (!ok) add('error', 'gpu', key, {}, '"gpu" must be a graphics card number such as 0, or a list such as [0, 1].');
     }
+  }
+  const hasSpin8Cfg = typeof config.spin8_native_config === 'string' && config.spin8_native_config.trim() !== '';
+  const hasSpin8Sha = typeof config.spin8_native_sha256 === 'string' && config.spin8_native_sha256.trim() !== '';
+  if (hasSpin8Cfg !== hasSpin8Sha) {
+    add('error', 'spin8-pair', hasSpin8Cfg ? 'spin8_native_config' : 'spin8_native_sha256', {}, '"spin8_native_config" and "spin8_native_sha256" must be set together.');
+  }
+  if (config.spin8_mode === 'off' && hasSpin8Cfg) {
+    add('error', 'spin8-off-capsule', 'spin8_native_config', {}, '"spin8_native_config" cannot be used when "spin8_mode" is "off".');
   }
   return { ok: !issues.some(i => i.level === 'error'), issues };
 }

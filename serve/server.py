@@ -2993,6 +2993,7 @@ def engine_args(cfg: dict) -> list[str]:
             args += ["--vram-segment-mib", str(seg)]
     args += parallel_args(cfg, args)
     args += pool_cores_args(cfg, args)
+    args += native_cache_args(cfg, args)
     return learned_profile_args(cfg, args)
 
 
@@ -3018,6 +3019,70 @@ def parallel_args(cfg: dict, args: list[str]) -> list[str]:
         print(f'[strata] "parallel": {n} - the engine runs at most {PARALLEL_MAX} requests together; it will use '
               f"{PARALLEL_MAX}", flush=True)
     return ["--batch", str(n)]
+
+
+CACHE_TYPES = ("f16", "bf16", "q8_0", "q4_0", "turbo2", "turbo3", "turbo4", "turbo5", "turbo6")
+SPIN8_MODES = ("off", "codec_only", "vector", "spinor_plus", "spinor_minus", "consensus")
+_SHA256_OK = re.compile(r"^[0-9a-f]{64}$")
+
+
+def _flag_value(args: list[str], *flags: str) -> str | None:
+    for i, token in enumerate(args[:-1]):
+        if token in flags:
+            return str(args[i + 1])
+    return None
+
+
+def native_cache_args(cfg: dict, args: list[str]) -> list[str]:
+    """Opt-in native KV cache quantization (`cache_type_k`, `cache_type_v`) and Spin(8) KV rotation
+    (`spin8_mode`, `spin8_native_config`, `spin8_native_sha256`). Validates values and capsule+SHA-256 pairing
+    before engine spawn; when unset, returns [] so the default launch argv stays byte-identical."""
+    out: list[str] = []
+    for key, flag, short_flag in (("cache_type_k", "--cache-type-k", "-ctk"),
+                                  ("cache_type_v", "--cache-type-v", "-ctv")):
+        val = cfg.get(key)
+        if val is not None:
+            if not isinstance(val, str) or val not in CACHE_TYPES:
+                raise ValueError(f"{key} must be one of {', '.join(CACHE_TYPES)}")
+            if flag not in args and short_flag not in args:
+                out += [flag, val]
+        else:
+            existing = _flag_value(args, flag, short_flag)
+            if existing is not None and existing not in CACHE_TYPES:
+                raise ValueError(f"{flag} must be one of {', '.join(CACHE_TYPES)}")
+    mode = cfg.get("spin8_mode")
+    if mode is not None and (not isinstance(mode, str) or mode not in SPIN8_MODES):
+        raise ValueError(f"spin8_mode must be one of {', '.join(SPIN8_MODES)}")
+    arg_mode = _flag_value(args, "--spin8-mode")
+    if arg_mode is not None and arg_mode not in SPIN8_MODES:
+        raise ValueError(f"--spin8-mode must be one of {', '.join(SPIN8_MODES)}")
+    capsule = cfg.get("spin8_native_config")
+    if capsule is not None and (not isinstance(capsule, str) or not capsule.strip()
+                                or any(ord(c) < 32 for c in capsule)):
+        raise ValueError("spin8_native_config must be a nonempty path without control characters")
+    arg_capsule = _flag_value(args, "--spin8-native-config")
+    if arg_capsule is not None and (not arg_capsule.strip() or any(ord(c) < 32 for c in arg_capsule)):
+        raise ValueError("--spin8-native-config must be a nonempty path without control characters")
+    sha256 = cfg.get("spin8_native_sha256")
+    if sha256 is not None and (not isinstance(sha256, str) or not _SHA256_OK.match(sha256)):
+        raise ValueError("spin8_native_sha256 must be 64 lowercase hex characters")
+    arg_sha256 = _flag_value(args, "--spin8-native-sha256")
+    if arg_sha256 is not None and not _SHA256_OK.match(arg_sha256):
+        raise ValueError("--spin8-native-sha256 must be 64 lowercase hex characters")
+    eff_mode = mode if mode is not None else arg_mode
+    eff_capsule = capsule.strip() if isinstance(capsule, str) else arg_capsule
+    eff_sha256 = sha256 if isinstance(sha256, str) else arg_sha256
+    if (eff_capsule is None) != (eff_sha256 is None):
+        raise ValueError("spin8_native_config and spin8_native_sha256 must be set together")
+    if eff_mode == "off" and eff_capsule is not None:
+        raise ValueError("spin8_native_config cannot be used when spin8_mode is off")
+    if mode is not None and "--spin8-mode" not in args:
+        out += ["--spin8-mode", mode]
+    if capsule is not None and "--spin8-native-config" not in args:
+        out += ["--spin8-native-config", capsule.strip()]
+    if sha256 is not None and "--spin8-native-sha256" not in args:
+        out += ["--spin8-native-sha256", sha256]
+    return out
 
 
 _POOL_CORES_OK = re.compile(r"^[0-9]+(-[0-9]+(:[0-9]+)?)?(,[0-9]+(-[0-9]+(:[0-9]+)?)?)*$")
@@ -7951,6 +8016,16 @@ def main(argv=None, *, lifecycle_event=None, interrupt_exit_code: int = 0) -> in
                     help="maximum seconds waiting for the first engine turn (0.1..600; off by default)")
     ap.add_argument("--batch-telemetry", action=argparse.BooleanOptionalAction, default=None,
                     help="opt in to low-rate engine decode-window samples for /v1/telemetry")
+    ap.add_argument("--cache-type-k", default=None,
+                    help="native KV cache K type (f16, bf16, q8_0, q4_0, turbo2..turbo6)")
+    ap.add_argument("--cache-type-v", default=None,
+                    help="native KV cache V type (f16, bf16, q8_0, q4_0, turbo2..turbo6)")
+    ap.add_argument("--spin8-mode", default=None,
+                    help="native Spin(8) KV rotation mode (off, codec_only, vector, spinor_plus, spinor_minus, consensus)")
+    ap.add_argument("--spin8-native-config", default=None, metavar="PATH",
+                    help="verified Spin(8) native capsule JSON path (requires --spin8-native-sha256)")
+    ap.add_argument("--spin8-native-sha256", default=None, metavar="HEX64",
+                    help="expected lowercase SHA-256 of --spin8-native-config")
     ap.add_argument("--offline", action="store_true",
                     help="do not fetch remote image URLs or start MCP/tool subprocesses")
     ap.add_argument("--gpu", help="the GPU to run on, as nvidia-smi numbers them, or several for a layer split "
@@ -8063,6 +8138,23 @@ def main(argv=None, *, lifecycle_event=None, interrupt_exit_code: int = 0) -> in
         if "--batch-groups" in cfg["args"]:
             ap.error("--batch-groups conflicts with the saved engine args")
         cfg["args"] = [*cfg["args"], "--batch-groups", a.batch_groups]
+    for _attr, _flag, _short in (("cache_type_k", "--cache-type-k", "-ctk"),
+                                 ("cache_type_v", "--cache-type-v", "-ctv"),
+                                 ("spin8_mode", "--spin8-mode", None),
+                                 ("spin8_native_config", "--spin8-native-config", None),
+                                 ("spin8_native_sha256", "--spin8-native-sha256", None)):
+        _val = getattr(a, _attr, None)
+        if _val is not None:
+            if not cfg or "args" not in cfg:
+                ap.error(f"{_flag} needs an engine config")
+            if _flag in cfg["args"] or (_short and _short in cfg["args"]):
+                ap.error(f"{_flag} conflicts with the saved engine args")
+            cfg[_attr] = _val
+    if cfg and "args" in cfg:
+        try:
+            native_cache_args(cfg, list(cfg["args"]))
+        except ValueError as e:
+            ap.error(str(e))
     lift_reasoning_effort_arg(cfg)
     if a.replicas is not None:
         cfg["replicas"] = a.replicas
