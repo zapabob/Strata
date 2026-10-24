@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0",
+  "feature_matrix": [
+    {
+      "backend_id": "strata-native",
+      "architecture": "qwen2",
+      "supports_spin8": true,
+      "supports_triality": true,
+      "supports_tq4_1s": true,
+      "supports_pq2_0": false,
+      "supports_mla": false
+    },
+    {
+      "backend_id": "strata-dsv41",
+      "architecture": "dsv41",
+      "supports_spin8": false,
+      "supports_triality": false,
+      "supports_tq4_1s": false,
+      "supports_pq2_0": false,
+      "supports_mla": true
+    },
+    {
+      "backend_id": "prism",
+      "architecture": "qwen2",
+      "supports_spin8": false,
+      "supports_triality": false,
+      "supports_tq4_1s": false,
+      "supports_pq2_0": true,
+      "supports_mla": false
+    },
+    {
+      "backend_id": "llama-cpp",
+      "architecture": "dense_general",
+      "supports_spin8": false,
+      "supports_triality": false,
+      "supports_tq4_1s": false,
+      "supports_pq2_0": false,
+      "supports_mla": false
+    }
+  ]
+}
