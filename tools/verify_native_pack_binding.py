@@ -115,9 +115,36 @@ def receipt_mtime_ns(value: str) -> int:
     return int(stamp.timestamp()) * 10**9 + int(fraction.ljust(9, "0"))
 
 
-def verify(pack: Path, receipt_path: Path) -> dict:
+def read_receipt(path: Path) -> bytes:
+    """Bound receipt reads, including growth after the size check."""
+    if path.stat().st_size > 16 * 1024 * 1024:
+        raise ValueError("receipt exceeds bound")
+    with path.open("rb") as source:
+        data = source.read(16 * 1024 * 1024 + 1)
+    if len(data) > 16 * 1024 * 1024:
+        raise ValueError("receipt exceeds bound")
+    return data
+
+
+def parse_receipt(data: bytes) -> dict:
+    """Use one strict parser for CLI receipts and independently pinned bytes."""
+    if len(data) > 16 * 1024 * 1024:
+        raise ValueError("receipt exceeds bound")
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("duplicate receipt field")
+            result[key] = value
+        return result
+    return json.loads(data.decode("utf-8-sig"), object_pairs_hook=unique)
+
+
+def verify(pack: Path, receipt_path: Path, *, receipt_bytes: bytes | None = None) -> dict:
     """Validate this intentionally narrow no-copy, no-conversion pack form."""
-    receipt = json.loads(receipt_path.read_text(encoding="utf-8-sig"))
+    # receipt_path is only a provenance label when verified bytes are supplied.
+    data = read_receipt(receipt_path) if receipt_bytes is None else receipt_bytes
+    receipt = parse_receipt(data)
     records = receipt["models"]
     before = {}
     files = []
@@ -223,7 +250,7 @@ def verify(pack: Path, receipt_path: Path) -> dict:
             raise ValueError("source metadata changed during verification")
     return {
         "schema": "strata-native-pack-binding-v1",
-        "source_receipt_sha256": digest(receipt_path),
+        "source_receipt_sha256": hashlib.sha256(data).hexdigest(),
         "source_receipt": str(receipt_path),
         "pack": str(pack),
         "experts": {

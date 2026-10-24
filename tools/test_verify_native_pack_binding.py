@@ -221,4 +221,13 @@ def test_complete_pack_binding_with_real_gguf_header(
         assert result["index_rows"] == 2
         assert result["dense_bytes"] == 128
         assert result["experts"]["per_layer"] == 2
+        # The byte-input seam must run the real parser and complete tiny GGUF
+        # verifier without reopening a pathname that has since been replaced.
+        pinned = receipt.read_bytes()
+        receipt.write_bytes(b'{"models":[],"models":[]}')
+        rebound = verify(pack, receipt, receipt_bytes=pinned)
+        assert rebound == result
+        assert rebound["source_receipt_sha256"] == hashlib.sha256(pinned).hexdigest()
+        with pytest.raises(ValueError, match="duplicate receipt field"):
+            verify(pack, receipt, receipt_bytes=receipt.read_bytes())
     assert hashlib.sha256(model.read_bytes()).hexdigest() == sha
