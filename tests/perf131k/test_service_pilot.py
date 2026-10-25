@@ -51,7 +51,7 @@ class ServiceGuardTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 service.verify_restore_owner(saved, {"PRIVATE_FIXTURE": "fixture-only"}, 100)
 
-    def workflow_fixture(self, stop_error=False, close_error=False):
+    def workflow_fixture(self, stop_error=False, close_error=False, job_commit_gib=None, observed=None):
         base = Path(tempfile.mkdtemp(dir=os.environ["TEMP"], prefix="service-workflow-"))
         (base / "prepared").mkdir()
         (base / "prepared/binding.json").write_text("{}")
@@ -67,7 +67,9 @@ class ServiceGuardTests(unittest.TestCase):
         runtime.exe.return_value = sys.executable
         runtime.net_connections.return_value = [SimpleNamespace(status="LISTEN", laddr=SimpleNamespace(port=8089))]
         before = {"status": "ok", "model": {"id": "CPU_FIXTURE"}, "runtime": {"loading": False, "loaded": True}}
-        def blocked_cell(count, trace, *, binding_sha):
+        def blocked_cell(count, trace, *, binding_sha, job_commit_gib=8):
+            if observed is not None:
+                observed.append(job_commit_gib)
             cell = service.native.BASE / f"native-{count}-{trace.lower()}"
             cell.mkdir()
             (cell / "result.json").write_text(json.dumps({"status": "PREFLIGHT_BLOCKED", "measurement_valid": False}))
@@ -79,9 +81,24 @@ class ServiceGuardTests(unittest.TestCase):
              patch.object(service, "close_handle", side_effect=[OSError("injected close failure"),None] if close_error else None), \
              patch.object(service, "listening", return_value=False), patch.object(service.native, "run_cell", side_effect=blocked_cell), \
              patch.object(service, "restore", return_value={"status": "CPU_FIXTURE_RESTORED"}) as restored:
-            code = service.execute(100, 200)
+            options = {} if job_commit_gib is None else {"job_commit_gib": job_commit_gib}
+            code = service.execute(100, 200, **options)
         attempts = list(base.glob("service-attempt-*"))
         return code, restored.call_count, json.loads((attempts[0] / "overall.json").read_text())
+
+    def test_ten_GiB_is_forwarded_and_restore_still_runs(self):
+        observed = []
+        code, restores, result = self.workflow_fixture(job_commit_gib=10, observed=observed)
+        self.assertNotEqual(code, 0)
+        self.assertEqual((observed, restores), ([10], 1))
+        self.assertEqual(result["requested_job_commit_gib"], 10)
+
+    def test_invalid_budget_rejected_before_service_side_effects(self):
+        with patch.object(service, "hold_process") as hold, patch.object(service, "stop_handle") as stop:
+            with self.assertRaises(ValueError):
+                service.execute(100, 200, job_commit_gib=11)
+        hold.assert_not_called()
+        stop.assert_not_called()
 
     def test_wait_failure_after_stop_request_does_not_skip_restore(self):
         code, restores, result = self.workflow_fixture(stop_error=True)

@@ -18,7 +18,8 @@ if os.environ.get("P01_NATIVE_UNDER_TEST"):
 
 
 class NativePilotTests(TestCase):
-    def fake_cell(self, *, raw=None, stale_tokenizer=False, trace="OFF"):
+    def fake_cell(self, *, raw=None, stale_tokenizer=False, trace="OFF", job_commit_gib=None,
+                  resources=None, observed=None):
         base = Path("H:/Strata/worktrees/p01-a-20261025/_scratch/perf131k/b2-fixtures") / uuid.uuid4().hex
         base.mkdir(parents=True)
         shutil.copytree(native.BASE / "prepared", base / "prepared")
@@ -28,6 +29,8 @@ class NativePilotTests(TestCase):
             binding["tokenizer"]["vocab.json"] = "0" * 64
             path.write_text(json.dumps(binding))
         def fake_runtime(command, root, env, output, budget, sample, *, stdin_path):
+            if observed is not None:
+                observed.update(budget=vars(budget), launch=json.loads((root / "launch.json").read_text()))
             output.write_text(raw or "READY 131072 stop\nT 1\nDONE 1 4096 100 200 stop 0 0 0\n"
                               "T 1\nDONE 1 4096 10 200 stop 0 0 4096\n")
             return {"status": "FINISHED", "exit_code": 0, "termination_confirmed": True,
@@ -35,12 +38,41 @@ class NativePilotTests(TestCase):
         class Tok:
             def decode(self, ids):
                 return native.SENTINEL
-        resources = {"available_ram": 20 * 1024**3, "commit_headroom": 30 * 1024**3, "H_free": 30 * 1024**3}
+        if resources is None:
+            resources = {"available_ram": 20 * 1024**3, "commit_headroom": 30 * 1024**3, "H_free": 30 * 1024**3}
         with patch.object(native, "BASE", base), patch.object(native.windows_job, "run_owned", side_effect=fake_runtime) as spawn, \
              patch.object(native, "system_resources", return_value=resources), patch.object(native, "tokenizer", return_value=Tok()):
-            code = native.run_cell(4096, trace, binding_sha=native.sha(path))
+            options = {} if job_commit_gib is None else {"job_commit_gib": job_commit_gib}
+            code = native.run_cell(4096, trace, binding_sha=native.sha(path), **options)
         result = json.loads((base / f"native-4096-{trace.lower()}/result.json").read_text())
         return code, result, spawn.call_count
+
+    def test_ten_GiB_exact_admission_reaches_owned_consumer(self):
+        observed = {}
+        limits = {"available_ram": 12 * 1024**3, "commit_headroom": 16 * 1024**3, "H_free": 8 * 1024**3}
+        code, result, calls = self.fake_cell(job_commit_gib=10, resources=limits, observed=observed)
+        self.assertEqual((code, calls), (0, 1))
+        self.assertEqual(observed["budget"]["job_commit_bytes"], 10 * 1024**3)
+        self.assertEqual(observed["launch"]["budget"], observed["budget"])
+        self.assertEqual(result["requested_job_commit_gib"], 10)
+
+    def test_ten_GiB_each_insufficient_resource_prevents_child(self):
+        for key, minimum in (("available_ram", 12), ("commit_headroom", 16), ("H_free", 8)):
+            with self.subTest(resource=key):
+                limits = {"available_ram": 12 * 1024**3, "commit_headroom": 16 * 1024**3, "H_free": 8 * 1024**3}
+                limits[key] = minimum * 1024**3 - 1
+                code, result, calls = self.fake_cell(job_commit_gib=10, resources=limits)
+                self.assertEqual((code, calls), (77, 0))
+                self.assertEqual(result["status"], "PREFLIGHT_BLOCKED")
+
+    def test_budget_override_is_bounded_and_default_remains_eight(self):
+        observed = {}
+        code, _, calls = self.fake_cell(observed=observed)
+        self.assertEqual((code, calls), (0, 1))
+        self.assertEqual(observed["budget"]["job_commit_bytes"], 8 * 1024**3)
+        for value in (True, 10.0, 0, 9, 11, 64, "10"):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                native.make_budget(value)
 
     def test_malformed_DONE_retains_known_cleanup(self):
         code, result, _ = self.fake_cell(raw="READY 131072 stop\nDONE 1\n")

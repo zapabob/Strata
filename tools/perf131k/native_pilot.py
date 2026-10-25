@@ -102,7 +102,18 @@ def verify_inputs(binding):
     return observed
 
 
-def _run_cell(count, trace, *, binding_sha, result):
+def make_budget(job_commit_gib=8):
+    # The10GiB arm is an explicit, separately authorized diagnostic. Never infer
+    # a larger limit from free resources or retry an exhausted Job automatically.
+    if type(job_commit_gib) is not int or job_commit_gib not in (8, 10):
+        raise ValueError("only explicit8GiB/default or10GiB pilot budgets are supported")
+    return SimpleNamespace(timeout_s=900, job_commit_bytes=job_commit_gib * 1024**3,
+                           output_bytes=16 * 1024**2, max_processes=2,
+                           min_available_ram=2 * 1024**3, min_commit_headroom=6 * 1024**3,
+                           min_H_free=8 * 1024**3)
+
+
+def _run_cell(count, trace, *, binding_sha, result, budget):
     binding_path = BASE / "prepared/binding.json"
     binding_raw = binding_path.read_bytes()
     if hashlib.sha256(binding_raw).hexdigest() != binding_sha:
@@ -131,11 +142,8 @@ def _run_cell(count, trace, *, binding_sha, result):
                STRATA_KEEP_LEFTOVERS="1")
     if trace == "ON":
         env["STRATA_PERF131K_HOST_TRACE"] = str(cell / "host-trace.json")
-    budget = SimpleNamespace(timeout_s=900, job_commit_bytes=8 * 1024**3, output_bytes=16 * 1024**2,
-                             max_processes=2, min_available_ram=2 * 1024**3,
-                             min_commit_headroom=6 * 1024**3, min_H_free=8 * 1024**3)
     resources = system_resources(cell)
-    result["admission_policy"] = "RAM10GiB is a conservative start threshold, not physical reservation/peak proof; job commit8GiB is a different metric; WDDM budget unknown"
+    result["admission_policy"] = "start RAM >= Job commit +2GiB; commit headroom >= Job commit +6GiB; H free >=8GiB; no physical reservation/peak proof; WDDM budget unknown"
     if (resources["available_ram"] < budget.job_commit_bytes + budget.min_available_ram
             or resources["commit_headroom"] < budget.job_commit_bytes + budget.min_commit_headroom
             or resources["H_free"] < budget.min_H_free):
@@ -195,7 +203,8 @@ def _run_cell(count, trace, *, binding_sha, result):
     return result["exit_code"] or (0 if valid else 78)
 
 
-def run_cell(count, trace, *, binding_sha):
+def run_cell(count, trace, *, binding_sha, job_commit_gib=8):
+    budget = make_budget(job_commit_gib)
     cell = BASE / f"native-{count}-{trace.lower()}"
     if cell.exists():
         raise ValueError("refuse to overwrite a pilot cell")
@@ -203,9 +212,9 @@ def run_cell(count, trace, *, binding_sha):
               "owned_root_pid": None, "termination_confirmed": None, "job_active_after": None,
               "measurement_valid": False, "comparison_valid": False, "requests": [],
               "launch_attempted": False, "GPU_elapsed_ns": None, "physical_IO_bytes": None,
-              "P17_PPL_full_quality": "NOT_RUN"}
+              "P17_PPL_full_quality": "NOT_RUN", "requested_job_commit_gib": job_commit_gib}
     try:
-        result["exit_code"] = _run_cell(count, trace, binding_sha=binding_sha, result=result)
+        result["exit_code"] = _run_cell(count, trace, binding_sha=binding_sha, result=result, budget=budget)
         result["comparison_valid"] = result["measurement_valid"]
         if result["exit_code"] and result["status"] == "FINISHED":
             result["status"] = "INVALID_MEASUREMENT"
@@ -260,13 +269,15 @@ def main():
     parser.add_argument("--tokens", type=int, choices=(4096, 32768))
     parser.add_argument("--trace", choices=("OFF", "ON"))
     parser.add_argument("--binding-sha")
+    parser.add_argument("--job-commit-gib", type=int, choices=(8, 10), default=8,
+                        help="10 requires explicit diagnostic budget authorization")
     args = parser.parse_args()
     if args.prepare and not args.execute_authorized:
         prepare()
         return 0
     if not args.execute_authorized or args.tokens is None or args.trace is None or args.binding_sha is None:
         parser.error("explicit authorized cell required")
-    return run_cell(args.tokens, args.trace, binding_sha=args.binding_sha)
+    return run_cell(args.tokens, args.trace, binding_sha=args.binding_sha, job_commit_gib=args.job_commit_gib)
 
 
 if __name__ == "__main__":

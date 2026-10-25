@@ -165,7 +165,8 @@ def restore(directory):
         time.sleep(1)
 
 
-def execute(launcher_pid, runtime_pid):
+def execute(launcher_pid, runtime_pid, *, job_commit_gib=8):
+    native.make_budget(job_commit_gib)  # Reject unsupported budgets before service side effects.
     directory = BASE / f"service-attempt-{time.time_ns()}"
     directory.mkdir()
     shutil.copytree(BASE / "prepared", directory / "prepared")  # Only three small input JSON files, never model data.
@@ -192,7 +193,8 @@ def execute(launcher_pid, runtime_pid):
     root_handle = hold_process(root.pid, root.create_time(), root.exe())
     runtime_handle = None
     stopped = False
-    overall = {"status": "PENDING", "cells": [], "service_stopped": False}
+    overall = {"status": "PENDING", "cells": [], "service_stopped": False,
+               "requested_job_commit_gib": job_commit_gib}
     original_base, original_sample = native.BASE, native.system_resources
     try:
         runtime_handle = hold_process(runtime.pid, runtime.create_time(), runtime.exe())
@@ -215,7 +217,8 @@ def execute(launcher_pid, runtime_pid):
         native.BASE, native.system_resources = directory, sample
         binding_sha = native.sha(directory / "prepared/binding.json")
         for count, trace in ((4096, "OFF"), (4096, "ON"), (32768, "OFF"), (32768, "ON")):
-            code = native.run_cell(count, trace, binding_sha=binding_sha)
+            options = {} if job_commit_gib == 8 else {"job_commit_gib": job_commit_gib}
+            code = native.run_cell(count, trace, binding_sha=binding_sha, **options)
             cell = json.loads((directory / f"native-{count}-{trace.lower()}/result.json").read_text())
             overall["cells"].append({"tokens": count, "trace": trace, "code": code, "status": cell["status"]})
             if code and not cell["measurement_valid"]:
@@ -256,6 +259,7 @@ def main():
     parser.add_argument("--launcher-pid", type=int)
     parser.add_argument("--runtime-pid", type=int)
     parser.add_argument("--restore-only", type=Path)
+    parser.add_argument("--job-commit-gib", type=int, choices=(8, 10), default=8)
     args = parser.parse_args()
     if args.restore_only:
         path = args.restore_only.resolve()
@@ -265,7 +269,7 @@ def main():
         return 0
     if not args.execute_services_authorized or not args.launcher_pid or not args.runtime_pid:
         parser.error("explicit authorized service identities required")
-    return execute(args.launcher_pid, args.runtime_pid)
+    return execute(args.launcher_pid, args.runtime_pid, job_commit_gib=args.job_commit_gib)
 
 
 if __name__ == "__main__":
