@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft-07/schema#",
   "schema_version": "2.0",
-  "release_version": "0.3.0",
-  "release_name": "Strata v0.3.0 Verified Upstream Integration",
+  "release_version": "0.3.1",
+  "release_name": "Strata v0.3.1 Verified Upstream Integration (Post-Audit Edition)",
   "published_at": "2026-10-25T08:28:00Z",
   "verifier": "Antigravity/MILSPEC-Codex Standard",
   "upstream_cut": {
