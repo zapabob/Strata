@@ -41,6 +41,11 @@ td.log
 /build-cuda12/
 /.strata-mcp/
 
+# Local perf131k machine inventory, raw receipts, fixtures and executables.
+# Keep these on the operator's evidence volume, never in a source checkpoint.
+/_docs/perf131k/
+/_scratch/perf131k/
+
 # image encoder (setup.py --vision): build output and the generated build script
 build-vision*/
 build-vision.bat

@@ -1,5 +1,6 @@
 // src/core/verify.cpp - see include/strata/core/verify.hpp.
 #include "strata/core/batch_rows.hpp"
+#include "strata/perf131k/trace.hpp"
 #include "strata/core/sm75_series.hpp"
 #include "strata/core/sm120_series.hpp"
 #include "strata/kernels/gfx_arch.hpp"
@@ -618,14 +619,15 @@ Verifier::~Verifier() {
     if (cs_) cudaStreamSynchronize(cs_);
     if (sh_cs_) cudaStreamSynchronize(sh_cs_);
     for (auto& e : exec_)
-        if (e) cudaGraphExecDestroy(e);
+        if (e && cudaGraphExecDestroy(e) == cudaSuccess) strata::perf131k::graph_retired(e);
     for (auto& e : exec_nr_)
-        if (e) cudaGraphExecDestroy(e);
-    if (commit_exec_) cudaGraphExecDestroy(commit_exec_);
+        if (e && cudaGraphExecDestroy(e) == cudaSuccess) strata::perf131k::graph_retired(e);
+    if (commit_exec_ && cudaGraphExecDestroy(commit_exec_) == cudaSuccess)
+        strata::perf131k::graph_retired(commit_exec_);
     for (auto& kv : exec_bm_)
-        if (kv.second) cudaGraphExecDestroy(kv.second);
+        if (kv.second && cudaGraphExecDestroy(kv.second) == cudaSuccess) strata::perf131k::graph_retired(kv.second);
     for (auto& kv : commit_bm_)
-        if (kv.second) cudaGraphExecDestroy(kv.second);
+        if (kv.second && cudaGraphExecDestroy(kv.second) == cudaSuccess) strata::perf131k::graph_retired(kv.second);
     if (arena_b_) cudaFree(arena_b_);
     if (h_commitb_) cudaFreeHost(h_commitb_);
     if (qcnt_) cudaFree(qcnt_);
@@ -2746,6 +2748,7 @@ bool Verifier::capture_commit(std::string& err) {
         err = std::string("verify: commit capture: ") + cudaGetErrorString(ce);
         return false;
     }
+    strata::perf131k::graph_created(commit_exec_);
     cudaGraphDestroy(graph);
     return true;
 }
@@ -2900,6 +2903,8 @@ bool Verifier::prelaunch(int T, const int32_t* tokens, int64_t pos0, std::string
 
 bool Verifier::run(int T, const int32_t* tokens, int64_t pos0, PoolMultiFn pool, void* user, int32_t* out,
                    std::string& err) {
+    strata::perf131k::Scope host_trace(strata::perf131k::Stage::verify_host,
+                                     pos0, strata::perf131k::range_end(pos0, T));
 #if defined(STRATA_GPU_METAL)
     (void) pool;
     (void) user;
@@ -2979,11 +2984,19 @@ bool Verifier::run(int T, const int32_t* tokens, int64_t pos0, PoolMultiFn pool,
             const char* value = std::getenv("STRATA_VERIFY_ASYNC_LAUNCH");
             return value != nullptr && value[0] == '1';
         }();
-        launch_o.emplace(ar_off_ ? exec_nr_[T] : exec_[T], cs_, device_, threaded_launch,
-                         [this] { (void) release_gpu_waits(5000); });
+        {
+            strata::perf131k::Scope issue_trace(strata::perf131k::Stage::graph_enqueue_host);
+            issue_trace.metadata(cs_, ar_off_ ? exec_nr_[T] : exec_[T]);
+            launch_o.emplace(ar_off_ ? exec_nr_[T] : exec_[T], cs_, device_, threaded_launch,
+                             [this] { (void) release_gpu_waits(5000); });
+        }
         const cudaError_t le = launch_o->status();
 #else
-        const cudaError_t le = cudaGraphLaunch(ar_off_ ? exec_nr_[T] : exec_[T], cs_);
+        const cudaError_t le = [&] {
+            strata::perf131k::Scope issue_trace(strata::perf131k::Stage::graph_launch_issue);
+            issue_trace.metadata(cs_, ar_off_ ? exec_nr_[T] : exec_[T]);
+            return cudaGraphLaunch(ar_off_ ? exec_nr_[T] : exec_[T], cs_);
+        }();
 #endif
         trace_ev("LAUNCHED", -1, -1, (int64_t) le);
         graph_launched = true;
@@ -3171,14 +3184,22 @@ bool Verifier::run(int T, const int32_t* tokens, int64_t pos0, PoolMultiFn pool,
     // itself stays a blocking sync: a cudaStreamQuery poll here cost IQ3_S ~3% decode (a core calling the driver
     // beside the expert workers).
 #if !defined(STRATA_USE_HIP) && !defined(STRATA_HIP_GFX906)
-    const cudaError_t launch_result = launch_o ? launch_o->finish() : cudaSuccess;
+    const cudaError_t launch_result = [&] {
+        strata::perf131k::Scope wait_trace(strata::perf131k::Stage::host_wait);
+        wait_trace.metadata(cs_);
+        return launch_o ? launch_o->finish() : cudaSuccess;
+    }();
     if (launch_result != cudaSuccess) {
         err = std::string("verify: launch: ") + cudaGetErrorString(launch_result);
         return false;
     }
 #endif
     trace_ev("SYNC", -1, -1, 0);
-    const cudaError_t se = cudaStreamSynchronize(cs_);
+    const cudaError_t se = [&] {
+        strata::perf131k::Scope wait_trace(strata::perf131k::Stage::host_wait);
+        wait_trace.metadata(cs_);
+        return cudaStreamSynchronize(cs_);
+    }();
     trace_ev("SYNCED", -1, -1, (int64_t) se);
 #if defined(STRATA_WITH_NATIVE_CACHE)
     if (ss.native.state && !native_session_observe(ss, se == cudaSuccess, err)) return false;
@@ -3321,6 +3342,9 @@ void Verifier::fetch_dma(void* ctx, const uint8_t* const* src, int n, size_t byt
     Verifier* v = (Verifier*) ctx;
     const uint32_t want = v->cur_layer_ + 1;
     if (n <= 0) { raise_flag(v->h_flagB_, want); return; }
+    strata::perf131k::Scope issue_trace(strata::perf131k::Stage::h2d_issue, -1, -1, v->cur_layer_);
+    issue_trace.metadata(v->copy_, nullptr, -1,
+                        bytes <= static_cast<size_t>(INT64_MAX / n) ? static_cast<int64_t>(bytes * n) : -1);
     v->copy_used_ = true;
     uint8_t* stage = (uint8_t*) v->sink_.staging;                  // this group's half in a split window
     // STRATA_DMA_BATCH (midhatn's #807, F12): the group's independent uploads as one cudaMemcpyBatchAsync.  Mode 0 is
@@ -3734,12 +3758,14 @@ bool Verifier::evict_batch_graph(const std::vector<int>& keep, bool& evicted, st
         return false;
     }
     const auto old_key = old->first;
-    if (old->second) cudaGraphExecDestroy(old->second);
+    if (old->second && cudaGraphExecDestroy(old->second) == cudaSuccess)
+        strata::perf131k::graph_retired(old->second);
     exec_bm_.erase(old);
     bm_used_.erase(old_key);
     auto commit_old = commit_bm_.find(old_key);
     if (commit_old != commit_bm_.end()) {
-        if (commit_old->second) cudaGraphExecDestroy(commit_old->second);
+        if (commit_old->second && cudaGraphExecDestroy(commit_old->second) == cudaSuccess)
+            strata::perf131k::graph_retired(commit_old->second);
         commit_bm_.erase(commit_old);
     }
     evicted = true;
@@ -3768,6 +3794,7 @@ bool Verifier::instantiate_evicting(cudaGraphExec_t& ex, cudaGraph_t graph, cons
         err = std::string(what) + cudaGetErrorString(ie);
         return false;
     }
+    strata::perf131k::graph_created(ex);
     return true;
 }
 

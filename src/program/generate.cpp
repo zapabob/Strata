@@ -1,4 +1,5 @@
 #include "strata/core/logit_bias.hpp"
+#include "strata/perf131k/trace.hpp"
 // src/program/generate.cpp - P2.S6: `strata generate`.
 //
 // THE DRIVER, and the first program in this project that answers a question.  Everything below it is a
@@ -2318,6 +2319,7 @@ static void prime_hw_queues() {
 #endif
 
 int main(int argc, char** argv) {
+    strata::perf131k::Runtime host_trace;
     // **UNBUFFERED, BECAUSE THE INTERESTING OUTPUT IS THE OUTPUT BEFORE A CRASH.**  `stdout` redirected to a
     // pipe or a file is block-buffered, so a program that dies loses every line it had already printed - which
     // turns "it crashed at step 7" into "it crashed somewhere", and the difference is a debugging session.
@@ -12571,6 +12573,7 @@ int main(int argc, char** argv) {
             bool bad = false;
             for (int64_t t : ids) bad = bad || t < 0 || t >= n_vocab;
             if (bad) { std::printf("ERR a token id is outside the vocabulary\n"); continue; }
+            strata::perf131k::Scope request_trace(strata::perf131k::Stage::request, 0, n, -1, true);
             std::array<int64_t, 3> remote_before{};
             std::array<int64_t, 3> launches_before{};
             std::array<uint64_t, 3> compact_before{}, full_before{};

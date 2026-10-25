@@ -1,6 +1,7 @@
 // src/prefill/prefill.cpp - see include/strata/prefill/prefill.hpp.
 #include "strata/kernels/fused_gr.hpp"
 #include "strata/prefill/prefill.hpp"
+#include "strata/perf131k/trace.hpp"
 #if defined(STRATA_HAVE_DFLASH2)
 #include "strata/kernels/dflash2.hpp"
 #endif
@@ -2585,6 +2586,8 @@ struct PeTimer {
 }  // namespace
 
 bool Prefill::run_impl(const int64_t* tokens, int64_t n, int64_t pos0, std::string& err) {
+    strata::perf131k::Scope host_trace(strata::perf131k::Stage::prefill_host,
+                                     pos0, strata::perf131k::range_end(pos0, n));
     err.clear();
     // force_chunk is for this run only: taken before any early return can leave it to the next one
     const int64_t forced = hand_in_ == nullptr ? std::exchange(force_chunk_, 0) : 0;

@@ -1,5 +1,6 @@
 // src/core/expert_source.cpp - the adapter.  See the header for the three clauses of the contract.
 #include "strata/core/expert_source.hpp"
+#include "strata/perf131k/trace.hpp"
 #include "strata/core/foresight_swap.hpp"
 #include "strata/core/on_device.hpp"
 #include "strata/platform/aux_cpus.hpp"
@@ -1733,7 +1734,9 @@ bool FileExpertSource::open_gguf(std::string& err) {
 }
 
 bool FileExpertSource::copy_from_files(int64_t layer, int64_t expert, uint8_t* dst) const {
+    strata::perf131k::Scope host_trace(strata::perf131k::Stage::expert_copy_host, -1, -1, layer);
     if (dst == nullptr || layer < 0 || expert < 0 || layer >= n_layers_ || expert >= n_expert_) return false;
+    host_trace.metadata(nullptr, nullptr, layer_blob_bytes_[(size_t) layer]);
     if (!direct_.empty()) {   // #286: from the drive; a failed read falls back to the mapping below
         const Fill f{0, layer, expert, dst};
         if (read_direct(&f, 1)) return true;
@@ -2692,6 +2695,7 @@ bool FileExpertSource::map_view(std::string& why) {
 }
 
 bool FileExpertSource::read_direct(const Fill* fills, size_t n) const {
+    strata::perf131k::Scope host_trace(strata::perf131k::Stage::expert_direct_read_host);
 #if defined(_WIN32)
     // NTFS runs the unbuffered reads of a file one at a time while the file is mapped or cached anywhere (the engine
     // maps the GGUF shards for the token embedding and the PLE table): measured on a PCIe 5 drive, 512 KiB reads at

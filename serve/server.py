@@ -80,6 +80,7 @@ from serve import owner_guard  # noqa: E402
 from serve import launch_identity  # noqa: E402
 from serve import logit_bias as bias_api  # noqa: E402
 from serve import lifeline  # noqa: E402
+from serve import perf131k_e2e as perf_e2e  # noqa: E402
 from serve.structured import StructuredOutputError, prepare_format, validated_json  # noqa: E402
 from serve import responses as responses_api  # noqa: E402
 from serve.responses import ResponsesError, error_body as responses_error_body  # noqa: E402
@@ -1333,6 +1334,8 @@ class StrataEngine:
         self.info = {**info, **self.info}
 
     def _parse_done(self, line):
+        if (audit := perf_e2e.current()) is not None:
+            audit.native_done(line)
         f = line.split()
         self.last = {"generated": int(f[1]), "prompt_tokens": int(f[2]), "prompt_ms": float(f[3]),
                      "decode_ms": float(f[4]), "finish": f[5]}
@@ -2187,10 +2190,13 @@ class StrataEngine:
         """Yields token ids, and None as a heartbeat every 10 s while the engine is quiet (reading a long prompt):
         the HTTP layer turns it into an SSE comment, which keeps clients' watchdogs calm and notices a client that
         has gone.  A consumer that stops early (or `cancel`) makes the engine STOP, so it does not run to max_new."""
+        audit = perf_e2e.current()
         if not self.alive():
             raise EngineDied("the engine is unavailable; this request was not sent")
         bias_api.validate_request(sampling or {}, self, None)
         if getattr(self, "batch", 0):
+            if audit is not None:
+                audit.fail("unsupported_native_route")
             yield from self.generate_batched(ids, max_new, sampling, cancel, embeddings)
             return
         self.progress, self.progress_ms, self.reused = None, 0, 0
@@ -2198,6 +2204,8 @@ class StrataEngine:
         # an image request takes the same sampling keys as text (#75: it used to decode greedily whatever was asked)
         head = f"GENI {int(max_new)}{self.sampling_keys(sampling or {})} {embeddings}" if embeddings else \
             f"GEN {int(max_new)}{self.sampling_keys(sampling or {})}"
+        if audit is not None:
+            audit.native_begin(ids, max_new, embeddings=embeddings, pid=getattr(self.proc, "pid", None))
         try:
             self.proc.stdin.write(f"{head} {','.join(str(int(t)) for t in ids)}\n")
             self.proc.stdin.flush()
@@ -2248,8 +2256,13 @@ class StrataEngine:
                 if line.startswith("T "):
                     allow = silence
                     if cancel.is_set():
+                        if audit is not None:
+                            audit.drain_token(line)
                         return
-                    yield int(line[2:])
+                    token = int(line[2:])
+                    if audit is not None:
+                        audit.native_token(token)
+                    yield token
                 elif line.startswith("PP "):
                     f = line.split()
                     if len(f) >= 3 and f[1].isdigit() and f[2].isdigit():
@@ -2303,6 +2316,8 @@ class StrataEngine:
                     if line.startswith("DONE"):
                         self._parse_done(line)
                         break
+                    if line.startswith("T ") and audit is not None:
+                        audit.drain_token(line)
                     if not self.can_stop:
                         heard = time.monotonic()
 
@@ -4989,6 +5004,8 @@ class Service:
                 req["strata_prefix"] = {"messages": lead}
         if req is not None and req.get("strata_prefix") is not None:
             req["strata_prefix"] = self.resolve_prefix(req["strata_prefix"], messages, tools, kwargs, ids, bool(images))
+        if (audit := perf_e2e.current()) is not None:
+            audit.prepared(ids, max_new, ctx)
         return ids, kwargs.get("enable_thinking", True) is not False, max_new
 
     @staticmethod
@@ -5497,6 +5514,8 @@ class Service:
                                       "thinking once and continuing (reasoning_close_retry)", flush=True)
                                 for t in extra:
                                     n += 1
+                                    if (audit := perf_e2e.current()) is not None:
+                                        audit.synthetic_token()
                                     raw_ids.append(t)
                                     thinking_n += parser.state in ("reasoning", "rcall")
                                     evs = cut(parser.feed(detok.push(t)))
@@ -5527,6 +5546,8 @@ class Service:
                                   flush=True)
                         for t in extra:
                             n += 1
+                            if (audit := perf_e2e.current()) is not None:
+                                audit.synthetic_token()
                             raw_ids.append(t)
                             thinking_n += parser.state in ("reasoning", "rcall")
                             evs = cut(parser.feed(detok.push(t)))
@@ -5653,6 +5674,8 @@ class Service:
                 event = {"stop": "finished", "length": "finished", "cancel": "cancelled",
                          "disconnect": "disconnected", "timeout": "timeout", "error": "error"}.get(finish, "error")
                 self._terminal_event_locked(request_id, event, finish)
+            if (audit := perf_e2e.current()) is not None:
+                audit.service_terminal(finish)
             if emb:
                 Path(emb).unlink(missing_ok=True)
         for ev in cut(parser.finish(finish)):
@@ -6361,6 +6384,8 @@ def make_handler(svc: Service):
 
         def _note(self, **values):
             """#332: what the monitor shows about this request (nothing when the monitor is off)."""
+            if (audit := getattr(self, "perf_audit", None) or perf_e2e.current()) is not None:
+                audit.note(**values)
             if self.record is not None:
                 with svc.status_lock:
                     self.record.update(values)
@@ -6394,6 +6419,9 @@ def make_handler(svc: Service):
             self.end_headers()
 
         def _json(self, code, obj, headers=None, retry_after=None):
+            audit = perf_e2e.current()
+            if audit is not None:
+                audit.note(http_status=code)
             if self.record is not None:
                 with svc.status_lock:
                     self.record["http_status"] = code
@@ -6413,6 +6441,9 @@ def make_handler(svc: Service):
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
+            if audit is not None:
+                audit.http_event(obj)
+                audit.http_end()
 
         def _authorized(self) -> bool:
             if not svc.api_key:
@@ -6823,6 +6854,7 @@ def make_handler(svc: Service):
                                headers={"Retry-After": int(ra)} if ra else None)
                 return
             reserved = False
+            self.perf_audit = perf_e2e.begin(getattr(svc, "perf131k_e2e", None), path, None)
             try:
                 if path in ("/v1/chat/completions", "/v1/messages", "/v1/responses"):
                     reserved = svc.reserve_inference()
@@ -6843,6 +6875,8 @@ def make_handler(svc: Service):
                 req = json.loads(self._body() or b"{}")
                 if not isinstance(req, dict):
                     raise ValueError("send a JSON object")
+                if self.perf_audit is not None:
+                    self.perf_audit.request(req)
                 if path.startswith("/v1/responses/"):        # retrieve/delete/cancel/compact: nothing is stored
                     self._json(404, responses_error_body("this server keeps no responses (stateless); send the "
                                                          "whole conversation to POST /v1/responses", code="not_found"))
@@ -6969,6 +7003,8 @@ def make_handler(svc: Service):
                         record["finished_at"] = time.time()
                         record["state"] = "error" if record.get("error") else record.get("outcome", "completed")
                     svc.request_trace.record = None
+                perf_e2e.end(self.perf_audit)
+                self.perf_audit = None
 
         def _images(self, req):
             """POST /v1/images/generations (serve/images.py): one sd-cli job in the GPU's turn."""
@@ -7245,7 +7281,11 @@ def make_handler(svc: Service):
                     else:
                         self.wfile.write(b"data: " + json.dumps(c, ensure_ascii=False).encode() + b"\n\n")
                     self.wfile.flush()
+                    if c is not None and (audit := perf_e2e.current()) is not None:
+                        audit.http_event(c)
                 self.wfile.write(b"data: [DONE]\n\n")
+                if (audit := perf_e2e.current()) is not None:
+                    audit.http_end()
             except OSError:
                 self._note(outcome="disconnected")
                 svc.note_client_disconnect(cancel)           # client went away: stop the engine
@@ -8286,7 +8326,10 @@ def main(argv=None, *, lifecycle_event=None, interrupt_exit_code: int = 0) -> in
                          "each, requests spread over them (also \"replicas\" in the config: a number, or "
                          "[{\"gpus\": [0, 1]}, {\"gpus\": [2, 3]}])")
     launch_args = list(sys.argv[1:] if argv is None else argv)
+    ap.add_argument("--perf131k-e2e-config", metavar="PATH",
+                    help="opt-in bounded server-path measurement config on H: (off by default)")
     a = ap.parse_args(launch_args)
+    perf_settings = perf_e2e.load_settings(a.perf131k_e2e_config)
     if a.engine == "strata" and (_rt := rttime_limit_note()):   # #3238: say it before the first unexplained -9
         print("[strata] WARNING: " + _rt, flush=True)
     global OPENS_BROWSER
@@ -8609,6 +8652,7 @@ def main(argv=None, *, lifecycle_event=None, interrupt_exit_code: int = 0) -> in
         print("[strata] Host check off: any name reaches this server (allowed_hosts \"*\")" if "*" in svc.allowed_hosts
               else f"[strata] also answers to the host names {', '.join(svc.allowed_hosts)} (allowed_hosts)", flush=True)
     svc.api_monitor = a.api_monitor or cfg.get("api_monitor") is True
+    svc.perf131k_e2e = perf_settings
     if svc.api_monitor:
         print("[strata] API request monitor on (/api-monitor): the last 100 requests' prompts and answers are kept in "
               "memory" + ("" if svc.api_key else "; anyone who can reach this server can read them (no API key)"),
