@@ -141,7 +141,7 @@ def _run_cell(count, trace, *, binding_sha, result):
             or resources["H_free"] < budget.min_H_free):
         result.update(status="PREFLIGHT_BLOCKED", exit_code=77, resources=resources)
         return 77
-    command = [str(BINARY), "generate", *binding["native_args"]]
+    command = [str(BINARY), *binding["native_args"]]
     write(cell / "launch.json", {"command": command, "env": env, "budget": vars(budget),
                                  "binding_sha256": sha(binding_path), "resources": resources,
                                  "trace": trace, "input_count": count, "expected_capacity": 131072})

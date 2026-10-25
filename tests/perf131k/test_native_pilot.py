@@ -14,6 +14,7 @@ if os.environ.get("P01_NATIVE_UNDER_TEST"):
     native = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = native
     spec.loader.exec_module(native)
+    native.ROOT = Path(__file__).resolve().parents[2]  # Keep mutant input location equivalent to the real checkout.
 
 
 class NativePilotTests(TestCase):
@@ -102,7 +103,11 @@ class NativePilotTests(TestCase):
                 self.assertEqual(len(ids), count)
                 self.assertEqual(binding["capacity"], 131072)
             def fake_runtime(command, root, env, raw, budget, sample, *, stdin_path):
-                self.assertEqual(command[:2], [str(native.BINARY), "generate"])
+                # StrataEngine passes flags directly to this native executable;
+                # "generate" is the Python CLI's subcommand, not a native argv.
+                self.assertEqual(command[0], str(native.BINARY))
+                self.assertTrue(command[1].startswith("--"))
+                self.assertNotIn("generate", command[1:])
                 self.assertIn("--serve", command)
                 self.assertIn("131072", command)
                 self.assertEqual(stdin_path.read_text().count("GEN 256 "), 2)
