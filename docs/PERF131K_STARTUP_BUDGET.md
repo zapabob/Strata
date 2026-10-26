@@ -130,6 +130,44 @@ current busy count or worker count. This excludes vector capacity (which can
 double), map/event storage, allocator overhead and all other host allocations.
 The selected startup path's lifetime `B` still needs a source-grounded bound.
 
+For the primary profile-fill branch only (`!per_layer`, `srcp == &src`, and
+unbuffered), the first 64-pair batch finishes before the next asynchronous
+batch starts. Every later batch boundary calls `ahead.get()` before starting
+another. At most 64 preclaimed slots overlap with one foreground demand, so
+this branch has `B <= 65`; this is not yet a bound for every pre-READY caller.
+The selected native index has 48 layers with 1,382,400-byte blobs throughout
+(SHA256 `015e53d3ae36324f172be4942bcf129539b343e2eb4fcd4f25ca5eff180bfa41`).
+The conditional stage payload bound for this branch is 443,750,400 bytes.
+
+`startup_budget.py` provides checked arithmetic helpers for these conditional
+payload bounds. For `n` fills with `r` role windows each, the direct-read span
+is bounded by `n * blob + n * r * 8192 + (n * r - 1) * 1048576`, rounded up
+to 1 MiB. This includes sector padding and merge gaps. The per-thread buffer
+capacity bounds are 37/69 MiB for 16 fills with one/three roles, and 74/138 MiB
+for 32 fills. The later resident-complement copy uses up to 32 fills per call,
+so a 16-fill bound cannot be used for the whole startup. Thread counts, vector
+capacity, stacks, events and allocator/driver charges require separate entries.
+The model-index identity and arithmetic are recorded in
+`H:\Strata\evidence\p01-boundary-20261026\conditional-staging-bounds.json`;
+this record does not authorize a launch.
+
+Active reader count is not a retained-scratch count. The local MSVC 14.44
+`include/future` implements `std::async` using `Concurrency::create_task` and
+waits for task completion. The asynchronous profile batch can therefore run on
+a persistent task-pool worker whose `read_direct` thread-local storage outlives
+the batch. The active primary profile readers are at most five (main, async
+caller and three child workers), but `5 * per-thread capacity` is not a proved
+retained-memory bound. This implementation-dependent lifetime must be resolved
+before using that multiplication in admission.
+For `want > 0`, at most `A = ceil(want / 64) - 1` asynchronous profile tasks
+are issued. A conservative retained scratch bound for that profile branch is
+`(A + 4) * C16`: main, up to `A` surviving async callers and three currently
+active explicit children. For the later complement copy, a conservative bound
+is `A * C16 + 6 * C32`, including retained async callers and up to six
+complement workers with main participating. `C16`/`C32` denote the per-thread
+capacity bounds above. These are source bounds for the stated paths, not
+observations of thread-pool growth or a whole-process commit estimate.
+
 On Windows, `read_direct` retains its `VirtualAlloc` scratch in thread-local
 storage. Its capacity rounds each batch's merged read span up to 1 MiB. The
 profile path can overlap a foreground batch with an asynchronous next batch,

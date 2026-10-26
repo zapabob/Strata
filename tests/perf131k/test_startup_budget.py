@@ -1,8 +1,11 @@
 """CPU-only checks of phase overlap; no model, Job or large allocations."""
 
 import unittest
+from pathlib import Path
 
-from tools.perf131k.startup_budget import DIAGNOSTIC_JOB_LIMIT, PHASES, evaluate
+from tools.perf131k.startup_budget import (
+    DIAGNOSTIC_JOB_LIMIT, PHASES, direct_scratch_bound, evaluate, stage_payload_bound,
+)
 
 
 def proposed(events=None, reserve=1024, limit=DIAGNOSTIC_JOB_LIMIT):
@@ -13,6 +16,26 @@ def proposed(events=None, reserve=1024, limit=DIAGNOSTIC_JOB_LIMIT):
 
 
 class StartupBudgetTests(unittest.TestCase):
+    def test_scratch_formula_is_bound_to_current_native_constants(self):
+        source = (Path(__file__).resolve().parents[2] / "src/core/expert_source.cpp").read_text(encoding="utf-8")
+        direct = source.split("bool FileExpertSource::read_direct(", 1)[1].split("#elif defined(__linux__)", 1)[0]
+        self.assertIn("kSector = 4096, kGap = 1ull << 20, kMerge = 32ull << 20", direct)
+        self.assertIn("x.a0 <= end + kGap", direct)
+        self.assertIn("sc.cap = (size_t) ((total + (1u << 20) - 1) >> 20 << 20)", direct)
+
+    def test_conditional_payload_bounds_keep_thread_and_slot_units_distinct(self):
+        blob = 1382400
+        self.assertEqual(stage_payload_bound(blob, 65), 443750400)
+        for fills, roles, mib in ((16, 1, 37), (16, 3, 69), (32, 1, 74), (32, 3, 138)):
+            self.assertEqual(direct_scratch_bound(blob, fills, roles), mib * 1024**2)
+        # A one-byte unaligned read still needs the capacity rounding unit.
+        self.assertEqual(direct_scratch_bound(1, 1, 1), 1024**2)
+        for invalid in (None, True, -1):
+            with self.assertRaises(ValueError):
+                stage_payload_bound(blob, invalid)
+        with self.assertRaises(ValueError):
+            direct_scratch_bound(blob, 16, 2)
+
     def test_replacement_overlap_counts_old_and_new_until_actual_uncommit(self):
         events = [
             {"action": "enter", "phase": "source_open"},

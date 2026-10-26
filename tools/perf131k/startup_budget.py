@@ -23,6 +23,36 @@ def known_bytes(value: object, name: str) -> int:
     return value
 
 
+def stage_payload_bound(blob_bytes: int, lifetime_max_busy: int) -> int:
+    """Owned payload only; caller must prove lifetime busy bound and no seq wrap.
+
+    Requires an initially empty pool and serialized claims. Vector/map capacity,
+    allocator overhead and events are separate ledger charges.
+    """
+    blob = known_bytes(blob_bytes, "maximum blob")
+    busy = known_bytes(lifetime_max_busy, "lifetime maximum busy slots")
+    if not blob:
+        raise ValueError("maximum blob must be positive")
+    return (256 + busy) * blob
+
+
+def direct_scratch_bound(blob_bytes: int, fills_per_call: int, role_count: int) -> int:
+    """Windows read_direct buffer capacity, excluding its vectors and events.
+
+    Source constants: 4096-byte sectors, <=1 MiB merged gaps, 1 MiB capacity
+    rounding. Each fill's role lengths sum to at most blob_bytes. Merging can
+    add at most one gap per window after the first; overlap only reduces size.
+    Caller must prove the maximum fills per call for every path on the thread.
+    """
+    blob = known_bytes(blob_bytes, "maximum blob")
+    fills = known_bytes(fills_per_call, "fills per call")
+    if not blob or not fills or type(role_count) is not int or role_count not in (1, 3):
+        raise ValueError("positive blob/fill counts and one or three roles required")
+    windows = fills * role_count
+    span = fills * blob + windows * (2 * 4096) + (windows - 1) * (1 << 20)
+    return (span + (1 << 20) - 1) // (1 << 20) * (1 << 20)
+
+
 def evaluate(manifest: dict) -> dict:
     """Assess explicit overlap; never mistake the result for measured Job charge."""
     if not isinstance(manifest, dict):
