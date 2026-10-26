@@ -1016,6 +1016,11 @@ async function api(req, res, path, method, url) {
    const folder=join(process.env.USERPROFILE??process.env.HOME??homedir(),'Downloads');mkdirSync(folder,{recursive:true});
    const file=join(folder,`strata-diagnostics-${new Date().toISOString().replace(/[:.]/g,'-').slice(0,19)}.txt`);writeFileSync(file,lines.join(NL),'utf8');
    return json(res,200,{path:file});}
+  if(path==='/api/native/hakua-chat'&&method==='POST'){
+    if(!native.state().capabilities.hakuaChatbot)return error(res,404,'Hakua memory chat is off.');
+    const body=await readBody(req);
+    return json(res,200,native.openHakuaChat({instanceId:body?.instanceId}));
+  }
   if(path==='/api/native/local/preview'&&method==='POST'){
    /* "Use a local GGUF": pick (or type) the folder, and Control says what is in it. Nothing is copied or changed. */
    const typed=await typedFolder((await readBody(req)).path,{isAbsolute,fileType:/\.gguf$/i});

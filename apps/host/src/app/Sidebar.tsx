@@ -18,7 +18,8 @@ import { MOD, runCommand } from '../lib/commands';
 import { bindingFor, bindingKeys, useBindings } from '../lib/shortcut-bindings';
 import { Btn, Dialog, Icon, IconBtn, type IconName } from '../components/ui';
 import { Brand } from '../components/Brand';
-import { addWorkspace, deleteSession, go, isUnread, pickWorkspace, renameSession, removeWorkspace, renameWorkspace, selectSession, setActiveWorkspace, setNavOpen, togglePin, toggleRail, setTheme, useStore } from '../lib/store';
+import { api } from '../lib/client';
+import { addWorkspace, deleteSession, go, isUnread, pickWorkspace, pushToast, renameSession, removeWorkspace, renameWorkspace, selectSession, setActiveWorkspace, setNavOpen, togglePin, toggleRail, setTheme, useStore } from '../lib/store';
 export function Sidebar({ containerRef }: {
     containerRef: RefObject<HTMLElement | null>;
 }) {
@@ -103,6 +104,7 @@ export function Sidebar({ containerRef }: {
       </div>
       <div className="nav__foot">
         <button className="enginechip" data-state={status === 'Ready' ? 'ready' : ['Reading prompt', 'Thinking', 'Generating', 'Loading'].includes(status) ? 'busy' : 'off'} onClick={() => go('models')} title={tr("{0} \u00B7 {1} \u00B7 {2}", [modelName, modelQuant, tr(status)])} aria-label={tr("{0} \u00B7 {1}", [modelName, modelQuant])}><span className="enginechip__family"><Icon name={modelFamilyIcon(current?.family)} size={20}/><span className="enginechip__dot"/></span><span className="enginechip__text nav__rail-hide"><span className="enginechip__title">{modelName}</span><span className="enginechip__sub">{modelQuant}</span></span></button>
+        {tr(native?.capabilities?.hakuaChatbot ? <button type="button" className="st-btn nav-hakua" disabled={!nativeCurrent || nativeCurrent.status !== 'ready'} title={tr(!nativeCurrent || nativeCurrent.status !== 'ready' ? 'Load a native model first. Hakua memory chat opens its local web page.' : 'Open Hakua memory chat for the loaded model (local browser; enter your memory key there).')} aria-label={tr("Hakua memory chat")} onClick={() => { void api.post('/api/native/hakua-chat', { instanceId: nativeCurrent?.id }).then(() => pushToast('info', 'Hakua memory chat', 'Opened the local memory page. Enter your own memory key there; the Host key is not used.'), error => pushToast('warn', 'Could not open Hakua chat', error instanceof Error ? error.message : String(error))); }}><Icon name="chat" size={18}/><span className="nav__rail-hide">{tr("Hakua memory")}</span></button> : null)}
         <NavLink route="skills" label={tr("Skills")} icon="skills" current={location.route}/>
         <NavLink route="monitor" label={tr("Monitor")} icon="activity" current={location.route}/>
         <NavLink route="models" label={tr("Models")} icon="models" current={location.route === 'tuning' ? 'models' : location.route}/>

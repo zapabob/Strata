@@ -8557,19 +8557,23 @@ def main(argv=None, *, lifecycle_event=None, interrupt_exit_code: int = 0) -> in
         if blocked:
             ap.error("--offline cannot be strict for this profile: " + "; ".join(blocked))
     lazy = False
+    early_memory_harness = None
     if a.engine != "strata" and isinstance(cfg.get("hakua_harness"), dict) and cfg["hakua_harness"].get("enabled") is True:
         ap.error("hakua_harness requires the Strata engine")
     if a.engine == "strata":
         if not cfg:
             ap.error("--engine strata needs --config")
         cfg = with_component_engine(cfg)
-        if isinstance(cfg.get("hakua_harness"), dict) and cfg["hakua_harness"].get("enabled") is True:
-            try:
-                memory_harness.require_private_engine(cfg["hakua_harness"], engine_args(cfg),
-                                                      slot_save_path=a.slot_save_path or cfg.get("slot_save_path"),
-                                                      batch_trace=_BTRACE)
-            except ValueError as e:
-                ap.error(str(e))
+        # Auth and privacy gates before the minutes of GPU loading: false keys,
+        # shared keys, bad roots and cache settings fail here, not after load.
+        try:
+            early_memory_harness = memory_harness.configure_harness(
+                cfg.get("hakua_harness"), key_list(preflight_api_key),
+                engine_argv=engine_args(cfg),
+                slot_save_path=a.slot_save_path or cfg.get("slot_save_path"),
+                batch_trace=_BTRACE)
+        except ValueError as e:
+            ap.error(str(e))
         vision = None
         # The engine's own environment. It carries the offline policy too: an engine that fetched a
         # missing shard or a plugin would break the promise the flag makes.
@@ -8724,9 +8728,7 @@ def main(argv=None, *, lifecycle_event=None, interrupt_exit_code: int = 0) -> in
     if svc.aliases:
         print(f"[strata] model aliases: {', '.join(svc.aliases)}", flush=True)
     svc.api_key = preflight_api_key
-    svc.memory_harness = memory_harness.from_config(cfg.get("hakua_harness"), accepted_keys=key_list(svc.api_key))
-    if svc.memory_harness is not None and not svc.api_key:
-        raise ValueError("hakua_harness requires an existing server API key")
+    svc.memory_harness = early_memory_harness
     try:
         svc.telemetry_key = api_key_of(os.environ.get("STRATA_TELEMETRY_KEY") or cfg.get("telemetry_read_key", ""))
     except ValueError as e:

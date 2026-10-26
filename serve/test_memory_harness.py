@@ -101,6 +101,50 @@ class HarnessTests(unittest.TestCase):
             mh.require_private_engine(config, safe, batch_trace=True)
         mh.require_private_engine(None, [])
 
+    def test_configure_harness_rejects_bad_auth_before_any_engine_load(self):
+        """CPU gate: false keys, shared keys, nested roots and bad persona fail closed."""
+        safe = ["--prompt-cache", "0", "--conversation-cache-mib", "0"]
+        self.assertIsNone(mh.configure_harness(None, ["synthetic-a"]))
+        self.assertIsNone(mh.configure_harness({"enabled": False, "users": []}, ["synthetic-a"]))
+        with self.assertRaisesRegex(ValueError, "existing server API key"):
+            mh.configure_harness({"enabled": True, "users": [
+                {"principal": "a", "key_env": "TEST_MEMORY_A", "root": str(self.root / "a")}]}, [])
+        with self.assertRaisesRegex(ValueError, "distinct ASCII existing key"):
+            mh.configure_harness({"enabled": True, "users": [
+                {"principal": "a", "key_env": "TEST_MEMORY_A", "root": str(self.root / "a")}]},
+                ["wrong-key"], engine_argv=safe)
+        nested = self.root / "parent"
+        nested.mkdir()
+        (nested / "child").mkdir()
+        with self.assertRaisesRegex(ValueError, "roots must be separate"):
+            mh.configure_harness({"enabled": True, "users": [
+                {"principal": "a", "key_env": "TEST_MEMORY_A", "root": str(nested)},
+                {"principal": "b", "key_env": "TEST_MEMORY_B", "root": str(nested / "child")}]},
+                ["synthetic-a", "synthetic-b"], engine_argv=safe)
+        with self.assertRaisesRegex(ValueError, "persona_sha256"):
+            mh.configure_harness({"enabled": True, "users": [
+                {"principal": "a", "key_env": "TEST_MEMORY_A", "root": str(self.root / "ok-a"),
+                 "persona_sha256": {"SOUL.md": "not-a-hash"}}]},
+                ["synthetic-a"], engine_argv=safe)
+        with patch.dict(os.environ, {"TEST_MEMORY_A": "synthetic-a", "TEST_MEMORY_SHARED": "synthetic-a",
+                                     "TEST_MEMORY_B": "synthetic-a"}):
+            with self.assertRaisesRegex(ValueError, "distinct ASCII existing key"):
+                mh.configure_harness({"enabled": True, "users": [
+                    {"principal": "a", "key_env": "TEST_MEMORY_A", "root": str(self.root / "share-a")},
+                    {"principal": "b", "key_env": "TEST_MEMORY_B", "root": str(self.root / "share-b")}]},
+                    ["synthetic-a"], engine_argv=safe)
+        with self.assertRaisesRegex(ValueError, "prompt-cache"):
+            mh.configure_harness({"enabled": True, "users": [
+                {"principal": "a", "key_env": "TEST_MEMORY_A", "root": str(self.root / "cache-a")}]},
+                ["synthetic-a"], engine_argv=["--prompt-cache", "1", "--conversation-cache-mib", "0"])
+        ok = mh.configure_harness({"enabled": True, "users": [
+            {"principal": "a", "key_env": "TEST_MEMORY_A", "root": str(self.root / "ok-a")},
+            {"principal": "b", "key_env": "TEST_MEMORY_B", "root": str(self.root / "ok-b")}]},
+            ["synthetic-a", "synthetic-b", "host-only-key"], engine_argv=safe)
+        self.assertIsNotNone(ok)
+        self.assertEqual(ok.principal("synthetic-a").name, "a")
+        self.assertIsNone(ok.principal("host-only-key"), "Host key must not map to a memory principal")
+
     def test_mapped_request_without_memory_consent_never_enters_debug_log(self):
         output = io.StringIO()
         with patch.dict(os.environ, {"STRATA_DEBUG": "1"}), redirect_stdout(output):

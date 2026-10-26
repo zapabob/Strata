@@ -550,3 +550,43 @@ test("onboarding 'use your own GGUF' (#3507, #3424): the models folder the perso
     assert.ok(sent.data_dir === undefined || sent.data_dir === join(f.root, 'Strata-data'), `data_dir was ${sent.data_dir}`);
   } finally { await f.native.close(); f.cleanup(); }
 });
+
+test('packaged: hakua_harness keeps principal keys in the saved profile and uses a separate Host key', async () => {
+  const f = packagedFixture();
+  const earlierA = process.env.STRATA_TEST_ALICE, earlierB = process.env.STRATA_TEST_BOB;
+  process.env.STRATA_TEST_ALICE = 'alice-memory-key';
+  process.env.STRATA_TEST_BOB = 'bob-memory-key';
+  try {
+    const path = join(f.install, 'strata-iq2_xs.json');
+    const current = JSON.parse(readFileSync(path, 'utf8'));
+    current.api_key = ['alice-memory-key', 'operator-admin'];
+    current.args = ['--max-context', '32768', '--prompt-cache', '0', '--conversation-cache-mib', '0'];
+    current.hakua_harness = {
+      enabled: true,
+      users: [
+        { principal: 'alice', key_env: 'STRATA_TEST_ALICE', root: join(f.root, 'mem-alice').replaceAll('\\', '/') },
+        { principal: 'bob', key_env: 'STRATA_TEST_BOB', root: join(f.root, 'mem-bob').replaceAll('\\', '/') },
+      ],
+    };
+    writeFileSync(path, JSON.stringify(current));
+    await f.native.refresh(true);
+    const job = await finish(f.native, f.native.operation('load', { model: 'iq2_xs' }).id);
+    assert.equal(job.state, 'done', job.error);
+    const saved = f.saved.at(-1);
+    const instance = f.native.state().instances[0];
+    assert.ok(Array.isArray(saved.api_key));
+    assert.ok(saved.api_key.includes('alice-memory-key'));
+    assert.ok(saved.api_key.includes('bob-memory-key'));
+    assert.ok(saved.api_key.includes('operator-admin'));
+    // Public Host state never exposes the raw key; the saved profile carries one Host-only key beyond principals+admin.
+    const extras = saved.api_key.filter(k => !['alice-memory-key', 'bob-memory-key', 'operator-admin'].includes(k));
+    assert.equal(extras.length, 1);
+    assert.equal(extras[0].length, 64);
+    assert.equal(instance.status, 'ready');
+    assert.equal('key' in instance, false);
+  } finally {
+    if (earlierA === undefined) delete process.env.STRATA_TEST_ALICE; else process.env.STRATA_TEST_ALICE = earlierA;
+    if (earlierB === undefined) delete process.env.STRATA_TEST_BOB; else process.env.STRATA_TEST_BOB = earlierB;
+    await f.native.close(); f.cleanup();
+  }
+});

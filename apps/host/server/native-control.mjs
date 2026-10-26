@@ -21,6 +21,7 @@ import { createAutoTune, writeTuneConfig } from './native-autotune.mjs';
 import { plainError, PHASE_TEXT } from './update-messages.mjs';
 import { checkAndParseRunConfig, checkRunConfig, describeIssues } from './run-config-check.mjs';
 import { openTextFile } from './open-text-file.mjs';
+import { openLoopbackUrl } from './open-loopback.mjs';
 import { markEngine, engineRefusal } from './engine-version.mjs';
 import { friendlyModelName } from './model-names.mjs';
 import { parseSaved as parseRoles, mirror as mirrorRoles } from './gpu-roles.mjs';
@@ -32,6 +33,55 @@ function readJson(path,fallback={}){try{return JSON.parse(readFileSync(path,'utf
 
 /** The plain words for "no usable engine": the model still downloads, but loading needs the engine (owner decision 2026-10-18). */
 export const ENGINE_NOT_RECOGNISED='Strata didn’t recognise an engine for this computer. The model is downloaded, but it can’t run until the right engine is installed. Open Settings → Engine.';
+
+/** Normalize a run-config api_key (string, comma list, or array) to distinct non-empty strings. */
+export function nativeApiKeyList(value){
+  if(value==null||value==='')return [];
+  if(Array.isArray(value))return [...new Set(value.map(v=>String(v).trim()).filter(Boolean))];
+  return [...new Set(String(value).split(',').map(s=>s.trim()).filter(Boolean))];
+}
+
+/**
+ * Choose the Host instance key and the api_key list written into the run config.
+ * Default path: one fresh Host key (previous behaviour).
+ * When hakua_harness.enabled is true: keep each principal key from its key_env,
+ * keep any other configured keys, and add a distinct Host key that is never a
+ * memory principal. The returned key is always the Host-only key.
+ */
+export function applyNativeApiKeys(cfg,env=process.env){
+  const fresh=()=>randomBytes(32).toString('hex');
+  const harness=cfg?.hakua_harness;
+  if(!(harness&&harness.enabled===true)){
+    const key=fresh();
+    cfg.api_key=key;
+    return key;
+  }
+  if(typeof harness!=='object'||Array.isArray(harness)||!Array.isArray(harness.users)){
+    throw new Error('hakua_harness requires enabled and users only');
+  }
+  const principalKeys=[],seen=new Set();
+  for(const user of harness.users){
+    if(!user||typeof user!=='object'||typeof user.key_env!=='string'||!user.key_env){
+      throw new Error('hakua_harness users require principal, key_env, root and optional persona_sha256/persona_max_bytes');
+    }
+    const value=env[user.key_env]??'';
+    if(!value||![...value].every(c=>c.charCodeAt(0)<128)){
+      throw new Error('hakua_harness requires a distinct ASCII existing key for every principal');
+    }
+    if(seen.has(value)){
+      throw new Error('hakua_harness requires a distinct ASCII existing key for every principal');
+    }
+    seen.add(value);
+    principalKeys.push(value);
+  }
+  if(!principalKeys.length)throw new Error('hakua_harness requires users');
+  let key=fresh();
+  while(seen.has(key))key=fresh();
+  const preserved=nativeApiKeyList(cfg.api_key).filter(k=>k!==key);
+  cfg.api_key=[...new Set([...principalKeys,...preserved,key])];
+  return key;
+}
+
 export function createNativeControl({directory,requests=()=>[],changed=()=>{},spawnProcess=spawn,fetcher=fetch,modelsDirectory,nativeDataDirectory=value=>value,beforeLoad=async()=>{},hardwareProbe=()=>[],control=null,ready=null,appUpdater=null,defaultRepo=process.env.STRATA_NATIVE_REPO??resolve(ROOT,'../../Strata')}={}){
  mkdirSync(directory,{recursive:true});
  const settingsPath=join(directory,'native-host.json');
@@ -59,7 +109,8 @@ export function createNativeControl({directory,requests=()=>[],changed=()=>{},sp
  /* Does the engine in this release serve DFlash2? Control knows (strata_control/drafting.py); asked once, false until it answers. The Models screen offers the choice only when true. */
  let dflash2Served=null;
  function probeDrafting(){if(!packaged||dflash2Served!==null||typeof control.draftingPlan!=='function')return;dflash2Served=false;control.draftingPlan({mode:'auto'}).then(p=>{dflash2Served=p.serves===true;emit();}).catch(()=>{});}
- function state(){const folder=preferences.downloadDirectory??(modelsDirectory?modelsDirectory():snapshot.installed?.data_folder),space=folder?diskSpace(folder):null;return {...snapshot,downloadDirectory:folder,downloadFreeBytes:space?.free??null,downloadTotalBytes:space?.total??null,fields:nativeFields(),instances:[...instances.values()].map(({key,configPath,fingerprint,mcpServers,...i})=>structuredClone(i)),defaultId,jobs:[...jobs.values()].slice(-12).map(({process,abort,engineAbort,rawResult,...j})=>j),capabilities:{responses:sourceText().includes('/v1/responses'),updates:!!snapshot.available,rollback:previousEngine(),componentUpdates:packaged&&typeof control.update==='function',calibration:packaged?false:snapshot.hardware?.gpus?.some(g=>/nvidia/i.test(g.name??''))??false,dflash2:dflash2Served===true}};}
+ function hakuaChatbotEnabled(){const v=String(process.env.STRATA_HAKUA_CHATBOT??'').trim().toLowerCase();return v==='1'||v==='true'||v==='yes'||v==='on';}
+ function state(){const folder=preferences.downloadDirectory??(modelsDirectory?modelsDirectory():snapshot.installed?.data_folder),space=folder?diskSpace(folder):null;return {...snapshot,downloadDirectory:folder,downloadFreeBytes:space?.free??null,downloadTotalBytes:space?.total??null,fields:nativeFields(),instances:[...instances.values()].map(({key,configPath,fingerprint,mcpServers,...i})=>structuredClone(i)),defaultId,jobs:[...jobs.values()].slice(-12).map(({process,abort,engineAbort,rawResult,...j})=>j),capabilities:{responses:sourceText().includes('/v1/responses'),updates:!!snapshot.available,rollback:previousEngine(),componentUpdates:packaged&&typeof control.update==='function',calibration:packaged?false:snapshot.hardware?.gpus?.some(g=>/nvidia/i.test(g.name??''))??false,dflash2:dflash2Served===true,hakuaChatbot:hakuaChatbotEnabled()}};}
  let sourceCache={path:'',time:0,text:''};
  function sourceText(){try{const path=join(packaged?control.control.dir:preferences.repo,'serve/server.py'),time=statSync(path).mtimeMs;if(sourceCache.path===path&&sourceCache.time===time)return sourceCache.text;sourceCache={path,time,text:readFileSync(path,'utf8')};return sourceCache.text;}catch{return '';}}
  function nativeFields(){const source=sourceText();return NATIVE_FIELDS.map(field=>({...field,supported:APP_OWNED_FIELDS.includes(field.id)||field.id.startsWith('vision_')||field.id.startsWith('mcp_')||field.id==='vram_reserve_mib'||source.includes(field.id)}));}
@@ -270,7 +321,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   const wasDefault=matching?.id===defaultId;
   const id=matching?.id??randomUUID();let apiModelId=matching?.apiModelId??args.model,suffix=1;while(!matching&&[...instances.values()].some(i=>i.apiModelId===apiModelId))apiModelId=`${args.model}--${++suffix}`;
   cfg.aliases=[...new Set([...(Array.isArray(cfg.aliases)?cfg.aliases:typeof cfg.aliases==='string'?cfg.aliases.split(',').map(s=>s.trim()).filter(Boolean):[]),apiModelId])];
-  const key=randomBytes(32).toString('hex');cfg.api_key=key;cfg.port=await freePort(args.port);
+  const key=applyNativeApiKeys(cfg);cfg.port=await freePort(args.port);
   const work=join(directory,'native-instances');mkdirSync(work,{recursive:true});const configPath=join(work,`${id}.json`);
   const py=packaged?null:venvPython(repo());if(!packaged&&!existsSync(py))throw new Error('The Strata Python environment is missing. Use Download / repair first.');
   if(job.state!=='running')return;
@@ -511,5 +562,15 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
  // Remove nonserializable process references from public jobs.
  const publicState=()=>{const value=state();value.jobs=value.jobs.map(({process,engineAbort,rawResult,...job})=>job);return value;};
  async function localPreview(path){if(!packaged)throw new Error('Checking local model files is part of the Strata app.');if(typeof path!=='string'||!path.trim()||[...path].some(c=>c.charCodeAt(0)<32))throw new Error('Choose a folder.');return control.importPlan(path.trim());}
- return {state:publicState,tuneStatus,tuneEffective,tuneOff,tunePresets:{list:()=>autotuner.list(),action:(kind,id,extra)=>autotuner.action(kind,id,extra),undoFor:async args=>autotuner.undoFor(tuneConfig(args).path)},refresh,localPreview,configure,setDownloadDirectory,planModelsFolder,startModelsFolder,interruptedMove,finishInterruptedMove,leaveInterruptedMove,plan,settings,save,settingsFile,openSettingsFile,operation,cancel,unload,resolveInstance,poll,logs:()=>logs.slice(),benchmarkReport:()=>readJson(join(directory,'native-benchmark.json'),null),setDefault(id){defaultId=resolveInstance(id).id;emit();return publicState();},hasLive:()=>[...instances.values()].some(i=>i.status==='ready'),readyInstances:()=>[...instances.values()].filter(i=>i.status==='ready'),defaultInstanceId:()=>defaultId,close};
+ /** Opt-in Hakua memory chat: opens the selected native instance's Python web page on loopback only. Never puts keys in the URL. */
+ function openHakuaChat(args={},opener=openLoopbackUrl){
+  if(!hakuaChatbotEnabled())throw new Error('Hakua memory chat is off. Set STRATA_HAKUA_CHATBOT=1 to show it.');
+  const instance=resolveInstance(args.instanceId??defaultId);
+  if(instance.status!=='ready')throw new Error('Load a model first. Hakua memory chat needs a ready native instance.');
+  const port=Number(instance.port);
+  if(!Number.isInteger(port)||port<1024||port>65535)throw new Error('This model has no valid local port.');
+  // Keys stay out of the URL and command line; the person authenticates in the memory-chat page.
+  return opener(`http://127.0.0.1:${port}/`);
+ }
+ return {state:publicState,tuneStatus,tuneEffective,tuneOff,tunePresets:{list:()=>autotuner.list(),action:(kind,id,extra)=>autotuner.action(kind,id,extra),undoFor:async args=>autotuner.undoFor(tuneConfig(args).path)},refresh,localPreview,openHakuaChat,configure,setDownloadDirectory,planModelsFolder,startModelsFolder,interruptedMove,finishInterruptedMove,leaveInterruptedMove,plan,settings,save,settingsFile,openSettingsFile,operation,cancel,unload,resolveInstance,poll,logs:()=>logs.slice(),benchmarkReport:()=>readJson(join(directory,'native-benchmark.json'),null),setDefault(id){defaultId=resolveInstance(id).id;emit();return publicState();},hasLive:()=>[...instances.values()].some(i=>i.status==='ready'),readyInstances:()=>[...instances.values()].filter(i=>i.status==='ready'),defaultInstanceId:()=>defaultId,close};
 }

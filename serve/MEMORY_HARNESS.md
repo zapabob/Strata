@@ -20,7 +20,13 @@ The operator supplies `hakua_harness` in the existing server configuration:
 Each environment variable must contain a unique ASCII key already accepted by
 the server's existing `api_key` configuration. The ASCII restriction makes
 HTTP header identity unambiguous across the server's legacy UTF-8 decoding.
-No keys are generated or logged.
+No keys are generated or logged. The Native Control load path keeps those
+principal keys when `hakua_harness.enabled` is true and adds a distinct Host
+key for the app's own engine traffic. That Host key is never mapped to a
+memory principal. Shared Host gateway traffic still cannot carry
+`strata_memory`. Authentication and privacy gates run before the native
+engine or GPU load; a bad key, root, persona approval or cache setting fails
+closed without starting the model.
 Each user may also supply `persona_sha256`, an operator-owned object mapping
 `SOUL.md`, `USER.md` and/or `MEMORY.md` to their approved lowercase SHA256 values.
 Missing approvals omit those files. `MEMORY.md` is approved prompt context;
