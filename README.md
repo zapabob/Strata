@@ -26,20 +26,18 @@ Control settings, models and installed engine have not been replaced by this bui
 
 | Scope, checked 26 October 2026 | Result |
 | --- | --- |
-| Blob-failure diagnostics: targeted CPU tests | 8 passed |
-| Selected diagnostics / native-exit CPU regression | 18 passed |
-| Limited fault mutations | 4 detected |
-| Actual product `expert_source.cpp` / `generate.cpp` host compilation | Passed |
-| Engine archive and final executable link | Passed |
-| Independent CPU and limited-build review | Accepted within those scopes |
-| Candidate GPU startup | RAN_FAILED_BEFORE_READY; Job commit limit exceeded |
-| Candidate completed model inference | NOT_RUN |
-| Paired performance statistics / cross-validation evaluation | NOT_RUN; design reviewed |
+| Startup, diagnostics and statistics CPU tests | 43 passed with `pytest-randomly` disabled |
+| Opt-in memory harness tests | 24 passed, 1 Windows symlink test skipped for missing privilege; native multiuser isolation remains unqualified |
+| Fresh Windows CUDA SM120 `Release/x64` engine link | Passed with GGML `3cf0325`, CUDA 13.3 and MSVC |
+| Fresh executable read-only `--help` | Exit 0; no model loaded |
+| Earlier 10 GiB Job diagnostic | RAN_FAILED_BEFORE_READY; this was a different executable |
+| Fresh candidate GPU startup / completed model inference | NOT_RUN |
+| Paired performance statistics / cross-validation evaluation | Offline executor passed 13 synthetic tests; measured pairs NOT_RUN |
 | PPL / KL / full-context quality / stability | NOT_RUN |
 | Practical 131072-token qualification | NOT_QUALIFIED |
-| Reused object-to-source provenance | UNRESOLVED |
+| Fresh build source and artifact hashes | Engine fix committed as `dd0b797a`; benchmark executor committed as `fe7f5159`; local binary and inputs hashed |
 
-One authorized candidate pilot ended before READY. Controller-observed elapsed
+One earlier candidate pilot ended before READY. Controller-observed elapsed
 was41.61 seconds,including monitoring and cleanup. The controller
 reported Job-limit status125; the preserved native exit was1. Job peak commit was
 10,740,895,744 bytes against10,737,418,240 configured. No request completed. The
@@ -47,19 +45,22 @@ bounded snapshot retained32 host allocation failures and dropped99 records; it
 does not establish a direct causal link to the terminal blob-null pair. The Job
 terminated with no remaining processes. No automatic retry or cap increase occurred.
 
-The limited Windows build uses existing Release/x64 product settings with
-MSVC, CUDA 13.3 headers/libraries and the existing SM120 artifacts. It does not
-constitute a fresh device-kernel build or establish CUDA execution compatibility.
-The candidate is an AMD64 PE of 80,742,400 bytes:
+The current candidate is a fresh Windows `Release/x64` CUDA SM120 build. It
+compiled and linked the engine, Spin8, native cache and GGML TQ overlay. The
+build does not establish model startup, inference quality or GPU stability.
+The new candidate executable is 80,756,224 bytes:
 
 ```text
-SHA256 a8ec8e3d4ed948fafcc5c20e829b0d6b49f4f8482d30e279a1d0314e5e1004dd
+SHA256 0894022ca65dd036754ab088b9ba814dc5ebd58da10439984034b06afff29e1e
 ```
 
 The selected installed preview executable still has SHA256
 `4281dd8b886f4863fd85e71e35c4fe64c084c4cdb9ce1cd1029c5dbbed958610`.
 Published archives have their own checksums; the candidate checksum above is not
-an archive checksum or a signature.
+an archive checksum or a signature. The SHA256 values for the new executable,
+`strata_kq.dll`, both GGUF shards, the pack, MTP files, tokenizer and expert
+profile are recorded under `H:\Strata\evidence\p01-full-build-20261026`.
+The final code and binary link is in `build-provenance-after-complement.json` there.
 
 ## What the candidate changes
 
@@ -87,7 +88,8 @@ series. Trace OFF/ON comparisons use the same series and exact token inputs.
 
 Older executables stopped before READY in Job-limited startup attempts, including
 10 GiB. Those failures yielded no completed inference and no throughput or quality
-result. The new candidate diagnostic also stopped before READY, as recorded above. No smaller capacity,
+result. The earlier candidate diagnostic also stopped before READY, as recorded
+above. The fresh executable has not been used for a model launch. No smaller capacity,
 model substitution, silent output-reservation shortening or precision reduction is
 accepted as a 131k pass. The internal 8-token slack remains a separate unresolved
 capacity-contract item.
@@ -152,7 +154,9 @@ release validation. Machine-local evidence, model files and environment backups
 are not published in this repository. Local pilot helpers require explicit bindings
 and resource gates; they are not a general-purpose model launcher.
 
-CI must succeed on the exact release source commit. The historical `e68f8926`
+CI must succeed on the exact release source commit. The engine fix, offline
+analysis and disabled-by-default memory harness are committed locally as
+`dd0b797a`, `fe7f5159` and `fb51a51c`. No same-source CI result exists. The historical `e68f8926`
 checkpoint has successful workflows; that is not a pass for the current candidate.
 Actions permissions currently report enabled, but this alone does not prove the
 previous HTTP422 dispatch problem is resolved. Candidate-source CI is pending.
