@@ -220,6 +220,36 @@ MTP ring window, so neither main nor MTP has a full-context host K/V copy on
 this path. Mapped step/position staging, prefill staging and the resident arena
 remain separate owners; none is covered by the profile-stage payload bound.
 
+The remaining source audit identified these additional logical requests for
+the selected flags. They are not interchangeable with measured Job commit.
+
+| Owner | Known payload request | Lifetime/accounting limit |
+| --- | --- | --- |
+| WeightTable upload staging | 8 MiB input + 16 MiB output | Temporary pinned storage; release outcome needs evidence. |
+| Direct PLE cache and read slab | 100,794,368 bytes | IQ4_NL 90-byte rows: 1,048,576 cache rows, eight ways, plus 256 two-page read slots. Persistent; queue/statistics/container overhead excluded. |
+| Initial unshared RoPE construction | 33,554,432 bytes | Temporary host table at capacity 131072 and rotation width 64. |
+| Prefill listed host requests | At most 348,070,164 bytes | `R * 1,382,400 + 20,888 * T + 8,468`, defaults `R <= 128`, `T <= 8192`; failed initialization retries and allocator retention need separate accounting. |
+| SessionLoopScratch / Doorbell | 102,400 / 10,328 bytes | Mapped host storage; other verifier buffers remain separate. |
+
+Each QSA state also requests 116 pinned host bytes. MTP's ordinary mapped
+input/output staging requests 1,328 bytes plus its QSA staging; its default
+identity-table temporary requests 524,288 bytes. ExpertCache has residency,
+cursor, offset and segmented-cache metadata; retained capacities and retry
+overlap must be recorded, rather than charging only container size.
+
+The PE stack reserve is 1,048,576 bytes with 4,096 bytes initially committed.
+Reserve is not already committed, and later stack growth and driver/runtime
+threads are unknown. The audit therefore does not justify a complete total.
+`partial-host-payloads.json` in the local evidence directory binds the partial
+inventory to source hashes. `resource-overrides-snapshot.json` records only
+allowlisted resource overrides in the tool process; it is not a frozen future
+launch environment. The older pilot explicitly set `STRATA_RESIDENT_PIN=0`.
+
+A new read-only resource check reported 8,082,767,872 available physical bytes,
+23,051,309,056 bytes of commit headroom and 131,753,775,104 free H: bytes.
+Available RAM still fails the older 12 GiB admission condition. No new model
+launch, diagnostic authorization, cap change or service action followed.
+
 On Windows, `read_direct` retains its `VirtualAlloc` scratch in thread-local
 storage. Its capacity rounds each batch's merged read span up to 1 MiB. The
 profile path can overlap a foreground batch with an asynchronous next batch,
