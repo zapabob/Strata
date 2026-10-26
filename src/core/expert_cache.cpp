@@ -271,11 +271,16 @@ CUmemAllocationProp device_prop(int dev) {
 }
 
 // one segment: a physical allocation mapped at `va`, readable and writable by this device
-bool map_segment(const Vmm& v, int dev, CUdeviceptr va, size_t bytes, unsigned long long& handle) {
+bool map_segment(const Vmm& v, int dev, CUdeviceptr va, size_t bytes, unsigned long long& handle,
+                 const char*& failed_api, CUresult& failed_code) {
     const CUmemAllocationProp prop = device_prop(dev);
     CUmemGenericAllocationHandle h = 0;
-    if (v.create(&h, bytes, &prop, 0) != CUDA_SUCCESS) return false;
-    if (v.map(va, bytes, 0, h, 0) != CUDA_SUCCESS) {
+    failed_api = "cuMemCreate";
+    failed_code = v.create(&h, bytes, &prop, 0);
+    if (failed_code != CUDA_SUCCESS) return false;
+    failed_api = "cuMemMap";
+    failed_code = v.map(va, bytes, 0, h, 0);
+    if (failed_code != CUDA_SUCCESS) {
         v.release(h);
         return false;
     }
@@ -283,7 +288,9 @@ bool map_segment(const Vmm& v, int dev, CUdeviceptr va, size_t bytes, unsigned l
     access.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
     access.location.id = dev;
     access.flags = CU_MEM_ACCESS_FLAGS_PROT_READWRITE;
-    if (v.set_access(va, bytes, &access, 1) != CUDA_SUCCESS) {
+    failed_api = "cuMemSetAccess";
+    failed_code = v.set_access(va, bytes, &access, 1);
+    if (failed_code != CUDA_SUCCESS) {
         v.unmap(va, bytes);
         v.release(h);
         return false;
@@ -331,12 +338,15 @@ bool ExpertCache::open_segmented(uint64_t want, std::string& err) {
         seg_size_.push_back((int64_t) std::min<uint64_t>((uint64_t) seg_, total - at));
     }
     for (size_t i = 0; i < segs_.size(); ++i) {
+        const char* failed_api = nullptr;
+        CUresult failed_code = CUDA_SUCCESS;
         if (!map_segment(v, dev, va + (CUdeviceptr) ((uint64_t) i * (uint64_t) seg_), (size_t) seg_size_[i],
-                         segs_[i])) {
-            char buf[200];
+                         segs_[i], failed_api, failed_code)) {
+            char buf[320];
             std::snprintf(buf, sizeof buf, "ExpertCache: cudaMalloc failed: segment %zu of %zu (%.2f GiB) of the "
-                          "segmented cache could not be allocated", i + 1, segs_.size(),
-                          (double) seg_size_[i] / 1073741824.0);
+                          "segmented cache could not be allocated; API=%s CUresult=%d requested=%zu bytes",
+                          i + 1, segs_.size(), (double) seg_size_[i] / 1073741824.0,
+                          failed_api, (int) failed_code, (size_t) seg_size_[i]);
             err = buf;   // "cudaMalloc failed": the auto cache's smaller-retry path reads it as an allocation failure
             release_segmented();
             return false;
@@ -431,10 +441,16 @@ bool ExpertCache::grow(int64_t want_bytes, std::string& err) {
     int64_t at = mapped_bytes();
     while (mapped_segs_ < (int64_t) segs_.size() && at + seg_size_[(size_t) mapped_segs_] <= want_bytes) {
         const size_t i = (size_t) mapped_segs_;
+        const char* failed_api = nullptr;
+        CUresult failed_code = CUDA_SUCCESS;
         if (!map_segment(v, dev, va + (CUdeviceptr) ((uint64_t) i * (uint64_t) seg_), (size_t) seg_size_[i],
-                         segs_[i])) {
+                         segs_[i], failed_api, failed_code)) {
             (void) cudaGetLastError();
-            err = "the driver has no VRAM for another expert-cache segment";
+            char buf[320];
+            std::snprintf(buf, sizeof buf, "the driver has no VRAM for another expert-cache segment; "
+                          "segment %zu of %zu API=%s CUresult=%d requested=%zu bytes",
+                          i + 1, segs_.size(), failed_api, (int) failed_code, (size_t) seg_size_[i]);
+            err = buf;
             live_slots_ = slots_within(mapped_bytes());
             return false;
         }

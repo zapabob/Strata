@@ -127,8 +127,59 @@ def require(ok: bool, operation: str) -> None:
         raise OSError(C.get_last_error(), operation)
 
 
-def run_owned(command, root, env, raw, budget, sample, *, stdin_path=None):
+class ProcessMemory(C.Structure):
+    # PROCESS_MEMORY_COUNTERS_EX, pointer-width-safe on both Windows architectures.
+    _fields_ = [("cb", W.DWORD), ("page_fault_count", W.DWORD)] + [
+        (name, C.c_size_t) for name in ("peak_working_set", "working_set", "peak_paged_pool", "paged_pool",
+                                      "peak_nonpaged_pool", "nonpaged_pool", "pagefile", "peak_pagefile", "private")]
+
+
+def process_memory_reader():
+    """Opt-in only. Reads the held owned handle, never opens a PID or enumerates processes."""
+    try:
+        query = C.WinDLL("kernel32", use_last_error=True).K32GetProcessMemoryInfo
+        query.restype, query.argtypes = W.BOOL, [W.HANDLE, C.c_void_p, W.DWORD]
+    except (OSError, AttributeError) as error:
+        code = getattr(error, "winerror", None)
+        return lambda _: {"private_bytes": None, "working_set_bytes": None, "error_code": code}
+
+    def read(handle):
+        counters = ProcessMemory()
+        counters.cb = C.sizeof(counters)
+        if not query(handle, C.byref(counters), counters.cb):
+            code = C.get_last_error()
+            return {"private_bytes": None, "working_set_bytes": None, "error_code": code}
+        return {"private_bytes": counters.private, "working_set_bytes": counters.working_set, "error_code": None}
+    return read
+
+
+def record_memory(aggregate, reader, handle, resources):
+    """O(1) sampled aggregates, not an exact peak, phase trace, or whole-Job accounting."""
+    aggregate["samples"] += 1
+    for key in ("available_ram", "commit_headroom", "H_free"):
+        name = "min_" + key
+        old = aggregate[name]
+        aggregate[name] = resources[key] if old is None else min(old, resources[key])
+    try:
+        counters = reader(handle)
+    except OSError as error:
+        counters = {"private_bytes": None, "working_set_bytes": None, "error_code": getattr(error, "winerror", None)}
+    if counters["private_bytes"] is None or counters["working_set_bytes"] is None:
+        aggregate["failed_samples"] += 1
+        aggregate["last_error_code"] = counters["error_code"]
+    else:
+        for key in ("private_bytes", "working_set_bytes"):
+            name = "max_" + key
+            old = aggregate[name]
+            aggregate[name] = counters[key] if old is None else max(old, counters[key])
+    failures = aggregate["failed_samples"]
+    aggregate["status"] = "AVAILABLE" if failures == 0 else "UNKNOWN" if failures == aggregate["samples"] else "PARTIAL"
+
+
+def run_owned(command, root, env, raw, budget, sample, *, stdin_path=None, memory_diagnostics=False):
     """Create contained and suspended, verify membership, then resume; drain job on every exit."""
+    if type(memory_diagnostics) is not bool:
+        raise ValueError("memory diagnostics requires an explicit bool")
     if stdin_path is not None:
         stdin_path = Path(stdin_path).resolve()
         owned_root = Path(root).resolve()
@@ -139,6 +190,9 @@ def run_owned(command, root, env, raw, budget, sample, *, stdin_path=None):
     result = {
         "status": "BLOCKED",
         "exit_code": 77,
+        # Owned root exit observed before controller cleanup; never infer from a termination code.
+        "native_exit_code": None,
+        "native_exit_code_observation": "NOT_OBSERVED",
         "contained_before_resume": False,
         "termination_confirmed": False,
         "job_active_after": None,
@@ -154,6 +208,12 @@ def run_owned(command, root, env, raw, budget, sample, *, stdin_path=None):
     process = Process()
     read_fd, write_fd = None, None
     result["configured_job_commit_bytes"] = budget.job_commit_bytes
+    if memory_diagnostics:
+        result["memory_diagnostics"] = {
+            "scope": "owned_root_process_sampled_not_job_peak", "status": "UNKNOWN",
+            "samples": 0, "failed_samples": 0, "last_error_code": None,
+            "max_private_bytes": None, "max_working_set_bytes": None,
+            "min_available_ram": None, "min_commit_headroom": None, "min_H_free": None}
 
     def drain(output):
         """One bounded pipe read; never append more than the declared output cap."""
@@ -243,6 +303,7 @@ def run_owned(command, root, env, raw, budget, sample, *, stdin_path=None):
                 "verify suspended job membership",
             )
             result["contained_before_resume"] = True
+            reader = process_memory_reader() if memory_diagnostics else None
             os.close(write_fd)
             write_fd = None
             require(kernel.ResumeThread(process.thread) != 0xFFFFFFFF, "resume owned child")
@@ -255,6 +316,8 @@ def run_owned(command, root, env, raw, budget, sample, *, stdin_path=None):
                 resources = sample(root)
                 result["resource_samples"] += 1
                 result["last_resources"] = resources
+                if memory_diagnostics:
+                    record_memory(result["memory_diagnostics"], reader, process.process, resources)
                 if (resources["available_ram"] < budget.min_available_ram
                         or resources["commit_headroom"] < budget.min_commit_headroom
                         or resources["H_free"] < budget.min_H_free):
@@ -264,7 +327,11 @@ def run_owned(command, root, env, raw, budget, sample, *, stdin_path=None):
                 require(wait != 0xFFFFFFFF, "wait owned child")
                 if wait == 0:
                     code = W.DWORD()
-                    require(kernel.GetExitCodeProcess(process.process, C.byref(code)), "read child exit")
+                    observed = kernel.GetExitCodeProcess(process.process, C.byref(code))
+                    if not observed:
+                        result["native_exit_code_observation"] = "QUERY_FAILED"
+                    require(observed, "read child exit")
+                    result.update(native_exit_code=code.value, native_exit_code_observation="OBSERVED_BEFORE_CLEANUP")
                     result.update(status="FINISHED", exit_code=code.value)
                     # All buffered root/descendant output must be accounted before returning.
                     while drain(output) and not result["observed_dropped_bytes"]:

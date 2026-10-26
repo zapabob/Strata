@@ -34,6 +34,7 @@
 #include "strata/core/conversation_memory.hpp"
 #include "strata/core/coupled_draft.hpp"
 #include "strata/core/expert_source.hpp"
+#include "strata/perf131k/blob_failure.hpp"
 #include "strata/core/foresight_swap.hpp"
 #include "strata/core/pinned.hpp"
 #include "strata/core/pin_budget.hpp"
@@ -6558,7 +6559,18 @@ int main(int argc, char** argv) {
                 if (per_layer) continue;
                 break;
             }
+            strata::perf131k::blob_failure::Scope profile_blob_scope(
+                srcp == &src ? strata::perf131k::blob_failure::Source::file : strata::perf131k::blob_failure::Source::arena,
+                profile[(size_t) i].first, profile[(size_t) i].second);
             const uint8_t* b = srcp->blob_stable(profile[(size_t) i].first, profile[(size_t) i].second);
+            if (b == nullptr) {
+                strata::perf131k::blob_failure::flush_terminal(
+                    (uint64_t) strata::kernels::cpu::expert_layout().blob_bytes(profile[(size_t) i].first));
+                // A prior auto-cache retry may have left err populated. No transfer was attempted here.
+                err = "ExpertSource: blob acquisition failed (cause=unknown, layer=" +
+                      std::to_string(profile[(size_t) i].first) + ", expert=" +
+                      std::to_string(profile[(size_t) i].second) + ")";
+            }
             if (b == nullptr || !xcache.fill_slot_blocking(slot, b, err,
                     (int64_t) strata::kernels::cpu::expert_layout().blob_bytes(profile[(size_t) i].first))) {
                 std::fprintf(stderr, "strata generate: the profile fill failed at pair %lld: %s\n",

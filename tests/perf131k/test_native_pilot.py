@@ -19,7 +19,7 @@ if os.environ.get("P01_NATIVE_UNDER_TEST"):
 
 class NativePilotTests(TestCase):
     def fake_cell(self, *, raw=None, stale_tokenizer=False, trace="OFF", job_commit_gib=None,
-                  resources=None, observed=None):
+                  resources=None, observed=None, memory_diagnostics=False, job_result=None):
         base = Path("H:/Strata/worktrees/p01-a-20261025/_scratch/perf131k/b2-fixtures") / uuid.uuid4().hex
         base.mkdir(parents=True)
         shutil.copytree(native.BASE / "prepared", base / "prepared")
@@ -28,13 +28,14 @@ class NativePilotTests(TestCase):
             binding = json.loads(path.read_text())
             binding["tokenizer"]["vocab.json"] = "0" * 64
             path.write_text(json.dumps(binding))
-        def fake_runtime(command, root, env, output, budget, sample, *, stdin_path):
+        def fake_runtime(command, root, env, output, budget, sample, *, stdin_path, **diagnostics):
             if observed is not None:
-                observed.update(budget=vars(budget), launch=json.loads((root / "launch.json").read_text()))
+                observed.update(budget=vars(budget), launch=json.loads((root / "launch.json").read_text()),
+                                diagnostics=diagnostics)
             output.write_text(raw or "READY 131072 stop\nT 1\nDONE 1 4096 100 200 stop 0 0 0\n"
                               "T 1\nDONE 1 4096 10 200 stop 0 0 4096\n")
             return {"status": "FINISHED", "exit_code": 0, "termination_confirmed": True,
-                    "job_active_after": 0, "owned_root_pid": 123}
+                    "job_active_after": 0, "owned_root_pid": 123, **(job_result or {})}
         class Tok:
             def decode(self, ids):
                 return native.SENTINEL
@@ -43,6 +44,8 @@ class NativePilotTests(TestCase):
         with patch.object(native, "BASE", base), patch.object(native.windows_job, "run_owned", side_effect=fake_runtime) as spawn, \
              patch.object(native, "system_resources", return_value=resources), patch.object(native, "tokenizer", return_value=Tok()):
             options = {} if job_commit_gib is None else {"job_commit_gib": job_commit_gib}
+            if memory_diagnostics:
+                options["memory_diagnostics"] = True
             code = native.run_cell(4096, trace, binding_sha=native.sha(path), **options)
         result = json.loads((base / f"native-4096-{trace.lower()}/result.json").read_text())
         return code, result, spawn.call_count

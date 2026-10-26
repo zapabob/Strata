@@ -113,7 +113,7 @@ def make_budget(job_commit_gib=8):
                            min_H_free=8 * 1024**3)
 
 
-def _run_cell(count, trace, *, binding_sha, result, budget):
+def _run_cell(count, trace, *, binding_sha, result, budget, memory_diagnostics=False):
     binding_path = BASE / "prepared/binding.json"
     binding_raw = binding_path.read_bytes()
     if hashlib.sha256(binding_raw).hexdigest() != binding_sha:
@@ -152,12 +152,14 @@ def _run_cell(count, trace, *, binding_sha, result, budget):
     command = [str(BINARY), *binding["native_args"]]
     write(cell / "launch.json", {"command": command, "env": env, "budget": vars(budget),
                                  "binding_sha256": sha(binding_path), "resources": resources,
-                                 "trace": trace, "input_count": count, "expected_capacity": 131072})
+                                 "trace": trace, "input_count": count, "expected_capacity": 131072,
+                                 "memory_diagnostics": memory_diagnostics})
     started = time.monotonic()
     result["phase"] = "execution"
     result["launch_attempted"] = True
+    diagnostics = {"memory_diagnostics": True} if memory_diagnostics else {}
     result.update(windows_job.run_owned(command, cell, env, cell / "raw.bin", budget, system_resources,
-                                       stdin_path=protocol))
+                                       stdin_path=protocol, **diagnostics))
     result["execution_status"], result["execution_exit_code"] = result["status"], result["exit_code"]
     result["phase"] = "analysis"
     result["elapsed_s"] = time.monotonic() - started
@@ -203,7 +205,9 @@ def _run_cell(count, trace, *, binding_sha, result, budget):
     return result["exit_code"] or (0 if valid else 78)
 
 
-def run_cell(count, trace, *, binding_sha, job_commit_gib=8):
+def run_cell(count, trace, *, binding_sha, job_commit_gib=8, memory_diagnostics=False):
+    if type(memory_diagnostics) is not bool:
+        raise ValueError("memory diagnostics requires an explicit bool")
     budget = make_budget(job_commit_gib)
     cell = BASE / f"native-{count}-{trace.lower()}"
     if cell.exists():
@@ -214,7 +218,8 @@ def run_cell(count, trace, *, binding_sha, job_commit_gib=8):
               "launch_attempted": False, "GPU_elapsed_ns": None, "physical_IO_bytes": None,
               "P17_PPL_full_quality": "NOT_RUN", "requested_job_commit_gib": job_commit_gib}
     try:
-        result["exit_code"] = _run_cell(count, trace, binding_sha=binding_sha, result=result, budget=budget)
+        result["exit_code"] = _run_cell(count, trace, binding_sha=binding_sha, result=result, budget=budget,
+                                        memory_diagnostics=memory_diagnostics)
         result["comparison_valid"] = result["measurement_valid"]
         if result["exit_code"] and result["status"] == "FINISHED":
             result["status"] = "INVALID_MEASUREMENT"
@@ -271,13 +276,16 @@ def main():
     parser.add_argument("--binding-sha")
     parser.add_argument("--job-commit-gib", type=int, choices=(8, 10), default=8,
                         help="10 requires explicit diagnostic budget authorization")
+    parser.add_argument("--memory-diagnostics", action="store_true",
+                        help="opt-in owned root CPU memory sampled aggregates; no GPU counters")
     args = parser.parse_args()
     if args.prepare and not args.execute_authorized:
         prepare()
         return 0
     if not args.execute_authorized or args.tokens is None or args.trace is None or args.binding_sha is None:
         parser.error("explicit authorized cell required")
-    return run_cell(args.tokens, args.trace, binding_sha=args.binding_sha, job_commit_gib=args.job_commit_gib)
+    return run_cell(args.tokens, args.trace, binding_sha=args.binding_sha, job_commit_gib=args.job_commit_gib,
+                    memory_diagnostics=args.memory_diagnostics)
 
 
 if __name__ == "__main__":

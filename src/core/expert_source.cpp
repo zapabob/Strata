@@ -1,5 +1,6 @@
 // src/core/expert_source.cpp - the adapter.  See the header for the three clauses of the contract.
 #include "strata/core/expert_source.hpp"
+#include "strata/perf131k/blob_failure.hpp"
 #include "strata/perf131k/trace.hpp"
 #include "strata/core/foresight_swap.hpp"
 #include "strata/core/on_device.hpp"
@@ -1846,9 +1847,15 @@ bool FileExpertSource::claim_stage(int64_t key, size_t& v, bool& fill, bool ahea
         cudaError_t pin_err = cudaSuccess;
         if (want_pin) pin_err = cudaHostAlloc(&p, (size_t) stage_blob_, cudaHostAllocDefault);
         const bool pinned = want_pin && pin_err == cudaSuccess && p != nullptr;
+        if (want_pin && !pinned) strata::perf131k::blob_failure::record(
+            strata::perf131k::blob_failure::Step::pin_alloc, (uint64_t) stage_blob_,
+            strata::perf131k::blob_failure::Domain::cuda, (int64_t) pin_err, pin_err != cudaSuccess);
         if (!pinned) (void) cudaGetLastError();   // the failed alloc's sticky error is ours, not the caller's
         uint8_t* raw = pinned ? (uint8_t*) p : new (std::nothrow) uint8_t[(size_t) stage_blob_];
-        if (raw == nullptr) return false;
+        if (raw == nullptr) {
+            strata::perf131k::blob_failure::record(strata::perf131k::blob_failure::Step::heap_alloc, (uint64_t) stage_blob_);
+            return false;
+        }
         stage_buf_.emplace_back(raw, StageBufFree{pinned});
         stage_idx_[raw] = stage_buf_.size() - 1;
         stage_ev_.push_back(nullptr);
@@ -2078,18 +2085,25 @@ const uint8_t* FileExpertSource::staged_blob(int64_t layer, int64_t expert) {
     {
         std::unique_lock<std::mutex> lk(stage_mu_);
         const bool have = claim_stage(key, v, fill);
-        if (!have && !fill) return nullptr;
+        if (!have && !fill) {
+            strata::perf131k::blob_failure::record(strata::perf131k::blob_failure::Step::stage_claim, (uint64_t) stage_blob_);
+            return nullptr;
+        }
         dst = stage_buf_[v].get();
         if (have) {
             // another thread (a prefetch, the adaptive tier) is filling it: wait for that
             stage_cv_.wait(lk, [&] { return !stage_busy_[v] || stage_key_[v] != key; });
-            if (stage_key_[v] != key) return nullptr;   // its fill failed
+            if (stage_key_[v] != key) {   // its fill failed
+                strata::perf131k::blob_failure::record(strata::perf131k::blob_failure::Step::stage_key, (uint64_t) stage_blob_);
+                return nullptr;
+            }
             lk.unlock();
             crit();
             return dst;
         }
     }
     const bool ok = fill_stage(v, layer, expert, dst);
+    if (!ok) strata::perf131k::blob_failure::record(strata::perf131k::blob_failure::Step::stage_fill, (uint64_t) stage_blob_);
     crit();
     return ok ? dst : nullptr;
 }
@@ -2697,6 +2711,8 @@ bool FileExpertSource::map_view(std::string& why) {
 bool FileExpertSource::read_direct(const Fill* fills, size_t n) const {
     strata::perf131k::Scope host_trace(strata::perf131k::Stage::expert_direct_read_host);
 #if defined(_WIN32)
+    // Resolve opt-in before APIs whose failure codes must be captured immediately.
+    const bool blob_diag = strata::perf131k::blob_failure::enabled();
     // NTFS runs the unbuffered reads of a file one at a time while the file is mapped or cached anywhere (the engine
     // maps the GGUF shards for the token embedding and the PLE table): measured on a PCIe 5 drive, 512 KiB reads at
     // queue depth 48 make 10.4 GB/s on a file nobody maps and 3.4 GB/s on a mapped one, 8 MiB reads 8.6 GB/s.  So
@@ -2775,11 +2791,25 @@ bool FileExpertSource::read_direct(const Fill* fills, size_t n) const {
         if (sc.buf != nullptr) VirtualFree(sc.buf, 0, MEM_RELEASE);
         sc.cap = (size_t) ((total + (1u << 20) - 1) >> 20 << 20);
         sc.buf = (uint8_t*) VirtualAlloc(nullptr, sc.cap, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-        if (sc.buf == nullptr) { sc.cap = 0; return false; }
+        if (sc.buf == nullptr) {
+            if (blob_diag) {
+                const DWORD error = GetLastError();
+                strata::perf131k::blob_failure::record(strata::perf131k::blob_failure::Step::direct_alloc,
+                    sc.cap, strata::perf131k::blob_failure::Domain::win32, error, true);
+            }
+            sc.cap = 0; return false;
+        }
     }
     while (sc.ev.size() < sc.req.size()) {
         HANDLE e = CreateEventW(nullptr, TRUE, FALSE, nullptr);
-        if (e == nullptr) return false;
+        if (e == nullptr) {
+            if (blob_diag) {
+                const DWORD error = GetLastError();
+                strata::perf131k::blob_failure::record(strata::perf131k::blob_failure::Step::direct_event,
+                    total, strata::perf131k::blob_failure::Domain::win32, error, true);
+            }
+            return false;
+        }
         sc.ev.push_back(e);
     }
     sc.ov.assign(sc.req.size(), OVERLAPPED{});
@@ -2792,20 +2822,37 @@ bool FileExpertSource::read_direct(const Fill* fills, size_t n) const {
         o.Offset = (DWORD) r.a0;
         o.OffsetHigh = (DWORD) (r.a0 >> 32);
         o.hEvent = sc.ev[q];
-        if (!ReadFile(r.h, sc.buf + r.pos, (DWORD) r.size, nullptr, &o) && GetLastError() != ERROR_IO_PENDING) {
-            ok = false;
-            break;
+        if (!ReadFile(r.h, sc.buf + r.pos, (DWORD) r.size, nullptr, &o)) {
+            const DWORD error = GetLastError();   // also used by the original pending-I/O branch
+            if (error != ERROR_IO_PENDING) {
+                if (blob_diag) strata::perf131k::blob_failure::record(strata::perf131k::blob_failure::Step::direct_issue,
+                    r.size, strata::perf131k::blob_failure::Domain::win32, error, true, (int64_t) q);
+                ok = false;
+                break;
+            }
         }
         ++issued;
     }
     std::vector<DWORD>& got = sc.got;
     got.assign(sc.req.size(), 0);
-    for (size_t q = 0; q < issued; ++q)
-        if (!GetOverlappedResult(sc.req[q].h, &sc.ov[q], &got[q], TRUE)) ok = false;
+    for (size_t q = 0; q < issued; ++q) {
+        if (!GetOverlappedResult(sc.req[q].h, &sc.ov[q], &got[q], TRUE)) {
+            if (blob_diag) {
+                const DWORD error = GetLastError();
+                strata::perf131k::blob_failure::record(strata::perf131k::blob_failure::Step::direct_wait,
+                    sc.req[q].size, strata::perf131k::blob_failure::Domain::win32, error, true, (int64_t) q);
+            }
+            ok = false;   // drain every issued request before returning
+        }
+    }
     if (!ok || issued < sc.req.size()) return false;
     for (const Window& x : sc.win) {
         // a request may run past the end of the file: only the role's own bytes have to arrive
-        if ((uint64_t) got[x.req] < x.in_req + x.skip + x.n) return false;
+        if ((uint64_t) got[x.req] < x.in_req + x.skip + x.n) {
+            if (blob_diag) strata::perf131k::blob_failure::record(strata::perf131k::blob_failure::Step::direct_short,
+                x.n, strata::perf131k::blob_failure::Domain::unknown, 0, false, (int64_t) x.req);
+            return false;
+        }
         std::memcpy(x.dst + x.at, sc.buf + sc.req[x.req].pos + x.in_req + x.skip, (size_t) x.n);
     }
     return true;
