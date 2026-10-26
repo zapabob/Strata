@@ -88,8 +88,8 @@
     "pilot_evidence_review": "ACCEPT_EVIDENCE_SCOPE_ONLY"
   },
   "current_candidate": {
-    "as_of": "2026-10-26",
-    "snapshot_source_commit": "a3968f815b5c0e1ffdcf7cc1ff9bb2ea4bcee87f",
+    "as_of": "2026-10-27",
+    "snapshot_source_commit": "216e2280",
     "engine_source_commit": "56c4613be8e5f63868f8dbd52e41ab644a324aba",
     "binary_sha256": "20373ca6b9b16b9d220820a902b584d604a64e068d383a26ba11dd4e43f85d93",
     "binary_bytes": 80752128,
@@ -103,8 +103,8 @@
     "statistics_synthetic_tests_passed": 16,
     "statistics_manifest_schema": 2,
     "evaluation_design": "five fixed grouped evaluation folds; no fitting or tuning",
-    "GPU_model_execution": "GPU_STARTUP_RAN_FAILED_BEFORE_READY",
-    "completed_inference": "NOT_RUN",
+    "GPU_model_execution": "READY_131072_AND_COMPLETED_4K_DIAGNOSTIC",
+    "completed_inference": "2_REQUESTS_4096_TOKENS_BOTH_RECALL_PASS",
     "measured_statistical_execution": "NOT_RUN",
     "quality_and_stability": "NOT_RUN",
     "native_multiuser_memory_qualification": "NOT_RUN; disabled by default",
@@ -112,8 +112,8 @@
     "same_source_CI": "NOT_RUN",
     "HIP_SYCL_validation": "NOT_RUN",
     "total_Job_commit_bound": "INCOMPLETE",
-    "new_launch_authorization": "CONSUMED; one native launch; no retry",
-    "latest_diagnostic": {
+    "new_launch_authorization": "user authorized PC memory limit and conditional capacity qualification",
+    "historical_10GiB_diagnostic": {
       "job_cap_bytes": 10737418240,
       "peak_job_commit_bytes": 10788929536,
       "controller_exit": 125,
@@ -130,6 +130,28 @@
       "source_blob_diagnostics": false,
       "measurement_valid": false,
       "service_baseline": "user manually stopped Hikari; no wrapper service actions"
-    }
+    },
+    "latest_diagnostic": {
+      "status": "FINISHED",
+      "exit_code": 0,
+      "native_exit_code": 0,
+      "measurement_valid": true,
+      "comparison_valid": false,
+      "peak_job_commit_bytes": 23745859584,
+      "termination_confirmed": true,
+      "job_active_after": 0,
+      "elapsed_s": 201.40600000000086,
+      "READY": [
+        "READY 131072 stop"
+      ],
+      "job_cap_bytes": 32010928128,
+      "input_tokens": 4096,
+      "completed_requests": 2,
+      "recall_passed": 2,
+      "controller_memory_diagnostics": true,
+      "source_blob_diagnostics": true,
+      "evidence": "H:/Strata/evidence/p01-boundary-20261026/authorized-pc-memory-attempt/native-4096-off/result.json"
+    },
+    "native_controller_CPU_tests_passed": 15
   }
 }

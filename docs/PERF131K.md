@@ -23,8 +23,9 @@ The current executable includes joined profile prefetch and the foreground
 affinity guard at engine source `56c4613b`. It is 80,752,128 bytes, SHA256
 `20373ca6b9b16b9d220820a902b584d604a64e068d383a26ba11dd4e43f85d93`.
 The CUDA link and read-only help passed; the later one-shot model startup
-failed before READY under the 10 GiB Job condition. Native boundary execution
-and completed inference remain NOT_RUN. Its build receipt is
+failed before READY under the 10 GiB Job condition. A later explicitly authorized
+PC-memory diagnostic reached READY 131072 and completed two 4K requests, both
+passing the sentinel recall probe. Native boundary execution remains NOT_RUN. Its build receipt is
 `H:\Strata\evidence\p01-boundary-20261026\joined-prefetch-receipt.json`.
 The combined CPU gate ran 88 tests with two Windows symlink subcases skipped;
 the later overlay dependency gate passed 11 tests. These do not establish
@@ -70,8 +71,9 @@ reported. Fitting/tuning and final held-out execution remain NOT_RUN.
 Actions permissions currently report enabled. Latest-candidate CI is still pending;
 permission status does not prove the earlier HTTP422 dispatch failure is fixed.
 P00/P01 remain PARTIAL. Earlier-candidate GPU startup RAN_FAILED_BEFORE_READY;
-current-candidate startup also failed before READY. Completed inference,
-performance and quality remain NOT_RUN; full131k is NOT_QUALIFIED.
+current-candidate startup later passed with the separately authorized PC-memory
+condition. Two 4K requests completed; statistical performance and broader quality
+remain NOT_RUN, and full131k is NOT_QUALIFIED.
 
 ## Current executable: authorized 10 GiB diagnostic
 
@@ -80,7 +82,8 @@ available RAM bytes and 47,326,261,248 bytes of commit headroom. The current
 `20373ca6` executable launched once. Controller elapsed was 13.14 seconds,
 status COMMIT_BUDGET_EXCEEDED/125, native exit 1. Peak Job commit was
 10,788,929,536 bytes against 10,737,418,240 configured. Cleanup confirmed
-termination and active 0; no retry or cap increase followed.
+termination and active 0; no automatic retry or cap increase occurred within
+that attempt. The later PC-memory condition had separate explicit user authorization.
 
 Cache attempts requested 5283, 3962 and 2971 slots before successfully opening
 2228 slots (2.87 GiB reported). Profile pair 15 then failed blob acquisition at
@@ -237,3 +240,25 @@ workflow dispatch with HTTP422 while repository Actions permissions were enabled
 and workflow states were active. No check-run was created. Local installer CPU
 tests and independent review are separate evidence; no cloud CI pass is claimed
 for that newer source. Repository/billing safeguards were not bypassed.
+
+## PC-memory diagnostic, 27 October 2026
+
+The user explicitly authorized using the PC memory capacity. Before launch, the
+controller fixed the Job commit cap at 32,010,928,128 bytes (29.8125 GiB), leaving
+2 GiB below measured physical total and requiring 6 GiB process-available commit
+headroom beyond the cap. This is a commit limit, not reserved physical memory.
+Runtime RAM/commit floors of 2/6 GiB are sampled abort thresholds.
+
+The same executable reached READY 131072, completed two exact 4096-token inputs
+with 52 generated tokens each, and passed both sentinel recall probes. Job peak
+was 23,745,859,584 bytes; controller elapsed was 201.406 seconds. Cleanup confirmed
+termination and zero active Job processes. Source blob diagnostics and controller
+memory diagnostics were ON, so this run is excluded from performance comparisons.
+Evidence: `H:/Strata/evidence/p01-boundary-20261026/authorized-pc-memory-attempt/native-4096-off/result.json`.
+
+Normal capacity trials predeclare the same 32,010,928,128-byte cap for every
+cell, with source/controller diagnostics OFF. Fixtures, order and binding are
+frozen before the first cell. The 4K/32K/64K recall task is a capacity smoke test;
+it does not establish full-length inference, broad quality or statistical speed.
+The original pilot output reserve remains 256. The separate full-capacity gate
+requires input 126000, output reserve 1024, and at least 512 actual generated steps.

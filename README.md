@@ -24,7 +24,7 @@ The published preview and the development candidate are different artifacts.
 The candidate below has not been released or installed. The existing desktop app,
 Control settings, models and installed engine have not been replaced by this build.
 
-| Scope, checked 26 October 2026 | Result |
+| Scope, checked 27 October 2026 | Result |
 | --- | --- |
 | Startup, diagnostics and statistics CPU tests | 43 passed with `pytest-randomly` disabled |
 | Opt-in memory harness tests | Python 3.12 ran 27 tests, including temporary-profile real hakua writer; two Windows symlink subcases skipped for missing privilege. Approved persona hashes checked; native multiuser isolation remains unqualified |
@@ -34,7 +34,7 @@ Control settings, models and installed engine have not been replaced by this bui
 | Same-source GitHub Actions | NOT_RUN: branch push produced no run; manual dispatch returned HTTP 422 saying Actions is disabled |
 | Fresh executable read-only `--help` | Exit 0; no model loaded |
 | Earlier 10 GiB Job diagnostic | RAN_FAILED_BEFORE_READY; this was a different executable |
-| Current candidate GPU startup / completed model inference | One authorized 10 GiB diagnostic FAILED_BEFORE_READY (controller 125, native 1); completed inference NOT_RUN |
+| Current candidate GPU startup / completed model inference | PC-memory diagnostic reached READY 131072 and completed two 4K requests; both recall probes passed. Fixed Job cap 29.8125 GiB; peak 22.12 GiB. Diagnostics were ON; larger-input and quality qualification remain open |
 | Paired performance statistics / cross-validation evaluation | Offline executor passed 16 synthetic tests; analyzer hash freeze and five fixed grouped evaluation summaries supported. Measured pairs and fitting/tuning NOT_RUN |
 | PPL / KL / full-context quality / stability | NOT_RUN |
 | Practical 131072-token qualification | NOT_QUALIFIED |
@@ -50,7 +50,7 @@ terminated with no remaining processes. No automatic retry or cap increase occur
 
 The current candidate is a fresh Windows `Release/x64` CUDA SM120 build. It
 compiled and linked the engine, Spin8, native cache and GGML TQ overlay. The
-build does not establish model startup, inference quality or GPU stability.
+build alone does not establish model startup, inference quality or GPU stability. The later PC-memory diagnostic established startup and two 4K requests only.
 The latest candidate executable is 80,752,128 bytes:
 
 ```text
@@ -68,7 +68,7 @@ and CPU checks are bound to source commit `6955c759` in
 `H:\Strata\evidence\p01-boundary-20261026\p02-cpu-receipt-after-review.json`.
 Source commits `73cfa347` and `56c4613b` replace task-pool profile prefetch with joined threads
 so completed batches release their thread-local I/O scratch. Its CPU lifetime
-test, CUDA link and read-only help passed; model execution remains NOT_RUN.
+test, CUDA link and read-only help passed; model startup and two 4K recall requests passed in the later PC-memory diagnostic; larger-input quality and stability remain unqualified.
 The current artifact binding is `joined-prefetch-receipt.json` in that directory.
 The later authorized run of this executable ended after 13.14 controller-observed
 seconds, before READY, with peak Job commit 10,788,929,536 bytes against a
