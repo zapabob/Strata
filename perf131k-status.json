@@ -1,0 +1,43 @@
+{
+  "schema": "strata-perf131k-status-v1",
+  "distribution_version": "0.3.2-preview.20261026.1",
+  "source_commit": "e68f8926b27ad9d9f12475b6c6897a3e48d823de",
+  "P00": "PARTIAL",
+  "P01": "PARTIAL",
+  "capacity": 131072,
+  "normal_series": {
+    "spec": 4,
+    "MTP": true,
+    "kv": "k8v4",
+    "output_reserve": 256
+  },
+  "pilot": {
+    "input_tokens": 4096,
+    "trace": "OFF",
+    "status": "COMMIT_BUDGET_EXCEEDED",
+    "job_commit_limit_bytes": 10737418240,
+    "peak_job_commit_bytes": 10802049024,
+    "READY_count": 0,
+    "DONE_count": 0,
+    "cleanup_active": 0
+  },
+  "remaining_cells": "NOT_RUN",
+  "inference": "NOT_RUN",
+  "performance": "NOT_RUN",
+  "quality": "NOT_RUN",
+  "GPU_elapsed_ns": null,
+  "physical_disk_IO_bytes": null,
+  "reuse_provenance": "UNRESOLVED",
+  "service_restore": {
+    "health_config_identity": "PASS",
+    "warm_state": "NOT_RESTORED",
+    "minimum_synthesis": "NOT_RUN"
+  },
+  "CPU_budget_controller_tests": 38,
+  "job8_and10_startup": "FAILED_BEFORE_READY",
+  "full131k_acceptance": "NOT_QUALIFIED",
+  "preserved_vision": {
+    "sha256": "2425166a3045c51c8819f7723c921db8434863946c5b972cf4e37143b41b0c4e",
+    "runtime": "NOT_RUN"
+  }
+}
