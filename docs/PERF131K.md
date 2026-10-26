@@ -13,11 +13,21 @@ The CPU contract accepts 130048 input tokens with a separate 1024-token output
 reservation and 131071 input tokens with one output token, and rejects each
 one-over request. The API mock passed two focused tests; the native boundary
 helper compiled and exited 0; the Windows CUDA SM120 executable linked and
-its read-only `--help` exited 0. The current executable is 80,759,296 bytes,
+its read-only `--help` exited 0. That historical boundary executable is 80,759,296 bytes,
 SHA256 `6f3374e3a6438023aad5b7a8dad9020a9c4383f90b3a31e3402bbfcf271d15b3`.
 The receipt is `H:\Strata\evidence\p01-boundary-20261026\p02-cpu-receipt-after-review.json`.
 No full-context native request or model startup ran on this build. P02 device
 behavior and 131072-token qualification remain unverified.
+
+The current executable includes joined profile prefetch and the foreground
+affinity guard at engine source `56c4613b`. It is 80,752,128 bytes, SHA256
+`20373ca6b9b16b9d220820a902b584d604a64e068d383a26ba11dd4e43f85d93`.
+The CUDA link and read-only help passed; model startup, native boundary
+execution and inference remain NOT_RUN. Its receipt is
+`H:\Strata\evidence\p01-boundary-20261026\joined-prefetch-receipt.json`.
+The combined CPU gate ran 88 tests with two Windows symlink subcases skipped;
+the later overlay dependency gate passed 11 tests. These do not establish
+hardware correctness or qualification.
 
 ## Earlier diagnostic candidate and pilot
 
@@ -46,16 +56,20 @@ evidence scope, not inference or131k qualification.
 The wrapper pins the full launch binding,controller sources/import origins and
 binary; default startup does not invoke this operator-specific helper.
 
-The [reviewed statistical design](perf131k-statistical-protocol.json) is not an
-implemented/evaluated result. It keeps paired task families together, avoids treating
+The [reviewed statistical protocol](perf131k-statistical-protocol.json) has a
+schema 2 offline executor checked by 16 synthetic tests. It binds the analyzer
+source hash, reports five fixed grouped evaluation summaries and keeps paired
+task families together, avoiding treatment of
 folds or technical repetitions as independent observations, and separates initial
 4K/32K measurements from full qualification. Full boundaries wait for P02;64K,
 126k-history/512 actual steps,reference PPL/KL and32turn/2h stability remain separate
-gates. No p-value, confidence interval or performance improvement is reported yet.
+gates. No measured p-value, confidence interval or performance improvement is
+reported. Fitting/tuning and final held-out execution remain NOT_RUN.
 
 Actions permissions currently report enabled. Latest-candidate CI is still pending;
 permission status does not prove the earlier HTTP422 dispatch failure is fixed.
-P00/P01 remain PARTIAL. GPU startup RAN_FAILED_BEFORE_READY; completed inference,
+P00/P01 remain PARTIAL. Earlier-candidate GPU startup RAN_FAILED_BEFORE_READY;
+current-candidate model execution is NOT_RUN. Completed inference,
 performance and quality remain NOT_RUN; full131k is NOT_QUALIFIED.
 
 ---

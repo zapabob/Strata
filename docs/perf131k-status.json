@@ -2,6 +2,7 @@
   "schema": "strata-perf131k-status-v1",
   "distribution_version": "0.3.2-preview.20261026.1",
   "source_commit": "e68f8926b27ad9d9f12475b6c6897a3e48d823de",
+  "root_fields_scope": "Historical published preview; current development identity is in current_candidate",
   "P00": "PARTIAL",
   "P01": "PARTIAL",
   "capacity": 131072,
@@ -40,7 +41,7 @@
     "sha256": "2425166a3045c51c8819f7723c921db8434863946c5b972cf4e37143b41b0c4e",
     "runtime": "NOT_RUN"
   },
-  "current_candidate": {
+  "historical_diagnostic_candidate": {
     "as_of": "2026-10-26",
     "publication": "NOT_RELEASED",
     "installed": "NOT_INSTALLED",
@@ -85,5 +86,32 @@
       "retry": "NOT_PERFORMED"
     },
     "pilot_evidence_review": "ACCEPT_EVIDENCE_SCOPE_ONLY"
+  },
+  "current_candidate": {
+    "as_of": "2026-10-26",
+    "snapshot_source_commit": "a3968f815b5c0e1ffdcf7cc1ff9bb2ea4bcee87f",
+    "engine_source_commit": "56c4613be8e5f63868f8dbd52e41ab644a324aba",
+    "binary_sha256": "20373ca6b9b16b9d220820a902b584d604a64e068d383a26ba11dd4e43f85d93",
+    "binary_bytes": 80752128,
+    "publication": "NOT_RELEASED",
+    "installed": "NOT_INSTALLED",
+    "CUDA_link": "PASS",
+    "read_only_help": "PASS",
+    "integrated_CPU_tests_run": 88,
+    "integrated_CPU_skipped_symlink_subcases": 2,
+    "overlay_CPU_tests_passed": 11,
+    "statistics_synthetic_tests_passed": 16,
+    "statistics_manifest_schema": 2,
+    "evaluation_design": "five fixed grouped evaluation folds; no fitting or tuning",
+    "GPU_model_execution": "NOT_RUN",
+    "completed_inference": "NOT_RUN",
+    "measured_statistical_execution": "NOT_RUN",
+    "quality_and_stability": "NOT_RUN",
+    "native_multiuser_memory_qualification": "NOT_RUN; disabled by default",
+    "full_qualification": "NOT_QUALIFIED",
+    "same_source_CI": "NOT_RUN",
+    "HIP_SYCL_validation": "NOT_RUN",
+    "total_Job_commit_bound": "INCOMPLETE",
+    "new_launch_authorization": "NOT_GRANTED; previous one-shot consumed"
   }
 }
