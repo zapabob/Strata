@@ -262,3 +262,19 @@ frozen before the first cell. The 4K/32K/64K recall task is a capacity smoke tes
 it does not establish full-length inference, broad quality or statistical speed.
 The original pilot output reserve remains 256. The separate full-capacity gate
 requires input 126000, output reserve 1024, and at least 512 actual generated steps.
+
+## Operational inference acceptance, 27 October 2026
+
+The user changed acceptance to reliable working inference. Statistical speed,
+PPL and full-length certification remain deferred and are not release claims.
+With diagnostics OFF and fixed Job cap 32,010,928,128 bytes, exact 4K and 32K
+inputs each completed first and repeated requests; all four sentinel recall
+checks passed. Both stages confirmed termination and zero remaining Job processes.
+The 32K run took 621.86 controller seconds including startup, both requests and
+cleanup. Its first prompt took 494758.3 ms; repeated prompt 645.7 ms. Both generated
+52 tokens, with decode times 13758.7/3254.9 ms. These are one-task observations.
+The 64K stage was intentionally terminated after the acceptance change; controller
+exit15, active0 and termination confirmed. Preserve its invalid-measurement receipt
+and the separate scope-change cancellation record; it is neither a successful
+capacity test nor evidence of an engine failure. No retry occurred.
+Evidence: `H:/Strata/evidence/p01-boundary-20261026/normal-capacity-series-20261027/`.

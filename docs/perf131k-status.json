@@ -104,7 +104,7 @@
     "statistics_manifest_schema": 2,
     "evaluation_design": "five fixed grouped evaluation folds; no fitting or tuning",
     "GPU_model_execution": "READY_131072_AND_COMPLETED_4K_DIAGNOSTIC",
-    "completed_inference": "2_REQUESTS_4096_TOKENS_BOTH_RECALL_PASS",
+    "completed_inference": "4K_AND_32K_FIRST_AND_REPEAT_RECALL_PASS",
     "measured_statistical_execution": "NOT_RUN",
     "quality_and_stability": "NOT_RUN",
     "native_multiuser_memory_qualification": "NOT_RUN; disabled by default",
@@ -152,6 +152,69 @@
       "source_blob_diagnostics": true,
       "evidence": "H:/Strata/evidence/p01-boundary-20261026/authorized-pc-memory-attempt/native-4096-off/result.json"
     },
-    "native_controller_CPU_tests_passed": 15
+    "native_controller_CPU_tests_passed": 15,
+    "normal_capacity_trials": {
+      "fixed_job_cap_bytes": 32010928128,
+      "diagnostics": "OFF",
+      "input_4096": {
+        "status": "FINISHED",
+        "measurement_valid": true,
+        "comparison_valid": true,
+        "peak_job_commit_bytes": 23770861568,
+        "elapsed_s": 224.90600000000086,
+        "termination_confirmed": true,
+        "job_active_after": 0,
+        "requests": [
+          {
+            "actual_T_count": 52,
+            "engine_reported_prompt_tokens": 4096,
+            "engine_reported_prompt_ms": 105562.3,
+            "engine_reported_decode_ms": 13530.8,
+            "engine_reported_tokens_per_second": 3.84308392704053,
+            "recall_probe_pass": true
+          },
+          {
+            "actual_T_count": 52,
+            "engine_reported_prompt_tokens": 4096,
+            "engine_reported_prompt_ms": 413.7,
+            "engine_reported_decode_ms": 3348.7,
+            "engine_reported_tokens_per_second": 15.528414011407413,
+            "recall_probe_pass": true
+          }
+        ]
+      },
+      "input_32768": {
+        "status": "FINISHED",
+        "measurement_valid": true,
+        "comparison_valid": true,
+        "peak_job_commit_bytes": 24367267840,
+        "elapsed_s": 621.8600000000006,
+        "termination_confirmed": true,
+        "job_active_after": 0,
+        "requests": [
+          {
+            "actual_T_count": 52,
+            "engine_reported_prompt_tokens": 32768,
+            "engine_reported_prompt_ms": 494758.3,
+            "engine_reported_decode_ms": 13758.7,
+            "engine_reported_tokens_per_second": 3.779426835384157,
+            "recall_probe_pass": true
+          },
+          {
+            "actual_T_count": 52,
+            "engine_reported_prompt_tokens": 32768,
+            "engine_reported_prompt_ms": 645.7,
+            "engine_reported_decode_ms": 3254.9,
+            "engine_reported_tokens_per_second": 15.97591323850195,
+            "recall_probe_pass": true
+          }
+        ]
+      },
+      "input_65536": "CANCELLED_BY_OPERATOR_AFTER_USER_SCOPE_CHANGE; cleanup confirmed active0; no verdict",
+      "independent_families": 1,
+      "statistical_verdict": "NOT_EVALUATED",
+      "quality": "SENTINEL_RECALL_ONLY"
+    },
+    "release_acceptance": "User: reliable working inference; PPL and full-capacity statistical certification deferred"
   }
 }

@@ -34,7 +34,7 @@ Control settings, models and installed engine have not been replaced by this bui
 | Same-source GitHub Actions | NOT_RUN: branch push produced no run; manual dispatch returned HTTP 422 saying Actions is disabled |
 | Fresh executable read-only `--help` | Exit 0; no model loaded |
 | Earlier 10 GiB Job diagnostic | RAN_FAILED_BEFORE_READY; this was a different executable |
-| Current candidate GPU startup / completed model inference | PC-memory diagnostic reached READY 131072 and completed two 4K requests; both recall probes passed. Fixed Job cap 29.8125 GiB; peak 22.12 GiB. Diagnostics were ON; larger-input and quality qualification remain open |
+| Current candidate GPU startup / completed model inference | Configured capacity 131072; diagnostic-OFF 4K and 32K input trials each completed first/repeat generation, all four recall probes passed. Fixed Job cap 29.8125 GiB; 32K peak 22.69 GiB. Full-length and statistical quality qualification remain open |
 | Paired performance statistics / cross-validation evaluation | Offline executor passed 16 synthetic tests; analyzer hash freeze and five fixed grouped evaluation summaries supported. Measured pairs and fitting/tuning NOT_RUN |
 | PPL / KL / full-context quality / stability | NOT_RUN |
 | Practical 131072-token qualification | NOT_QUALIFIED |
@@ -68,13 +68,14 @@ and CPU checks are bound to source commit `6955c759` in
 `H:\Strata\evidence\p01-boundary-20261026\p02-cpu-receipt-after-review.json`.
 Source commits `73cfa347` and `56c4613b` replace task-pool profile prefetch with joined threads
 so completed batches release their thread-local I/O scratch. Its CPU lifetime
-test, CUDA link and read-only help passed; model startup and two 4K recall requests passed in the later PC-memory diagnostic; larger-input quality and stability remain unqualified.
+test, CUDA link and read-only help passed; model startup and two 4K recall requests passed in the later PC-memory diagnostic; diagnostic-OFF 4K/32K inference also passed; full-length quality and stability remain unqualified.
 The current artifact binding is `joined-prefetch-receipt.json` in that directory.
 The later authorized run of this executable ended after 13.14 controller-observed
 seconds, before READY, with peak Job commit 10,788,929,536 bytes against a
 10,737,418,240-byte cap. Cleanup confirmed active 0. Controller memory observation
 was on, but source blob diagnostics were accidentally omitted; the terminal
-blob failure remains cause unknown. No retry or cap increase occurred. The receipt
+blob failure remains cause unknown. No automatic retry or cap increase occurred
+within that attempt; a later PC-memory condition was explicitly authorized. The receipt
 is `authorized-direct-attempt/closeout.json` under the same evidence directory.
 
 ## What the candidate changes
