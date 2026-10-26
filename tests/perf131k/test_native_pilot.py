@@ -20,7 +20,7 @@ if os.environ.get("P01_NATIVE_UNDER_TEST"):
 class NativePilotTests(TestCase):
     def fake_cell(self, *, raw=None, stale_tokenizer=False, trace="OFF", job_commit_gib=None,
                   resources=None, observed=None, memory_diagnostics=False, blob_diagnostics=False, job_result=None,
-                  baseline_env=None):
+                  baseline_env=None, use_pc_memory=False, resource_sequence=None):
         base = Path("H:/Strata/worktrees/p01-a-20261025/_scratch/perf131k/b2-fixtures") / uuid.uuid4().hex
         base.mkdir(parents=True)
         shutil.copytree(native.BASE / "prepared", base / "prepared")
@@ -46,12 +46,16 @@ class NativePilotTests(TestCase):
         if resources is None:
             resources = {"available_ram": 20 * 1024**3, "commit_headroom": 30 * 1024**3, "H_free": 30 * 1024**3}
         with patch.object(native, "BASE", base), patch.object(native.windows_job, "run_owned", side_effect=fake_runtime) as spawn, \
-             patch.object(native, "system_resources", return_value=resources), patch.object(native, "tokenizer", return_value=Tok()):
+             patch.object(native, "system_resources", return_value=resources, side_effect=resource_sequence), \
+             patch.object(native, "physical_ram_bytes", return_value=32 * 1024**3), \
+             patch.object(native, "tokenizer", return_value=Tok()):
             options = {} if job_commit_gib is None else {"job_commit_gib": job_commit_gib}
             if memory_diagnostics:
                 options["memory_diagnostics"] = True
             if blob_diagnostics:
                 options["blob_diagnostics"] = True
+            if use_pc_memory:
+                options["use_pc_memory"] = True
             code = native.run_cell(4096, trace, binding_sha=native.sha(path), **options)
         result = json.loads((base / f"native-4096-{trace.lower()}/result.json").read_text())
         return code, result, spawn.call_count
@@ -109,6 +113,33 @@ class NativePilotTests(TestCase):
             "STRATA_PERF131K_BLOB_DIAG": "0", "strata_perf131k_blob_diag": "1"})
         self.assertEqual(calls, 0)
         self.assertEqual(result["status"], "INPUT_BINDING_FAILED")
+
+    def test_pc_memory_cap_freezes_and_rechecks_before_any_child(self):
+        gib = 1024**3
+        planning = {"available_ram": 20 * gib, "commit_headroom": 48 * gib, "H_free": 30 * gib}
+        observed = {}
+        code, result, calls = self.fake_cell(use_pc_memory=True, blob_diagnostics=True,
+            memory_diagnostics=True, resources=planning, observed=observed)
+        self.assertEqual((code, calls), (0, 1))
+        self.assertEqual(result["frozen_job_commit_bytes"], 30 * gib)
+        self.assertEqual(observed["budget"]["min_available_ram"], 2 * gib)
+        self.assertFalse(result["comparison_valid"])
+        for key, floor in (("available_ram", 8 * gib), ("commit_headroom", 36 * gib), ("H_free", 8 * gib)):
+            code, result, calls = self.fake_cell(use_pc_memory=True, resource_sequence=[
+                planning, {**planning, key: floor - 1}])
+            self.assertEqual((code, calls), (77, 0))
+            self.assertEqual(result["frozen_job_commit_bytes"], 30 * gib)
+
+    def test_pc_memory_rounds_down_and_respects_available_commit(self):
+        gib = 1024**3
+        resources = {"available_ram": 20 * gib, "commit_headroom": 25 * gib + 12345, "H_free": 10 * gib}
+        budget = native.make_pc_budget(resources, 32 * gib)
+        self.assertEqual(budget.job_commit_bytes, 19 * gib)
+        self.assertEqual(native.make_budget().job_commit_bytes, 8 * gib)
+        with self.assertRaises(ValueError):
+            native.make_pc_budget(resources, True)
+        with self.assertRaises(ValueError):
+            native.make_pc_budget({**resources, "commit_headroom": 5 * gib}, 32 * gib)
 
     def test_budget_override_is_bounded_and_default_remains_eight(self):
         observed = {}

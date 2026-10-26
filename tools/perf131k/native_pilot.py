@@ -113,6 +113,42 @@ def make_budget(job_commit_gib=8):
                            min_H_free=8 * 1024**3)
 
 
+def physical_ram_bytes():
+    import ctypes
+    from tools.perf131k.pilot import Memory
+    memory = Memory()
+    memory.length = ctypes.sizeof(memory)
+    if not ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(memory)):
+        raise OSError("physical RAM counter unavailable")
+    return int(memory.total_phys)
+
+
+def make_pc_budget(resources, total_ram):
+    """Explicit PC-memory diagnostic policy; freeze once, never resize in flight.
+
+    Job commit is not physical residency. Floors are sampled abort thresholds,
+    not reserved memory. Existing commit_headroom is process-available commit
+    (GlobalMemoryStatusEx.ullAvailPageFile), a conservative admission counter.
+    """
+    if type(total_ram) is not int or total_ram <= 0:
+        raise ValueError("known positive total physical RAM required")
+    if any(type(resources.get(key)) is not int or resources[key] < 0
+           for key in ("available_ram", "commit_headroom", "H_free")):
+        raise ValueError("known nonnegative resource counters required")
+    unit = 64 * 1024**2
+    ceiling = min(total_ram - 2 * 1024**3, resources["commit_headroom"] - 6 * 1024**3)
+    ceiling = ceiling // unit * unit
+    if ceiling <= 0:
+        raise ValueError("no diagnostic commit budget remains after floors")
+    budget = make_budget()
+    budget.job_commit_bytes = ceiling
+    budget.admission_mode = "pc_memory"
+    budget.startup_min_available_ram = 8 * 1024**3
+    budget.total_physical_ram_bytes = total_ram
+    budget.planning_resources = dict(resources)
+    return budget
+
+
 def _run_cell(count, trace, *, binding_sha, result, budget, memory_diagnostics=False, blob_diagnostics=False):
     binding_path = BASE / "prepared/binding.json"
     binding_raw = binding_path.read_bytes()
@@ -153,8 +189,11 @@ def _run_cell(count, trace, *, binding_sha, result, budget, memory_diagnostics=F
         raise ValueError("blob diagnostic binding must be explicit 0 or 1")
     result["source_blob_diagnostics"] = env.get("STRATA_PERF131K_BLOB_DIAG", "0") == "1"
     resources = system_resources(cell)
-    result["admission_policy"] = "start RAM >= Job commit +2GiB; commit headroom >= Job commit +6GiB; H free >=8GiB; no physical reservation/peak proof; WDDM budget unknown"
-    if (resources["available_ram"] < budget.job_commit_bytes + budget.min_available_ram
+    pc_memory = getattr(budget, "admission_mode", None) == "pc_memory"
+    ram_minimum = budget.startup_min_available_ram if pc_memory else budget.job_commit_bytes + budget.min_available_ram
+    result["admission_policy"] = ("PC-memory fixed cap; start RAM >=8GiB; process-available commit >= cap+6GiB; runtime sampled RAM/commit floors 2/6GiB; no reservation/peak proof"
+                                  if pc_memory else "start RAM >= Job commit +2GiB; commit headroom >= Job commit +6GiB; H free >=8GiB; no physical reservation/peak proof; WDDM budget unknown")
+    if (resources["available_ram"] < ram_minimum
             or resources["commit_headroom"] < budget.job_commit_bytes + budget.min_commit_headroom
             or resources["H_free"] < budget.min_H_free):
         result.update(status="PREFLIGHT_BLOCKED", exit_code=77, resources=resources)
@@ -216,12 +255,16 @@ def _run_cell(count, trace, *, binding_sha, result, budget, memory_diagnostics=F
     return result["exit_code"] or (0 if valid else 78)
 
 
-def run_cell(count, trace, *, binding_sha, job_commit_gib=8, memory_diagnostics=False, blob_diagnostics=False):
+def run_cell(count, trace, *, binding_sha, job_commit_gib=8, memory_diagnostics=False, blob_diagnostics=False,
+             use_pc_memory=False):
     if type(memory_diagnostics) is not bool:
         raise ValueError("memory diagnostics requires an explicit bool")
     if type(blob_diagnostics) is not bool:
         raise ValueError("blob diagnostics requires an explicit bool")
-    budget = make_budget(job_commit_gib)
+    if type(use_pc_memory) is not bool or (use_pc_memory and (type(job_commit_gib) is not int or job_commit_gib != 8)):
+        raise ValueError("PC-memory mode requires an explicit bool and no fixed-budget override")
+    budget = (make_pc_budget(system_resources(BASE), physical_ram_bytes()) if use_pc_memory
+              else make_budget(job_commit_gib))
     cell = BASE / f"native-{count}-{trace.lower()}"
     if cell.exists():
         raise ValueError("refuse to overwrite a pilot cell")
@@ -229,12 +272,13 @@ def run_cell(count, trace, *, binding_sha, job_commit_gib=8, memory_diagnostics=
               "owned_root_pid": None, "termination_confirmed": None, "job_active_after": None,
               "measurement_valid": False, "comparison_valid": False, "requests": [],
               "launch_attempted": False, "GPU_elapsed_ns": None, "physical_IO_bytes": None,
-              "P17_PPL_full_quality": "NOT_RUN", "requested_job_commit_gib": job_commit_gib,
+              "P17_PPL_full_quality": "NOT_RUN", "requested_job_commit_gib": None if use_pc_memory else job_commit_gib,
+              "use_pc_memory": use_pc_memory, "frozen_job_commit_bytes": budget.job_commit_bytes,
               "source_blob_diagnostics": False, "requested_blob_diagnostics": blob_diagnostics}
     try:
         result["exit_code"] = _run_cell(count, trace, binding_sha=binding_sha, result=result, budget=budget,
                                         memory_diagnostics=memory_diagnostics, blob_diagnostics=blob_diagnostics)
-        result["comparison_valid"] = result["measurement_valid"] and not result["source_blob_diagnostics"]
+        result["comparison_valid"] = result["measurement_valid"] and not result["source_blob_diagnostics"] and not use_pc_memory
         if result["exit_code"] and result["status"] == "FINISHED":
             result["status"] = "INVALID_MEASUREMENT"
     except Exception as error:
@@ -294,6 +338,8 @@ def main():
                         help="opt-in owned root CPU memory sampled aggregates; no GPU counters")
     parser.add_argument("--blob-diagnostics", action="store_true",
                         help="opt-in native blob failure trace; excluded from performance comparisons")
+    parser.add_argument("--use-pc-memory", action="store_true",
+                        help="explicit maximum-PC diagnostic policy; freeze cap from measured resources, never auto-retry")
     args = parser.parse_args()
     if args.prepare and not args.execute_authorized:
         prepare()
@@ -301,7 +347,8 @@ def main():
     if not args.execute_authorized or args.tokens is None or args.trace is None or args.binding_sha is None:
         parser.error("explicit authorized cell required")
     return run_cell(args.tokens, args.trace, binding_sha=args.binding_sha, job_commit_gib=args.job_commit_gib,
-                    memory_diagnostics=args.memory_diagnostics, blob_diagnostics=args.blob_diagnostics)
+                    memory_diagnostics=args.memory_diagnostics, blob_diagnostics=args.blob_diagnostics,
+                    use_pc_memory=args.use_pc_memory)
 
 
 if __name__ == "__main__":
