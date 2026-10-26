@@ -62,8 +62,9 @@ cap will succeed.
 
 The startup fix passed 43 targeted CPU tests and a full CUDA SM120 link. The
 later boundary change passed two focused API tests, its compiled CPU contract
-and an incremental CUDA SM120 link; the full Python server suite passed 354
-tests with three skips. None of these results is a native long-context run.
+and an incremental CUDA SM120 link; the full Python server suite ran 354
+tests, with 351 passed and three skipped. None of these results is a native
+long-context run.
 At `2026-10-26T10:58:38Z`, `GlobalMemoryStatusEx` reported 11,172,454,400
 bytes of available physical RAM and 20,138,393,600 bytes of commit headroom.
 The older controller's admission rule for a 10 GiB Job required at least
