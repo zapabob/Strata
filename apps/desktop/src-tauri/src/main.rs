@@ -864,7 +864,7 @@ fn main() {
 /// Windows and macOS: one process owns the host and the window.
 #[cfg(not(target_os = "linux"))]
 fn run_embedded() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         // First, as the plugin requires: a second launch ends here after telling the running app to show itself.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
@@ -873,9 +873,12 @@ fn run_embedded() {
                 let _ = window.set_focus();
             }
         }))
-        .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
-        .manage(HostProcess(Mutex::new(None)))
+        .plugin(tauri_plugin_shell::init());
+    // The unsigned full preview is distributed manually. It must never offer
+    // the upstream signed installer through this fork's desktop window.
+    #[cfg(not(feature = "public-full-package"))]
+    let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+    builder.manage(HostProcess(Mutex::new(None)))
         .manage(HostPort(Mutex::new(None)))
         .manage(ShutdownToken(Mutex::new(None)))
         .setup(|app| {

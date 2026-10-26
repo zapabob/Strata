@@ -216,6 +216,7 @@ fn handle(mut stream: TcpStream, app: &AppHandle, token: &str, progress: &Arc<Mu
 
 /// Open the bridge on a free loopback port. Returns None if the listener cannot be bound (the app then simply has no
 /// in-app update; the Terminal's `strata update --app` still works).
+#[cfg(not(feature = "public-full-package"))]
 pub fn start(app: &AppHandle, token: String) -> Option<Bridge> {
     let listener = TcpListener::bind(("127.0.0.1", 0)).ok()?;
     let port = listener.local_addr().ok()?.port();
@@ -231,9 +232,21 @@ pub fn start(app: &AppHandle, token: String) -> Option<Bridge> {
 }
 
 /// Environment for the App Host: where the bridge is, which app version this is.
+#[cfg(feature = "public-full-package")]
+pub fn start(_app: &AppHandle, _token: String) -> Option<Bridge> {
+    None
+}
+
 #[allow(dead_code)]
 pub fn apply_env(cmd: &mut std::process::Command, app: &AppHandle, bridge: Option<&Bridge>) {
     cmd.env("STRATA_APP_VERSION", app.package_info().version.to_string());
+    #[cfg(feature = "public-full-package")]
+    {
+        cmd.env_remove("STRATA_SHELL_BRIDGE").env_remove("STRATA_SHELL_TOKEN");
+        let _ = bridge;
+        return;
+    }
+    #[cfg(not(feature = "public-full-package"))]
     if let Some(bridge) = bridge {
         cmd.env("STRATA_SHELL_BRIDGE", &bridge.url).env("STRATA_SHELL_TOKEN", &bridge.token);
     }

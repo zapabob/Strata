@@ -2,10 +2,12 @@
 
 from pathlib import Path
 import struct
+import stat
 import sys
 import tarfile
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "packaging"))
@@ -23,6 +25,19 @@ def pe() -> bytes:
 
 
 class PreviewTests(unittest.TestCase):
+    def test_reparse_attribute_rejects_prospective_ancestor_without_path_junction_api(self):
+        base = Path(tempfile.gettempdir()).absolute() / "junction-contract-only"
+        original = Path.lstat
+
+        def details(path, *args, **kwargs):
+            if path == base:
+                return SimpleNamespace(st_mode=stat.S_IFDIR, st_file_attributes=0x400)
+            return original(path, *args, **kwargs)
+
+        with patch.object(Path, "lstat", details):
+            with self.assertRaisesRegex(ValueError, "reparse path"):
+                preview.no_reparse(base / "not-created" / "payload.exe")
+
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

@@ -1,10 +1,13 @@
 [package]
 name = "strata-desktop"
-version = "0.3.0"
+version = "0.3.2-preview.20261027.1"
 description = "Strata Desktop — local AI, tuned to one model."
 edition = "2021"
 rust-version = "1.77"
 license = "MIT"
+
+[features]
+public-full-package = []
 
 # Linux: the drop of a file on the window is read straight from the GTK drag signals (see hook_linux_drops in main.rs); the versions are the ones Tauri itself uses.
 [target.'cfg(target_os = "linux")'.dependencies]

@@ -14,6 +14,7 @@ import logging
 from pathlib import Path, PurePosixPath
 import re
 import shutil
+import stat
 import subprocess
 import tarfile
 
@@ -52,8 +53,16 @@ def relative_name(value: str) -> str:
 
 def no_reparse(path: Path) -> None:
     """Reject symlinks/junctions in both existing and prospective paths."""
+    path = path.absolute()
     for part in [path, *path.parents]:
-        if part.is_symlink() or (hasattr(part, "is_junction") and part.is_junction()):
+        try:
+            details = part.lstat()
+        except FileNotFoundError:
+            continue
+        # Python 3.10 has no Path.is_junction(). Windows exposes all reparse
+        # points through lstat, including junctions and prospective ancestors.
+        reparse = getattr(details, "st_file_attributes", 0) & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
+        if stat.S_ISLNK(details.st_mode) or reparse:
             raise ValueError(f"reparse path: {part}")
 
 
