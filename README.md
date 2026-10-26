@@ -7,276 +7,162 @@
 
 <p align="center"><b>English</b> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ja.md">日本語</a> · <a href="README.de.md">Deutsch</a> · <a href="README.fr.md">Français</a> · <a href="README.es.md">Español</a> · <a href="README.pt-BR.md">Português</a></p>
 
-## Experimental 131k measurement preview — 0.3.2-preview.20261026.1
+# Strata
 
-[Download the native preview](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261026.1) · [Measured status](docs/PERF131K.md)
+Local LLM inference with a desktop app, a command-line controller and a native engine.
+This fork retains Spin(8) / Triality, Query-v3, TurboQuant and Bonsai alongside the
+upstream runtime. See [setup](docs/AI_SETUP.md), [engine details](docs/DETAILS.md)
+and the [Terminal guide](docs/TERMINAL.md).
 
-The current preview adds bounded, default-OFF measurement tooling. On Windows
-32 GiB RAM / RTX 5060 Ti 16 GiB, the 131072-capacity pilot preserved spec4 + MTP,
-k8v4 and a256-token output reserve. Both the8 GiB and10 GiB Job-limited attempts
-stopped before READY; no inference request completed. Throughput, GPU execution
-time, full-context quality and131k acceptance remain **NOT_RUN / NOT_QUALIFIED**.
-38 targeted CPU/controller tests passed; those tests do not prove GPU behavior.
+## Releases and current verification
 
-The executable is the limited P01-A/B0 host compile/link artifact, with reused
-CUDA objects whose source provenance remains **UNRESOLVED**. The archive includes
-required DLLs and a two-file overlay for an existing matching Control install;
-it is not a GUI installer or a complete standalone HTTP distribution. Original
-Spin(8), Triality, Query-v3, TurboQuant and Bonsai paths are retained, without new
-performance or quality qualification. No models or private configuration are bundled.
+[Stable release v0.3.1](https://github.com/zapabob/Strata/releases/tag/v0.3.1) ·
+[Published experimental preview](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261026.1) ·
+[Measurement status](docs/PERF131K.md)
 
-The measured controller checkpoint `e68f8926` has three successful CI workflows.
-After the documentation/installer update, GitHub refused new workflow dispatches
-with HTTP422 despite Actions permissions being enabled. Latest-source cloud CI
-is **BLOCKED**, not passed. Local installer tests and independent review are
-reported separately; this preview is not a stable release.
+The published preview and the development candidate are different artifacts.
+The candidate below has not been released or installed. The existing desktop app,
+Control settings, models and installed engine have not been replaced by this build.
 
-Historical release and benchmark sections below are not131k qualification evidence.
+| Scope, checked 26 October 2026 | Result |
+| --- | --- |
+| Blob-failure diagnostics: targeted CPU tests | 8 passed |
+| Selected diagnostics / native-exit CPU regression | 18 passed |
+| Limited fault mutations | 4 detected |
+| Actual product `expert_source.cpp` / `generate.cpp` host compilation | Passed |
+| Engine archive and final executable link | Passed |
+| Independent CPU and limited-build review | Accepted within those scopes |
+| Candidate GPU startup | RAN_FAILED_BEFORE_READY; Job commit limit exceeded |
+| Candidate completed model inference | NOT_RUN |
+| Paired performance statistics / cross-validation evaluation | NOT_RUN; design reviewed |
+| PPL / KL / full-context quality / stability | NOT_RUN |
+| Practical 131072-token qualification | NOT_QUALIFIED |
+| Reused object-to-source provenance | UNRESOLVED |
 
----
+One authorized candidate pilot ended before READY. Controller-observed elapsed
+was41.61 seconds,including monitoring and cleanup. The controller
+reported Job-limit status125; the preserved native exit was1. Job peak commit was
+10,740,895,744 bytes against10,737,418,240 configured. No request completed. The
+bounded snapshot retained32 host allocation failures and dropped99 records; it
+does not establish a direct causal link to the terminal blob-null pair. The Job
+terminated with no remaining processes. No automatic retry or cap increase occurred.
 
-<h3 align="center">Strata — Spin(8) Triality KV Cache, DeepSeek-V4.1 Uncensored, Arbitrary GGUF Loader & Long-Term Memory</h3>
+The limited Windows build uses existing Release/x64 product settings with
+MSVC, CUDA 13.3 headers/libraries and the existing SM120 artifacts. It does not
+constitute a fresh device-kernel build or establish CUDA execution compatibility.
+The candidate is an AMD64 PE of 80,742,400 bytes:
 
-<p align="center">
-  <b>Fork of <a href="https://github.com/Niko1221/Strata">Niko1221/Strata</a></b> · Upstream Synchronized · Release v0.3.0 · Spin(8) $\mathrm{Cl}(8,0)$ Triality Attention · DeepSeek-V4.1-Flash MLA Uncensored · Arbitrary Content-Addressed GGUF · Hermes & Hakua Long-Term Memory · 32GB RAM & RTX 50-Series (sm_120) Native
-</p>
-
-<p align="center">
-  <a href="https://github.com/zapabob/Strata/releases/tag/v0.3.0"><img src="https://img.shields.io/github/v/release/zapabob/Strata?label=release%20v0.3.0" alt="Release v0.3.0"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/zapabob/Strata" alt="MIT license"></a>
-  <a href="https://github.com/zapabob/Strata/stargazers"><img src="https://img.shields.io/github/stars/zapabob/Strata?style=flat" alt="GitHub stars"></a>
-  <img src="https://img.shields.io/badge/cuda-sm__120%20%7C%20sm__89-blue" alt="CUDA sm_120 | sm_89">
-</p>
-
----
-
-## What is Strata v0.3.0?
-
-**Strata** runs massive 125B-parameter Mixture-of-Experts (MoE) models and frontier reasoning models locally on a normal consumer PC. By streaming expert weights across GPU VRAM, system RAM, and fast SSD storage, Strata allows models like **Qwen3.8-Flash-Next** (125B), **DeepSeek-V4.1-Flash** (MLA), and **Qwen3.6-35B-A3B** to run on a single NVIDIA GeForce graphics card and 32 GB of system RAM.
-
-**`zapabob/Strata` v0.3.0** is an official engineering release synchronized with latest upstream Strata (v0.2.4.2 / engine 0.1.49.2). It brings native **RTX 50-series (`sm_120` Blackwell)** and **RTX 40-series (`sm_89` Ada)** CUDA optimizations, unifies **DeepSeek-V4.1-Flash uncensored derivatives**, adds an **arbitrary content-addressed GGUF inspector**, and bridges **Hermes Agent and Hakua long-term memory** directly into local inference.
-
----
-
-## Measured Real-World Benchmarks
-
-All metrics below are measured on a standard consumer desktop:
-- **Processor**: AMD Ryzen 5 4500 (6 Cores / 12 Threads, AVX2 enabled)
-- **Host Memory**: 32 GB Physical DDR4 RAM (34.22 GB commit space)
-- **Graphics**: NVIDIA GeForce RTX 5060 Ti 16 GB (`sm_120` Blackwell architecture)
-- **Storage**: PCIe NVMe SSD (model weight streaming)
-- **OS**: Windows 11 64-bit
-
-### 1. Model Inference Performance
-
-| Model & Quantization | Architecture | Generation Speed | GPU Hit Rate | Host RAM Usage | Active VRAM | Headroom Status |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Qwen3.8-Flash-Next (Q2_0)** | 125B MoE | **6.7 tok/s** | **61.7%** | 18.20 GB | 14.10 GB | **PASS** (13.6 GB free) |
-| **DeepSeek-V4.1-Flash (Maya-S)** | MoE + MLA | *Pending Shards* | *Pending Shards* | 18.79 GB (Est) | 8.80 GB (Est) | **BLOCKED (Shards 2-6 Missing)** |
-| **DeepSeek-V4.1 AtomicChat** | MoE + MLA | *Pending Shards* | *Pending Shards* | 18.79 GB (Est) | 8.80 GB (Est) | **BLOCKED (Weights Missing)** |
-| **Prism / TheTom (Q2K-XL)** | MoE + Query-v3 | **7.4 tok/s** | **68.2%** | 16.50 GB | 13.20 GB | **PASS** (15.3 GB free) |
-
-> [!NOTE]
-> The current131k preview does not establish a physical-RAM peak bound. Job commit, host RAM and VRAM are distinct counters; see the measured status above.
-> Per corrective plan Protocol v2, DeepSeek-V4.1 speed benchmarks are designated as pending empirical token generation once full multi-part shard sets (shards 2–6) are downloaded to storage.
-
-### 2. VRAM Stack & Dynamic Shared Memory Optimization
-
-- **Previous Baseline**: `audit_kernel` allocated thread-local arrays `float f[128 * 128]`, triggering CUDA stack reservations of **3.375 GiB** device memory.
-- **v0.3.0 Fix**: Replaced with dynamically allocated shared memory (`65,536` bytes per CTA).
-- **Result**: **3.375 GiB of device memory returned to the expert cache**, completely eliminating out-of-memory stack panics on 16 GB cards.
-
----
-
-## Installation & Setup
-
-Strata provides two ways to run: the **Desktop GUI App** and the **Terminal CLI**.
-
-### Download Official Release v0.3.0
-
-Download verified release archives directly from GitHub:
-- **Release Page**: [Strata v0.3.0 Release](https://github.com/zapabob/Strata/releases/tag/v0.3.0)
-- **Archive 1: Standalone Executables (EXE Bundle)**:
-  - `Strata-0.3.0-windows-x64-sm120-exe.tar.7z` (479.3 MB)
-  - **SHA-256**: `ca37ff9f0120fccac47ddb8e8b1b7f3341889aab4c32e9b2ef9ccf63e1497a9a`
-  - *Contains*: `strata.exe` (native CUDA sm_120 inference engine), `strata-desktop.exe`, `strata-vision.exe`, `strata_kq.dll`, `cublas64_13.dll`, `cublasLt64_13.dll`, and MSVC runtimes.
-- **Archive 2: Complete Engine & Desktop GUI Bundle**:
-  - `Strata-0.3.0-windows-x64-sm120-engine-gui.tar.7z` (412.7 MB)
-  - **SHA-256**: `97a2d28bc91474bd37c0dcfd0bc8abc1ed10ae8db3b0c774d5ceb5a4f3c9c374`
-  - *Contains*: Native engine, Python control runtime, and complete Host Web UI.
-
-### Option A: Desktop Application (GUI)
-
-The desktop app includes the full web interface, model manager, GPU configuration, and background engine controller.
-
-1. **Installed Path**:
-   `%LOCALAPPDATA%\Programs\Strata\strata-desktop.exe` (or Desktop shortcut `Strata.lnk`).
-2. **Web Host UI**:
-   If launching in headless or browser mode, visit `http://127.0.0.1:18500`.
-3. **Overwrite Upgrade**:
-   The installer automatically places the new 80.7 MB native CUDA engine (`0.3.0-windows-x86_64-cuda-cuda13`) into both:
-   - App bundle: `%LOCALAPPDATA%\Programs\Strata\engine-bundle\`
-   - Component cache: `%LOCALAPPDATA%\Strata\components\engine\`
-   All legacy `0.1.45.3` and `0.1.47` references are safely upgraded.
-
-### Option B: Terminal CLI (`strata`)
-
-The `strata` CLI provides precise control for developers and autonomous agents.
-
-1. Open PowerShell. `strata` is available directly on your `PATH`:
-   ```powershell
-   # Verify version
-   strata --version
-   ```
-2. Start the default MoE model with no prompts:
-   ```powershell
-   strata launch --model q2_0 --yes --no-tui
-   ```
-3. Check active model status and memory footprint:
-   ```powershell
-   strata launch --status
-   ```
-4. Stop the inference server cleanly:
-   ```powershell
-   strata launch --stop
-   ```
-
----
-
-## Key Innovations in `zapabob/Strata`
-
-### 1. DeepSeek-V4.1-Flash Uncensored & Multi-Head Latent Attention (MLA)
-- Native support for Multi-Head Latent Attention projection matrices (`strata_control/backends/dsv41.py`).
-- Pre-qualified models: ISTA baseline, Kiwimaker Maya-S abliterated slot replacement recipe, and AtomicChat standalone bundle.
-- **Smart Refusal Suppression**: Automatically disables refusal-direction steering on abliterated weights to prevent distortion, while strictly isolating Qwen steering tensors from DeepSeek latent projections.
-
-### 2. Arbitrary Content-Addressed GGUF ModelBundle Inspector
-- **Four-Tier Safety Check**:
-  1. *Container Inspection*: Bounded 16 MiB header parser and tensor rank/dim overflow guards (mitigating CVE / GHSA-vgg9-87g3-85w8).
-  2. *Architecture Compatibility*: Matches tensor naming and attention layouts to verified backends.
-  3. *Memory Admission*: Enforces host RAM $\le 24$ GiB and VRAM $\le 14$ GiB constraints before loading.
-  4. *Offline Local Routing*: Strictly routes to local backends (`strata-native`, `strata-dsv41`, `prism`, `llama-cpp`). **Cloud fallbacks are strictly prohibited.**
-- Streaming SHA-256 digests prevent file substitution or TOCTOU drift.
-
-### 3. Spin(8) Triality KV Cache & Asynchronous TurboQuant
-- Mathematical transform library ([`spin8/`](spin8/README.md)) implementing the octonionic triality intertwiner $U \Gamma(v) U^\top = \Gamma(Rv)$ on $\mathrm{Cl}(8,0)$.
-- **Three-View KV Cache**: Key representations in vector ($V$), positive spinor ($S_+$), and negative spinor ($S_-$) spaces combined through single-pass online softmax with simplex consensus weights.
-- Quantized CUDA dialects: `TQ4_1S` (4.25 bpw), `TQ3_0S` (3.3125 bpw), and `PQ2_0` (2.50 bpw).
-
-### 4. Zero-VRAM Drafter Lifecycle for 32GB RAM
-- High-efficiency speculative decoding using a small CPU/GPU drafter model.
-- If system memory encounters sudden pressure, the drafter dynamically unloads its buffers down to zero VRAM without interrupting the primary generation process.
-
-### 5. Hermes Agent & Hakua Long-Term Memory System
-Strata v0.3.0 bridges local large-model inference with autonomous agent memory:
-- **`plugins/hermes-strata`**: Built-in tool plugin allowing Hermes Agent to query and manage Strata models directly.
-- **`plugins/model-providers/strata`**: Hermes Agent provider enabling Hermes to route 125B MoE queries to local Strata (`http://127.0.0.1:18501/v1`).
-- **Memory MCP Server (`tools/strata_memory_mcp.py`)**:
-  - Connects `SOUL.md` (parental alignment and core personality).
-  - Connects `MEMORY.md` (structured episodic memory).
-  - Queries Hermes Agent SQLite memory (`~/.hermes/ebbinghaus_memory.db` with ~5,000 entries).
-  - Automatic prompt injection through `apps/host/server/memory.mjs`.
-
----
-
-## Hermes Agent Integration Guide
-
-To connect your local [Hermes Agent](https://github.com/NousResearch/Hermes-Agent) to Strata:
-
-### 1. Enable the Hermes-Strata Plugin
-The plugin is installed in `~/.hermes/plugins/hermes-strata/`:
-```bash
-# Verify plugin status in Hermes
-hermes plugins list
+```text
+SHA256 a8ec8e3d4ed948fafcc5c20e829b0d6b49f4f8482d30e279a1d0314e5e1004dd
 ```
 
-### 2. Configure Model Provider
-Point Hermes to Strata's local OpenAI-compatible endpoint:
-```yaml
-# ~/.hermes/config.yaml or plugins/model-providers/strata/config.yaml
-providers:
-  strata:
-    base_url: "http://127.0.0.1:18501/v1"
-    api_key: "not-needed-for-local"
-    model: "qwen3.8-flash-next-q2_0"
-```
+The selected installed preview executable still has SHA256
+`4281dd8b886f4863fd85e71e35c4fe64c084c4cdb9ce1cd1029c5dbbed958610`.
+Published archives have their own checksums; the candidate checksum above is not
+an archive checksum or a signature.
 
-### 3. Query Memory via MCP CLI
-```powershell
-# Recall memories related to Strata optimizations
-py -3 tools/strata_memory_mcp.py recall --query "dynamic shared memory"
+## What the candidate changes
 
-# Record a new milestone
-py -3 tools/strata_memory_mcp.py remember --text "v0.3.0 release verified on RTX 5060 Ti" --category tech
+Default-OFF blob diagnostics record the failed branch, requested bytes and known
+Win32/CUDA error codes. A fixed 32-record buffer reports pending/dropped records;
+unknown values remain unknown. Startup profile blob acquisition and transfer
+failure are distinguished. Existing I/O order, issued-request drain, scratch/event
+lifetime, pageable/mapped fallback and the original class ABI are preserved.
 
-# Display the active personality directive
-py -3 tools/strata_memory_mcp.py soul
-```
+The Windows controller keeps the observed native exit separately from its own
+budget or cleanup status. Job commit, process working set, physical available RAM,
+VRAM and disk traffic remain different measurements. A Job limit is not a physical
+RAM reservation or a guarantee that a model will fit.
 
----
+Normal execution keeps tracing and blob diagnostics OFF. The disabled diagnostics
+add no CUDA calls, events, GPU synchronization, worker or output I/O. This source
+property is CPU/static-verified; runtime overhead is not measured yet.
 
-## Verification & Test Results
+## The 131k evaluation contract
 
-The release passes rigorous automated verification under the MILSPEC LLMOps standard:
+The normal series fixes the same Q2_0 weights/pack/tokenizer, spec4 + MTP, k8v4,
+Attention views and capacity 131072. The initial diagnostic uses 4096 input tokens
+and an explicit 256-token output reservation. A draftless diagnostic is a separate
+series. Trace OFF/ON comparisons use the same series and exact token inputs.
+
+Older executables stopped before READY in Job-limited startup attempts, including
+10 GiB. Those failures yielded no completed inference and no throughput or quality
+result. The new candidate diagnostic also stopped before READY, as recorded above. No smaller capacity,
+model substitution, silent output-reservation shortening or precision reduction is
+accepted as a 131k pass. The internal 8-token slack remains a separate unresolved
+capacity-contract item.
+
+The [statistical protocol](docs/perf131k-statistical-protocol.json) is a design,
+not a result. It groups all variants/repetitions of an original task into the same
+held-out fold and independent statistical unit. Candidate and baseline use paired
+inputs and balanced run order. Paired effects, group bootstrap intervals and paired
+label-swap tests are planned; fold count and technical repetitions do not inflate
+sample count. A nonsignificant difference does not prove equivalence.
+
+Full qualification additionally requires the 64K stage, validated full-length
+boundaries after the capacity-contract fix, approximately 126K history with at
+least 512 actual generation steps, and 32 turns / two hours of stability. Retrieval,
+Japanese, English and code tasks need frozen scoring, plus a same-weights reference
+for PPL/KL. A short recall probe, READY line or CPU fixture cannot establish these.
+Historical benchmark numbers from other contexts are not current 131k evidence.
+
+## Installation
+
+Use the release notes for the exact artifact you select. The experimental native
+archive supplies the engine and required DLLs plus a small overlay for an existing
+matching Control installation. It is not a new GUI installer or a complete standalone
+HTTP distribution. Models and private configuration are not bundled.
+
+For general setup, start with [AI_SETUP.md](docs/AI_SETUP.md). To inspect an existing
+Terminal installation without starting a model:
 
 ```powershell
-# Run the complete Python test suite (71 tests)
-$env:PYTHONPATH="."
-py -3 -m pytest tests/terminal/test_custom_model_cli.py tests/contracts tests/security tests/models tests/backends tests/resources tests/dsv41 tests/runtime tests/steering tests/mutations tests/packaging tests/test_strata_memory.py -v -p no:randomly
-
-# Run Node.js host verification (13 tests)
-Push-Location apps/host
-node tests/custom-gguf.test.mjs
-node tests/run-config-check.test.mjs
-Pop-Location
-
-# Verify upstream integration lock
-py -3 tools/check_upstream_cut.py
+strata --version
+strata launch --plan --model q2_0
 ```
 
-- **Python Tests**: **71 / 71 passed** (0 failures, 0 warnings).
-- **Node.js Host Tests**: **13 / 13 passed**.
-- **Security Check**: Header bounds protection, TOCTOU avoidance, and offline firewall constraints verified.
+An overwrite update must preserve model files, user configuration and rollback
+artifacts. The current development candidate has not passed the runtime/release
+qualification gates and has not been used for an overwrite update.
 
----
+## Components and retained functionality
 
-## Hardware Compatibility Reference
+| Area | Source / documentation |
+| --- | --- |
+| Native engine and CUDA backends | [src](src/) / [include](include/) / [engine details](docs/DETAILS.md) |
+| Spin(8), Triality and Query-v3 | [spin8](spin8/) |
+| TurboQuant and cache dialects | [tqcodec](tqcodec/) |
+| Model inspection and local control | [strata_control](strata_control/) / [Terminal](docs/TERMINAL.md) |
+| Server and API | [serve](serve/) |
+| Desktop and Host | [apps](apps/) / [packaging](packaging/README.md) |
+| Bounded measurement and controller tests | [tools/perf131k](tools/perf131k/) / [tests/perf131k](tests/perf131k/) |
 
-| Platform | Minimum Hardware | Recommended Target | Supported Engine |
-| :--- | :--- | :--- | :--- |
-| **NVIDIA GeForce** | RTX 2060 (12 GB VRAM) | **RTX 5060 Ti 16 GB (`sm_120`)** / RTX 4070 12 GB (`sm_89`) | Native CUDA 13.x C++ |
-| **System Memory** | 32 GB Combined RAM+VRAM | **32 GB Physical DDR4/DDR5 RAM** | Windows / Linux OS |
-| **AMD Radeon** | RX 6800 (16 GB) | RX 7900 XT / RX 9070 | [AMD HIP Engine](docs/AMD_HIP.md) |
-| **Apple Silicon** | M1 Pro 32 GB | M2/M3/M4 Max 64 GB+ | [Mac Metal Engine](docs/MAC.md) |
-| **Intel Arc / Core** | Intel Arc A770 16 GB | Intel Battlemage / Meteor Lake | [Intel SYCL Engine](docs/INTEL.md) |
+This checkpoint does not change the model, K/V precision or number of Attention
+views to make a benchmark pass. Other model families and backends have their own
+requirements; see [AMD](docs/AMD_HIP.md), [Mac](docs/MAC.md) and
+[Intel](docs/INTEL.md) documentation. They are outside this Windows candidate's
+verification scope. Existing Hermes/Hakua integrations remain separate from the
+131k performance and quality qualification.
 
----
+## Evidence and contributing
 
-## Upstream Integration Information
+P00 and P01 remain PARTIAL. Local source/binary manifests, raw receipts and
+independent reviews distinguish CPU checks, host compile/link, real inference and
+release validation. Machine-local evidence, model files and environment backups
+are not published in this repository. Local pilot helpers require explicit bindings
+and resource gates; they are not a general-purpose model launcher.
 
-- **Upstream Baseline**: [`Niko1221/Strata`](https://github.com/Niko1221/Strata) @ `7dd5cf18e68c639a8773e096c5c79f971ea2a9f5` (v0.2.4.2 / engine 0.1.49.2)
-- **Upstream Security Fix**: `c487c875d05075113965bc61d822b27179f70639` (atomic configuration saving)
-- **Fork Foundation**: `ddc8f9e19cafb981ed91caaab0992ca814e6eca9` (retaining contracts F01 through F11)
-- **Upstream Tracking Audit**: [_docs/upstream-intake/](_docs/upstream-intake/)
+CI must succeed on the exact release source commit. The historical `e68f8926`
+checkpoint has successful workflows; that is not a pass for the current candidate.
+Actions permissions currently report enabled, but this alone does not prove the
+previous HTTP422 dispatch problem is resolved. Candidate-source CI is pending.
 
----
+Read [AGENTS.md](AGENTS.md) and [CONTRIBUTING.md](CONTRIBUTING.md) before changing
+the project. Preserve the original inference features and provide raw, reproducible
+measurements for performance claims.
 
-## Repository Structure
+## License and acknowledgments
 
-- [`spin8/`](spin8/) — Spin(8) $\mathrm{Cl}(8,0)$ triality algebra, Hadamard matrix transforms, and audit monitor.
-- [`tqcodec/`](tqcodec/) — TurboQuant CUDA kernels, QJL residual sketch, and three-view KV cache.
-- [`strata_control/`](strata_control/) — ModelBundle inspector, SHA-256 verification, and 32GB RAM memory planner.
-- [`plugins/hermes-strata/`](plugins/hermes-strata/) — Hermes Agent inference & management tool plugin.
-- [`plugins/model-providers/strata/`](plugins/model-providers/strata/) — Hermes Agent model provider configuration.
-- [`tools/strata_memory_mcp.py`](tools/strata_memory_mcp.py) — Long-term memory MCP server connecting Hermes SQLite and Hakua directives.
-- [`tools/qualify_model_bundle.py`](tools/qualify_model_bundle.py) — Four-tier GGUF model bundle qualification CLI.
-- [`tools/check_upstream_cut.py`](tools/check_upstream_cut.py) — Automated upstream cut integrity validator.
-
----
-
-## License & Acknowledgments
-
-- **Fork Maintainer**: [`zapabob/Strata`](https://github.com/zapabob)
-- **Original Engine & App**: [`Niko1221/Strata`](https://github.com/Niko1221/Strata) by Niko and the Strata Contributors.
-- **Model Authors**: [Qwen Team (Alibaba)](https://huggingface.co/Qwen), [DeepSeek AI](https://huggingface.co/deepseek-ai), [ISTA-DASLab](https://huggingface.co/ISTA-DASLab), Kiwimaker, and AtomicChat.
-- **License**: Released under the [MIT License](LICENSE).
+[MIT License](LICENSE). Based on [Niko1221/Strata](https://github.com/Niko1221/Strata),
+with work by the upstream contributors, the fork contributors, Spin(8)/TurboQuant
+authors and the model authors. Model licenses remain separate from the software license.

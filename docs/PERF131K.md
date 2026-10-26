@@ -1,3 +1,49 @@
+# Current development candidate — 26 October 2026
+
+The new diagnostic candidate has SHA256
+`a8ec8e3d4ed948fafcc5c20e829b0d6b49f4f8482d30e279a1d0314e5e1004dd`
+and is80,742,400 bytes. It is separate from the published .1 preview and is not
+installed. Blob diagnostics passed8 CPU tests plus18 selected regression tests;
+4 mutations were detected. Actual expert_source/generate host compilation, engine
+archive and final link passed with independent read-only acceptance. No new device
+compile or GPU execution is implied. Reused-object/source provenance is UNRESOLVED.
+
+The authorized single diagnostic ran with4K input,capacity131072,spec4+MTP,
+k8v4,reserve256,traceOFF,CPU memory and blob diagnostics ON. Consumer admission
+met the RAM12GiB/commit16GiB/H8GiB gates. Controller-observed elapsed was41.61s,
+including monitoring and cleanup; startup ended before READY. The controller reported COMMIT_BUDGET_EXCEEDED/125 and native exit1 was observed before
+cleanup. Job peak10,740,895,744B exceeded the10,737,418,240B limit. All Job processes
+terminated. The one-shot approval is consumed; no retry or cap increase occurred.
+
+The snapshot retained32 new(nothrow) allocation failures requesting1,382,400B each;
+99 additional records were dropped. These failed requests are not allocated bytes
+or disk traffic. Worker context is unknown; terminal file-source blob-null at
+layer46/expert185 remains cause=unknown. Retained heap failures are not proven to
+belong to that terminal pair. cuMemCreate error2 attempts recovered via smaller
+cache before this terminal failure. Independent review accepted the corrected
+evidence scope, not inference or131k qualification.
+The wrapper pins the full launch binding,controller sources/import origins and
+binary; default startup does not invoke this operator-specific helper.
+
+The [reviewed statistical design](perf131k-statistical-protocol.json) is not an
+implemented/evaluated result. It keeps paired task families together, avoids treating
+folds or technical repetitions as independent observations, and separates initial
+4K/32K measurements from full qualification. Full boundaries wait for P02;64K,
+126k-history/512 actual steps,reference PPL/KL and32turn/2h stability remain separate
+gates. No p-value, confidence interval or performance improvement is reported yet.
+
+Actions permissions currently report enabled. Latest-candidate CI is still pending;
+permission status does not prove the earlier HTTP422 dispatch failure is fixed.
+P00/P01 remain PARTIAL. GPU startup RAN_FAILED_BEFORE_READY; completed inference,
+performance and quality remain NOT_RUN; full131k is NOT_QUALIFIED.
+
+---
+
+## Historical published-preview records
+
+The following records describe earlier checkpoints and binaries. Their present-tense
+wording is historical and does not override the current-candidate status above.
+
 # Experimental 131k measurement tooling
 
 This checkpoint adds measurement infrastructure. It does not establish that a
