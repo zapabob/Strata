@@ -44,7 +44,8 @@
     "latency": "stream token timestamps for TTFT/ITL; engine DONE timings are separate metrics and cannot substitute",
     "failure": "no p-value/performance verdict when valid pairs absent, source/binary identities unresolved or131072 capacity fails",
     "low_n": "raw n/CI and small-sample limits; no stable p95 claim from one pilot",
-    "aggregation": "Within each prompt variant aggregate technical repeats by median; within original family give variants equal prespecified weight and aggregate by median; equal weight per independent family. Effects and bootstrap resample whole families. Folds and technical repetitions do not increase independent n. Report n_family, n_variant, n_repeat separately. Stratified length-specific reports retain original grouping."
+    "aggregation": "Within each prompt variant aggregate technical repeats by median; within original family give variants equal prespecified weight and aggregate by median; equal weight per independent family. Effects and bootstrap resample whole families. Folds and technical repetitions do not increase independent n. Report n_family, n_variant, n_repeat separately. Stratified length-specific reports retain original grouping.",
+    "permutation_statistic": "absolute mean of paired family differences; two-sided family sign flips; descriptive effect and bootstrap use paired median differences"
   },
   "acceptance_targets": {
     "decode_median_tps_min": 5,
@@ -64,8 +65,8 @@
     "https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats/permutation_test.html",
     "https://scikit-learn.org/stable/modules/cross_validation.html"
   ],
-  "execution": "NOT_RUN; no measurements fabricated; analysis implementation not yet written",
-  "revision": "v2; independent-review design corrections",
+  "execution": "NOT_RUN on measured pairs; tools/perf131k/statistics.py validated only with synthetic CPU fixtures",
+  "revision": "v3; offline statistical executor and full-gate freeze contract; no measurements run",
   "full_qualification_stages": [
     "4K",
     "32K",
@@ -73,12 +74,43 @@
     "131072-capacity full gate after P02/P16; not replaced by initial pilot"
   ],
   "full_qualification_gate": {
-    "history_tokens": "approximately126k; exact token IDs/hash, processed positions,KV/recurrence progress recorded",
+    "history_tokens": 126000,
     "actual_generated_steps_min": 512,
     "independent_receipt_required": true,
     "pilot_output_reserve": 256,
-    "full_test_reserve": "explicitly resolved under P02 contract; never silently change current pilot reserve256; single-turn512+ output requires a separately specified reservation",
+    "full_test_reserve": 1024,
     "boundary_tests": "130048+1024 and131071+1 after P02; separate from pilot",
-    "current_status": "NOT_RUN"
+    "current_status": "NOT_RUN",
+    "capacity": 131072,
+    "required_progress": [
+      "exact token IDs SHA256",
+      "processed_input_tokens=126000",
+      "kv_progress_tokens=126000",
+      "recurrence_progress_tokens=126000",
+      "generated_steps>=512",
+      "independent receipt SHA256"
+    ]
+  },
+  "offline_executor": {
+    "command": "py -3.12 -B -m tools.perf131k.statistics manifest.json runs.json --frozen-sha256 <previously recorded canonical SHA256>",
+    "hash": "SHA256 of UTF-8 JSON with sort_keys=True, separators=(comma,colon), allow_nan=False; digest() helper; record independently before collection. Self-rehash after observing runs is not a freeze.",
+    "manifest": "schema=1; data_kind=synthetic|measured; stage=pilot|full; capacity=131072; integer seed; bootstrap_draws/permutation_draws 100..100000; arms baseline/candidate each source_sha256 and binary_sha256; shared_identity_sha256; endpoints mapping metric name to lower|higher; families mapping original-family ID to {fold:0..4}, all five folds represented; pairs list.",
+    "shared_identity_contents": "Before collection freeze model/pack/tokenizer contents, capacity, KV/views, argv/env, device/cache regime, scoring rubric and series (cold/first/warm; trace; diagnostic settings). Shared identity SHA256 binds this external canonical record. Model classes and series never pooled.",
+    "pair_fields": [
+      "family",
+      "variant",
+      "repeat",
+      "order (balanced AB/BA)",
+      "token_ids_sha256",
+      "input_tokens",
+      "output_reserve"
+    ],
+    "run_fields": "Every pair field plus arm, status=PASS, manifest_sha256, identity=arm identity, shared_identity_sha256, capacity, data_kind, raw_artifact_sha256, metrics with exactly all frozen endpoint names and finite positive values. Full additionally generated_steps>=512, independent_receipt_sha256, processed_input_tokens=kv_progress_tokens=recurrence_progress_tokens=126000.",
+    "supported_metrics": "Positive timing/throughput endpoints only. Stream TTFT/ITL and engine DONE must be different frozen endpoints. Binary quality, PPL, quality/SLO decisions and stratified score reports are separate NOT_RUN gates.",
+    "resampling": "Median repeats within variant; median equally weighted variants within original family. Equal family weight. Whole-family percentile bootstrap 95% CI, linear quantiles. Exact family sign flips through 16 independent groups; otherwise seeded finite Monte Carlo with add-one correction. Holm across entire frozen endpoint map.",
+    "outputs": "stdout JSON, exit 0 for analysis, exit 2 BLOCKED; all invalid/failed/missing/duplicate/unregistered/mismatched records block all endpoint statistics. Synthetic status DESIGN_NOT_RUN. Valid measured records status ANALYZED means offline calculations only; performance_verdict always NOT_EVALUATED.",
+    "trust_boundary": "Normalized collector records and digest strings are inputs, not independent proof of their contents. Verify raw artifacts, source-to-binary provenance, collection chronology/freeze, independent receipt and quality/reference gates before any performance claim. No automatic adoption verdict.",
+    "evaluation_folds": "One immutable fold per original family, all variants/repeats inherit it. Five evaluation folds, no fitting or tuning performed here; fold scores are not independent observations. Stratification must be reviewed in the frozen external map.",
+    "protocol_minimums": "Executor computes offline statistics; warmups, minimum ten alternating warm pairs, cold runs, retrieval/practical task counts, boundary checks and 32turn/2h stability remain independent qualification checks. Successful analysis does not establish those checks."
   }
 }
