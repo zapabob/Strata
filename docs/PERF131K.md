@@ -1,8 +1,29 @@
-# Current development candidate — 26 October 2026
+# Current boundary candidate — 26 October 2026
 
-The new diagnostic candidate has SHA256
+Source commit `00c1b770` adds opt-in `--exact-context-boundary` to the native
+engine. The Python server uses zero slack only when its configured native args
+include that flag. For a strict capacity check, also set `fit_max_tokens` to
+`false`; otherwise the usual API behavior may shorten an oversized reservation.
+The default still keeps eight spare context cells. This opt-in mode requires
+single-request serial serving: `--batch` and `--pipeline-windows` must be off.
+
+Commit `6955c759` rejects pipeline and batch modes for this option after
+independent static review found that their final-cell paths were not covered.
+The CPU contract accepts 130048 input tokens with a separate 1024-token output
+reservation and 131071 input tokens with one output token, and rejects each
+one-over request. The API mock passed two focused tests; the native boundary
+helper compiled and exited 0; the Windows CUDA SM120 executable linked and
+its read-only `--help` exited 0. The current executable is 80,759,296 bytes,
+SHA256 `6f3374e3a6438023aad5b7a8dad9020a9c4383f90b3a31e3402bbfcf271d15b3`.
+The receipt is `H:\Strata\evidence\p01-boundary-20261026\p02-cpu-receipt-after-review.json`.
+No full-context native request or model startup ran on this build. P02 device
+behavior and 131072-token qualification remain unverified.
+
+## Earlier diagnostic candidate and pilot
+
+The earlier diagnostic candidate had SHA256
 `a8ec8e3d4ed948fafcc5c20e829b0d6b49f4f8482d30e279a1d0314e5e1004dd`
-and is80,742,400 bytes. It is separate from the published .1 preview and is not
+and was80,742,400 bytes. It is separate from the published .1 preview and is not
 installed. Blob diagnostics passed8 CPU tests plus18 selected regression tests;
 4 mutations were detected. Actual expert_source/generate host compilation, engine
 archive and final link passed with independent read-only acceptance. No new device

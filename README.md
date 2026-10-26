@@ -30,6 +30,7 @@ Control settings, models and installed engine have not been replaced by this bui
 | Opt-in memory harness tests | 25 passed including temporary-profile real hakua writer, 1 Windows symlink test skipped for missing privilege; native multiuser isolation remains unqualified |
 | Fresh Windows CUDA SM120 `Release/x64` engine link | Passed with GGML `3cf0325`, CUDA 13.3 and MSVC |
 | Windows native preview CPU checks on the pushed branch | Spin8 6/6, tqcodec 10/10, packaging tests 12/12 passed; Linux, HIP and SYCL not checked |
+| Opt-in 131072 boundary admission | `130048+1024` and `131071+1` accepted by strict API mock; one-over rejected; native CPU contract and CUDA link passed. Serial serving only; final-cell device execution NOT_RUN |
 | Same-source GitHub Actions | NOT_RUN: branch push produced no run; manual dispatch returned HTTP 422 saying Actions is disabled |
 | Fresh executable read-only `--help` | Exit 0; no model loaded |
 | Earlier 10 GiB Job diagnostic | RAN_FAILED_BEFORE_READY; this was a different executable |
@@ -37,7 +38,7 @@ Control settings, models and installed engine have not been replaced by this bui
 | Paired performance statistics / cross-validation evaluation | Offline executor passed 13 synthetic tests; measured pairs NOT_RUN |
 | PPL / KL / full-context quality / stability | NOT_RUN |
 | Practical 131072-token qualification | NOT_QUALIFIED |
-| Fresh build source and artifact hashes | Engine fix committed as `dd0b797a`; benchmark executor committed as `fe7f5159`; local binary and inputs hashed |
+| Fresh build source and artifact hashes | Startup fix `dd0b797a`, benchmark executor `fe7f5159`, boundary contract `00c1b770` plus mode guard `6955c759`; local binary and inputs hashed |
 
 One earlier candidate pilot ended before READY. Controller-observed elapsed
 time was 41.61 seconds, including monitoring and cleanup. The controller
@@ -50,19 +51,21 @@ terminated with no remaining processes. No automatic retry or cap increase occur
 The current candidate is a fresh Windows `Release/x64` CUDA SM120 build. It
 compiled and linked the engine, Spin8, native cache and GGML TQ overlay. The
 build does not establish model startup, inference quality or GPU stability.
-The new candidate executable is 80,756,224 bytes:
+The latest candidate executable is 80,759,296 bytes:
 
 ```text
-SHA256 0894022ca65dd036754ab088b9ba814dc5ebd58da10439984034b06afff29e1e
+SHA256 6f3374e3a6438023aad5b7a8dad9020a9c4383f90b3a31e3402bbfcf271d15b3
 ```
 
 The selected installed preview executable still has SHA256
 `4281dd8b886f4863fd85e71e35c4fe64c084c4cdb9ce1cd1029c5dbbed958610`.
 Published archives have their own checksums; the candidate checksum above is not
-an archive checksum or a signature. The SHA256 values for the new executable,
-`strata_kq.dll`, both GGUF shards, the pack, MTP files, tokenizer and expert
-profile are recorded under `H:\Strata\evidence\p01-full-build-20261026`.
-The final code and binary link is in `build-provenance-after-complement.json` there.
+an archive checksum or a signature. The earlier startup build, `strata_kq.dll`,
+both GGUF shards, the pack, MTP files, tokenizer and expert profile are recorded
+under `H:\Strata\evidence\p01-full-build-20261026`. Its source and binary link
+is in `build-provenance-after-complement.json` there. The later boundary build
+and CPU checks are bound to source commit `6955c759` in
+`H:\Strata\evidence\p01-boundary-20261026\p02-cpu-receipt-after-review.json`.
 
 ## What the candidate changes
 

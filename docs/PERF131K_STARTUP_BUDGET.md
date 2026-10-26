@@ -9,9 +9,9 @@ not a Strata or 131072-token requirement. No cap change is authorized here.
 
 | Item | Current identification | Launch status |
 | --- | --- | --- |
-| Source | Base HEAD `93e9c0ac9f8145209a480d704eb8104bd49395db`; startup fixes are in pushed commit `dd0b797a`. Current `expert_source.cpp` Git blob is `d0f331379eb8e00e9e1446543773da6610c8406a`. The benchmark executor follows in `fe7f5159` without engine changes. | Linked to the updated CUDA build receipt below; no same-source CI or model run. |
-| Build objects | Fresh `Release/x64` SM120 CUDA build in `H:\Strata\build\p01-startup-cuda-20261026`, then an incremental rebuild after the complement worker fix. The last `strata` link exited 0. Current source, binary, build log and CPU-test hashes are in `H:\Strata\evidence\p01-full-build-20261026\build-provenance-after-complement.json`. | Full link passed; no GPU model execution. |
-| Executable | Current `strata.exe` SHA256 `0894022ca65dd036754ab088b9ba814dc5ebd58da10439984034b06afff29e1e`; `strata_kq.dll` SHA256 `919db9448abedaeac4bdf963160b09c47ad55cca28ca6d1ebec2024c92ae94f2`. Both are in `H:\Strata\build\p01-startup-cuda-20261026\Release`. | Read-only `--help` returned exit 0 under a minimal PATH after the last link; model launch not run. |
+| Source | Base HEAD `93e9c0ac9f8145209a480d704eb8104bd49395db`; startup fix `dd0b797a`, benchmark executor `fe7f5159`, opt-in exact boundary `00c1b770`, and mode guard `6955c759`. Current `expert_source.cpp` Git blob is `d0f331379eb8e00e9e1446543773da6610c8406a`. | Linked to the CUDA build receipts below; no same-source CI or model run. |
+| Build objects | Fresh `Release/x64` SM120 CUDA build in `H:\Strata\build\p01-startup-cuda-20261026`, then incremental rebuilds after the complement and boundary changes. The last `strata` link exited 0. Startup source/build hashes are in `H:\Strata\evidence\p01-full-build-20261026\build-provenance-after-complement.json`; current boundary source, executable and build log are bound in `H:\Strata\evidence\p01-boundary-20261026\p02-cpu-receipt-after-review.json`. | Link passed; no GPU model execution. |
+| Executable | Current `strata.exe` SHA256 `6f3374e3a6438023aad5b7a8dad9020a9c4383f90b3a31e3402bbfcf271d15b3`, 80,759,296 bytes; `strata_kq.dll` SHA256 `919db9448abedaeac4bdf963160b09c47ad55cca28ca6d1ebec2024c92ae94f2`. Both are in `H:\Strata\build\p01-startup-cuda-20261026\Release`. | Read-only `--help` returned exit 0 after the last link; model launch not run. |
 | Model/pack | SHA256 and sizes of both GGUF shards, native pack and MTP dense/expert files are in `H:\Strata\evidence\p01-full-build-20261026\artifact-sha256.json`; tokenizer and profile hashes are in `small-input-sha256.json`. | Content identity recorded; compatibility and runtime provenance not proved. |
 | Statistical JSON | `docs/perf131k-statistical-protocol.json` SHA256 `2fc40ea4eda197ddb19627b57c561cb405553684f04dcaeb9a8a067366401884` records design, not measured pairs. | `DESIGN_NOT_RUN`. |
 
@@ -60,7 +60,10 @@ pair 18. Those observations give a lower bound for that older executable,
 not the current executable's required peak or proof that a particular higher
 cap will succeed.
 
-The current build passed the 43 targeted CPU tests and a full CUDA SM120 link.
+The startup fix passed 43 targeted CPU tests and a full CUDA SM120 link. The
+later boundary change passed two focused API tests, its compiled CPU contract
+and an incremental CUDA SM120 link; the full Python server suite passed 354
+tests with three skips. None of these results is a native long-context run.
 At `2026-10-26T10:58:38Z`, `GlobalMemoryStatusEx` reported 11,172,454,400
 bytes of available physical RAM and 20,138,393,600 bytes of commit headroom.
 The older controller's admission rule for a 10 GiB Job required at least
@@ -69,7 +72,7 @@ Available memory changed substantially between nearby samples, so this is
 only a timestamped observation. The record is
 `H:\Strata\evidence\p01-full-build-20261026\offline-admission-20261026T105838Z.json`.
 
-A second read-only snapshot at `2026-10-26T11:34:31Z` bound the current
+A second read-only snapshot at `2026-10-26T11:34:31Z` bound the earlier
 `0894022c` executable to 8,771,563,520 bytes of available physical RAM and
 14,825,586,688 bytes of system commit headroom. It also failed the older
 10 GiB controller's 12 GiB available-RAM rule. This observation is in
