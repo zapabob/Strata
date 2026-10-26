@@ -29,6 +29,8 @@ Control settings, models and installed engine have not been replaced by this bui
 | Startup, diagnostics and statistics CPU tests | 43 passed with `pytest-randomly` disabled |
 | Opt-in memory harness tests | 25 passed including temporary-profile real hakua writer, 1 Windows symlink test skipped for missing privilege; native multiuser isolation remains unqualified |
 | Fresh Windows CUDA SM120 `Release/x64` engine link | Passed with GGML `3cf0325`, CUDA 13.3 and MSVC |
+| Windows native preview CPU checks on the pushed branch | Spin8 6/6, tqcodec 10/10, packaging tests 12/12 passed; Linux, HIP and SYCL not checked |
+| Same-source GitHub Actions | NOT_RUN: branch push produced no run; manual dispatch returned HTTP 422 saying Actions is disabled |
 | Fresh executable read-only `--help` | Exit 0; no model loaded |
 | Earlier 10 GiB Job diagnostic | RAN_FAILED_BEFORE_READY; this was a different executable |
 | Fresh candidate GPU startup / completed model inference | NOT_RUN |
@@ -38,10 +40,10 @@ Control settings, models and installed engine have not been replaced by this bui
 | Fresh build source and artifact hashes | Engine fix committed as `dd0b797a`; benchmark executor committed as `fe7f5159`; local binary and inputs hashed |
 
 One earlier candidate pilot ended before READY. Controller-observed elapsed
-was41.61 seconds,including monitoring and cleanup. The controller
-reported Job-limit status125; the preserved native exit was1. Job peak commit was
-10,740,895,744 bytes against10,737,418,240 configured. No request completed. The
-bounded snapshot retained32 host allocation failures and dropped99 records; it
+time was 41.61 seconds, including monitoring and cleanup. The controller
+reported Job-limit status 125; the preserved native exit was 1. Job peak commit was
+10,740,895,744 bytes against 10,737,418,240 configured. No request completed. The
+bounded snapshot retained 32 host allocation failures and dropped 99 records; it
 does not establish a direct causal link to the terminal blob-null pair. The Job
 terminated with no remaining processes. No automatic retry or cap increase occurred.
 
@@ -156,7 +158,8 @@ and resource gates; they are not a general-purpose model launcher.
 
 CI must succeed on the exact release source commit. The engine fix, offline
 analysis and disabled-by-default memory harness are committed locally as
-`dd0b797a`, `fe7f5159` and `fb51a51c`. No same-source CI result exists. The historical `e68f8926`
+`dd0b797a`, `fe7f5159` and `fb51a51c`. The branch has been pushed, but no
+same-source CI result exists. The historical `e68f8926`
 checkpoint has successful workflows; that is not a pass for the current candidate.
 Actions permissions currently report enabled, but this alone does not prove the
 previous HTTP422 dispatch problem is resolved. Candidate-source CI is pending.

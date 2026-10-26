@@ -9,7 +9,7 @@ not a Strata or 131072-token requirement. No cap change is authorized here.
 
 | Item | Current identification | Launch status |
 | --- | --- | --- |
-| Source | Base HEAD `93e9c0ac9f8145209a480d704eb8104bd49395db`; startup fixes are in local commit `dd0b797a`. Current `expert_source.cpp` Git blob is `d0f331379eb8e00e9e1446543773da6610c8406a`. The benchmark executor follows in `fe7f5159` without engine changes. | Linked to the updated CUDA build receipt below; no same-source CI or model run. |
+| Source | Base HEAD `93e9c0ac9f8145209a480d704eb8104bd49395db`; startup fixes are in pushed commit `dd0b797a`. Current `expert_source.cpp` Git blob is `d0f331379eb8e00e9e1446543773da6610c8406a`. The benchmark executor follows in `fe7f5159` without engine changes. | Linked to the updated CUDA build receipt below; no same-source CI or model run. |
 | Build objects | Fresh `Release/x64` SM120 CUDA build in `H:\Strata\build\p01-startup-cuda-20261026`, then an incremental rebuild after the complement worker fix. The last `strata` link exited 0. Current source, binary, build log and CPU-test hashes are in `H:\Strata\evidence\p01-full-build-20261026\build-provenance-after-complement.json`. | Full link passed; no GPU model execution. |
 | Executable | Current `strata.exe` SHA256 `0894022ca65dd036754ab088b9ba814dc5ebd58da10439984034b06afff29e1e`; `strata_kq.dll` SHA256 `919db9448abedaeac4bdf963160b09c47ad55cca28ca6d1ebec2024c92ae94f2`. Both are in `H:\Strata\build\p01-startup-cuda-20261026\Release`. | Read-only `--help` returned exit 0 under a minimal PATH after the last link; model launch not run. |
 | Model/pack | SHA256 and sizes of both GGUF shards, native pack and MTP dense/expert files are in `H:\Strata\evidence\p01-full-build-20261026\artifact-sha256.json`; tokenizer and profile hashes are in `small-input-sha256.json`. | Content identity recorded; compatibility and runtime provenance not proved. |
@@ -68,6 +68,16 @@ The older controller's admission rule for a 10 GiB Job required at least
 Available memory changed substantially between nearby samples, so this is
 only a timestamped observation. The record is
 `H:\Strata\evidence\p01-full-build-20261026\offline-admission-20261026T105838Z.json`.
+
+A second read-only snapshot at `2026-10-26T11:34:31Z` bound the current
+`0894022c` executable to 8,771,563,520 bytes of available physical RAM and
+14,825,586,688 bytes of system commit headroom. It also failed the older
+10 GiB controller's 12 GiB available-RAM rule. This observation is in
+`H:\Strata\evidence\p01-cpu-native-20261026\offline-admission-20261026T113431Z.json`.
+The same evidence directory records Windows Spin8 6/6, tqcodec 10/10 and
+targeted startup/statistics CPU 43/43. GitHub Actions returned HTTP 422 on
+manual dispatch despite reporting the workflow active and repository Actions
+enabled, so no same-source cloud CI result exists.
 
 The stage-buffer pool can retain buffers after logical reuse, the direct-I/O
 scratch remains allocated in its thread, and Windows may charge device
