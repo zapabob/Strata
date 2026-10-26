@@ -1,8 +1,9 @@
 # Optional local memory harness
 
 This feature is off unless the server configuration explicitly enables it.
-It has only been tested with synthetic profiles and a scripted engine. The real
-hakua writer and real-model summary quality have not been qualified here.
+It has been tested with synthetic profiles, a scripted engine, and one
+temporary-profile write/read through the installed hakua writer at `2908c6b9`.
+Real-model summary quality and native multiuser traffic have not been qualified.
 
 The operator supplies `hakua_harness` in the existing server configuration:
 
@@ -77,8 +78,9 @@ summary inference must not overwrite the pilot request's receipt or token totals
 The optional `hakua_memory.ebbinghaus.store.EbbinghausMemoryStore` import occurs
 only after a completed consented turn and successful local summary. A missing
 dependency leaves the API answer intact and skips persistence. The writer was
-inspected against hakua-memory commit `2908c6b9`; this work does not install or
-change it. The library constructor may migrate the dedicated profile database.
+inspected and smoke-tested against hakua-memory commit `2908c6b9`; this work
+does not install or change it. The library constructor may migrate the dedicated
+profile database.
 
 The per-profile `strata-turns.db` ledger records an attempt before invoking the
 writer. A normal retry with the same turn ID and content does not write again.

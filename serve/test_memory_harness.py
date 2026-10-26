@@ -442,5 +442,31 @@ class HarnessTests(unittest.TestCase):
             httpd.server_close()
 
 
+class RealWriterSyntheticTests(unittest.TestCase):
+    def test_optional_real_hakua_writer_stores_once_and_recall_does_not_write(self):
+        try:
+            import hakua_memory.ebbinghaus.store  # noqa: F401 - optional local package
+        except ImportError as error:
+            self.skipTest("hakua_memory is not installed: " + str(error))
+        with tempfile.TemporaryDirectory(prefix="strata-hakua-integration-") as directory, \
+                patch.dict(os.environ, {"STRATA_SYNTHETIC_MEMORY_KEY": "synthetic-local-test-key"}):
+            root = Path(directory) / "profile"
+            harness = mh.Harness([{"principal": "synthetic", "key_env": "STRATA_SYNTHETIC_MEMORY_KEY",
+                                   "root": str(root)}], ["synthetic-local-test-key"])
+            turn, _ = harness.begin("synthetic-local-test-key",
+                                    {"read": True, "store_summary": True, "turn_id": "synthetic_turn_1"},
+                                    [{"role": "user", "content": "synthetic blue preference"}], threading.Event())
+            self.assertEqual(harness.complete(turn, "synthetic completed response",
+                                              lambda *args: "synthetic blue preference summary"), "stored")
+            self.assertEqual(harness.complete(turn, "synthetic completed response",
+                                              lambda *args: self.fail("summary replayed")), "stored")
+            with closing(sqlite3.connect(root / "ebbinghaus.db")) as conn:
+                self.assertEqual(conn.execute("SELECT COUNT(*) FROM memories").fetchone()[0], 1)
+            before = {p.name: hashlib.sha256(p.read_bytes()).digest() for p in root.iterdir() if p.is_file()}
+            self.assertEqual(len(harness.recall(turn.principal, "blue")), 1)
+            after = {p.name: hashlib.sha256(p.read_bytes()).digest() for p in root.iterdir() if p.is_file()}
+            self.assertEqual(before, after)
+
+
 if __name__ == "__main__":
     unittest.main()

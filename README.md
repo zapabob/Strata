@@ -27,7 +27,7 @@ Control settings, models and installed engine have not been replaced by this bui
 | Scope, checked 26 October 2026 | Result |
 | --- | --- |
 | Startup, diagnostics and statistics CPU tests | 43 passed with `pytest-randomly` disabled |
-| Opt-in memory harness tests | 24 passed, 1 Windows symlink test skipped for missing privilege; native multiuser isolation remains unqualified |
+| Opt-in memory harness tests | 25 passed including temporary-profile real hakua writer, 1 Windows symlink test skipped for missing privilege; native multiuser isolation remains unqualified |
 | Fresh Windows CUDA SM120 `Release/x64` engine link | Passed with GGML `3cf0325`, CUDA 13.3 and MSVC |
 | Fresh executable read-only `--help` | Exit 0; no model loaded |
 | Earlier 10 GiB Job diagnostic | RAN_FAILED_BEFORE_READY; this was a different executable |
