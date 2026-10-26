@@ -1,6 +1,13 @@
 /** Preserve native protocol events and tool payloads; the gateway owns identity and cancellation. */
 import { once } from 'node:events';
 export async function nativeGateway({req,res,path,body,control,serving,fetcher=fetch}){
+ // The Host's local UI and /v1 listener have one shared native engine key, not
+ // an authenticated principal. Never forward per-user memory consent with it.
+ if(body && Object.prototype.hasOwnProperty.call(body,'strata_memory')){
+  res.writeHead(400,{'content-type':'application/json'});
+  res.end(JSON.stringify({error:{message:'strata_memory requires a directly authenticated Python server client.',type:'invalid_request_error',param:'strata_memory',code:null}}));
+  return;
+ }
  let instance;try{instance=control.resolveInstance(body.model);}catch(e){res.writeHead(400,{'content-type':'application/json'});res.end(JSON.stringify({error:{message:e.message,type:'invalid_request_error',param:'model',code:null}}));return;}
  const abort=new AbortController(),started=Date.now();res.on('close',()=>{if(!res.writableEnded)abort.abort();});
  const entry=serving.open({client:req.headers['user-agent']?.slice(0,100)??'API client',endpoint:path.slice(3),model:instance.apiModelId,instanceId:instance.id,gpuIds:instance.gpus.map(String),cancel:()=>abort.abort()});

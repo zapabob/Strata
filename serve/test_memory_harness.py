@@ -239,6 +239,33 @@ class HarnessTests(unittest.TestCase):
                 mh.Harness([{"principal": "a", "key_env": "TEST_MEMORY_A", "root": str(folder),
                              "persona_sha256": approval}], ["synthetic-a"])
 
+    def test_memory_md_requires_exact_approval_and_explicit_larger_file_cap(self):
+        folder = self.root / "a"
+        folder.mkdir()
+        memory = folder / "MEMORY.md"
+        memory.write_bytes(b"synthetic approved context " + b"x" * 10000)
+        approved = hashlib.sha256(memory.read_bytes()).hexdigest()
+        user = {"principal": "a", "key_env": "TEST_MEMORY_A", "root": str(folder)}
+        # A file is never approved just because it has the expected name.
+        self.assertEqual(len(self.begin()[1]), 1)
+        self.h = mh.Harness([{**user, "persona_sha256": {"MEMORY.md": approved}}], ["synthetic-a"])
+        self.assertEqual(len(self.begin()[1]), 1)  # 8192-byte default remains
+        self.h = mh.Harness([{**user, "persona_sha256": {"MEMORY.md": approved},
+                              "persona_max_bytes": 12000}], ["synthetic-a"])
+        before = hashlib.sha256(memory.read_bytes()).digest()
+        self.assertIn("synthetic approved context", self.begin()[1][0]["content"])
+        self.assertEqual(hashlib.sha256(memory.read_bytes()).digest(), before)
+        self.assertEqual([p.name for p in folder.iterdir()], ["MEMORY.md"])
+        memory.write_bytes(b"changed context")
+        self.assertEqual(len(self.begin()[1]), 1)  # changed bytes need new approval
+        memory.write_bytes(b"x" * 12001)
+        self.h = mh.Harness([{**user, "persona_sha256": {"MEMORY.md": hashlib.sha256(memory.read_bytes()).hexdigest()},
+                              "persona_max_bytes": 12000}], ["synthetic-a"])
+        self.assertEqual(len(self.begin()[1]), 1)  # approved but above configured cap
+        for cap in (True, False, 0, -1, 32769, 8192.0, "12000", None):
+            with self.subTest(cap=cap), self.assertRaisesRegex(ValueError, "persona_max_bytes"):
+                mh.Harness([{**user, "persona_max_bytes": cap}], ["synthetic-a"])
+
     def test_hardlinked_persona_and_memory_files_are_not_read(self):
         turn, _ = self.begin()
         self.h.complete(turn, "answer", lambda *args: "blue private memory")
@@ -477,6 +504,57 @@ class HarnessTests(unittest.TestCase):
 
 
 class RealWriterSyntheticTests(unittest.TestCase):
+    def test_http_mock_server_uses_real_writer_and_isolates_two_principals(self):
+        try:
+            import hakua_memory.ebbinghaus.store  # noqa: F401 - optional local package
+        except ImportError as error:
+            self.skipTest("hakua_memory is not installed: " + str(error))
+        with tempfile.TemporaryDirectory(prefix="strata-hakua-http-") as directory, \
+                patch.dict(os.environ, {"STRATA_HTTP_A": "synthetic-http-a", "STRATA_HTTP_B": "synthetic-http-b"}):
+            root = Path(directory)
+            harness = mh.Harness([
+                {"principal": name, "key_env": "STRATA_HTTP_" + name.upper(), "root": str(root / name)}
+                for name in ("a", "b")], ["synthetic-http-a", "synthetic-http-b"])
+            tok = ByteTokenizer()
+            svc = Service(MockEngine(tok, "synthetic azure preference", max_context=131072), tok,
+                          ChatTemplate(ROOT / "serve/chat_template.jinja"))
+            svc.api_key = ["synthetic-http-a", "synthetic-http-b"]
+            svc.memory_harness = harness
+            httpd = serve(svc, port=0)
+            def request(key, turn_id, *, read=True, store=True, max_tokens=128):
+                body = {"messages": [{"role": "user", "content": "synthetic azure preference"}],
+                        "max_tokens": max_tokens, "reasoning_effort": "none", "stream": False,
+                        "strata_memory": {"read": read, "store_summary": store, "turn_id": turn_id}}
+                conn = http.client.HTTPConnection("127.0.0.1", httpd.server_address[1], timeout=20)
+                try:
+                    conn.request("POST", "/v1/chat/completions", json.dumps(body),
+                                 {"Authorization": "Bearer " + key, "Content-Type": "application/json"})
+                    response = conn.getresponse()
+                    return response.status, json.loads(response.read())
+                finally:
+                    conn.close()
+            try:
+                status, first = request("synthetic-http-a", "same_turn")
+                self.assertEqual(status, 200, first)
+                self.assertEqual(first["choices"][0]["finish_reason"], "stop")
+                db_a = root / "a" / "ebbinghaus.db"
+                self.assertTrue(db_a.is_file())
+                with closing(sqlite3.connect(db_a)) as conn:
+                    self.assertEqual(conn.execute("SELECT COUNT(*) FROM memories").fetchone()[0], 1)
+                before = hashlib.sha256(db_a.read_bytes()).digest()
+                self.assertEqual(request("synthetic-http-a", "same_turn")[0], 200)
+                self.assertEqual(hashlib.sha256(db_a.read_bytes()).digest(), before)
+                self.assertTrue(harness.recall(harness.principal("synthetic-http-a"), "azure"))
+                self.assertEqual(request("synthetic-http-b", "b_read", store=False)[0], 200)
+                self.assertEqual(harness.recall(harness.principal("synthetic-http-b"), "azure"), [])
+                status, incomplete = request("synthetic-http-b", "b_short", read=False, max_tokens=1)
+                self.assertEqual(status, 200, incomplete)
+                self.assertEqual(incomplete["choices"][0]["finish_reason"], "length")
+                self.assertFalse((root / "b" / "ebbinghaus.db").exists(), "incomplete text must not fall back to raw storage")
+            finally:
+                httpd.shutdown()
+                httpd.server_close()
+
     def test_optional_real_hakua_writer_stores_once_and_recall_does_not_write(self):
         try:
             import hakua_memory.ebbinghaus.store  # noqa: F401 - optional local package

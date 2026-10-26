@@ -2023,6 +2023,7 @@ async function openai(req, res, path, method) {
   if ((path === '/v1/chat/completions' || path === '/v1/messages') && method === 'POST') {
     if (store.get().serving?.pauseServing) return error(res, 503, 'New API requests are paused. Resume them in Serving.');
     const body = await readBody(req);
+    if (body && Object.prototype.hasOwnProperty.call(body, 'strata_memory')) return error(res, 400, 'strata_memory requires a directly authenticated Python server client.');
     const client = clientName(req);
     const anthropic = path === '/v1/messages';
     // An API client can say which workspace it is acting for; without it, a

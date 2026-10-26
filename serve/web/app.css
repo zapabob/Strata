@@ -68,6 +68,11 @@ main { flex: 1; min-height: 0; display: flex; }
 .composer-wrap { flex: none; padding: 0 var(--st-s-6) var(--st-s-6); }
 .st-composer { max-width: 860px; margin: 0 auto; }
 .st-composer textarea { max-height: 40vh; }
+.memory-consent { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--st-s-3); padding: 4px 2px 8px;
+                  font-size: var(--st-fs-xs); }
+.memory-consent label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+.memory-consent input { accent-color: var(--st-accent); }
+.memory-consent .muted { flex-basis: 100%; }
 .st-btn--send { width: 42px; padding: 0; }
 .composer-hint { font-size: var(--st-fs-xs); color: var(--st-ink-muted); margin-right: var(--st-s-2); font-variant-numeric: tabular-nums; }
 .attachments { display: flex; flex-wrap: wrap; gap: var(--st-s-2); padding: 2px 4px 0; }

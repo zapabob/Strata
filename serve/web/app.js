@@ -88,6 +88,7 @@ window.addEventListener("hashchange", () => showTab(location.hash.slice(1)));
 
 // ------------------------------------------------------------------ server access
 let apiKey = store.get("apikey", "");
+let apiKeyEnteredThisSession = false;
 function headers(json = false) {
   const h = {};
   if (apiKey) h.Authorization = "Bearer " + apiKey;
@@ -96,10 +97,20 @@ function headers(json = false) {
 }
 $("api-key").value = apiKey;
 function saveApiKey(notify = false) {
-  apiKey = $("api-key").value.trim();                // usable even when browser storage is blocked or full
-  const saved = store.set("apikey", apiKey);
+  if (busy) { $("api-key").value = apiKey; return; }
+  const nextKey = $("api-key").value.trim();
+  if (memoryMode && nextKey !== apiKey) {
+    messages = transcripts.setKey(nextKey);
+    $("memory-read").checked = $("memory-store").checked = false;
+    clearComposerDraft();
+    renderChat();
+  }
+  apiKey = nextKey;                                  // usable even when browser storage is blocked or full
+  apiKeyEnteredThisSession = true;
+  const saved = StrataMemoryChat.persistApiKey(store, apiKey, memoryMode);
   if (notify) {
-    if (saved) toast("success", "API key saved", "Kept in this browser only.");
+    if (memoryMode) toast("info", "Memory key active", "Kept in this tab until you leave memory chat or reload.");
+    else if (saved) toast("success", "API key saved", "Kept in this browser only.");
     else toast("warn", "API key used for this page only", "Browser storage is unavailable. Enter it again after reloading.");
   }
 }
@@ -581,14 +592,55 @@ function samplingUntouched(s) {
 }
 let settings = {...DEFAULTS, ...store.get("sampling", {})};
 if (samplingUntouched(settings)) settings.temperature = DEFAULTS.temperature;
-let messages = store.get("chat", []);
+const transcripts = StrataMemoryChat.createMemoryTranscripts(store.get("chat", []));
+let memoryMode = false;
+let messages = transcripts.active();
 let attachments = [];                 // {name, url}
+let composerVersion = 0;
 let busy = null;                      // {controller, msg}
 
 function saveChat() {
+  if (memoryMode) return; // Memory chat, including recalled details, is not copied into persistent browser history.
   store.set("chat", messages.map((m) => ({...m, images: (m.images || []).map((i) => ({name: i.name})),
                                            files: (m.files || []).map((f) => ({name: f.name}))})));
 }
+function clearComposerDraft() {
+  composerVersion++;
+  $("input").value = "";
+  attachments = [];
+  renderAttachments();
+  autosize();
+}
+function switchMemoryMode() {
+  const selected = $("memory-read").checked || $("memory-store").checked;
+  if (!selected || memoryMode) return;
+  if (busy) { toast("warn", "Wait for this answer", "Change memory consent after the turn ends."); return; }
+  memoryMode = true;
+  // Never carry a saved general-purpose key into memory chat or persist a profile key.
+  apiKey = "";
+  $("api-key").value = apiKey;
+  apiKeyEnteredThisSession = false;
+  messages = transcripts.select(true);
+  clearComposerDraft();
+  $("attach-btn").disabled = $("file").disabled = true;
+  $("memory-exit").hidden = false;
+  renderChat();
+}
+for (const id of ["memory-read", "memory-store"]) $(id).addEventListener("change", switchMemoryMode);
+$("memory-exit").onclick = () => {
+  if (busy) return;
+  $("memory-read").checked = $("memory-store").checked = false;
+  memoryMode = false;
+  transcripts.setKey(""); // Leaving this mode discards its in-tab transcript and key association.
+  apiKey = store.get("apikey", "");
+  $("api-key").value = apiKey;
+  apiKeyEnteredThisSession = false;
+  messages = transcripts.select(false);
+  clearComposerDraft();
+  $("attach-btn").disabled = $("file").disabled = false;
+  $("memory-exit").hidden = true;
+  renderChat();
+};
 function timeStr(t) { return new Date(t).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"}); }
 
 function msgEl(m, i) {
@@ -787,12 +839,25 @@ function assistantMessages(m) {
 function setBusy(on) {
   $("stop-btn").hidden = !on;
   $("send-btn").disabled = on;
+  $("memory-read").disabled = on;
+  $("memory-store").disabled = on;
+  $("memory-exit").disabled = on;
+  $("api-key").disabled = on;
   $("composer-hint").textContent = on ? "" : "Shift+Enter: new line";
 }
 
 async function send() {
   const text = $("input").value.trim();
   if ((!text && !attachments.length) || busy) return;
+  let memoryConsent = null;
+  if (memoryMode) {
+    try {
+      memoryConsent = StrataMemoryChat.prepareMemoryRequest({}, {
+        key: apiKey, entered: apiKeyEnteredThisSession, text, attachments,
+        read: $("memory-read").checked, storeSummary: $("memory-store").checked, crypto: globalThis.crypto,
+      }).strata_memory;
+    } catch (error) { toast("warn", "Memory request unavailable", error.message); return; }
+  }
   messages.push({role: "user", text, images: attachments.filter((a) => a.kind !== "file"),
                  files: attachments.filter((a) => a.kind === "file"), time: Date.now()});
   attachments = [];
@@ -817,7 +882,8 @@ async function send() {
   if (settings.seed) body.seed = +settings.seed;
   if (settings.max) body.max_tokens = +settings.max;
   if (projectionLoaded()) body.experimental_speed_projection = !!settings.esp;
-  if (settings.mcp !== false && mcpInfo.tools > 0) body.strata_mcp = true;   // this server may run MCP tools for it
+  if (memoryMode) body.strata_memory = memoryConsent;
+  if (!memoryMode && settings.mcp !== false && mcpInfo.tools > 0) body.strata_mcp = true;
 
   let firstAt = null, thinkStart = null, usage = null, frame = 0;
   const paint = () => { frame = 0; updateAssistant(el, m, true); scrollDown(); };
@@ -884,6 +950,10 @@ async function send() {
   if (m.limit) m.meta = `${m.meta || ""} · stopped at the limit of ${m.limit} tool rounds (mcp.max_rounds)`;
   busy = null;
   setBusy(false);
+  if (memoryMode) { // Consent is for one request; another turn requires a fresh choice.
+    $("memory-read").checked = false;
+    $("memory-store").checked = false;
+  }
   if (frame) cancelAnimationFrame(frame);
   updateAssistant(el, m, false);
   saveChat();
@@ -902,10 +972,18 @@ $("new-btn").onclick = () => {
   if (busy) { toast("warn", "Still writing", "Stop the answer first."); return; }
   if (!messages.length) return;
   const backup = messages;
-  messages = [];
+  messages = transcripts.replaceActive([]);
+  const undoVersion = transcripts.version();
+  const clearedInMemoryMode = memoryMode;
+  const clearedWithKey = apiKey;
   saveChat();
   renderChat();
-  toast("info", "New chat", "The last one was cleared.", 6000, {label: "Undo", run: () => { messages = backup; saveChat(); renderChat(); }});
+  toast("info", "New chat", "The last one was cleared.", 6000, {label: "Undo", run: () => {
+    if (busy || messages.length || transcripts.version() !== undoVersion ||
+        memoryMode !== clearedInMemoryMode || apiKey !== clearedWithKey) return;
+    messages = transcripts.replaceActive(backup);
+    saveChat(); renderChat();
+  }});
 };
 $("export-btn").onclick = () => {
   if (!messages.length) { toast("info", "Nothing to save yet"); return; }
@@ -929,12 +1007,15 @@ function isTextFile(f) {
          TEXT_EXT.test(f.name) || /(^|[\\/])(makefile|dockerfile|readme|license)$/i.test(f.name);
 }
 function addFiles(files) {
+  if (memoryMode) { toast("warn", "Memory accepts text only", "Leave memory chat before attaching a file."); return; }
+  const version = composerVersion;
   for (const f of files) {
     if (f.type.startsWith("image/")) {
       if (!health.images) { toast("warn", "Pictures are off", "This model was set up for text only."); continue; }
       if (f.size > 20e6) { toast("warn", "Picture too large", `${f.name} is over 20 MB.`); continue; }
       const r = new FileReader();
-      r.onload = () => { attachments.push({kind: "image", name: f.name || "pasted image", url: r.result}); renderAttachments(); };
+      r.onload = () => { if (version !== composerVersion || memoryMode) return;
+        attachments.push({kind: "image", name: f.name || "pasted image", url: r.result}); renderAttachments(); };
       r.readAsDataURL(f);
       continue;
     }
@@ -942,6 +1023,7 @@ function addFiles(files) {
     if (f.size > MAX_TEXT_FILE) { toast("warn", "File too large", `${f.name} is over 512 KB.`); continue; }
     const r = new FileReader();
     r.onload = () => {
+      if (version !== composerVersion || memoryMode) return;
       const text = String(r.result);
       if (text.includes("\u0000")) { toast("warn", "Not a text file", `${f.name} looks like a binary file.`); return; }
       attachments.push({kind: "file", name: f.name, text});

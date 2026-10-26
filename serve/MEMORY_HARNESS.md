@@ -22,9 +22,12 @@ the server's existing `api_key` configuration. The ASCII restriction makes
 HTTP header identity unambiguous across the server's legacy UTF-8 decoding.
 No keys are generated or logged.
 Each user may also supply `persona_sha256`, an operator-owned object mapping
-`SOUL.md` and/or `USER.md` to their approved lowercase SHA256 values. Missing
-approvals omit persona files. Changed bytes, links and files over 8192 bytes
-are omitted, even with read consent. Approval is checked against the same byte
+`SOUL.md`, `USER.md` and/or `MEMORY.md` to their approved lowercase SHA256 values.
+Missing approvals omit those files. `MEMORY.md` is approved prompt context;
+it is not a destination for raw turn storage. Changed bytes and links are
+omitted, even with read consent. Each file is capped at 8192 bytes by default;
+an operator may set `persona_max_bytes` per user to an integer from 1 through
+32768. Approval is checked against the same byte
 buffer inserted into the prompt; content updates require explicit operator
 reapproval and a configuration reload. No approval is inferred from a request
 or from the file merely existing. The configuration example above enables no
@@ -68,13 +71,28 @@ Each request independently supplies:
 
 The two boolean consents are independent. Omitting this field performs no
 memory read or summary write. `read` permits bounded reads of that principal's
-approved `SOUL.md`, `USER.md` and `ebbinghaus.db`. Recall uses SQLite read-only immutable
+approved `SOUL.md`, `USER.md`, `MEMORY.md` and `ebbinghaus.db`. Recall uses SQLite read-only immutable
 mode and query-only enforcement, without constructing a hakua store. It omits
 databases with WAL, shared-memory or rollback-journal sidecars. Recall is lexical
 over at most 64 recent accessible, current, active records; at most four bounded
 snippets enter the prompt. This is not full semantic retrieval or fresh WAL
 visibility. Current text inputs and visible answers are limited to 16,384
 characters for memory processing.
+
+The Python server's Chat page offers separate read and save checkboxes. Both
+start unchecked on every page load. After selecting one, enter the mapped
+profile key under About > Settings. The page does not reuse its saved ordinary
+API key or save the profile key. Memory chat has a separate, tab-only transcript
+and does not replay a prior ordinary chat to another principal. Changing the
+key clears that transcript, any unsent draft and any attachments. Leaving
+memory chat clears them too. Each completed, failed or cancelled request
+clears the checkboxes, so the next turn needs new consent. The page sends a
+fresh turn ID through the same
+`strata_memory` API path. Text attachments, pictures and MCP tool rounds are
+unavailable in memory chat. The desktop app's Node Host chat is a separate
+route; its unauthenticated local UI cannot provide a trustworthy per-user
+identity for this harness. Its API gateway rejects `strata_memory` instead of
+forwarding it with the Host's shared native engine key.
 
 `store_summary` permits a second inference through the already-local engine.
 Its input contains only this turn's current user text and completed visible
@@ -96,6 +114,19 @@ inspected and smoke-tested against hakua-memory commit `2908c6b9`; this work
 does not install or change it. The library constructor may migrate the dedicated
 profile database.
 
+The released installer does not bundle hakua-memory by default. For an
+operator-managed source installation, install a reviewed hakua-memory wheel
+in the Python environment that runs `serve.server`; use the base package,
+without embedding or RAG extras. The reviewed source revision was `2908c6b9`
+(package version `0.3.5`); a new wheel needs its own source and writer-contract
+review. To include it in a future installer, pin the reviewed version in
+`requirements.txt`, regenerate and review all three
+`packaging/locks/runtime-<target>-cp312.txt` files with
+`packaging/lock_wheels.py`, then rebuild the Terminal and staged Control
+components and verify `hakua_memory.ebbinghaus.store` imports under each
+bundled interpreter. Keep the harness disabled in the shipped configuration.
+Including the dependency alone does not enable memory in the Node Host chat.
+
 The per-profile `strata-turns.db` ledger records an attempt before invoking the
 writer. A normal retry with the same turn ID and content does not write again.
 Reusing an ID for different content is refused. A crash after recording an
@@ -105,11 +136,24 @@ This is at-most-once writer invocation, not exactly-once delivery. Persistence
 errors and uncertain attempts are reported without private content in logs.
 There is no HTTP persistence-status endpoint in this prototype.
 
-Run synthetic checks with an existing Python environment containing Jinja2:
+Run synthetic checks with the installed Hakua base package and an existing
+Python environment containing Jinja2. The Chrome tests require local Chrome
+and Node; they create temporary profiles and do not launch a native model:
 
 ```powershell
 py -3 -m unittest serve.test_memory_harness -v
+node --test apps/host/tests/native-gateway.test.mjs
+node --test serve/web/test_memory_chat.cjs
+node --test serve/web/test_memory_python_server.cjs
 ```
 
-Tests create temporary synthetic profiles, never real user memory or a model
-process. No live launch, cloud request or dependency installation is needed.
+On Windows Python 3.12, the 29 Python checks passed; two symlink subcases were
+skipped because symlink creation lacks privilege. The Host gateway and browser
+contract suites each passed two checks. The browser-to-Python suite passed one
+check with the production Python HTTP handler, a scripted `MockEngine`, and the
+installed Hakua writer: synthetic principal A stored one summary, while B's
+read-only turn stored none. The browser mock uses thinking off to produce
+visible text; it does not qualify a real model's summary quality. No real user
+memory, native model, GPU, live server or public package was used. Real native
+cache switching between principals, model summary privacy/quality and installer
+inclusion remain unverified; keep the harness disabled for production traffic.

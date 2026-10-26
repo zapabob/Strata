@@ -4,6 +4,26 @@ import http from 'node:http';
 import {nativeGateway} from '../server/native-gateway.mjs';
 const listen=server=>new Promise(r=>server.listen(0,'127.0.0.1',()=>r(server.address().port)));
 const close=server=>new Promise(r=>{server.closeAllConnections();server.close(r);});
+test('native Host rejects every memory extension before using its shared backend key',async()=>{
+ let fetches=0,entries=0,resolutions=0;
+ const gateway=http.createServer(async(req,res)=>{let text='';for await(const chunk of req)text+=chunk;
+  await nativeGateway({req,res,path:req.url,body:JSON.parse(text),
+   control:{resolveInstance:()=>{resolutions++;throw new Error('must not resolve');}},
+   serving:{open:()=>{entries++;throw new Error('must not record');}},
+   fetcher:()=>{fetches++;throw new Error('must not forward');}});
+ });const port=await listen(gateway);
+ try{
+  for(const path of ['/v1/chat/completions','/v1/messages','/v1/responses']){
+   for(const consent of [null,false,{read:true,store_summary:true,turn_id:'synthetic'}]){
+    const result=await fetch(`http://127.0.0.1:${port}${path}`,{method:'POST',headers:{'content-type':'application/json'},
+     body:JSON.stringify({model:'native-a',strata_memory:consent})});
+    assert.equal(result.status,400);
+    assert.equal((await result.json()).error.param,'strata_memory');
+   }
+  }
+  assert.deepEqual([resolutions,entries,fetches],[0,0,0]);
+ }finally{await close(gateway);}
+});
 test('native gateway preserves all three protocols and routes exact IDs, usage, errors and cancellation',{timeout:10000},async()=>{
  const received=[],records=[];let cancelled=false;
  const engine=http.createServer(async(req,res)=>{let text='';for await(const chunk of req)text+=chunk;const body=JSON.parse(text);received.push({path:req.url,body,key:req.headers.authorization});

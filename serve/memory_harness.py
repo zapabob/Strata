@@ -22,6 +22,7 @@ from types import MappingProxyType
 
 CONTEXT_LIMIT = 131072
 MAX_TEXT = 16384
+MAX_PERSONA_BYTES = 32768
 
 
 def _plain_file(path):
@@ -38,6 +39,7 @@ class Principal:
     name: str
     root: Path
     approved_personas: tuple[tuple[str, str], ...] = ()
+    persona_max_bytes: int = 8192
 
 
 @dataclass
@@ -68,14 +70,17 @@ class Harness:
         for user in users:
             required = {"principal", "key_env", "root"}
             if (not isinstance(user, dict) or not required <= set(user)
-                    or set(user) - required - {"persona_sha256"}
+                    or set(user) - required - {"persona_sha256", "persona_max_bytes"}
                     or not all(isinstance(user[k], str) for k in required)):
-                raise ValueError("hakua_harness users require principal, key_env, root and optional persona_sha256")
+                raise ValueError("hakua_harness users require principal, key_env, root and optional persona_sha256/persona_max_bytes")
             approved = user.get("persona_sha256", {})
-            if (not isinstance(approved, dict) or set(approved) - {"SOUL.md", "USER.md"}
+            if (not isinstance(approved, dict) or set(approved) - {"SOUL.md", "USER.md", "MEMORY.md"}
                     or any(not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{64}", value)
                            for value in approved.values())):
-                raise ValueError("persona_sha256 requires approved SOUL.md/USER.md SHA256 values")
+                raise ValueError("persona_sha256 requires approved SOUL.md/USER.md/MEMORY.md SHA256 values")
+            persona_max_bytes = user.get("persona_max_bytes", 8192)
+            if type(persona_max_bytes) is not int or not 1 <= persona_max_bytes <= MAX_PERSONA_BYTES:
+                raise ValueError("persona_max_bytes must be an integer from 1 to 32768")
             name = user["principal"]
             if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", name) or name in names:
                 raise ValueError("hakua_harness principal must be unique and immutable")
@@ -89,7 +94,7 @@ class Harness:
             digest = hashlib.sha256(key.encode()).digest()
             if not key or not key.isascii() or key not in accepted_keys or digest in keys:
                 raise ValueError("hakua_harness requires a distinct ASCII existing key for every principal")
-            keys[digest] = Principal(name, root, tuple(sorted(approved.items())))
+            keys[digest] = Principal(name, root, tuple(sorted(approved.items())), persona_max_bytes)
             roots.append(root)
             names.add(name)
         if not keys:
@@ -127,14 +132,15 @@ class Harness:
         if not consent["read"]:
             return turn, messages
         context = []
-        for name in ("SOUL.md", "USER.md"):
+        for name in ("SOUL.md", "USER.md", "MEMORY.md"):
             path = principal.root / name
             # A profile cannot follow a symlink into another profile or personal file.
             expected = dict(principal.approved_personas).get(name)
             if expected and _plain_file(path):
                 with path.open("rb") as f:
-                    content = f.read(8193)
-                if len(content) <= 8192 and hmac.compare_digest(hashlib.sha256(content).hexdigest(), expected):
+                    content = f.read(principal.persona_max_bytes + 1)
+                if (len(content) <= principal.persona_max_bytes
+                        and hmac.compare_digest(hashlib.sha256(content).hexdigest(), expected)):
                     context.append(name + ":\n" + content.decode("utf-8", errors="replace"))
         recalled = self.recall(principal, user)
         if recalled:
