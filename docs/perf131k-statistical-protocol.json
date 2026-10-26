@@ -66,7 +66,7 @@
     "https://scikit-learn.org/stable/modules/cross_validation.html"
   ],
   "execution": "NOT_RUN on measured pairs; tools/perf131k/statistics.py validated only with synthetic CPU fixtures",
-  "revision": "v3; offline statistical executor and full-gate freeze contract; no measurements run",
+  "revision": "v4; schema2 binds analyzer source and reports fixed grouped evaluation folds; no measurements run",
   "full_qualification_stages": [
     "4K",
     "32K",
@@ -94,7 +94,7 @@
   "offline_executor": {
     "command": "py -3.12 -B -m tools.perf131k.statistics manifest.json runs.json --frozen-sha256 <previously recorded canonical SHA256>",
     "hash": "SHA256 of UTF-8 JSON with sort_keys=True, separators=(comma,colon), allow_nan=False; digest() helper; record independently before collection. Self-rehash after observing runs is not a freeze.",
-    "manifest": "schema=1; data_kind=synthetic|measured; stage=pilot|full; capacity=131072; integer seed; bootstrap_draws/permutation_draws 100..100000; arms baseline/candidate each source_sha256 and binary_sha256; shared_identity_sha256; endpoints mapping metric name to lower|higher; families mapping original-family ID to {fold:0..4}, all five folds represented; pairs list.",
+    "manifest": "schema=2; analysis_sha256=SHA256 of the frozen statistics.py source artifact; data_kind=synthetic|measured; stage=pilot|full; capacity=131072; integer seed; bootstrap_draws/permutation_draws 100..100000; arms baseline/candidate each source_sha256 and binary_sha256; shared_identity_sha256; endpoints mapping metric name to lower|higher; families mapping original-family ID to {fold:0..4}, all five folds represented; pairs list.",
     "shared_identity_contents": "Before collection freeze model/pack/tokenizer contents, capacity, KV/views, argv/env, device/cache regime, scoring rubric and series (cold/first/warm; trace; diagnostic settings). Shared identity SHA256 binds this external canonical record. Model classes and series never pooled.",
     "pair_fields": [
       "family",
@@ -107,10 +107,10 @@
     ],
     "run_fields": "Every pair field plus arm, status=PASS, manifest_sha256, identity=arm identity, shared_identity_sha256, capacity, data_kind, raw_artifact_sha256, metrics with exactly all frozen endpoint names and finite positive values. Full additionally generated_steps>=512, independent_receipt_sha256, processed_input_tokens=kv_progress_tokens=recurrence_progress_tokens=126000.",
     "supported_metrics": "Positive timing/throughput endpoints only. Stream TTFT/ITL and engine DONE must be different frozen endpoints. Binary quality, PPL, quality/SLO decisions and stratified score reports are separate NOT_RUN gates.",
-    "resampling": "Median repeats within variant; median equally weighted variants within original family. Equal family weight. Whole-family percentile bootstrap 95% CI, linear quantiles. Exact family sign flips through 16 independent groups; otherwise seeded finite Monte Carlo with add-one correction. Holm across entire frozen endpoint map.",
-    "outputs": "stdout JSON, exit 0 for analysis, exit 2 BLOCKED; all invalid/failed/missing/duplicate/unregistered/mismatched records block all endpoint statistics. Synthetic status DESIGN_NOT_RUN. Valid measured records status ANALYZED means offline calculations only; performance_verdict always NOT_EVALUATED.",
+    "resampling": "Median repeats within variant; median equally weighted variants within original family. Equal family weight. Whole-family percentile bootstrap 95% CI, linear quantiles. Exact family sign flips through 16 independent groups; otherwise seeded finite Monte Carlo with add-one correction. Holm across entire frozen endpoint map. Permutation tie comparison uses relative tolerance1e-12 with zero absolute tolerance to preserve metric-unit scale invariance.",
+    "outputs": "stdout JSON, exit 0 for analysis, exit 2 BLOCKED; all invalid/failed/missing/duplicate/unregistered/mismatched records block all endpoint statistics. Synthetic status DESIGN_NOT_RUN. Valid measured records status ANALYZED means offline calculations only; performance_verdict always NOT_EVALUATED. Includes verified analysis_sha256 and per-endpoint evaluation_fold_summaries with family IDs/counts and paired family medians; fold counts do not increase independent n.",
     "trust_boundary": "Normalized collector records and digest strings are inputs, not independent proof of their contents. Verify raw artifacts, source-to-binary provenance, collection chronology/freeze, independent receipt and quality/reference gates before any performance claim. No automatic adoption verdict.",
-    "evaluation_folds": "One immutable fold per original family, all variants/repeats inherit it. Five evaluation folds, no fitting or tuning performed here; fold scores are not independent observations. Stratification must be reviewed in the frozen external map.",
+    "evaluation_folds": "One immutable fold per original family, all variants/repeats inherit it. Five evaluation folds, no fitting or tuning performed here; fold scores are not independent observations. Stratification must be reviewed in the frozen external map. Reports five fixed grouped evaluation summaries; no train-fold fitting/tuning or independently held-out final test is implemented. Freeze the analyzer source and Python environment before collection; schema1 manifests are rejected.",
     "protocol_minimums": "Executor computes offline statistics; warmups, minimum ten alternating warm pairs, cold runs, retrieval/practical task counts, boundary checks and 32turn/2h stability remain independent qualification checks. Successful analysis does not establish those checks."
   }
 }

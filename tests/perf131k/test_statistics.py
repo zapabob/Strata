@@ -11,7 +11,8 @@ from tools.perf131k import statistics as stats
 
 
 def fixture(stage="full"):
-    manifest = {"schema": 1, "data_kind": "synthetic", "stage": stage,
+    manifest = {"schema": 2, "data_kind": "synthetic", "stage": stage,
+                "analysis_sha256": stats.analysis_sha256(),
                 "capacity": 131072, "seed": 17, "bootstrap_draws": 200,
                 "permutation_draws": 200,
                 "arms": {arm: {"source_sha256": letter * 64, "binary_sha256": letter * 64}
@@ -115,6 +116,38 @@ class StatisticsTests(unittest.TestCase):
         self.assertEqual(first, stats.sign_flip(list(range(1, 18)), 7, 200))
         self.assertEqual(first["method"], "monte_carlo_add_one")
         self.assertGreater(first["p_value"], 0)
+
+    def test_permutation_p_value_does_not_depend_on_metric_unit(self):
+        for scale in (1e-15, 1e-9, 1.0, 1e9, 1e15):
+            with self.subTest(scale=scale):
+                self.assertEqual(stats.sign_flip([scale, 2 * scale, 3 * scale], 7, 200)["p_value"], .25)
+
+    def test_analysis_source_must_match_precollection_freeze(self):
+        manifest, rows, _ = fixture()
+        manifest["analysis_sha256"] = "0" * 64
+        frozen = stats.digest(manifest)
+        for row in rows:
+            row["manifest_sha256"] = frozen
+        self.assertEqual(stats.analyze(manifest, rows, frozen)["status"], "BLOCKED")
+        manifest["analysis_sha256"] = stats.analysis_sha256()
+        manifest["schema"] = 1
+        frozen = stats.digest(manifest)
+        for row in rows:
+            row["manifest_sha256"] = frozen
+        self.assertEqual(stats.analyze(manifest, rows, frozen)["status"], "BLOCKED")
+
+    def test_fixed_evaluation_folds_report_family_effects_without_extra_n(self):
+        manifest, rows, frozen = fixture()
+        for row in rows:
+            if row["family"] == "f0" and row["arm"] == "candidate":
+                row["metrics"]["e2e_s"] += 1
+        report = stats.analyze(manifest, rows, frozen)
+        self.assertEqual(report["n_family"], 5)
+        folds = report["endpoints"]["e2e_s"]["evaluation_fold_summaries"]
+        self.assertEqual(folds["0"]["families"], ["f0"])
+        self.assertEqual(folds["0"]["paired_median_difference_candidate_minus_baseline"], -1)
+        self.assertEqual(folds["1"]["paired_median_difference_candidate_minus_baseline"], -2)
+        self.assertEqual(report["performance_verdict"], "NOT_EVALUATED")
 
     def test_order_and_resampling_reproducible(self):
         manifest, rows, frozen = fixture()

@@ -28,6 +28,11 @@ def require(condition, message):
         raise ValueError(message)
 
 
+def analysis_sha256():
+    """Freeze this source artifact before collection, alongside the Python environment."""
+    return hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+
+
 def sha(value):
     return isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value) is not None
 
@@ -53,7 +58,9 @@ def sign_flip(differences, seed, draws):
     extreme = total = 0
     for assignment in signs:
         statistic = abs(fmean([a * b for a, b in zip(differences, assignment)]))
-        extreme += statistic >= observed - 1e-12
+        # Tie tolerance scales with the endpoint's units. An absolute epsilon
+        # makes sufficiently small nonzero effects count every permutation.
+        extreme += statistic >= observed or math.isclose(statistic, observed, rel_tol=1e-12, abs_tol=0.0)
         total += 1
     return {"p_value": extreme / total if exact else (extreme + 1) / (total + 1),
             "method": "exact" if exact else "monte_carlo_add_one", "draws": total}
@@ -71,7 +78,8 @@ def holm(pvalues):
 def validate(manifest, rows, frozen_sha):
     require(isinstance(manifest, dict) and isinstance(rows, list), "manifest object/run array required")
     require(sha(frozen_sha) and digest(manifest) == frozen_sha, "frozen manifest hash mismatch")
-    require(manifest["schema"] == 1, "unsupported manifest schema")
+    require(manifest["analysis_sha256"] == analysis_sha256(), "frozen analysis source mismatch")
+    require(manifest["schema"] == 2, "unsupported manifest schema")
     require(manifest["data_kind"] in ("synthetic", "measured"), "data kind required")
     require(manifest["stage"] in ("pilot", "full"), "unknown qualification stage")
     require(manifest["capacity"] == 131072, "capacity must be 131072")
@@ -155,7 +163,7 @@ def _analyze(manifest, rows, frozen_sha):
     """Fail closed: invalid data never returns endpoint statistics or a verdict."""
     try:
         expected, paired = validate(manifest, rows, frozen_sha)
-    except (KeyError, TypeError, ValueError, OverflowError, AttributeError) as error:
+    except (KeyError, TypeError, ValueError, OverflowError, AttributeError, OSError) as error:
         return {"status": "BLOCKED", "reason": str(error), "performance_verdict": "NOT_EVALUATED"}
     families = sorted(manifest["families"])
     reports = {}
@@ -184,15 +192,26 @@ def _analyze(manifest, rows, frozen_sha):
                               for f, b, c in zip(families, baseline, candidate)},
             "test_statistic": "absolute mean of paired family differences",
             **sign_flip(delta, manifest["seed"], manifest["permutation_draws"])}
+        reports[endpoint]["evaluation_fold_summaries"] = {}
+        for fold in range(5):
+            indices = [i for i, family in enumerate(families) if manifest["families"][family]["fold"] == fold]
+            reports[endpoint]["evaluation_fold_summaries"][str(fold)] = {
+                "families": [families[i] for i in indices], "n_family": len(indices),
+                "baseline_family_median": median([baseline[i] for i in indices]),
+                "candidate_family_median": median([candidate[i] for i in indices]),
+                "paired_median_difference_candidate_minus_baseline": median([delta[i] for i in indices]),
+            }
     adjusted = holm({k: v["p_value"] for k, v in reports.items()})
     for name, value in adjusted.items():
         reports[name]["holm_p_value"] = value
     return {"status": "DESIGN_NOT_RUN" if manifest["data_kind"] == "synthetic" else "ANALYZED",
             "data_kind": manifest["data_kind"], "stage": manifest["stage"],
             "manifest_sha256": frozen_sha, "seed": manifest["seed"],
+            "analysis_sha256": manifest["analysis_sha256"],
             "performance_verdict": "NOT_EVALUATED", "n_family": len(families),
             "n_variant": len({k[:2] for k in expected}), "n_repeat_pairs": len(expected),
             "fold_map": {f: manifest["families"][f]["fold"] for f in families},
+            "evaluation_design": "five grouped evaluation folds with fixed arms; no fitting or tuning",
             "endpoints": reports,
             "limits": "Hashed normalized records require independent collector/artifact review. "
                       "No quality, SLO, boundary, stability or adoption verdict; folds/repeats are not independent n."}

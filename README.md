@@ -35,7 +35,7 @@ Control settings, models and installed engine have not been replaced by this bui
 | Fresh executable read-only `--help` | Exit 0; no model loaded |
 | Earlier 10 GiB Job diagnostic | RAN_FAILED_BEFORE_READY; this was a different executable |
 | Fresh candidate GPU startup / completed model inference | NOT_RUN |
-| Paired performance statistics / cross-validation evaluation | Offline executor passed 13 synthetic tests; measured pairs NOT_RUN |
+| Paired performance statistics / cross-validation evaluation | Offline executor passed 16 synthetic tests; analyzer hash freeze and five fixed grouped evaluation summaries supported. Measured pairs and fitting/tuning NOT_RUN |
 | PPL / KL / full-context quality / stability | NOT_RUN |
 | Practical 131072-token qualification | NOT_QUALIFIED |
 | Fresh build source and artifact hashes | Startup fix `dd0b797a`, benchmark executor `fe7f5159`, boundary contract `00c1b770` plus mode guard `6955c759`; local binary and inputs hashed |
