@@ -1,5 +1,3 @@
-<p align="center"><img src="apps/host/public/brand/strata-lockup-light.svg" alt="Strata" width="380"></p>
-
 # Strata
 
 Local LLM inference with a desktop app, a command-line controller and a native engine. This fork retains Spin(8) / Triality, Query-v3, TurboQuant and Bonsai alongside the upstream runtime.

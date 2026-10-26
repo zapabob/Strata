@@ -43,6 +43,23 @@ Its extracted manifest, required PE dependencies and native help invocation
 were verified. Previous components and rollback backups are retained. The
 legacy vision executable is unchanged; image inference is unqualified.
 
+The exact inspected installation received the GUI R2 overlay after independent
+manifest, preimage and PE-dependency review. Installed Node 24 and the installed
+host then imported a tiny GGUF, discovered the installed generic backend without
+an executable override, streamed generated text and unloaded it. The fixture and
+user profile were synthetic. After explicit model unload, the test driver
+terminated its own host process (exit 1); this was not a clean host-exit test.
+A separate postcheck found no test listeners or generic backend processes. An existing
+service was preserved. This does not qualify the user's 63 GB Swift model.
+
+Public GUI R3 excludes the unverified font, brand, icon and demo asset files
+identified by the D05 packaging gap. Existing installation assets remain in
+place. Retained code and backend files are byte-identical to the tested R2
+payload. Public R3 archive SHA-256 is
+`9d63e72f3ae246d9115f7704098556da6ac5e85cc913d845b2cbb1ea28ca24e1`;
+its overlay manifest SHA-256 is
+`9240c7106e668b7fddbdb6e2521bae6cfa2e4d139ef2ed909e59523e569b41a2`.
+
 Full input 126000 with output reserve 1024 and at least 512 generated steps,
 PPL/KL, paired statistics, 32-turn/two-hour stability, HIP/SYCL and native
 multiuser-memory resource qualification remain open. Memory is disabled by

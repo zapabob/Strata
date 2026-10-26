@@ -93,8 +93,8 @@
     "engine_source_commit": "56c4613be8e5f63868f8dbd52e41ab644a324aba",
     "binary_sha256": "20373ca6b9b16b9d220820a902b584d604a64e068d383a26ba11dd4e43f85d93",
     "binary_bytes": 80752128,
-    "publication": "NOT_RELEASED",
-    "installed": "NATIVE_R2_INSTALLED_VERIFIED; GUI_COMPANION_PENDING",
+    "publication": "Publication state is tracked at https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261027.1",
+    "installed": "NATIVE_R2_AND_GUI_R2_INSTALLED_VERIFIED",
     "CUDA_link": "PASS",
     "read_only_help": "PASS",
     "integrated_CPU_tests_run": 88,
@@ -229,7 +229,20 @@
       "interactive_screen": "NOT_RUN",
       "actual_host_GGUF": "IMPORT_LOAD_GENERATE_16_UNLOAD_PASS; synthetic profile, FP16",
       "overlay_helper_tests_passed": 7,
-      "broader_Node_suite": "NOT_ALL_GREEN"
+      "broader_Node_suite": "NOT_ALL_GREEN",
+      "installed_host_GGUF": "PASS_IMPORT_LOAD_CHAT_UNLOAD; installed Node24, no backend override, 16 delta events, synthetic fixture",
+      "post_test_cleanup": "No test listeners or generic backend processes; foreign service preserved",
+      "host_exit_code": 1,
+      "host_shutdown": "Driver terminated its own host after explicit model unload; not clean-exit qualification"
+    },
+    "distribution_version": "0.3.2-preview.20261027.1",
+    "public_GUI": {
+      "revision": "public-r3",
+      "archive_sha256": "9d63e72f3ae246d9115f7704098556da6ac5e85cc913d845b2cbb1ea28ca24e1",
+      "manifest_sha256": "9240c7106e668b7fddbdb6e2521bae6cfa2e4d139ef2ed909e59523e569b41a2",
+      "payload_files": 78,
+      "excluded_unverified_static_assets": 32,
+      "retained_code_backend": "Identical to installed/tested R2; README changed"
     }
   }
 }

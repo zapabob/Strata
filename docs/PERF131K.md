@@ -1,4 +1,12 @@
-# Current boundary candidate — 26 October 2026
+# Windows inference preview evidence — 27 October 2026
+
+The current preview completed exact 4K and 32K first and repeated generation at
+configured capacity 131072. Full-length inference and scientific qualification
+remain open. See the operational acceptance and GUI sections below, and
+[the release record](WINDOWS_PREVIEW_20261027.md). Earlier entries are retained
+as historical evidence, including failures and unqualified boundary checks.
+
+## Historical boundary candidate — 26 October 2026
 
 Source commit `00c1b770` adds opt-in `--exact-context-boundary` to the native
 engine. The Python server uses zero slack only when its configured native args
