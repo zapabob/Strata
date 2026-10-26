@@ -214,9 +214,11 @@ The selected MTP pack has a 116,099,072-byte `dense.bin`. With no `--mtp-q4`,
 a separate 64 MiB vector for chunked expert uploads. Their C++ scopes do not
 overlap, but the allocator may retain commit after vector destruction. Without
 uncommit evidence the ledger cannot subtract either charge. Device dense and
-expert allocations require separate Windows/driver accounting. MTP's windowed
-K/V host copy, prefill staging and the resident arena remain additional owners;
-none is covered by the profile-stage payload bound.
+expert allocations require separate Windows/driver accounting. The selected
+default `kv-resident=0` makes `kv_plan` return mode 0 before considering the
+MTP ring window, so neither main nor MTP has a full-context host K/V copy on
+this path. Mapped step/position staging, prefill staging and the resident arena
+remain separate owners; none is covered by the profile-stage payload bound.
 
 On Windows, `read_direct` retains its `VirtualAlloc` scratch in thread-local
 storage. Its capacity rounds each batch's merged read span up to 1 MiB. The
