@@ -63,7 +63,7 @@ const Layout& expert_layout() { static Layout value; return value; }
 struct FileExpertSource {
     struct Fill { size_t v; int64_t layer,e; uint8_t* dst; };
     struct Map { uint8_t* base=nullptr; };
-    struct StageBufFree { bool pinned=false; void operator()(uint8_t* p) const noexcept { if(pinned)cudaFreeHost(p);else delete[] p; } };
+    struct StageBufFree { bool pinned=false; void operator()(uint8_t* p) const noexcept; };
     int64_t n_layers_=2,n_expert_=512;
     uint64_t stage_blob_=16, stage_seq_=0,epoch_=0;
     std::vector<uint8_t*> role_ptr_;
@@ -81,6 +81,8 @@ struct FileExpertSource {
     bool stage_pin_said_=false,stage_pin_failed_said_=false,stage_grew_=false;
     bool unmapped_=false, io_pf_=false,complement_ready_=false;
     std::mutex stage_mu_;
+    std::condition_variable stage_cv_;
+    std::atomic<uint64_t> file_us_{0},file_read_bytes_{0},file_blob_bytes_{0};
     std::vector<int64_t> zc_keys_;
     std::vector<uint8_t*> override_;
     std::unique_ptr<std::atomic<uint32_t>[]> warm_stamp_;
@@ -91,10 +93,7 @@ struct FileExpertSource {
     bool read_direct(const Fill*,size_t) const;
     bool copy_from_files(int64_t,int64_t,uint8_t*) { throw std::bad_alloc(); }
     bool fill_stage(size_t,int64_t,int64_t,uint8_t*);
-    void publish_stage(size_t v,int64_t,bool ok,double) {
-        stage_busy_[v]=0;
-        if(!ok) { stage_of_.erase(stage_key_[v]); stage_key_[v]=-1; }
-    }
+    void publish_stage(size_t,int64_t,bool,double);
     bool claim_stage(int64_t,size_t&,bool&,bool=false);
     bool coherent() const {
         size_t n=stage_buf_.size();
@@ -109,6 +108,8 @@ struct FileExpertSource {
 // @COMP_WORKERS@
 // @COMP_FAILURE@
 // @FILL@
+// @PUBLISH@
+// @STAGE_FREE@
 // @TODO@
 // @CLAIM@
 // @DIRECT@
@@ -156,6 +157,41 @@ int main(int argc,char** argv) {
         CHECK(src.stage_buf_.size()==1 && src.stage_of_.count(0)==0);
         CHECK(failures>=10 && successes>0);
         std::printf("PASS stage allocation_failures=%u successes=%u reuse_preserved=1\n",failures,successes);
+    } else if(mode=="retention") {
+        const char* pin_env=std::getenv("STRATA_STAGE_PIN");
+        CHECK(pin_env!=nullptr);
+        const bool expect_pin=std::atoi(pin_env)!=0;
+        {
+            FileExpertSource src;
+            for(unsigned i=0;i<1024;++i) {
+                size_t v=0;bool fill=false;
+                CHECK(!src.claim_stage(0,v,fill) && fill);
+                CHECK(!src.fill_stage(v,0,0,src.stage_buf_[v].get()));
+                CHECK(src.stage_of_.empty() && src.coherent());
+                CHECK(src.stage_buf_.size()==std::min<size_t>(i+1,256));
+            }
+            CHECK(src.stage_buf_.size()==256);
+            CHECK(arrays_live==(expect_pin?0:256) && pins_live==(expect_pin?256:0));
+        }
+        CHECK(arrays_live==0 && pins_live==0);
+        {
+            FileExpertSource src;
+            for(int64_t key=0;key<600;++key) {
+                size_t v=0;bool fill=false;
+                CHECK(!src.claim_stage(key,v,fill) && fill);
+                CHECK(src.stage_busy_[v] && src.coherent());
+            }
+            CHECK(src.stage_buf_.size()==600);
+            for(size_t v=0;v<src.stage_buf_.size();++v)
+                src.publish_stage(v,src.stage_key_[v]/src.n_expert_,false,0);
+            CHECK(src.stage_of_.empty() && src.coherent());
+            size_t v=0;bool fill=false;
+            CHECK(!src.claim_stage(0,v,fill) && fill);
+            CHECK(src.stage_buf_.size()==600 && src.coherent());
+            CHECK(arrays_live==(expect_pin?0:600) && pins_live==(expect_pin?600:0));
+        }
+        CHECK(arrays_live==0 && pins_live==0);
+        std::puts("PASS repeated_failed_fill_retained=256 busy_retained=600 reuse_retains_capacity=1 fixture_owner_releases_blobs=1");
     } else if(mode=="vram") {
         GrowCache cache;std::string error;
         cache.mapped=-1;

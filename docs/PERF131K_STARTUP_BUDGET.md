@@ -99,7 +99,7 @@ retries, later resident complement and worker allocations. The offline
 admission result is `BLOCKED_INCOMPLETE`; no new model launch or cap change
 was made.
 
-`claim_stage` retains each allocated stage buffer until the source closes and
+`claim_stage` retains each allocated stage buffer until an explicit pool clear and
 allocates `stage_blob_ = max(layer_blob_bytes)` bytes per buffer. The number of
 model expert keys is not a safe pool bound: a failed fill removes its key but
 keeps the allocated buffer, and the 256-use age rule can delay reuse. The log
@@ -107,6 +107,28 @@ at 512 buffers is a notification, not an allocation cap. A source-grounded
 upper bound needs the number of claims that can overlap with busy slots and
 failed fills for the selected startup path. The current CPU fixtures do not
 establish that count.
+
+The extracted production `claim_stage`, `fill_stage`, `publish_stage` and blob
+deleter CPU fixture now checks
+1,024 failed fills of the same key: it retains 256 buffers with an unchanged
+epoch. A separate case holds 600 valid keys busy, observes 600 buffers, then
+checks that reuse retains that capacity and fixture owner destruction frees the
+blobs. This does not exercise production source destruction, worker joining,
+event cleanup or device synchronization. Successful `end_startup_unbuffered`
+handover is another production path that clears the pool before destruction. Both
+pageable and fake-pinned cases passed within the seven-test startup lifetime
+suite. Buffers were 16 bytes each and allocation/I/O APIs were fakes; these
+results establish retention behavior in those schedules, not the model's peak
+or a universal pool bound. Generated source, compiler command and case output
+are under `H:\Strata\evidence\p01-boundary-20261026\011c0494d87e4e23806d521de6354453`.
+
+For an initially empty pool, serialized claims and a sequence counter that does
+not wrap, the selection rule gives a conditional owned-blob count bound of
+`256 + B`, where `B` is the maximum busy-slot count over the pool's entire
+lifetime. It includes queued/preclaimed slots and cannot be replaced by the
+current busy count or worker count. This excludes vector capacity (which can
+double), map/event storage, allocator overhead and all other host allocations.
+The selected startup path's lifetime `B` still needs a source-grounded bound.
 
 On Windows, `read_direct` retains its `VirtualAlloc` scratch in thread-local
 storage. Its capacity rounds each batch's merged read span up to 1 MiB. The
