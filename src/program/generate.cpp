@@ -3355,6 +3355,10 @@ int main(int argc, char** argv) {
         std::fprintf(stderr, "strata generate: positive --max-new and --max-context must fit the prompt and generation\n");
         return 2;
     }
+    if (o.exact_context_boundary && !o.serve) {
+        std::fprintf(stderr, "strata generate: --exact-context-boundary requires --serve\n");
+        return 2;
+    }
     // THE ROPE KNOBS (rope_scaling.hpp).  Anything invalid dies here, at second zero, rather than becoming a
     // NaN angle inside one of the twelve QSA layers.  Only the RANGES are checked - the config itself is
     // resolved after the model file has had its say, right before session_init.
@@ -4382,6 +4386,14 @@ int main(int argc, char** argv) {
                              !mtp_first_ok ? "it needs --mtp with --spec 2 or more and the draft head's subset file (draft_vocab.bin)"
                                            : "STRATA_MTP_STAGE0=1 asks for it");
         }
+    }
+    if (o.exact_context_boundary && o.pipeline_windows > 0) {
+        std::fprintf(stderr, "strata generate: --exact-context-boundary needs --pipeline-windows 0; the pipeline final-cell path is not qualified\n");
+        return 2;
+    }
+    if (o.exact_context_boundary && o.batch > 0) {
+        std::fprintf(stderr, "strata generate: --exact-context-boundary needs --batch 0; the batch final-cell path is not qualified\n");
+        return 2;
     }
     // ---- layer split across GPUs: each later stage's own copy of the dense weights, its session and (the last) the
     // head, made on its device before the host arena is mapped (as the drafter below, for the same WDDM reason)
