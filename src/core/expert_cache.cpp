@@ -272,18 +272,25 @@ CUmemAllocationProp device_prop(int dev) {
 
 // one segment: a physical allocation mapped at `va`, readable and writable by this device
 bool map_segment(const Vmm& v, int dev, CUdeviceptr va, size_t bytes, unsigned long long& handle,
-                 const char*& failed_api, CUresult& failed_code) {
+                 const char*& failed_api, CUresult& failed_code,
+                 CUresult* cleanup_unmap = nullptr, CUresult* cleanup_release = nullptr,
+                 char* mapped = nullptr) {
     const CUmemAllocationProp prop = device_prop(dev);
     CUmemGenericAllocationHandle h = 0;
     failed_api = "cuMemCreate";
     failed_code = v.create(&h, bytes, &prop, 0);
     if (failed_code != CUDA_SUCCESS) return false;
+    handle = (unsigned long long) h;   // ownership survives every rollback failure
+    if (mapped) *mapped = 0;
     failed_api = "cuMemMap";
     failed_code = v.map(va, bytes, 0, h, 0);
     if (failed_code != CUDA_SUCCESS) {
-        v.release(h);
+        const CUresult released = v.release(h);
+        if (cleanup_release) *cleanup_release = released;
+        if (released == CUDA_SUCCESS) handle = 0;
         return false;
     }
+    if (mapped) *mapped = 1;
     CUmemAccessDesc access{};
     access.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
     access.location.id = dev;
@@ -291,8 +298,13 @@ bool map_segment(const Vmm& v, int dev, CUdeviceptr va, size_t bytes, unsigned l
     failed_api = "cuMemSetAccess";
     failed_code = v.set_access(va, bytes, &access, 1);
     if (failed_code != CUDA_SUCCESS) {
-        v.unmap(va, bytes);
-        v.release(h);
+        const CUresult unmapped = v.unmap(va, bytes);
+        if (cleanup_unmap) *cleanup_unmap = unmapped;
+        if (unmapped != CUDA_SUCCESS) return false;   // retain both mapping and handle for explicit cleanup
+        if (mapped) *mapped = 0;
+        const CUresult released = v.release(h);
+        if (cleanup_release) *cleanup_release = released;
+        if (released == CUDA_SUCCESS) handle = 0;
         return false;
     }
     handle = (unsigned long long) h;
@@ -307,6 +319,10 @@ bool ExpertCache::open_segmented(uint64_t want, std::string& err) {
     err = "ExpertCache: --vram-elastic (a segmented expert cache) is CUDA-only for now";
     return false;
 #else
+    if (cleanup_pending_ || base_ != nullptr) {
+        err = "ExpertCache: segmented ownership is still retained; explicit cleanup is required before reopening";
+        return false;
+    }
     const Vmm& v = vmm();
     int dev = 0, supported = 0;
     CUdevice cu = 0;
@@ -326,6 +342,21 @@ bool ExpertCache::open_segmented(uint64_t want, std::string& err) {
     const uint64_t g = (uint64_t) gran;
     const uint64_t total = (want + g - 1) / g * g;
     seg_ = (int64_t) (((uint64_t) seg_req_ + g - 1) / g * g);
+    // Prepare ownership metadata before acquiring the driver address range.
+    std::vector<unsigned long long> segments;
+    std::vector<int64_t> sizes;
+    std::vector<char> mappings;
+    try {
+        const size_t count = (size_t) ((total + (uint64_t) seg_ - 1) / (uint64_t) seg_);
+        segments.assign(count, 0);
+        mappings.assign(count, 0);
+        sizes.reserve(count);
+        for (uint64_t at = 0; at < total; at += (uint64_t) seg_)
+            sizes.push_back((int64_t) std::min<uint64_t>((uint64_t) seg_, total - at));
+    } catch (const std::bad_alloc&) {
+        err = "ExpertCache: host metadata allocation failed before segmented cache reservation";
+        return false;
+    }
     CUdeviceptr va = 0;
     if (v.reserve(&va, (size_t) total, 0, 0, 0) != CUDA_SUCCESS) {
         err = "ExpertCache: cannot reserve the address range of the segmented expert cache";
@@ -333,22 +364,30 @@ bool ExpertCache::open_segmented(uint64_t want, std::string& err) {
     }
     base_ = reinterpret_cast<uint8_t*>(va);
     reserved_ = total;
-    for (uint64_t at = 0; at < total; at += (uint64_t) seg_) {
-        segs_.push_back(0);
-        seg_size_.push_back((int64_t) std::min<uint64_t>((uint64_t) seg_, total - at));
-    }
+    segs_.swap(segments);
+    seg_size_.swap(sizes);
+    seg_mapped_.swap(mappings);
     for (size_t i = 0; i < segs_.size(); ++i) {
         const char* failed_api = nullptr;
         CUresult failed_code = CUDA_SUCCESS;
+        CUresult cleanup_unmap = (CUresult) -1, cleanup_release = (CUresult) -1;
         if (!map_segment(v, dev, va + (CUdeviceptr) ((uint64_t) i * (uint64_t) seg_), (size_t) seg_size_[i],
-                         segs_[i], failed_api, failed_code)) {
+                         segs_[i], failed_api, failed_code, &cleanup_unmap, &cleanup_release, &seg_mapped_[i])) {
+            cleanup_pending_ = true;   // also fail closed if formatting the error runs out of host memory
+            live_slots_ = 0;
             char buf[320];
             std::snprintf(buf, sizeof buf, "ExpertCache: cudaMalloc failed: segment %zu of %zu (%.2f GiB) of the "
                           "segmented cache could not be allocated; API=%s CUresult=%d requested=%zu bytes",
                           i + 1, segs_.size(), (double) seg_size_[i] / 1073741824.0,
                           failed_api, (int) failed_code, (size_t) seg_size_[i]);
             err = buf;   // "cudaMalloc failed": the auto cache's smaller-retry path reads it as an allocation failure
+            if (cleanup_unmap != (CUresult) -1)
+                err += "; cleanup cuMemUnmap CUresult=" + std::to_string((int) cleanup_unmap);
+            if (cleanup_release != (CUresult) -1)
+                err += "; cleanup cuMemRelease CUresult=" + std::to_string((int) cleanup_release);
             release_segmented();
+            if (cleanup_pending_)
+                err = "ExpertCache: cleanup pending; ownership retained; " + err.substr(err.find("segment "));
             return false;
         }
         mapped_segs_ = (int64_t) i + 1;
@@ -360,23 +399,55 @@ bool ExpertCache::open_segmented(uint64_t want, std::string& err) {
 void ExpertCache::release_segmented() {
 #if !defined(STRATA_EC_NO_VMM)
     const Vmm& v = vmm();
-    if (base_ != nullptr) cudaDeviceSynchronize();
-    const CUdeviceptr va = reinterpret_cast<CUdeviceptr>(base_);
-    for (size_t i = 0; i < segs_.size(); ++i)
-        if (segs_[i] != 0) {
-            v.unmap(va + (CUdeviceptr) ((uint64_t) i * (uint64_t) seg_), (size_t) seg_size_[i]);
-            v.release((CUmemGenericAllocationHandle) segs_[i]);
+    cleanup_pending_ = base_ != nullptr || !segs_.empty();
+    if (cleanup_pending_) live_slots_ = 0;
+    if (base_ != nullptr) {
+        const cudaError_t result = cudaDeviceSynchronize();
+        if (result != cudaSuccess) {
+            std::fprintf(stderr, "ExpertCache: cleanup cudaDeviceSynchronize cudaError=%d; ownership retained\n", (int) result);
+            return;
         }
-    if (base_ != nullptr && reserved_ > 0) v.address_free(va, (size_t) reserved_);
+    }
+    const CUdeviceptr va = reinterpret_cast<CUdeviceptr>(base_);
+    bool retained = false;
+    for (size_t i = 0; i < segs_.size(); ++i) {
+        if (seg_mapped_[i]) {
+            const CUresult result = v.unmap(va + (CUdeviceptr) ((uint64_t) i * (uint64_t) seg_), (size_t) seg_size_[i]);
+            if (result != CUDA_SUCCESS) {
+                std::fprintf(stderr, "ExpertCache: cleanup cuMemUnmap segment=%zu CUresult=%d; ownership retained\n", i, (int) result);
+                retained = true;
+                continue;   // never release the handle of a mapping whose teardown failed
+            }
+            seg_mapped_[i] = 0;
+        }
+        if (segs_[i] != 0) {
+            const CUresult result = v.release((CUmemGenericAllocationHandle) segs_[i]);
+            if (result != CUDA_SUCCESS) {
+                std::fprintf(stderr, "ExpertCache: cleanup cuMemRelease segment=%zu CUresult=%d; ownership retained\n", i, (int) result);
+                retained = true;
+            } else segs_[i] = 0;
+        }
+    }
+    if (retained) return;
+    if (base_ != nullptr && reserved_ > 0) {
+        const CUresult result = v.address_free(va, (size_t) reserved_);
+        if (result != CUDA_SUCCESS) {
+            std::fprintf(stderr, "ExpertCache: cleanup cuMemAddressFree CUresult=%d; ownership retained\n", (int) result);
+            return;
+        }
+    }
 #endif
     segs_.clear();
     seg_size_.clear();
+    seg_mapped_.clear();
     mapped_segs_ = 0;
     reserved_ = 0;
     base_ = nullptr;
+    cleanup_pending_ = false;
 }
 
 int64_t ExpertCache::mapped_bytes() const {
+    if (cleanup_pending_) return -1;   // unknown, never a successful reclamation report
     if (segs_.empty()) return base_ != nullptr ? full_bytes() : 0;
     int64_t b = 0;
     for (int64_t i = 0; i < mapped_segs_; ++i) b += seg_size_[(size_t) i];
@@ -392,6 +463,10 @@ int64_t ExpertCache::slots_within(int64_t bytes) const {
 }
 
 bool ExpertCache::shrink(int64_t keep_bytes, std::string& err) {
+    if (cleanup_pending_) {
+        err = "ExpertCache: cleanup pending; ownership retained; resizing is blocked";
+        return false;
+    }
     if (segs_.empty()) {
         err = "the expert cache is not segmented (the engine needs --vram-elastic)";
         return false;
@@ -411,10 +486,14 @@ bool ExpertCache::shrink(int64_t keep_bytes, std::string& err) {
     const CUdeviceptr va = reinterpret_cast<CUdeviceptr>(base_);
     for (int64_t i = mapped_segs_ - 1; i >= keep; --i) {
         const CUdeviceptr p = va + (CUdeviceptr) ((uint64_t) i * (uint64_t) seg_);
-        if (v.unmap(p, (size_t) seg_size_[(size_t) i]) != CUDA_SUCCESS ||
-            v.release((CUmemGenericAllocationHandle) segs_[(size_t) i]) != CUDA_SUCCESS) {
-            err = "the driver refused to release an expert-cache segment";
-            live_slots_ = slots_within(mapped_bytes());
+        const CUresult unmapped = v.unmap(p, (size_t) seg_size_[(size_t) i]);
+        if (unmapped == CUDA_SUCCESS) seg_mapped_[(size_t) i] = 0;
+        const CUresult released = unmapped == CUDA_SUCCESS
+            ? v.release((CUmemGenericAllocationHandle) segs_[(size_t) i]) : (CUresult) -1;
+        if (unmapped != CUDA_SUCCESS || released != CUDA_SUCCESS) {
+            cleanup_pending_ = true;
+            err = "ExpertCache: cleanup pending; ownership retained after segment release failure";
+            live_slots_ = 0;
             return false;
         }
         segs_[(size_t) i] = 0;
@@ -426,6 +505,10 @@ bool ExpertCache::shrink(int64_t keep_bytes, std::string& err) {
 }
 
 bool ExpertCache::grow(int64_t want_bytes, std::string& err) {
+    if (cleanup_pending_) {
+        err = "ExpertCache: cleanup pending; ownership retained; resizing is blocked";
+        return false;
+    }
     if (segs_.empty()) {
         err = "the expert cache is not segmented (the engine needs --vram-elastic)";
         return false;
@@ -443,15 +526,25 @@ bool ExpertCache::grow(int64_t want_bytes, std::string& err) {
         const size_t i = (size_t) mapped_segs_;
         const char* failed_api = nullptr;
         CUresult failed_code = CUDA_SUCCESS;
+        CUresult cleanup_unmap = (CUresult) -1, cleanup_release = (CUresult) -1;
         if (!map_segment(v, dev, va + (CUdeviceptr) ((uint64_t) i * (uint64_t) seg_), (size_t) seg_size_[i],
-                         segs_[i], failed_api, failed_code)) {
+                         segs_[i], failed_api, failed_code, &cleanup_unmap, &cleanup_release, &seg_mapped_[i])) {
+            if (segs_[i] != 0 || seg_mapped_[i]) {
+                cleanup_pending_ = true;
+                live_slots_ = 0;
+            }
             (void) cudaGetLastError();
             char buf[320];
             std::snprintf(buf, sizeof buf, "the driver has no VRAM for another expert-cache segment; "
                           "segment %zu of %zu API=%s CUresult=%d requested=%zu bytes",
                           i + 1, segs_.size(), failed_api, (int) failed_code, (size_t) seg_size_[i]);
             err = buf;
-            live_slots_ = slots_within(mapped_bytes());
+            if (cleanup_unmap != (CUresult) -1)
+                err += "; cleanup cuMemUnmap CUresult=" + std::to_string((int) cleanup_unmap);
+            if (cleanup_release != (CUresult) -1)
+                err += "; cleanup cuMemRelease CUresult=" + std::to_string((int) cleanup_release);
+            if (segs_[i] != 0 || seg_mapped_[i]) cleanup_pending_ = true;
+            live_slots_ = cleanup_pending_ ? 0 : slots_within(mapped_bytes());
             return false;
         }
         at += seg_size_[i];
@@ -486,7 +579,15 @@ void ExpertCache::set_vmm(bool enabled) { g_cache_vmm = enabled; }
 
 bool ExpertCache::open(int64_t n_slots, int64_t n_layers, int64_t n_expert, int64_t blob_bytes,
                        std::string& err) {
+    if (cleanup_pending_) {
+        err = "ExpertCache: cleanup pending; ownership retained; explicit close is required before reopening";
+        return false;
+    }
     close();
+    if (cleanup_pending_) {
+        err = "ExpertCache: cleanup pending; ownership retained; reopening is blocked";
+        return false;
+    }
     if (n_slots <= 0) {
         err = "ExpertCache: n_slots must be positive";
         return false;
@@ -621,6 +722,7 @@ void ExpertCache::close() {
     guard_ = 0;
     if (!segs_.empty()) {
         release_segmented();
+        if (cleanup_pending_) return;
     } else if (vmm_) {
         vmm_.reset();   // unmaps and frees every chunk it still holds
         base_ = nullptr;

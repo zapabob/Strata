@@ -11362,7 +11362,13 @@ int main(int argc, char** argv) {
                 res_upload();
             } else if (mapped < xcache.full_bytes()) {
                 std::string gerr;
-                if (!xcache.grow(mapped + ((int64_t) free_b - want_free), gerr)) note = " (" + gerr + ")";
+                if (!xcache.grow(mapped + ((int64_t) free_b - want_free), gerr)) {
+                    if (xcache.mapped_bytes() < 0) {
+                        e = "VRAM: expert-cache cleanup pending; ownership retained: " + gerr;
+                        return false;
+                    }
+                    note = " (" + gerr + ")";   // an ordinary capacity failure may keep the usable prefix
+                }
                 const int64_t live = xcache.slots();
                 std::string ferr;
                 std::vector<std::pair<int32_t, int32_t>> keep_out;
@@ -12083,6 +12089,7 @@ int main(int argc, char** argv) {
                 else vram_command(line, verr);
                 if (!verr.empty()) std::printf("ERR %s\n", verr.c_str());
                 std::fflush(stdout);
+                if (xcache.mapped_bytes() < 0) return 1;   // no later request may use an unresolved cache
                 continue;
             }
             // a command may touch the expert cache (a request lends slots, a K/V growth moves them, a session restore

@@ -38,6 +38,7 @@
 #include <memory>
 #include <mutex>
 #include <thread>
+#include <system_error>
 #include <utility>
 #include <vector>
 
@@ -1807,6 +1808,7 @@ void FileExpertSource::StageBufFree::operator()(uint8_t* p) const noexcept {
 // `claim_stage` finds or reserves the buffer of `key` (stage_mu_ held): true when the blob is already there (or
 // being filled by another thread - the caller then waits), false when the caller must fill buffer `v`.
 bool FileExpertSource::claim_stage(int64_t key, size_t& v, bool& fill, bool ahead) {
+    try {
     constexpr uint64_t kStageSeq = 256;
     const uint64_t seq = ++stage_seq_;
     auto it = stage_of_.find(key);
@@ -1830,7 +1832,27 @@ bool FileExpertSource::claim_stage(int64_t key, size_t& v, bool& fill, bool ahea
             oldest = stage_used_[i];
             v = i;
         }
+    // Allocate the lookup node before changing a reusable slot or owning a new buffer.
+    // A failed growth leaves published keys and parallel-vector sizes intact.
+    stage_of_.emplace(key, v);
+    struct ClaimRollback {
+        decltype(stage_of_)& keys;
+        int64_t key;
+        bool committed = false;
+        ~ClaimRollback() { if (!committed) keys.erase(key); }
+    } rollback{stage_of_, key};
     if (v == stage_buf_.size()) {
+        auto reserve_next = [v](auto& values) {
+            if (values.capacity() <= v) values.reserve(std::max(v + 1, values.capacity() * 2));
+        };
+        reserve_next(stage_buf_);
+        reserve_next(stage_ev_);
+        reserve_next(stage_ev_live_);
+        reserve_next(stage_key_);
+        reserve_next(stage_epoch_);
+        reserve_next(stage_used_);
+        reserve_next(stage_busy_);
+        reserve_next(stage_pf_);
         // Pinned, where the driver allows: a stage buffer is the source of the cache fill's cudaMemcpyAsync,
         // and a pageable source is staged through the driver's bounce buffer - an extra copy at a fraction of
         // the transfer rate, on the calling thread.  A failure falls back to pageable for this buffer.
@@ -1856,8 +1878,9 @@ bool FileExpertSource::claim_stage(int64_t key, size_t& v, bool& fill, bool ahea
             strata::perf131k::blob_failure::record(strata::perf131k::blob_failure::Step::heap_alloc, (uint64_t) stage_blob_);
             return false;
         }
-        stage_buf_.emplace_back(raw, StageBufFree{pinned});
-        stage_idx_[raw] = stage_buf_.size() - 1;
+        std::unique_ptr<uint8_t[], StageBufFree> owned(raw, StageBufFree{pinned});
+        stage_idx_.emplace(raw, v);   // the last allocating operation; owned frees on failure
+        stage_buf_.push_back(std::move(owned));
         stage_ev_.push_back(nullptr);
         stage_ev_live_.push_back(0);
         if (pinned && !stage_pin_said_) {
@@ -1899,9 +1922,13 @@ bool FileExpertSource::claim_stage(int64_t key, size_t& v, bool& fill, bool ahea
     stage_epoch_[v] = epoch_;
     stage_used_[v] = seq;
     stage_busy_[v] = 1;
-    stage_of_[key] = v;
+    rollback.committed = true;
     fill = true;
     return false;
+    } catch (const std::bad_alloc&) {
+        fill = false;
+        return false;
+    }
 }
 
 // 149 STRATA_IO_PF_GATE: whether this thread reads for the decode (the dispatch's thread, and the fetch threads it starts)
@@ -2016,7 +2043,9 @@ void FileExpertSource::gate_capacity() {
 // Fills buffer `v` (reserved by claim_stage) outside the lock, then publishes it.
 bool FileExpertSource::fill_stage(size_t v, int64_t layer, int64_t expert, uint8_t* dst) {
     const auto t0 = std::chrono::steady_clock::now();
-    const bool ok = copy_from_files(layer, expert, dst);
+    bool ok = false;
+    try { ok = copy_from_files(layer, expert, dst); }
+    catch (const std::bad_alloc&) {}   // a claimed slot must be published as failed, including on a worker
     publish_stage(v, layer, ok, std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - t0).count());
     return ok;
 }
@@ -2144,7 +2173,11 @@ void FileExpertSource::claim_todo(int64_t layer, const int64_t* experts, int64_t
     // 149-cold mode 3: the GGUF in place, mapped and buffered: an expert the page cache holds whole is computed from
     // the mapping (its three tensors' rows), not assembled into a stage buffer first.  Decided here, before the lock.
     zc_keys_.clear();
-    std::vector<char> zc_ok;
+    std::vector<char> zc_ok, cold;
+    const bool only_uncached = io_pf_ && role_ptr_.empty() && direct_.empty();
+    try {
+        todo.reserve(todo.size() + (size_t) n);
+        zc_keys_.reserve((size_t) n);
     if (zc && !role_ptr_.empty() && !unmapped_ && direct_.empty() && strata::kernels::cpu::expert_layout().native &&
         strata::kernels::cpu::expert_layout().fmt[(size_t) layer].tail_off == 0) {
         zc_ok.assign((size_t) n, 0);
@@ -2161,8 +2194,6 @@ void FileExpertSource::claim_todo(int64_t layer, const int64_t* experts, int64_t
     }
     // experts.bin with io prefetch: a blob whose pages are cached is handed out as the mapping (io_blob); only the
     // uncached ones are read here, together, on the fetch threads
-    const bool only_uncached = io_pf_ && role_ptr_.empty() && direct_.empty();
-    std::vector<char> cold;
     if (only_uncached) {
         cold.assign((size_t) n, 0);
         for (int64_t i = 0; i < n; ++i) {
@@ -2171,6 +2202,9 @@ void FileExpertSource::claim_todo(int64_t layer, const int64_t* experts, int64_t
             uint64_t total = 0;
             cold[(size_t) i] = cached_bytes(layer, e, total, false) < total ? 1 : 0;
         }
+    }
+    } catch (const std::bad_alloc&) {
+        return;   // no slots claimed yet; the demand path can fetch each blob itself
     }
     {
         std::lock_guard<std::mutex> lk(stage_mu_);
@@ -2249,7 +2283,9 @@ int64_t FileExpertSource::prefetch_begin(int64_t layer, const int64_t* experts, 
             for (size_t at; (at = async_next_.fetch_add(16)) < todo.size();) {
                 const size_t k = std::min<size_t>(16, todo.size() - at);
                 const auto t0 = std::chrono::steady_clock::now();
-                const bool ok = read_direct(todo.data() + at, k);
+                bool ok = false;
+                try { ok = read_direct(todo.data() + at, k); }
+                catch (const std::bad_alloc&) {}
                 const double us = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - t0).count();
                 for (size_t i = at; i < at + k; ++i) {
                     const Fill& f = todo[i];
@@ -2268,7 +2304,14 @@ int64_t FileExpertSource::prefetch_begin(int64_t layer, const int64_t* experts, 
     };
     const size_t nt = direct ? std::min<size_t>(4, (async_todo_.size() + 15) / 16)
                              : std::min<size_t>(async_todo_.size(), (size_t) std::max(1, fetch_threads_));
-    for (size_t t = 0; t < nt; ++t) async_th_.emplace_back(work);
+    try {
+        async_th_.reserve(nt);
+        for (size_t t = 0; t < nt; ++t) async_th_.emplace_back(work);
+    } catch (const std::bad_alloc&) {
+        work();   // finish unclaimed work; any started threads remain owned until prefetch_end
+    } catch (const std::system_error&) {
+        work();
+    }
     return np;
 }
 
@@ -2319,6 +2362,8 @@ void FileExpertSource::prefetch_end() {
 void FileExpertSource::prefetch_pairs(const std::pair<int32_t, int32_t>* pairs, int64_t n) {
     if (direct_.empty() || pairs == nullptr || n <= 0) return;   // unbuffered only: the mapped fill stays as it was
     std::vector<Fill> todo;
+    try { todo.reserve((size_t) std::min<int64_t>(n, 64)); }
+    catch (const std::bad_alloc&) { return; }   // optional read ahead has claimed nothing
     {
         std::lock_guard<std::mutex> lk(stage_mu_);
         for (int64_t i = 0; i < std::min<int64_t>(n, 64); ++i) {
@@ -2349,6 +2394,41 @@ bool FileExpertSource::advise_pairs(const std::pair<int32_t, int32_t>* pairs, in
     return true;
 }
 
+namespace {
+// Allocation or thread-start failure reduces concurrency. Already-started workers
+// retain their captures until every one has joined, and the caller finishes the queue.
+template<class Work> void run_fill_workers(size_t nt, Work&& work) {
+    std::vector<std::thread> threads;
+    struct JoinWorkers {
+        std::vector<std::thread>& threads;
+        ~JoinWorkers() { for (auto& t : threads) if (t.joinable()) t.join(); }
+    } join{threads};
+    try {
+        threads.reserve(nt > 0 ? nt - 1 : 0);
+        for (size_t t = 1; t < nt; ++t) threads.emplace_back(work);
+    } catch (const std::bad_alloc&) {
+    } catch (const std::system_error&) {
+    }
+    work();
+}
+
+template<class Work> void run_complement_workers(size_t nt, Work&& work, std::atomic<bool>& failed) {
+    auto guarded = [&]() noexcept {
+        try { work(); }
+        catch (...) { failed.store(true); }
+    };
+    run_fill_workers(nt, guarded);
+}
+
+template<class Release> bool complement_copy_failed(std::string& err, std::string& fail_msg, Release&& release) {
+    release();   // the local arena is not yet owned by FileExpertSource
+    if (!fail_msg.empty()) err.swap(fail_msg);   // no allocation under memory pressure
+    else try { err = "FileExpertSource: cache complement worker failed"; }
+         catch (const std::bad_alloc&) { err.clear(); }
+    return false;
+}
+}
+
 void FileExpertSource::fill_many(const std::vector<Fill>& todo) {
     if (todo.empty()) return;
     if (!direct_.empty()) {
@@ -2359,7 +2439,9 @@ void FileExpertSource::fill_many(const std::vector<Fill>& todo) {
             for (size_t at; (at = next.fetch_add(16)) < todo.size();) {
                 const size_t k = std::min<size_t>(16, todo.size() - at);
                 const auto t0 = std::chrono::steady_clock::now();
-                const bool ok = read_direct(todo.data() + at, k);
+                bool ok = false;
+                try { ok = read_direct(todo.data() + at, k); }
+                catch (const std::bad_alloc&) {}
                 const double us = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - t0).count();
                 for (size_t i = at; i < at + k; ++i) {
                     const Fill& f = todo[i];
@@ -2370,10 +2452,7 @@ void FileExpertSource::fill_many(const std::vector<Fill>& todo) {
             }
         };
         const size_t nt = std::min<size_t>(4, (todo.size() + 15) / 16);
-        std::vector<std::thread> th;
-        for (size_t t = 1; t < nt; ++t) th.emplace_back(work);
-        work();
-        for (auto& t : th) t.join();
+        run_fill_workers(nt, work);
         return;
     }
 #if defined(_WIN32)
@@ -2387,7 +2466,7 @@ void FileExpertSource::fill_many(const std::vector<Fill>& todo) {
             if (v != nullptr && std::atoi(v) == 0) return (Pvm) nullptr;
             return (Pvm) (void*) GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "PrefetchVirtualMemory");
         }();
-        if (pvm != nullptr) {
+        if (pvm != nullptr) try {
             std::vector<WIN32_MEMORY_RANGE_ENTRY> ranges;
             ranges.reserve(todo.size() * 3);
             for (const Fill& f : todo)
@@ -2397,6 +2476,8 @@ void FileExpertSource::fill_many(const std::vector<Fill>& todo) {
                                       (SIZE_T) role_bytes_[i]});
                 }
             (void) pvm(GetCurrentProcess(), (ULONG_PTR) ranges.size(), ranges.data(), 0);
+        } catch (const std::bad_alloc&) {
+            // Read-ahead is optional; the claimed slots are still filled below.
         }
     }
 #endif
@@ -2409,10 +2490,7 @@ void FileExpertSource::fill_many(const std::vector<Fill>& todo) {
             (void) fill_stage(todo[i].v, todo[i].layer, todo[i].e, todo[i].dst);
     };
     const size_t nt = std::min<size_t>(todo.size(), (size_t) fetch_threads_);
-    std::vector<std::thread> th;
-    for (size_t t = 1; t < nt; ++t) th.emplace_back(work);
-    work();
-    for (auto& t : th) t.join();
+    run_fill_workers(nt, work);
 }
 
 uint64_t FileExpertSource::expert_bytes() const {
@@ -2736,6 +2814,7 @@ bool FileExpertSource::read_direct(const Fill* fills, size_t n) const {
         }
     };
     thread_local Scratch sc;
+    try {
     sc.win.clear();
     for (size_t k = 0; k < n; ++k) {
         const Fill& f = fills[k];
@@ -2800,6 +2879,10 @@ bool FileExpertSource::read_direct(const Fill* fills, size_t n) const {
             sc.cap = 0; return false;
         }
     }
+    // Requests must never outlive their OVERLAPPED storage under host allocation failure.
+    sc.ev.reserve(sc.req.size());
+    sc.ov.assign(sc.req.size(), OVERLAPPED{});
+    sc.got.assign(sc.req.size(), 0);
     while (sc.ev.size() < sc.req.size()) {
         HANDLE e = CreateEventW(nullptr, TRUE, FALSE, nullptr);
         if (e == nullptr) {
@@ -2812,7 +2895,9 @@ bool FileExpertSource::read_direct(const Fill* fills, size_t n) const {
         }
         sc.ev.push_back(e);
     }
-    sc.ov.assign(sc.req.size(), OVERLAPPED{});
+    } catch (const std::bad_alloc&) {
+        return false;   // all allocations precede the first I/O submission
+    }
     // every request in flight before the first wait: the drive sees the whole batch as one queue
     size_t issued = 0;
     bool ok = true;
@@ -2834,7 +2919,6 @@ bool FileExpertSource::read_direct(const Fill* fills, size_t n) const {
         ++issued;
     }
     std::vector<DWORD>& got = sc.got;
-    got.assign(sc.req.size(), 0);
     for (size_t q = 0; q < issued; ++q) {
         if (!GetOverlappedResult(sc.req[q].h, &sc.ov[q], &got[q], TRUE)) {
             if (blob_diag) {
@@ -4118,17 +4202,12 @@ bool FileExpertSource::pin_cache_complement(
     };
     {
         const int threads = (int) std::max<int64_t>(1, std::min<int64_t>(6, n_layers_));
-        std::vector<std::thread> pool;
-        for (int i = 1; i < threads; ++i) pool.emplace_back(worker);
-        worker();
-        for (auto& t : pool) t.join();
+        // A worker may fail while growing its batch or read metadata. Keep the
+        // arena owned until every started worker has joined, then fail closed.
+        run_complement_workers((size_t) threads, worker, failed);
     }
     std::fflush(stderr);
-    if (failed.load()) {
-        err = fail_msg;
-        release();
-        return false;
-    }
+    if (failed.load()) return complement_copy_failed(err, fail_msg, release);
 #if defined(_WIN32)
     // The mapped pages this process touched (the GPU cache's fill and this copy) leave its working set for the
     // standby list: VirtualUnlock on pages that are not locked does exactly that (it then reports ERROR_NOT_LOCKED).

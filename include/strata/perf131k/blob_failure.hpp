@@ -13,6 +13,8 @@ enum class Step { pin_alloc, heap_alloc, stage_claim, stage_key, stage_fill,
                   direct_alloc, direct_event, direct_issue, direct_wait, direct_short };
 enum class Domain { unknown, cuda, win32 };
 inline constexpr unsigned capacity = 32;
+// The terminal failure has a dedicated logical slot within the fixed budget.
+inline constexpr unsigned event_capacity = capacity - 1;
 struct Context { uint64_t request = 0; int64_t layer = -1, expert = -1; Source source = Source::unknown; };
 struct Record {
     Context context;
@@ -23,7 +25,7 @@ struct Record {
     bool code_known = false;
 };
 struct Slot { Record record; std::atomic<bool> ready{false}; };
-inline Slot slots[capacity];
+inline Slot slots[event_capacity];
 inline std::atomic<uint64_t> seen{0}, requests{0};
 inline std::atomic<bool> saturated{false};
 inline thread_local Context context;
@@ -60,7 +62,7 @@ inline void record(Step step, uint64_t bytes, Domain domain = Domain::unknown,
                    int64_t code = 0, bool code_known = false, int64_t batch = -1) noexcept {
     if (!enabled()) return;
     const uint64_t index = increment(seen);
-    if (index >= capacity) return;
+    if (index >= event_capacity) return;
     slots[index].record = {context, step, domain, bytes, code, batch, code_known};
     slots[index].ready.store(true, std::memory_order_release);
 }
@@ -105,15 +107,15 @@ inline void flush_terminal(uint64_t requested_bytes) noexcept {
     auto signed_value = [&](int64_t value) {
         if (value < 0) add("null"); else add("%lld", (long long) value);
     };
-    add("BLOB_DIAG {\"schema\":1,\"status\":\"SNAPSHOT\",\"capacity\":%u,\"seen_at_snapshot\":%llu,"
+    add("BLOB_DIAG {\"schema\":1,\"status\":\"SNAPSHOT\",\"capacity\":%u,\"event_capacity\":%u,\"seen_at_snapshot\":%llu,"
         "\"terminal\":{\"stage\":\"profile_blob_null\",\"source\":\"%s\",\"request\":",
-        capacity, (unsigned long long) count, name(context.source));
+        capacity, event_capacity, (unsigned long long) count, name(context.source));
     unsigned_value(context.request);
     add(",\"layer\":"); signed_value(context.layer);
     add(",\"expert\":"); signed_value(context.expert);
     add(",\"requested_bytes\":%llu},\"records\":[", (unsigned long long) requested_bytes);
     unsigned published = 0;
-    for (uint64_t i = 0; i < count && i < capacity; ++i) {
+    for (uint64_t i = 0; i < count && i < event_capacity; ++i) {
         if (!slots[i].ready.load(std::memory_order_acquire)) continue;
         const Record& r = slots[i].record;
         add("%s{\"sequence\":%llu,\"stage\":\"%s\",\"domain\":\"%s\",\"source\":\"%s\","
@@ -123,11 +125,13 @@ inline void flush_terminal(uint64_t requested_bytes) noexcept {
         add(",\"layer\":"); signed_value(r.context.layer);
         add(",\"expert\":"); signed_value(r.context.expert);
         add(",\"batch_index\":"); signed_value(r.batch);
+        add(",\"same_terminal_request\":%s",
+            context.request != 0 && r.context.request == context.request ? "true" : "false");
         add(",\"requested_bytes\":%llu,\"code\":", (unsigned long long) r.bytes);
         if (r.code_known) add("%lld}", (long long) r.code); else add("null}");
         ++published;
     }
-    const uint64_t reserved = count < capacity ? count : capacity;
+    const uint64_t reserved = count < event_capacity ? count : event_capacity;
     add("],\"pending_at_snapshot\":%llu,\"dropped_at_snapshot\":",
         (unsigned long long) (reserved - published));
     const bool overflow = saturated.load(std::memory_order_relaxed);

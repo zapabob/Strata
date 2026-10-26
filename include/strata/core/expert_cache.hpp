@@ -100,7 +100,7 @@ public:
     const uint64_t* slot_offsets() const { return off_.empty() ? nullptr : off_.data(); }
     void close();
 
-    bool valid() const { return base_ != nullptr; }
+    bool valid() const { return base_ != nullptr && !cleanup_pending_; }
     /// The slots usable now: all of them, unless `shrink` gave the tail's VRAM back (#533) - then the ones wholly
     /// inside the VRAM still backed, always a prefix.  The prompt path's loan (the last slots) and every report
     /// follow this; `full_slots()` is what `open` allocated.
@@ -134,7 +134,7 @@ public:
     static int64_t slot_stride(int64_t blob, int64_t guard = 0) { return (blob + guard + 255) / 256 * 256; }
     bool segmented() const { return !segs_.empty(); }
     int64_t segment_bytes() const { return seg_; }
-    /// Bytes of the arena backed by VRAM now (a whole number of segments; the arena when not segmented).
+    /// Bytes backed by VRAM; -1 means driver cleanup failed and retained ownership is unresolved.
     int64_t mapped_bytes() const;
     /// Unmaps every segment past the first `keep_bytes` (rounded UP to a segment boundary): `slots()` becomes the
     /// slots wholly inside what stays.  Waits for the device first.  False with `err` when not segmented or a driver
@@ -250,6 +250,8 @@ private:
     int64_t seg_ = 0;                   ///< #533: the segment size used (a multiple of the driver's granularity)
     uint64_t reserved_ = 0;             ///< #533: the reserved address range's size
     std::vector<unsigned long long> segs_;   ///< #533: each segment's physical handle (0: unmapped)
+    bool cleanup_pending_ = false;     ///< teardown failed: no cache use or replacement until explicit cleanup succeeds
+    std::vector<char> seg_mapped_;    ///< address mappings are tracked separately from physical handle ownership
     std::vector<int64_t> seg_size_;     ///< #533: each segment's size (the last one may be shorter)
     int64_t mapped_segs_ = 0;           ///< #533: segments [0, mapped_segs_) are backed
     std::unique_ptr<VmmRange> vmm_;    ///< the arena's range when it is in VMM (set_vmm)

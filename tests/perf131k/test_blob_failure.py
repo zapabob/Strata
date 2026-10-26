@@ -27,7 +27,7 @@ class BlobFailureTests(unittest.TestCase):
         direct=direct[:direct.index('#elif defined(__linux__)')]+'#endif\n}'
         staged=function(source,'const uint8_t* FileExpertSource::staged_blob(')
         start=source.index('        void* p = nullptr;',source.index('bool FileExpertSource::claim_stage('))
-        end=source.index('        stage_buf_.emplace_back',start)
+        end=source.index('        std::unique_ptr<uint8_t[], StageBufFree> owned',start)
         alloc=source[start:end]
         old='const uint8_t* b = srcp->blob_stable(profile[(size_t) i].first'
         anchor='strata::perf131k::blob_failure::Scope profile_blob_scope'
@@ -119,15 +119,17 @@ class BlobFailureTests(unittest.TestCase):
 
     def test_buffer_output_and_drop_count_are_bounded(self):
         records,_,raw=self.run_case('flood');d=records[0]
-        self.assertEqual(len(d['records']),32);self.assertEqual(d['dropped_at_snapshot'],68)
+        self.assertEqual(d['capacity'],32);self.assertEqual(d['event_capacity'],31)
+        self.assertEqual(len(d['records']),31);self.assertEqual(d['dropped_at_snapshot'],69)
         self.assertEqual(d['status'],'SNAPSHOT');self.assertEqual(d['later_events'],'unknown')
         self.assertLess(len(raw),32768)
 
     def test_parallel_records_have_unique_slots_and_unknown_context(self):
         records,_,_=self.run_case('threads');d=records[0]
-        self.assertEqual(len(d['records']),32);self.assertEqual(d['dropped_at_snapshot'],48)
-        self.assertEqual(len({r['sequence'] for r in d['records']}),32)
-        self.assertTrue(all(r['request'] is None and r['layer'] is None for r in d['records']))
+        self.assertEqual(len(d['records']),31);self.assertEqual(d['dropped_at_snapshot'],49)
+        self.assertEqual(len({r['sequence'] for r in d['records']}),31)
+        self.assertTrue(all(r['request'] is None and r['layer'] is None and not r['same_terminal_request']
+                            for r in d['records']))
 
 
 if __name__=='__main__':unittest.main()
