@@ -91,6 +91,16 @@ sample. Hikari remained in the user's stopped baseline; the wrapper made no
 service or maintenance-state changes. Evidence:
 `H:\Strata\evidence\p01-boundary-20261026\authorized-direct-attempt\closeout.json`.
 
+The controller now has a separate `--blob-diagnostics` option. It records the
+actual case-insensitive Windows child flag in both launch and result receipts,
+rejects duplicate spellings and excludes source-diagnostic runs from performance
+comparison. `--memory-diagnostics` continues to control memory sampling only.
+Twelve scripted CPU tests passed; they did not launch a model. The controller
+also accepts an explicitly selected 16 GiB diagnostic cap while keeping its
+8 GiB default. That arm requires separate approval, at least 18 GiB available
+RAM, 22 GiB commit headroom and 8 GiB free disk. Adding this option does not
+authorize or execute it; no automatic cap escalation is implemented.
+
 ---
 
 ## Historical published-preview records

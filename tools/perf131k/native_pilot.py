@@ -103,17 +103,17 @@ def verify_inputs(binding):
 
 
 def make_budget(job_commit_gib=8):
-    # The10GiB arm is an explicit, separately authorized diagnostic. Never infer
+    # The10/16GiB arms are explicit, separately authorized diagnostics. Never infer
     # a larger limit from free resources or retry an exhausted Job automatically.
-    if type(job_commit_gib) is not int or job_commit_gib not in (8, 10):
-        raise ValueError("only explicit8GiB/default or10GiB pilot budgets are supported")
+    if type(job_commit_gib) is not int or job_commit_gib not in (8, 10, 16):
+        raise ValueError("only explicit8GiB/default,10GiB or16GiB pilot budgets are supported")
     return SimpleNamespace(timeout_s=900, job_commit_bytes=job_commit_gib * 1024**3,
                            output_bytes=16 * 1024**2, max_processes=2,
                            min_available_ram=2 * 1024**3, min_commit_headroom=6 * 1024**3,
                            min_H_free=8 * 1024**3)
 
 
-def _run_cell(count, trace, *, binding_sha, result, budget, memory_diagnostics=False):
+def _run_cell(count, trace, *, binding_sha, result, budget, memory_diagnostics=False, blob_diagnostics=False):
     binding_path = BASE / "prepared/binding.json"
     binding_raw = binding_path.read_bytes()
     if hashlib.sha256(binding_raw).hexdigest() != binding_sha:
@@ -142,6 +142,16 @@ def _run_cell(count, trace, *, binding_sha, result, budget, memory_diagnostics=F
                STRATA_KEEP_LEFTOVERS="1")
     if trace == "ON":
         env["STRATA_PERF131K_HOST_TRACE"] = str(cell / "host-trace.json")
+    diagnostic_keys = [key for key in env if key.upper() == "STRATA_PERF131K_BLOB_DIAG"]
+    if len(diagnostic_keys) > 1:
+        raise ValueError("duplicate case-insensitive blob diagnostic keys")
+    if diagnostic_keys:
+        env["STRATA_PERF131K_BLOB_DIAG"] = env.pop(diagnostic_keys[0])
+    if blob_diagnostics:
+        env["STRATA_PERF131K_BLOB_DIAG"] = "1"
+    if env.get("STRATA_PERF131K_BLOB_DIAG", "0") not in ("0", "1"):
+        raise ValueError("blob diagnostic binding must be explicit 0 or 1")
+    result["source_blob_diagnostics"] = env.get("STRATA_PERF131K_BLOB_DIAG", "0") == "1"
     resources = system_resources(cell)
     result["admission_policy"] = "start RAM >= Job commit +2GiB; commit headroom >= Job commit +6GiB; H free >=8GiB; no physical reservation/peak proof; WDDM budget unknown"
     if (resources["available_ram"] < budget.job_commit_bytes + budget.min_available_ram
@@ -153,7 +163,8 @@ def _run_cell(count, trace, *, binding_sha, result, budget, memory_diagnostics=F
     write(cell / "launch.json", {"command": command, "env": env, "budget": vars(budget),
                                  "binding_sha256": sha(binding_path), "resources": resources,
                                  "trace": trace, "input_count": count, "expected_capacity": 131072,
-                                 "memory_diagnostics": memory_diagnostics})
+                                 "memory_diagnostics": memory_diagnostics,
+                                 "source_blob_diagnostics": result["source_blob_diagnostics"]})
     started = time.monotonic()
     result["phase"] = "execution"
     result["launch_attempted"] = True
@@ -205,9 +216,11 @@ def _run_cell(count, trace, *, binding_sha, result, budget, memory_diagnostics=F
     return result["exit_code"] or (0 if valid else 78)
 
 
-def run_cell(count, trace, *, binding_sha, job_commit_gib=8, memory_diagnostics=False):
+def run_cell(count, trace, *, binding_sha, job_commit_gib=8, memory_diagnostics=False, blob_diagnostics=False):
     if type(memory_diagnostics) is not bool:
         raise ValueError("memory diagnostics requires an explicit bool")
+    if type(blob_diagnostics) is not bool:
+        raise ValueError("blob diagnostics requires an explicit bool")
     budget = make_budget(job_commit_gib)
     cell = BASE / f"native-{count}-{trace.lower()}"
     if cell.exists():
@@ -216,11 +229,12 @@ def run_cell(count, trace, *, binding_sha, job_commit_gib=8, memory_diagnostics=
               "owned_root_pid": None, "termination_confirmed": None, "job_active_after": None,
               "measurement_valid": False, "comparison_valid": False, "requests": [],
               "launch_attempted": False, "GPU_elapsed_ns": None, "physical_IO_bytes": None,
-              "P17_PPL_full_quality": "NOT_RUN", "requested_job_commit_gib": job_commit_gib}
+              "P17_PPL_full_quality": "NOT_RUN", "requested_job_commit_gib": job_commit_gib,
+              "source_blob_diagnostics": False, "requested_blob_diagnostics": blob_diagnostics}
     try:
         result["exit_code"] = _run_cell(count, trace, binding_sha=binding_sha, result=result, budget=budget,
-                                        memory_diagnostics=memory_diagnostics)
-        result["comparison_valid"] = result["measurement_valid"]
+                                        memory_diagnostics=memory_diagnostics, blob_diagnostics=blob_diagnostics)
+        result["comparison_valid"] = result["measurement_valid"] and not result["source_blob_diagnostics"]
         if result["exit_code"] and result["status"] == "FINISHED":
             result["status"] = "INVALID_MEASUREMENT"
     except Exception as error:
@@ -274,10 +288,12 @@ def main():
     parser.add_argument("--tokens", type=int, choices=(4096, 32768))
     parser.add_argument("--trace", choices=("OFF", "ON"))
     parser.add_argument("--binding-sha")
-    parser.add_argument("--job-commit-gib", type=int, choices=(8, 10), default=8,
-                        help="10 requires explicit diagnostic budget authorization")
+    parser.add_argument("--job-commit-gib", type=int, choices=(8, 10, 16), default=8,
+                        help="10/16 require explicit diagnostic budget authorization; never auto-increased")
     parser.add_argument("--memory-diagnostics", action="store_true",
                         help="opt-in owned root CPU memory sampled aggregates; no GPU counters")
+    parser.add_argument("--blob-diagnostics", action="store_true",
+                        help="opt-in native blob failure trace; excluded from performance comparisons")
     args = parser.parse_args()
     if args.prepare and not args.execute_authorized:
         prepare()
@@ -285,7 +301,7 @@ def main():
     if not args.execute_authorized or args.tokens is None or args.trace is None or args.binding_sha is None:
         parser.error("explicit authorized cell required")
     return run_cell(args.tokens, args.trace, binding_sha=args.binding_sha, job_commit_gib=args.job_commit_gib,
-                    memory_diagnostics=args.memory_diagnostics)
+                    memory_diagnostics=args.memory_diagnostics, blob_diagnostics=args.blob_diagnostics)
 
 
 if __name__ == "__main__":

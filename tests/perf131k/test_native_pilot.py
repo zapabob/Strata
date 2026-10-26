@@ -19,14 +19,18 @@ if os.environ.get("P01_NATIVE_UNDER_TEST"):
 
 class NativePilotTests(TestCase):
     def fake_cell(self, *, raw=None, stale_tokenizer=False, trace="OFF", job_commit_gib=None,
-                  resources=None, observed=None, memory_diagnostics=False, job_result=None):
+                  resources=None, observed=None, memory_diagnostics=False, blob_diagnostics=False, job_result=None,
+                  baseline_env=None):
         base = Path("H:/Strata/worktrees/p01-a-20261025/_scratch/perf131k/b2-fixtures") / uuid.uuid4().hex
         base.mkdir(parents=True)
         shutil.copytree(native.BASE / "prepared", base / "prepared")
         path = base / "prepared/binding.json"
-        if stale_tokenizer:
+        if stale_tokenizer or baseline_env:
             binding = json.loads(path.read_text())
-            binding["tokenizer"]["vocab.json"] = "0" * 64
+            if stale_tokenizer:
+                binding["tokenizer"]["vocab.json"] = "0" * 64
+            if baseline_env:
+                binding["baseline_env"].update(baseline_env)
             path.write_text(json.dumps(binding))
         def fake_runtime(command, root, env, output, budget, sample, *, stdin_path, **diagnostics):
             if observed is not None:
@@ -46,6 +50,8 @@ class NativePilotTests(TestCase):
             options = {} if job_commit_gib is None else {"job_commit_gib": job_commit_gib}
             if memory_diagnostics:
                 options["memory_diagnostics"] = True
+            if blob_diagnostics:
+                options["blob_diagnostics"] = True
             code = native.run_cell(4096, trace, binding_sha=native.sha(path), **options)
         result = json.loads((base / f"native-4096-{trace.lower()}/result.json").read_text())
         return code, result, spawn.call_count
@@ -67,6 +73,42 @@ class NativePilotTests(TestCase):
                 code, result, calls = self.fake_cell(job_commit_gib=10, resources=limits)
                 self.assertEqual((code, calls), (77, 0))
                 self.assertEqual(result["status"], "PREFLIGHT_BLOCKED")
+
+    def test_blob_diagnostics_reach_child_and_cannot_be_performance_comparison(self):
+        observed = {}
+        code, result, calls = self.fake_cell(observed=observed, blob_diagnostics=True)
+        self.assertEqual((code, calls), (0, 1))
+        self.assertEqual(observed["launch"]["env"]["STRATA_PERF131K_BLOB_DIAG"], "1")
+        self.assertTrue(observed["launch"]["source_blob_diagnostics"])
+        self.assertTrue(result["source_blob_diagnostics"])
+        self.assertTrue(result["measurement_valid"])
+        self.assertFalse(result["comparison_valid"])
+
+    def test_sixteen_GiB_explicit_arm_preserves_headroom_and_no_auto_increase(self):
+        observed = {}
+        limits = {"available_ram": 18 * 1024**3, "commit_headroom": 22 * 1024**3, "H_free": 8 * 1024**3}
+        code, result, calls = self.fake_cell(job_commit_gib=16, resources=limits, observed=observed,
+                                             blob_diagnostics=True)
+        self.assertEqual((code, calls), (0, 1))
+        self.assertEqual(observed["budget"]["job_commit_bytes"], 16 * 1024**3)
+        for key in ("available_ram", "commit_headroom", "H_free"):
+            low = {**limits, key: limits[key] - 1}
+            code, result, calls = self.fake_cell(job_commit_gib=16, resources=low)
+            self.assertEqual((code, calls), (77, 0))
+        self.assertEqual(native.make_budget().job_commit_bytes, 8 * 1024**3)
+
+    def test_windows_case_insensitive_blob_flag_cannot_escape_comparison_exclusion(self):
+        observed = {}
+        code, result, calls = self.fake_cell(observed=observed,
+            baseline_env={"strata_perf131k_blob_diag": "1"})
+        self.assertEqual((code, calls), (0, 1))
+        self.assertTrue(result["source_blob_diagnostics"])
+        self.assertFalse(result["comparison_valid"])
+        self.assertNotIn("strata_perf131k_blob_diag", observed["launch"]["env"])
+        code, result, calls = self.fake_cell(baseline_env={
+            "STRATA_PERF131K_BLOB_DIAG": "0", "strata_perf131k_blob_diag": "1"})
+        self.assertEqual(calls, 0)
+        self.assertEqual(result["status"], "INPUT_BINDING_FAILED")
 
     def test_budget_override_is_bounded_and_default_remains_eight(self):
         observed = {}
@@ -130,7 +172,12 @@ class NativePilotTests(TestCase):
         base = Path("H:/Strata/worktrees/p01-a-20261025/_scratch/perf131k/b2-fixtures") / uuid.uuid4().hex
         base.mkdir(parents=True)
         (base / "CPU_UNIT_FIXTURE").write_text("All runtime counters in this directory are scripted CPU fixtures.")
-        with patch.object(native, "BASE", base):
+        frozen = json.loads((native.BASE / "prepared/binding.json").read_text())
+        inventory = base / "_docs/perf131k"
+        inventory.mkdir(parents=True)
+        (inventory / "model-inventory.json").write_text(json.dumps({"saved_Q2_configuration": {
+            "args": frozen["native_args"], "env": frozen["baseline_env"]}}), encoding="utf-8")
+        with patch.object(native, "BASE", base), patch.object(native, "ROOT", base):
             native.prepare()  # Reads tokenizer and verification exe only; no model tensor reads.
             binding = json.loads((base / "prepared/binding.json").read_text())
             for count in (4096, 32768):
