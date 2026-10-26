@@ -188,6 +188,13 @@ weights, sessions, device/driver commit and the complete phase overlap.
 The artifact receipt is
 `H:\Strata\evidence\p01-boundary-20261026\joined-prefetch-receipt.json`.
 HIP/SYCL builds and real model execution remain unperformed.
+The joined-thread test is now part of
+`python -m unittest tests.perf131k.test_startup_lifetime` under the existing
+local CPU receipt gate. All eight tests passed; generated source, compile
+commands and case outputs are under
+`H:\Strata\evidence\p01-boundary-20261026\79e6f3c53f5d48f19423509e7770244d`.
+The source integration check also rejects reintroducing `std::async` into this
+profile block or declaring the referenced callable after its thread owner.
 
 On Windows, `read_direct` retains its `VirtualAlloc` scratch in thread-local
 storage. Its capacity rounds each batch's merged read span up to 1 MiB. The

@@ -55,6 +55,28 @@ class StartupLifetimeTests(unittest.TestCase):
         (cls.base / "compile.txt").write_bytes(result.stdout + result.stderr)
         if result.returncode:
             raise AssertionError(str(cls.base / "compile.txt"))
+        cls.joined_exe = cls.base / "joined_prefetch.exe"
+        joined_source = ROOT / "tests/perf131k/joined_prefetch_cpu.cpp"
+        command = [str(compiler), "/nologo", "/std:c++20", "/EHsc", "/Od", "/I" + str(ROOT / "include"),
+                   str(joined_source), "/Fe:" + str(cls.joined_exe),
+                   "/Fo:" + str(cls.base / "joined_prefetch.obj"), "/link", "/INCREMENTAL:NO"]
+        (cls.base / "joined-command.json").write_text(json.dumps({"command": command,
+            "scope": "real CPU threads and production JoinedPrefetch; no model/GPU"}), encoding="utf-8")
+        result = subprocess.run(command, cwd=cls.base, env=env, capture_output=True, timeout=30)
+        (cls.base / "joined-compile.txt").write_bytes(result.stdout + result.stderr)
+        if result.returncode:
+            raise AssertionError(str(cls.base / "joined-compile.txt"))
+
+    def test_joined_prefetch_releases_tls_and_handles_launch_and_task_failures(self):
+        result = subprocess.run([str(self.joined_exe)], capture_output=True, timeout=10)
+        (self.base / "joined-run.txt").write_bytes(result.stdout + result.stderr)
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+        generate = (ROOT / "src/program/generate.cpp").read_text(encoding="utf-8")
+        profile = generate.split("// ---- R4.2e: fill the tier from the profile.", 1)[1].split(
+            "int64_t prefilled", 1)[1].split("const double fill_s", 1)[0]
+        self.assertIn("strata::program::JoinedPrefetch ahead;", profile)
+        self.assertNotIn("std::async", profile)
+        self.assertLess(profile.index("auto read_batch"), profile.index("JoinedPrefetch ahead"))
 
     def run_case(self, args, pin):
         env = dict(os.environ, STRATA_STAGE_PIN=str(pin))
