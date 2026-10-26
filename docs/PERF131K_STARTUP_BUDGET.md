@@ -98,3 +98,20 @@ upper bound for their overlap with model weights, session state, cache
 retries, later resident complement and worker allocations. The offline
 admission result is `BLOCKED_INCOMPLETE`; no new model launch or cap change
 was made.
+
+`claim_stage` retains each allocated stage buffer until the source closes and
+allocates `stage_blob_ = max(layer_blob_bytes)` bytes per buffer. The number of
+model expert keys is not a safe pool bound: a failed fill removes its key but
+keeps the allocated buffer, and the 256-use age rule can delay reuse. The log
+at 512 buffers is a notification, not an allocation cap. A source-grounded
+upper bound needs the number of claims that can overlap with busy slots and
+failed fills for the selected startup path. The current CPU fixtures do not
+establish that count.
+
+On Windows, `read_direct` retains its `VirtualAlloc` scratch in thread-local
+storage. Its capacity rounds each batch's merged read span up to 1 MiB. The
+profile path can overlap a foreground batch with an asynchronous next batch,
+and `fill_many` can create up to four workers per batch. A Job estimate must
+count the high-water scratch of every such live thread until that thread exits,
+including fallback single-blob reads. The Linux-only prefetch worker vector
+scratch is a separate path and must not be charged to this Windows candidate.
