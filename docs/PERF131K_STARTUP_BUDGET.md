@@ -82,6 +82,14 @@ targeted startup/statistics CPU 43/43. GitHub Actions returned HTTP 422 on
 manual dispatch despite reporting the workflow active and repository Actions
 enabled, so no same-source cloud CI result exists.
 
+A read-only snapshot at `2026-10-26T11:56:57Z` bound the boundary candidate
+`6f3374e3` to 9,090,052,096 available physical bytes and 14,417,989,632
+bytes of system commit headroom. This also failed the older controller's
+12 GiB available-RAM condition. Its receipt is
+`H:\Strata\evidence\p01-boundary-20261026\offline-admission-final.json`.
+There is still no complete source-grounded startup upper bound, and this
+candidate has not launched a model.
+
 The stage-buffer pool can retain buffers after logical reuse, the direct-I/O
 scratch remains allocated in its thread, and Windows may charge device
 allocations to Job commit. The source and CPU fixtures do not give a complete
