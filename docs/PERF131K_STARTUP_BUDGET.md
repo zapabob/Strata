@@ -11,7 +11,7 @@ not a Strata or 131072-token requirement. No cap change is authorized here.
 | --- | --- | --- |
 | Source | Base HEAD `93e9c0ac9f8145209a480d704eb8104bd49395db`; startup fix `dd0b797a`, benchmark executor `fe7f5159`, opt-in exact boundary `00c1b770`, and mode guard `6955c759`. Current `expert_source.cpp` Git blob is `d0f331379eb8e00e9e1446543773da6610c8406a`. | Linked to the CUDA build receipts below; no same-source CI or model run. |
 | Build objects | Fresh `Release/x64` SM120 CUDA build in `H:\Strata\build\p01-startup-cuda-20261026`, then incremental rebuilds after the complement and boundary changes. The last `strata` link exited 0. Startup source/build hashes are in `H:\Strata\evidence\p01-full-build-20261026\build-provenance-after-complement.json`; current boundary source, executable and build log are bound in `H:\Strata\evidence\p01-boundary-20261026\p02-cpu-receipt-after-review.json`. | Link passed; no GPU model execution. |
-| Executable | Current `strata.exe` SHA256 `6f3374e3a6438023aad5b7a8dad9020a9c4383f90b3a31e3402bbfcf271d15b3`, 80,759,296 bytes; `strata_kq.dll` SHA256 `919db9448abedaeac4bdf963160b09c47ad55cca28ca6d1ebec2024c92ae94f2`. Both are in `H:\Strata\build\p01-startup-cuda-20261026\Release`. | Read-only `--help` returned exit 0 after the last link; model launch not run. |
+| Executable | Current `strata.exe` SHA256 `20373ca6b9b16b9d220820a902b584d604a64e068d383a26ba11dd4e43f85d93`, 80,752,128 bytes, built with joined prefetch and affinity guard at `56c4613b`; `strata_kq.dll` SHA256 `919db9448abedaeac4bdf963160b09c47ad55cca28ca6d1ebec2024c92ae94f2`. Both are in `H:\Strata\build\p01-startup-cuda-20261026\Release`. | CUDA link and read-only `--help` returned exit 0; model launch not run. |
 | Model/pack | SHA256 and sizes of both GGUF shards, native pack and MTP dense/expert files are in `H:\Strata\evidence\p01-full-build-20261026\artifact-sha256.json`; tokenizer and profile hashes are in `small-input-sha256.json`. | Content identity recorded; compatibility and runtime provenance not proved. |
 | Statistical JSON | `docs/perf131k-statistical-protocol.json` SHA256 `2fc40ea4eda197ddb19627b57c561cb405553684f04dcaeb9a8a067366401884` records design, not measured pairs. | `DESIGN_NOT_RUN`. |
 
@@ -167,6 +167,27 @@ is `A * C16 + 6 * C32`, including retained async callers and up to six
 complement workers with main participating. `C16`/`C32` denote the per-thread
 capacity bounds above. These are source bounds for the stated paths, not
 observations of thread-pool growth or a whole-process commit estimate.
+
+## Joined profile prefetch candidate
+
+Commit `73cfa347` replaces the primary profile's `std::async` with an owned
+thread that joins at each batch boundary and on early exit. The batch callable
+outlives its owner. Allocation/thread-start failure runs the batch synchronously;
+task exceptions are saved and rethrown once by `get()`. The CPU test uses real
+MSVC threads and checks TLS destruction after each of 128 batches, early exit,
+exception propagation and injected launch failures. It passed, as did the CUDA
+SM120 incremental link and read-only help. Astra xhigh found no actionable code
+defect; its review did not independently execute these tests.
+
+For this candidate, persistent async task-pool callers are removed from the
+selected profile schedule. The profile scratch bound becomes `5 * C16`, and
+the subsequent complement bound becomes `6 * C32`, with main included. Main
+can retain its own high-water scratch through READY. The `B <= 65` stage bound
+is unchanged. These payload bounds still exclude metadata, stack, runtime,
+weights, sessions, device/driver commit and the complete phase overlap.
+The artifact receipt is
+`H:\Strata\evidence\p01-boundary-20261026\joined-prefetch-receipt.json`.
+HIP/SYCL builds and real model execution remain unperformed.
 
 On Windows, `read_direct` retains its `VirtualAlloc` scratch in thread-local
 storage. Its capacity rounds each batch's merged read span up to 1 MiB. The

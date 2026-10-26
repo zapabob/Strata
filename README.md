@@ -51,10 +51,10 @@ terminated with no remaining processes. No automatic retry or cap increase occur
 The current candidate is a fresh Windows `Release/x64` CUDA SM120 build. It
 compiled and linked the engine, Spin8, native cache and GGML TQ overlay. The
 build does not establish model startup, inference quality or GPU stability.
-The latest candidate executable is 80,759,296 bytes:
+The latest candidate executable is 80,752,128 bytes:
 
 ```text
-SHA256 6f3374e3a6438023aad5b7a8dad9020a9c4383f90b3a31e3402bbfcf271d15b3
+SHA256 20373ca6b9b16b9d220820a902b584d604a64e068d383a26ba11dd4e43f85d93
 ```
 
 The selected installed preview executable still has SHA256
@@ -66,6 +66,10 @@ under `H:\Strata\evidence\p01-full-build-20261026`. Its source and binary link
 is in `build-provenance-after-complement.json` there. The later boundary build
 and CPU checks are bound to source commit `6955c759` in
 `H:\Strata\evidence\p01-boundary-20261026\p02-cpu-receipt-after-review.json`.
+Source commits `73cfa347` and `56c4613b` replace task-pool profile prefetch with joined threads
+so completed batches release their thread-local I/O scratch. Its CPU lifetime
+test, CUDA link and read-only help passed; model execution remains NOT_RUN.
+The current artifact binding is `joined-prefetch-receipt.json` in that directory.
 
 ## What the candidate changes
 
