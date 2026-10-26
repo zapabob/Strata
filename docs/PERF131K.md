@@ -120,3 +120,10 @@ partial overlay.
 
 The package retains the unchanged legacy image-reader executable to preserve GUI
 discovery. Its source provenance remains UNRESOLVED and image inference is NOT_RUN.
+
+The measured controller checkpoint e68f8926 has all three workflows/four checks
+successful. Subsequent docs/installer source CI is BLOCKED: GitHub rejected
+workflow dispatch with HTTP422 while repository Actions permissions were enabled
+and workflow states were active. No check-run was created. Local installer CPU
+tests and independent review are separate evidence; no cloud CI pass is claimed
+for that newer source. Repository/billing safeguards were not bypassed.

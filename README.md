@@ -25,6 +25,12 @@ it is not a GUI installer or a complete standalone HTTP distribution. Original
 Spin(8), Triality, Query-v3, TurboQuant and Bonsai paths are retained, without new
 performance or quality qualification. No models or private configuration are bundled.
 
+The measured controller checkpoint `e68f8926` has three successful CI workflows.
+After the documentation/installer update, GitHub refused new workflow dispatches
+with HTTP422 despite Actions permissions being enabled. Latest-source cloud CI
+is **BLOCKED**, not passed. Local installer tests and independent review are
+reported separately; this preview is not a stable release.
+
 Historical release and benchmark sections below are not131k qualification evidence.
 
 ---

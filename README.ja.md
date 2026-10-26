@@ -23,6 +23,12 @@ overlayを同梱します。GUI installerや独立したHTTP server一式では�
 Spin(8)・Triality・Query-v3・TurboQuant・Bonsaiの既存経路を保持していますが、
 今回それらの速度・品質を再認定していません。モデルや私的設定は含めません。
 
+計測したcontrollerの `e68f8926` では3ワークフローが成功しています。その後、
+ドキュメント・installer更新後のworkflow起動は、Actions設定が有効なまま
+GitHubからHTTP422で拒否されています。最新sourceのcloud CIは成功ではなく
+**BLOCKED**です。ローカルinstaller試験・独立レビューとは分けて記録し、
+このpreviewを安定版として扱いません。
+
 以下の旧リリース・ベンチマークの記述は、131kの合格証拠には使用しません。
 
 ---
