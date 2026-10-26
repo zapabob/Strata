@@ -149,6 +149,21 @@ def make_pc_budget(resources, total_ram):
     return budget
 
 
+def make_frozen_pc_budget(cap_bytes, total_ram):
+    """Explicit, predeclared cap for comparable trials; never fit it to a trial."""
+    unit = 64 * 1024**2
+    if (type(cap_bytes) is not int or cap_bytes <= 0 or cap_bytes % unit
+            or type(total_ram) is not int or cap_bytes > total_ram - 2 * 1024**3):
+        raise ValueError("fixed PC cap must be aligned and within the measured physical-total policy")
+    budget = make_budget()
+    budget.job_commit_bytes = cap_bytes
+    budget.admission_mode = "pc_memory"
+    budget.startup_min_available_ram = 8 * 1024**3
+    budget.total_physical_ram_bytes = total_ram
+    budget.predeclared_fixed_cap = True
+    return budget
+
+
 def _run_cell(count, trace, *, binding_sha, result, budget, memory_diagnostics=False, blob_diagnostics=False):
     binding_path = BASE / "prepared/binding.json"
     binding_raw = binding_path.read_bytes()
@@ -256,15 +271,20 @@ def _run_cell(count, trace, *, binding_sha, result, budget, memory_diagnostics=F
 
 
 def run_cell(count, trace, *, binding_sha, job_commit_gib=8, memory_diagnostics=False, blob_diagnostics=False,
-             use_pc_memory=False):
+             use_pc_memory=False, frozen_pc_budget_bytes=None):
     if type(memory_diagnostics) is not bool:
         raise ValueError("memory diagnostics requires an explicit bool")
     if type(blob_diagnostics) is not bool:
         raise ValueError("blob diagnostics requires an explicit bool")
     if type(use_pc_memory) is not bool or (use_pc_memory and (type(job_commit_gib) is not int or job_commit_gib != 8)):
         raise ValueError("PC-memory mode requires an explicit bool and no fixed-budget override")
-    budget = (make_pc_budget(system_resources(BASE), physical_ram_bytes()) if use_pc_memory
-              else make_budget(job_commit_gib))
+    if frozen_pc_budget_bytes is not None and (use_pc_memory or type(job_commit_gib) is not int or job_commit_gib != 8):
+        raise ValueError("choose exactly one declared budget policy")
+    if frozen_pc_budget_bytes is not None:
+        budget = make_frozen_pc_budget(frozen_pc_budget_bytes, physical_ram_bytes())
+    else:
+        budget = (make_pc_budget(system_resources(BASE), physical_ram_bytes()) if use_pc_memory
+                  else make_budget(job_commit_gib))
     cell = BASE / f"native-{count}-{trace.lower()}"
     if cell.exists():
         raise ValueError("refuse to overwrite a pilot cell")
@@ -272,13 +292,14 @@ def run_cell(count, trace, *, binding_sha, job_commit_gib=8, memory_diagnostics=
               "owned_root_pid": None, "termination_confirmed": None, "job_active_after": None,
               "measurement_valid": False, "comparison_valid": False, "requests": [],
               "launch_attempted": False, "GPU_elapsed_ns": None, "physical_IO_bytes": None,
-              "P17_PPL_full_quality": "NOT_RUN", "requested_job_commit_gib": None if use_pc_memory else job_commit_gib,
+              "P17_PPL_full_quality": "NOT_RUN", "requested_job_commit_gib": None if use_pc_memory or frozen_pc_budget_bytes is not None else job_commit_gib,
               "use_pc_memory": use_pc_memory, "frozen_job_commit_bytes": budget.job_commit_bytes,
               "source_blob_diagnostics": False, "requested_blob_diagnostics": blob_diagnostics}
     try:
         result["exit_code"] = _run_cell(count, trace, binding_sha=binding_sha, result=result, budget=budget,
                                         memory_diagnostics=memory_diagnostics, blob_diagnostics=blob_diagnostics)
-        result["comparison_valid"] = result["measurement_valid"] and not result["source_blob_diagnostics"] and not use_pc_memory
+        result["comparison_valid"] = (result["measurement_valid"] and not result["source_blob_diagnostics"]
+                                      and not memory_diagnostics and not use_pc_memory)
         if result["exit_code"] and result["status"] == "FINISHED":
             result["status"] = "INVALID_MEASUREMENT"
     except Exception as error:
@@ -340,6 +361,8 @@ def main():
                         help="opt-in native blob failure trace; excluded from performance comparisons")
     parser.add_argument("--use-pc-memory", action="store_true",
                         help="explicit maximum-PC diagnostic policy; freeze cap from measured resources, never auto-retry")
+    parser.add_argument("--frozen-pc-budget-bytes", type=int,
+                        help="predeclared aligned PC cap shared by comparable trials; never recalculated")
     args = parser.parse_args()
     if args.prepare and not args.execute_authorized:
         prepare()
@@ -348,7 +371,7 @@ def main():
         parser.error("explicit authorized cell required")
     return run_cell(args.tokens, args.trace, binding_sha=args.binding_sha, job_commit_gib=args.job_commit_gib,
                     memory_diagnostics=args.memory_diagnostics, blob_diagnostics=args.blob_diagnostics,
-                    use_pc_memory=args.use_pc_memory)
+                    use_pc_memory=args.use_pc_memory, frozen_pc_budget_bytes=args.frozen_pc_budget_bytes)
 
 
 if __name__ == "__main__":

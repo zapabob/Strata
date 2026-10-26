@@ -20,7 +20,7 @@ if os.environ.get("P01_NATIVE_UNDER_TEST"):
 class NativePilotTests(TestCase):
     def fake_cell(self, *, raw=None, stale_tokenizer=False, trace="OFF", job_commit_gib=None,
                   resources=None, observed=None, memory_diagnostics=False, blob_diagnostics=False, job_result=None,
-                  baseline_env=None, use_pc_memory=False, resource_sequence=None):
+                  baseline_env=None, use_pc_memory=False, resource_sequence=None, frozen_pc_budget_bytes=None):
         base = Path("H:/Strata/worktrees/p01-a-20261025/_scratch/perf131k/b2-fixtures") / uuid.uuid4().hex
         base.mkdir(parents=True)
         shutil.copytree(native.BASE / "prepared", base / "prepared")
@@ -56,6 +56,8 @@ class NativePilotTests(TestCase):
                 options["blob_diagnostics"] = True
             if use_pc_memory:
                 options["use_pc_memory"] = True
+            if frozen_pc_budget_bytes is not None:
+                options["frozen_pc_budget_bytes"] = frozen_pc_budget_bytes
             code = native.run_cell(4096, trace, binding_sha=native.sha(path), **options)
         result = json.loads((base / f"native-4096-{trace.lower()}/result.json").read_text())
         return code, result, spawn.call_count
@@ -140,6 +142,24 @@ class NativePilotTests(TestCase):
             native.make_pc_budget(resources, True)
         with self.assertRaises(ValueError):
             native.make_pc_budget({**resources, "commit_headroom": 5 * gib}, 32 * gib)
+
+    def test_predeclared_pc_cap_supports_normal_trials_without_per_arm_resizing(self):
+        gib = 1024**3
+        resources = {"available_ram": 20 * gib, "commit_headroom": 48 * gib, "H_free": 30 * gib}
+        code, result, calls = self.fake_cell(frozen_pc_budget_bytes=30 * gib, resources=resources)
+        self.assertEqual((code, calls), (0, 1))
+        self.assertEqual(result["frozen_job_commit_bytes"], 30 * gib)
+        self.assertTrue(result["comparison_valid"])
+        code, result, calls = self.fake_cell(frozen_pc_budget_bytes=30 * gib,
+            resources={**resources, "commit_headroom": 36 * gib - 1})
+        self.assertEqual((code, calls), (77, 0))
+        self.assertEqual(result["frozen_job_commit_bytes"], 30 * gib)
+        code, result, calls = self.fake_cell(frozen_pc_budget_bytes=30 * gib, resources=resources,
+                                             memory_diagnostics=True)
+        self.assertFalse(result["comparison_valid"])
+        for cap in (True, -1, 30 * gib + 1, 31 * gib):
+            with self.subTest(cap=cap), self.assertRaises(ValueError):
+                native.make_frozen_pc_budget(cap, 32 * gib)
 
     def test_budget_override_is_bounded_and_default_remains_eight(self):
         observed = {}
