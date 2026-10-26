@@ -93,6 +93,7 @@
 #include "strata/program/prefill_plan.hpp"
 #include "strata/program/draft_kv_plan.hpp"
 #include "strata/program/message_boundary.hpp"
+#include "strata/program/context_boundary.hpp"
 #include "strata/spec/draft_policy.hpp"
 #include "strata/spec/draft_source.hpp"
 #include "strata/spec/suffix_drafter.hpp"
@@ -428,6 +429,7 @@ struct Options {
     std::vector<int64_t> tokens;      // the prompt, PRE-TOKENIZED
     int64_t max_new = 16;
     int64_t max_context = 4096;
+    bool exact_context_boundary = false;  // --serve: opt in to the final context cell; the default keeps eight spare cells
     bool greedy = true;
     uint64_t seed = 0;
     int top_k = 20;
@@ -901,6 +903,7 @@ void usage() {
                  "  --shared-late        A/B: shared expert after the CPU pool (default: overlapped with it)\n"
                  "  --keep-canonical     A/B: also load canonical copies of natively served tensors (more VRAM)\n"
                  "  --vision             --serve takes images too (GENI requests; embeddings from strata-vision)\n"
+                 "  --exact-context-boundary  --serve: allow prompt + max_new up to --max-context (experimental; default keeps 8 spare cells)\n"
                  "  --prompt-cache N     --serve: keep N conversation checkpoints between requests (default 6, ~118 MB\n"
                  "                       of RAM each; 0 = read every prompt from the start)\n"
                  "  --conversation-cache-mib N  --serve: RAM budget for parked conversations (default: sized from the free RAM, up to 8192; 0 = off)\n"
@@ -2457,6 +2460,7 @@ int main(int argc, char** argv) {
         }
         else if (a == "--max-new") o.max_new = std::atoll(next("--max-new"));
         else if (a == "--max-context") o.max_context = std::atoll(next("--max-context"));
+        else if (a == "--exact-context-boundary") o.exact_context_boundary = true;
         else if (a == "--rope-scaling") o.rope_scaling = next("--rope-scaling");
         else if (a == "--rope-scale") o.rope_scale = std::atof(next("--rope-scale"));
         else if (a == "--rope-freq-base") o.rope_freq_base = std::atof(next("--rope-freq-base"));
@@ -12584,7 +12588,9 @@ int main(int argc, char** argv) {
                 mrope_identity = !geni;
             }
             sp.embd_rows = geni ? row_ptr.data() : nullptr;
-            if (n + max_new + 8 > o.max_context) {
+            // The final emitted token is sampled from the last processed cell.  Exact-boundary mode is
+            // opt-in until the 131072-cell hardware test covers the full prefill and decode path.
+            if (!strata::program::serve_context_fits(n, max_new, o.max_context, o.exact_context_boundary)) {
                 std::printf("ERR prompt (%lld tokens) + max_new (%lld) exceeds the context (%lld)\n", (long long) n,
                             (long long) max_new, (long long) o.max_context);
                 continue;
@@ -15004,13 +15010,26 @@ int main(int argc, char** argv) {
                         if (pk.lookup) { T = pk.t; from_sfx = true; }
                     }
                 }
+                // A wide speculative window may not fit at the final context cells.  Keep the
+                // remaining verified rows instead of ending a valid exact-boundary request early.
+                const int64_t context_room = o.max_context - p;
+                if (o.exact_context_boundary) {
+                    T = strata::program::serve_context_window(T, p, o.max_context, true);
+                    if (T < 1) {
+                        std::fprintf(stderr, "strata serve: the request ran out of context before its output reservation completed\n");
+                        return 1;
+                    }
+                }
                 // --lookup-chain: what followed an earlier occurrence of the context + the MTP's drafts, after them
                 int chain_n = 0, cm = 0;
-                if (o.lookup_chain > 0 && !first_window && !from_sfx && T < S) {
+                if (o.lookup_chain > 0 && !first_window && !from_sfx && T < S &&
+                    (!o.exact_context_boundary || T < context_room)) {
                     int csrc = -1;
                     const int nt = chain_tail(sfx, drafts.data(), T - 1, ctail);
                     chain_n = strata::spec::propose_from_sources(lookup_src, ctail.data(), nt, T - 1,
-                                                                 std::min(o.lookup_chain, S - T), o.lookup_chain_min,
+                                                                 o.exact_context_boundary
+                                                                     ? (int) std::min<int64_t>(std::min(o.lookup_chain, S - T), context_room - T)
+                                                                     : std::min(o.lookup_chain, S - T), o.lookup_chain_min,
                                                                  cbuf.data(), &cm, &csrc);
                     // the policy keeps the chained tokens that pay at this machine's measured window costs
                     if (chain_n > 0 && !chain_fixed) {

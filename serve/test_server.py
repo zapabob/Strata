@@ -289,6 +289,35 @@ class FitMaxTokens(unittest.TestCase):
         self.assertIn("no room to answer", b["error"]["message"])
 
 
+class ExactContextBoundary(unittest.TestCase):
+    """The opt-in API admission contract; device decoding needs separate hardware proof."""
+
+    def test_exact_reservations_and_one_over(self):
+        tok = ByteTokenizer()
+        engine = MockEngine(tok, "x", max_context=131072)
+        template = ChatTemplate(ROOT / "serve/chat_template.jinja")
+        exact = Service(engine, tok, template, fit_max_tokens=False, context_slack=0)
+        default = Service(engine, tok, template, fit_max_tokens=False)
+        overhead = len(exact.encode_prompt([{"role": "user", "content": "x"}], None, {})) - 1
+
+        def messages(prompt_tokens):
+            return [{"role": "user", "content": "x" * (prompt_tokens - overhead)}]
+
+        for prompt_tokens, reserve in ((130048, 1024), (131071, 1)):
+            with self.subTest(prompt_tokens=prompt_tokens, reserve=reserve):
+                ids, _, effective = exact.prepare(messages(prompt_tokens), None, {}, reserve)
+                self.assertEqual((len(ids), effective), (prompt_tokens, reserve))
+                with self.assertRaisesRegex(ValueError, "exceeds the context"):
+                    default.prepare(messages(prompt_tokens), None, {}, reserve)
+                with self.assertRaisesRegex(ValueError, "exceeds the context"):
+                    exact.prepare(messages(prompt_tokens), None, {}, reserve + 1)
+
+    def test_only_supported_margins_are_accepted(self):
+        tok = ByteTokenizer()
+        with self.assertRaisesRegex(ValueError, "context_slack"):
+            Service(MockEngine(tok, "x"), tok, ChatTemplate(ROOT / "serve/chat_template.jinja"), context_slack=1)
+
+
 class VisionTempFiles(unittest.TestCase):
     """A request's combined image file (req-*.sve, ~10 MB a picture) goes with the request: one refused after prepare()
     wrote it (the engine starting, no room) or whose answer never started left it in the vision directory for good."""
