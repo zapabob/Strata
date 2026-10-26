@@ -81,6 +81,7 @@ from serve import launch_identity  # noqa: E402
 from serve import logit_bias as bias_api  # noqa: E402
 from serve import lifeline  # noqa: E402
 from serve import perf131k_e2e as perf_e2e  # noqa: E402
+from serve import memory_harness  # noqa: E402
 from serve.structured import StructuredOutputError, prepare_format, validated_json  # noqa: E402
 from serve import responses as responses_api  # noqa: E402
 from serve.responses import ResponsesError, error_body as responses_error_body  # noqa: E402
@@ -3920,6 +3921,7 @@ class Service:
         self.slot_save_path = None                    # --slot-save-path: /slots/0?action=save|restore (off when None)
         self.embeddings = threading.local()           # the current request's image embeddings file (GENI)
         self.api_key = ""                              # when set, /v1/* needs it (Bearer or x-api-key)
+        self.memory_harness = None                     # explicit operator configuration only
         # #458 (opt-in, the config's "effort_position": "end"): a non-default reasoning effort goes in a short system
         # turn before the answer instead of the top of the prompt, so switching it keeps the cached conversation
         self.effort_end = False
@@ -5114,6 +5116,11 @@ class Service:
                 s["first_token"] = time.time()
             (self.rate if rate is None else rate).append((time.time(), n))   # the live rate's window (RATE_WINDOW_S)
             for ev in evs:
+                if s.get("_memory_private"):
+                    # Private turns still publish aggregate rates, never text or
+                    # tool names, even to the operator's shared status surface.
+                    s["phase"] = "generating"
+                    continue
                 if ev.kind == "reasoning":
                     s["phase"] = "thinking"
                 elif ev.kind == "content":
@@ -5328,6 +5335,10 @@ class Service:
                         st.update(busy=True, phase="reading the prompt", prompt_tokens=len(ids),
                                   generated=0, started=time.time(), first_token=None, tool=None, tail="",
                                   max_tokens=max_new, reasoning_recoveries=0, thinking_budget=budget)
+                        if getattr(cancel, "_strata_memory_private", False):
+                            st["_memory_private"] = True
+                        else:
+                            st.pop("_memory_private", None)
                         if par:
                             self.live_reqs[id(st)] = (st, rate)
                             self.status.update(st)
@@ -5565,7 +5576,8 @@ class Service:
                               f"{n} tokens: ended as \"length\" (reasoning_loop_recovery: \"stop\" in "
                               "strata-<model>.json; remove it to turn this off)", flush=True)
                     elif repeated:
-                        print(f"[strata] the reply repeated one token ({self.tok.decode([run_tok])!r}) "
+                        repeated_token = "[private]" if getattr(cancel, "_strata_memory_private", False) else repr(self.tok.decode([run_tok]))
+                        print(f"[strata] the reply repeated one token ({repeated_token}) "
                               f"{run_len} times in a row: ended as \"length\" (repeat_stop_tokens in "
                               "strata-<model>.json; 0 turns this off). If a new request with a short prompt does the "
                               "same, restart the server and report it (#606)", flush=True)
@@ -5639,7 +5651,7 @@ class Service:
                                 print("[strata] the reply reached max tokens while still thinking, so it has no "
                                       "answer: a thinking budget (reasoning_budget_tokens, in the request or in "
                                       "strata-<model>.json for every request) leaves room to answer", flush=True)
-                            if os.environ.get("STRATA_DEBUG") and raw_ids:
+                            if os.environ.get("STRATA_DEBUG") and raw_ids and not st.get("_memory_private"):
                                 print(f"[strata] raw: {self.tok.decode(raw_ids)!r}", flush=True)
                                 print(f"[strata] raw ids: {list(raw_ids)}", flush=True)
                         st["busy"] = False
@@ -5686,6 +5698,8 @@ class Service:
                   f"reasoning (quoted, or the turn did not end on a stop)", flush=True)
         if parser.unread:
             named = getattr(parser, "unread_names", None)
+            if getattr(cancel, "_strata_memory_private", False):
+                named = None
             print(f"[strata] {parser.unread} <tool_call> block(s) in the answer did not read as a call of a declared "
                   "tool and went back as text (a name the request did not declare, or a form the template does "
                   "not use)" + (f"; the names the model wrote: {', '.join(named)}" if named else ""), flush=True)
@@ -5786,9 +5800,9 @@ def request_stats(segments: list[dict]) -> dict:
     return result
 
 
-def _debug_req(api, req, messages, tools, max_new, thinking, prompt_tokens):
+def _debug_req(api, req, messages, tools, max_new, thinking, prompt_tokens, *, private=False):
     """One compact line per request while diagnosing blank/empty turns. Set STRATA_DEBUG=1 to enable."""
-    if not os.environ.get("STRATA_DEBUG"):
+    if not os.environ.get("STRATA_DEBUG") or req.get("strata_memory") or private:
         return
     last = messages[-1] if messages else {}
     body = last.get("content")
@@ -6446,16 +6460,64 @@ def make_handler(svc: Service):
                 audit.http_end()
 
         def _authorized(self) -> bool:
+            self.memory_turn = None
             if not svc.api_key:
                 return True
             auth = self.headers.get("Authorization", "")
             given = auth[7:].strip() if auth.lower().startswith("bearer ") else self.headers.get("x-api-key", "")
             if key_matches(given, svc.api_key):
-                return True
+                return self._memory_route_allowed(given)
             self._json(401, {"error": {"type": "authentication_error", "message": "missing or wrong API key"}})
             return False
 
+        def _memory_key(self):
+            auth = self.headers.get("Authorization", "")
+            return auth[7:].strip() if auth.lower().startswith("bearer ") else self.headers.get("x-api-key", "")
+
+        def _memory_route_allowed(self, given):
+            harness = svc.memory_harness
+            if harness is None or harness.principal(given) is None:
+                return True
+            path = self.path.split("?")[0].rstrip("/")
+            path = V1_V1_ALIASES.get(path, path)
+            if path in ("/v1/chat/completions", "/v1/messages", "/v1/responses", "/v1/messages/count_tokens", "/v1/models", "/models"):
+                return True
+            self._json(403, {"error": {"type": "permission_error", "message": "memory principals cannot access shared monitoring or management"}})
+            return False
+
+        def _prepare(self, messages, tools, kw, maximum, *, req, cancel, **kwargs):
+            harness = svc.memory_harness
+            if (harness is not None and harness.principal(self._memory_key()) is not None
+                    and req.get("strata_mcp")):
+                raise ValueError("memory principals cannot use server MCP tools")
+            if harness is not None and req.get("strata_memory") and perf_e2e.current() is not None:
+                raise ValueError("strata_memory cannot run inside a perf131k_e2e audited request")
+            if harness is not None:
+                if harness.principal(self._memory_key()) is not None:
+                    setattr(cancel, "_strata_memory_private", True)
+                if getattr(self, "memory_turn", None) is None:
+                    self.memory_turn, messages = harness.begin(self._memory_key(), req.get("strata_memory"), messages, cancel)
+                elif req.get("strata_memory"):
+                    # Responses can retry prepare with different rendered tools.
+                    _, messages = harness.begin(self._memory_key(), req.get("strata_memory"), messages, cancel)
+            elif req.get("strata_memory"):
+                raise ValueError("strata_memory is disabled by the server operator")
+            result = svc.prepare(messages, tools, kw, maximum, req=req, cancel=cancel, **kwargs)
+            if getattr(self, "memory_turn", None) is not None:
+                ids, thinking, limit = result
+                room = memory_harness.CONTEXT_LIMIT - len(ids) - CTX_SLACK
+                if req.get("strata_mcp"):
+                    raise ValueError("strata_memory does not support automatic MCP rounds")
+                if maximum > 0 and limit < maximum:
+                    raise ValueError("strata_memory prompt leaves insufficient engine context for the requested output reserve")
+                if room < 1 or limit > room or (maximum > 0 and maximum > room):
+                    raise ValueError("strata_memory prompt exceeds the 131072-token budget")
+                return ids, thinking, limit
+            return result
+
         def _authorized_telemetry(self) -> bool:
+            if not self._memory_route_allowed(self._memory_key()):
+                return False
             if not svc.api_key and not svc.telemetry_key:
                 return True
             auth = self.headers.get("Authorization", "")
@@ -6919,7 +6981,8 @@ def make_handler(svc: Service):
                         self._json(503, {"error": {"type": "server_error", "message": str(e)}})
                     return
                 if path in ("/v1/chat/completions", "/v1/messages", "/v1/responses"):
-                    self.record = svc.begin_request(path, req)
+                    private = svc.memory_harness is not None and svc.memory_harness.principal(self._memory_key()) is not None
+                    self.record = None if private else svc.begin_request(path, req)
                 if path == "/v1/responses":
                     self._responses(req)
                 elif path.startswith("/slots/"):
@@ -7159,8 +7222,11 @@ def make_handler(svc: Service):
             in (["*"]: every page) could name any file and, CORS allowing, read what the model says about it.  data:
             and http(s) images are the page's own to send; files come from Strata's own page, a trusted origin or a
             client that is no browser.  ValueError (a 400)."""
-            if self._foreign_origin() and any(not src.startswith(("data:", "http://", "https://"))
-                                              for src in images_of(messages)):
+            private = svc.memory_harness is not None and svc.memory_harness.principal(self._memory_key()) is not None
+            local = any(not src.startswith(("data:", "http://", "https://")) for src in images_of(messages))
+            if private and local:
+                raise ValueError("memory principals cannot read server-local image paths")
+            if self._foreign_origin() and local:
                 raise ValueError("a web page of another origin cannot have a file on this computer read as an "
                                  "image: send it as a data: URL (or add the page's origin to the config's "
                                  "trusted_origins)")
@@ -7197,6 +7263,10 @@ def make_handler(svc: Service):
         def _capture(self, items, api):
             """Retain bounded input/output for the monitor without changing the API response (the items as they
             are when the monitor is off)."""
+            turn = getattr(self, "memory_turn", None)
+            if turn is not None:
+                items = memory_harness.capture(items, api, svc.memory_harness, turn,
+                                               lambda user, answer, cancel: memory_harness.local_summary(svc, user, answer, cancel))
             if self.record is None:
                 return items
             return self._captured(items, api)
@@ -7235,6 +7305,9 @@ def make_handler(svc: Service):
 
         def _openai(self, req):
             req = svc.with_shared(req, "openai")
+            if (svc.memory_harness is not None and svc.memory_harness.principal(self._memory_key()) is not None
+                    and req.get("strata_mcp")):
+                raise ValueError("memory principals cannot use server MCP tools")
             bias_api.normalize(req.get("logit_bias"), len(getattr(svc.tok, "tokens", ())) or None)
             messages, tools, kw = openai_to_messages(req)
             self._no_local_images(messages)
@@ -7263,8 +7336,9 @@ def make_handler(svc: Service):
             check_request_sampling(req)                       # ... and a sampling field of the wrong type
             cancel = threading.Event()
             self._watch_client(cancel)                       # #430 #431 (#1999: before prepare, which can take long)
-            ids, thinking, max_new = svc.prepare(messages, tools, kw, max_new, force=force, req=req, cancel=cancel)
-            _debug_req("openai", req, messages, tools, max_new, thinking, len(ids))
+            ids, thinking, max_new = self._prepare(messages, tools, kw, max_new, force=force, req=req, cancel=cancel)
+            _debug_req("openai", req, messages, tools, max_new, thinking, len(ids),
+                       private=getattr(cancel, "_strata_memory_private", False))
             run = run_with_mcp(svc, svc.mcp, messages, tools, kw, ids, thinking, max_new, max_req, req, cancel,
                                {t["name"] for t in extra}) if use_mcp else None
             chunks = openai_chunks(svc, req, ids, thinking, tools, max_new, cancel, run=run, force=force)
@@ -7455,25 +7529,27 @@ def make_handler(svc: Service):
             svc.load()
             # #924 (opt-in): a Codex compaction request is rendered with its conversation's tools, so its prompt
             # starts as the cached one did; the parser and the response keep the request's own tools
-            shown = responses_api.prompt_tools(req, tools) if svc.codex_compaction_cache else tools
+            use_compaction_cache = svc.codex_compaction_cache and svc.memory_harness is None
+            shown = responses_api.prompt_tools(req, tools) if use_compaction_cache else tools
             try:
                 try:
-                    ids, thinking, max_new = svc.prepare(messages, shown, kw, req.get("max_output_tokens") or 0, req=req,
+                    ids, thinking, max_new = self._prepare(messages, shown, kw, req.get("max_output_tokens") or 0, req=req,
                                                           cancel=cancel)
                 except ValueError:
                     if shown is tools:
                         raise
                     shown = tools                            # too long with the kept tools: the request as sent
-                    ids, thinking, max_new = svc.prepare(messages, shown, kw, req.get("max_output_tokens") or 0, req=req,
+                    ids, thinking, max_new = self._prepare(messages, shown, kw, req.get("max_output_tokens") or 0, req=req,
                                                           cancel=cancel)
             except ResponsesError:
                 raise
             except ValueError as e:                          # too long for the context, an image without vision
                 raise ResponsesError(str(e), "input", "context_length_exceeded" if "context" in str(e) else None) \
                     from None
-            if svc.codex_compaction_cache:
+            if use_compaction_cache:
                 responses_api.prompt_made(req, shown)
-            _debug_req("responses", req, messages, tools, max_new, thinking, len(ids))
+            _debug_req("responses", req, messages, tools, max_new, thinking, len(ids),
+                       private=getattr(cancel, "_strata_memory_private", False))
             include = req.get("include") if isinstance(req.get("include"), list) else []
             asm = responses_api.Assembler(req, svc.model_for(req), len(ids), names,
                                           "reasoning.encrypted_content" in include, validator is not None)
@@ -7503,8 +7579,9 @@ def make_handler(svc: Service):
             check_request_sampling(req)                       # ... and a sampling field of the wrong type
             cancel = threading.Event()
             self._watch_client(cancel)                       # #430 #431 (#1999: before prepare, which can take long)
-            ids, thinking, max_new = svc.prepare(messages, tools, kw, max_new, force=force, req=req, cancel=cancel)
-            _debug_req("anthropic", req, messages, tools, max_new, thinking, len(ids))
+            ids, thinking, max_new = self._prepare(messages, tools, kw, max_new, force=force, req=req, cancel=cancel)
+            _debug_req("anthropic", req, messages, tools, max_new, thinking, len(ids),
+                       private=getattr(cancel, "_strata_memory_private", False))
             events = anthropic_events(svc, req, ids, thinking, tools, max_new, cancel, force=force)
             events = self._capture(events, "anthropic")
             if not req.get("stream"):
@@ -8475,10 +8552,19 @@ def main(argv=None, *, lifecycle_event=None, interrupt_exit_code: int = 0) -> in
         if blocked:
             ap.error("--offline cannot be strict for this profile: " + "; ".join(blocked))
     lazy = False
+    if a.engine != "strata" and isinstance(cfg.get("hakua_harness"), dict) and cfg["hakua_harness"].get("enabled") is True:
+        ap.error("hakua_harness requires the Strata engine")
     if a.engine == "strata":
         if not cfg:
             ap.error("--engine strata needs --config")
         cfg = with_component_engine(cfg)
+        if isinstance(cfg.get("hakua_harness"), dict) and cfg["hakua_harness"].get("enabled") is True:
+            try:
+                memory_harness.require_private_engine(cfg["hakua_harness"], engine_args(cfg),
+                                                      slot_save_path=a.slot_save_path or cfg.get("slot_save_path"),
+                                                      batch_trace=_BTRACE)
+            except ValueError as e:
+                ap.error(str(e))
         vision = None
         # The engine's own environment. It carries the offline policy too: an engine that fetched a
         # missing shard or a plugin would break the promise the flag makes.
@@ -8631,6 +8717,9 @@ def main(argv=None, *, lifecycle_event=None, interrupt_exit_code: int = 0) -> in
     if svc.aliases:
         print(f"[strata] model aliases: {', '.join(svc.aliases)}", flush=True)
     svc.api_key = preflight_api_key
+    svc.memory_harness = memory_harness.from_config(cfg.get("hakua_harness"), accepted_keys=key_list(svc.api_key))
+    if svc.memory_harness is not None and not svc.api_key:
+        raise ValueError("hakua_harness requires an existing server API key")
     try:
         svc.telemetry_key = api_key_of(os.environ.get("STRATA_TELEMETRY_KEY") or cfg.get("telemetry_read_key", ""))
     except ValueError as e:
