@@ -263,6 +263,24 @@ def require_private_engine(config, args, *, slot_save_path=None, batch_trace=Fal
             raise ValueError("hakua_harness requires explicit " + flag + " 0")
 
 
+def configure_harness(config, accepted_keys, *, engine_argv=None, slot_save_path=None, batch_trace=False):
+    """Validate and build the harness before any GPU or engine load.
+
+    Returns None when memory is disabled. Raises ValueError for false keys,
+    shared/duplicate keys, bad roots, bad persona approvals, missing API keys,
+    or native cache settings that would retain shared sessions. Callers must
+    reuse this object rather than constructing a second harness later.
+    """
+    if config is None or config == {} or (isinstance(config, dict) and config.get("enabled") is not True):
+        return None
+    keys = [str(k) for k in (accepted_keys or ()) if str(k)]
+    if not keys:
+        raise ValueError("hakua_harness requires an existing server API key")
+    require_private_engine(config, list(engine_argv or ()),
+                           slot_save_path=slot_save_path, batch_trace=batch_trace)
+    return from_config(config, accepted_keys=keys)
+
+
 def local_summary(service, user, answer, cancel):
     """Second inference through the already-local engine; no tools or HTTP."""
     messages = [
