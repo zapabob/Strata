@@ -298,3 +298,12 @@ The test model is not distributed and is not a quality reference.
 Computer-use browser/native surfaces were unavailable, so interactive GUI testing
 is NOT_RUN. Evidence is the actual host HTTP receipt, built frontend and regression
 logs; these are distinct from a manual desktop interaction result.
+
+The runtime writes an exact no-child ownership marker before publishing host
+state. Three focused recovery tests passed; absent markers remain fail-closed.
+The broader runtime suite is not all green. The old app-1 state on the test PC
+had no ownership marker; its 171 bytes were preserved by a same-directory rename
+under the profile start lock after verifying the exact digest, private state,
+absent host, unheld state lease, no old-port listener and empty process registry.
+No unrelated service was signalled. This one-time inspected preservation does
+not relax automatic recovery policy.

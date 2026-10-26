@@ -89,12 +89,12 @@
   },
   "current_candidate": {
     "as_of": "2026-10-27",
-    "snapshot_source_commit": "216e2280",
+    "snapshot_source_commit": "29725f687c1a2abb97b89867e7b73cd1bcb5592d",
     "engine_source_commit": "56c4613be8e5f63868f8dbd52e41ab644a324aba",
     "binary_sha256": "20373ca6b9b16b9d220820a902b584d604a64e068d383a26ba11dd4e43f85d93",
     "binary_bytes": 80752128,
     "publication": "NOT_RELEASED",
-    "installed": "NOT_INSTALLED",
+    "installed": "NATIVE_R2_INSTALLED_VERIFIED; GUI_COMPANION_PENDING",
     "CUDA_link": "PASS",
     "read_only_help": "PASS",
     "integrated_CPU_tests_run": 88,
@@ -103,7 +103,7 @@
     "statistics_synthetic_tests_passed": 16,
     "statistics_manifest_schema": 2,
     "evaluation_design": "five fixed grouped evaluation folds; no fitting or tuning",
-    "GPU_model_execution": "READY_131072_AND_COMPLETED_4K_DIAGNOSTIC",
+    "GPU_model_execution": "READY_131072_AND_COMPLETED_4K_AND_32K_NORMAL_SERIES",
     "completed_inference": "4K_AND_32K_FIRST_AND_REPEAT_RECALL_PASS",
     "measured_statistical_execution": "NOT_RUN",
     "quality_and_stability": "NOT_RUN",
@@ -215,6 +215,21 @@
       "statistical_verdict": "NOT_EVALUATED",
       "quality": "SENTINEL_RECALL_ONLY"
     },
-    "release_acceptance": "User: reliable working inference; PPL and full-capacity statistical certification deferred"
+    "release_acceptance": "User: reliable working inference; PPL and full-capacity statistical certification deferred",
+    "runtime_recovery": {
+      "code": "NO_CHILD_MARKER_BEFORE_STATE_PUBLICATION",
+      "focused_tests_passed": 3,
+      "broader_suite": "NOT_ALL_GREEN",
+      "legacy_orphan": "EXACT_171_BYTES_PRESERVED_UNDER_PROFILE_START_LOCK; NO_PROCESS_SIGNALLED"
+    },
+    "GUI_validation": {
+      "focused_tests_passed": 36,
+      "real_harness_tests_passed": 4,
+      "frontend_build": "PASS",
+      "interactive_screen": "NOT_RUN",
+      "actual_host_GGUF": "IMPORT_LOAD_GENERATE_16_UNLOAD_PASS; synthetic profile, FP16",
+      "overlay_helper_tests_passed": 7,
+      "broader_Node_suite": "NOT_ALL_GREEN"
+    }
   }
 }

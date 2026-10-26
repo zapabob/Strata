@@ -47,6 +47,8 @@ The local GGUF importer validates the file and tokenizer without restricting tex
 
 Missing K/V metadata is shown as an unknown fit with a provisional estimate. Models whose head width cannot use the selected quantized cache request explicit FP16 selection. A backend that exits immediately reports its error promptly, and a failed load can be retried after correcting settings without downloading the same file again. Invalid K/V settings are rejected before stopping a running native model.
 
+The runtime now records that no child has been launched before publishing its host state. This closes a recovery gap if the host stops before launching the server. Missing child ownership records still require inspection; the app does not guess which process to stop. On the test PC, the exact legacy orphan state was preserved after verifying that its host and listener were absent.
+
 The GUI/host regression set passed 36 tests; four additional tests passed with the real installed Harness. A small GGUF completed import, load, chat generation and unload through the GUI's actual host API, using an isolated synthetic profile and explicit FP16. The frontend builds successfully. Interactive screen testing was unavailable in this session; it is not claimed.
 
 ## Memory integration
