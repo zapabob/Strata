@@ -6568,7 +6568,10 @@ int main(int argc, char** argv) {
             if (!per_layer && srcp == &src && src.unbuffered() && i % 64 == 0) {
                 if (ahead.valid()) ahead.get();
                 else read_batch(i);
-                if (i + 64 < want) ahead.start([&read_batch, b = i + 64] { strata::aux_cpus::pin_current_thread(); read_batch(b); });
+                if (i + 64 < want) ahead.start([&read_batch, b = i + 64, caller = std::this_thread::get_id()] {
+                    if (std::this_thread::get_id() != caller) strata::aux_cpus::pin_current_thread();
+                    read_batch(b);
+                });
             }
             if (fill_ahead > 0 && i + fill_ahead < want) (void) src.advise_pairs(profile.data() + i + fill_ahead, 1);
             const int32_t slot = xcache.admit(profile[(size_t) i].first, profile[(size_t) i].second);
