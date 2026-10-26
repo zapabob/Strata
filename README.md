@@ -7,6 +7,28 @@
 
 <p align="center"><b>English</b> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ja.md">日本語</a> · <a href="README.de.md">Deutsch</a> · <a href="README.fr.md">Français</a> · <a href="README.es.md">Español</a> · <a href="README.pt-BR.md">Português</a></p>
 
+## Experimental 131k measurement preview — 0.3.2-preview.20261026.1
+
+[Download the native preview](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261026.1) · [Measured status](docs/PERF131K.md)
+
+The current preview adds bounded, default-OFF measurement tooling. On Windows
+32 GiB RAM / RTX 5060 Ti 16 GiB, the 131072-capacity pilot preserved spec4 + MTP,
+k8v4 and a256-token output reserve. Both the8 GiB and10 GiB Job-limited attempts
+stopped before READY; no inference request completed. Throughput, GPU execution
+time, full-context quality and131k acceptance remain **NOT_RUN / NOT_QUALIFIED**.
+38 targeted CPU/controller tests passed; those tests do not prove GPU behavior.
+
+The executable is the limited P01-A/B0 host compile/link artifact, with reused
+CUDA objects whose source provenance remains **UNRESOLVED**. The archive includes
+required DLLs and a two-file overlay for an existing matching Control install;
+it is not a GUI installer or a complete standalone HTTP distribution. Original
+Spin(8), Triality, Query-v3, TurboQuant and Bonsai paths are retained, without new
+performance or quality qualification. No models or private configuration are bundled.
+
+Historical release and benchmark sections below are not131k qualification evidence.
+
+---
+
 <h3 align="center">Strata — Spin(8) Triality KV Cache, DeepSeek-V4.1 Uncensored, Arbitrary GGUF Loader & Long-Term Memory</h3>
 
 <p align="center">
@@ -17,9 +39,7 @@
   <a href="https://github.com/zapabob/Strata/releases/tag/v0.3.0"><img src="https://img.shields.io/github/v/release/zapabob/Strata?label=release%20v0.3.0" alt="Release v0.3.0"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/zapabob/Strata" alt="MIT license"></a>
   <a href="https://github.com/zapabob/Strata/stargazers"><img src="https://img.shields.io/github/stars/zapabob/Strata?style=flat" alt="GitHub stars"></a>
-  <img src="https://img.shields.io/badge/tests-71%2F71%20passing-brightgreen" alt="Tests 71/71 passing">
   <img src="https://img.shields.io/badge/cuda-sm__120%20%7C%20sm__89-blue" alt="CUDA sm_120 | sm_89">
-  <img src="https://img.shields.io/badge/memory-32GB%20RAM%20budgeted-blue" alt="32GB RAM budgeted">
 </p>
 
 ---
@@ -51,7 +71,7 @@ All metrics below are measured on a standard consumer desktop:
 | **Prism / TheTom (Q2K-XL)** | MoE + Query-v3 | **7.4 tok/s** | **68.2%** | 16.50 GB | 13.20 GB | **PASS** (15.3 GB free) |
 
 > [!NOTE]
-> All active inference runs keep host RAM strictly below the 24.0 GiB ceiling and maintain at least 4.0 GiB of unallocated memory for Windows system operations.
+> The current131k preview does not establish a physical-RAM peak bound. Job commit, host RAM and VRAM are distinct counters; see the measured status above.
 > Per corrective plan Protocol v2, DeepSeek-V4.1 speed benchmarks are designated as pending empirical token generation once full multi-part shard sets (shards 2–6) are downloaded to storage.
 
 ### 2. VRAM Stack & Dynamic Shared Memory Optimization
@@ -84,7 +104,7 @@ Download verified release archives directly from GitHub:
 The desktop app includes the full web interface, model manager, GPU configuration, and background engine controller.
 
 1. **Installed Path**:
-   `C:\Users\downl\AppData\Local\Programs\Strata\Strata.exe` (or Desktop shortcut `Strata.lnk`).
+   `%LOCALAPPDATA%\Programs\Strata\strata-desktop.exe` (or Desktop shortcut `Strata.lnk`).
 2. **Web Host UI**:
    If launching in headless or browser mode, visit `http://127.0.0.1:18500`.
 3. **Overwrite Upgrade**:

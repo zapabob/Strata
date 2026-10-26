@@ -78,3 +78,45 @@ $env:STRATA_LOCAL_PERF131K_TESTS = '1'
 Use the resource-gated unittest runners for actual local test execution. Do not
 run broad model/build suites merely because CPU fixtures pass, and do not report
 mock counters or a READY line as131k acceptance.
+
+
+## 26 October 2026 native pilot and preview
+
+The measured source/controller checkpoint is `e68f8926b27ad9d9f12475b6c6897a3e48d823de`.
+Its Pages, Native preview CPU and Minimal serving runtime workflows all succeeded.
+The10 GiB controller change passed38 targeted CPU tests and two valid limited
+mutants were detected. An earlier invalid test selector was excluded from mutation
+evidence and rerun correctly. Independent review was read-only; Astra Extra High
+was requested and the actual backend assignment was not observable.
+
+The native Q2_0 series fixed capacity131072, spec4 + MTP, k8v4, reserve256 and
+the prepared4096/32768 token inputs. No smaller capacity was substituted. The
+10 GiB attempt started after the approved idle service pause, with available RAM
+13,361,651,712 B, commit headroom22,703,177,728 B and H free69,404,393,472 B.
+These met the12/16/8 GiB gates. Job peak commit was10,802,049,024 B against
+10,737,418,240 B configured. The first4096/OFF cell stopped before READY or DONE;
+the remaining three cells were NOT_RUN. Cleanup confirmed Job active0.
+
+The system-wide gate is not a physical reservation and the observed peak is not
+the amount required for successful startup or inference. Generic cache errors
+collapse CUDA VMM API stages; a profile-fill error can retain a prior error string.
+Individual allocation failure attribution remains unknown. Do not infer whole-run
+bottleneck fractions or performance from this incomplete startup.
+
+The temporarily paused service was restored with its original argv, environment,
+images and model configuration, with health normal. Its previously loaded model
+was not warmed again; minimum synthesis verification was NOT_RUN. Health alone
+is not proof of functional/warm restoration.
+
+P00/P01 remain PARTIAL. Inference, throughput, GPU elapsed time, physical Disk I/O,
+P17/PPL, full-length quality and131k acceptance remain NOT_RUN / NOT_QUALIFIED.
+The old binary/reused-object provenance remains UNRESOLVED. The preview native
+exe is the previously limited host compile/link artifact, not a fresh complete
+CUDA rebuild. The GUI and global Control VERSION/COMMIT are not part of this
+partial overlay.
+
+[Machine-readable status](perf131k-status.json) ·
+[Preview release](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261026.1)
+
+The package retains the unchanged legacy image-reader executable to preserve GUI
+discovery. Its source provenance remains UNRESOLVED and image inference is NOT_RUN.

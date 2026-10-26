@@ -7,6 +7,26 @@
 
 <p align="center"><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a> · <b>日本語</b> · <a href="README.de.md">Deutsch</a> · <a href="README.fr.md">Français</a> · <a href="README.es.md">Español</a> · <a href="README.pt-BR.md">Português</a></p>
 
+## 131k計測の実験版 — 0.3.2-preview.20261026.1
+
+[実験版をダウンロード](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261026.1) · [実測状態と制限](docs/PERF131K.md)
+
+今回追加したのは、既定OFF・有界の計測基盤です。Windows・RAM32 GiB・
+RTX 5060 Ti 16 GiBで、capacity131072・spec4＋MTP・k8v4・出力予約256を維持した
+実機pilotを行いました。Job上限8 GiBと10 GiBの両試行はREADY前に停止し、
+推論要求は完了していません。速度・GPU実行時間・全長品質・131k受入れは
+**NOT_RUN／NOT_QUALIFIED**です。対象CPUテスト38件の成功はGPU動作の証明ではありません。
+
+exeはP01-A/B0の限定hostコンパイル・リンク成果物です。再利用CUDA objectの
+source対応は**UNRESOLVED**のままです。必要なDLLと既存Control向け2ファイルの
+overlayを同梱します。GUI installerや独立したHTTP server一式ではありません。
+Spin(8)・Triality・Query-v3・TurboQuant・Bonsaiの既存経路を保持していますが、
+今回それらの速度・品質を再認定していません。モデルや私的設定は含めません。
+
+以下の旧リリース・ベンチマークの記述は、131kの合格証拠には使用しません。
+
+---
+
 <h3 align="center">Strata — Spin(8) Triality KV キャッシュ・DeepSeek-V4.1 無検閲・任意 GGUF ローダー・長期記憶基盤</h3>
 
 <p align="center">
@@ -17,9 +37,7 @@
   <a href="https://github.com/zapabob/Strata/releases/tag/v0.3.0"><img src="https://img.shields.io/github/v/release/zapabob/Strata?label=release%20v0.3.0" alt="Release v0.3.0"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/zapabob/Strata" alt="MIT license"></a>
   <a href="https://github.com/zapabob/Strata/stargazers"><img src="https://img.shields.io/github/stars/zapabob/Strata?style=flat" alt="GitHub stars"></a>
-  <img src="https://img.shields.io/badge/tests-71%2F71%20合格-brightgreen" alt="Tests 71/71 passing">
   <img src="https://img.shields.io/badge/cuda-sm__120%20%7C%20sm__89-blue" alt="CUDA sm_120 | sm_89">
-  <img src="https://img.shields.io/badge/memory-32GB%20RAM%20実機受入済-success" alt="32GB RAM verified">
 </p>
 
 ---
@@ -83,7 +101,7 @@ GitHub リリースから用途に合わせて検証済みパッケージを取�
 Web UI、モデルマネージャー、GPU 設定、バックグラウンドエンジン制御が含まれています。
 
 1. **配置パス**:
-   `C:\Users\downl\AppData\Local\Programs\Strata\Strata.exe`（またはデスクトップの `Strata` ショートカット）。
+   `%LOCALAPPDATA%\Programs\Strata\strata-desktop.exe`（またはデスクトップの `Strata` ショートカット）。
 2. **Web Host UI**:
    ブラウザで利用する場合は `http://127.0.0.1:18500` にアクセスします。
 3. **上書きアップデート**:
