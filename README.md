@@ -123,6 +123,12 @@ Use the release notes for the exact artifact you select. The experimental native
 archive supplies the engine and required DLLs plus a small overlay for an existing
 matching Control installation. It is not a new GUI installer or a complete standalone
 HTTP distribution. Models and private configuration are not bundled.
+The current development overlay requires `memory_harness.py`, `perf131k_e2e.py`
+and `server.py` as three hash-verified Control payload files. Both imported
+helpers are placed before the server. Missing payload blocks installation before
+backup or publication. On failure, existing Control files are restored; newly
+created inactive helpers are retained with the rollback evidence. This change
+has passed 11 synthetic file-installation tests and has not been installed live.
 
 For general setup, start with [AI_SETUP.md](docs/AI_SETUP.md). To inspect an existing
 Terminal installation without starting a model:

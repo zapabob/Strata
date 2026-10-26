@@ -80,9 +80,9 @@ def apply(stage, roots, control, backup, expected_control):
         raise ValueError("fresh preview and backup destinations required")
     # Publish the dependency before its consumer; an interrupted process must
     # not leave a new server importing a helper that has not been copied yet.
-    names = ("perf131k_e2e.py", "server.py")
+    names = ("memory_harness.py", "perf131k_e2e.py", "server.py")
     if set(expected_control) != set(names):
-        raise ValueError("exact two-file Control overlay required")
+        raise ValueError("exact three-file Control overlay required")
     payload = {name: (digest, size) for name, digest, size in component.files}
     original = {}
     for name in names:

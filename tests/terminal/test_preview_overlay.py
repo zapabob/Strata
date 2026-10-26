@@ -18,7 +18,8 @@ class OverlayTests(unittest.TestCase):
         stage = root / "stage"
         stage.mkdir()
         payload = {"strata.exe": b"CPU fixture, not executable", "control/serve/server.py": b"new server",
-                   "control/serve/perf131k_e2e.py": b"new observer"}
+                   "control/serve/perf131k_e2e.py": b"new observer",
+                   "control/serve/memory_harness.py": b"new memory helper"}
         for name, data in payload.items():
             path = stage / name
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -37,7 +38,8 @@ class OverlayTests(unittest.TestCase):
         (control / "serve").mkdir(parents=True)
         (control / "serve/server.py").write_bytes(b"original server")
         (control / "VERSION").write_text("original version")
-        expected = {"server.py": install.sha(control / "serve/server.py"), "perf131k_e2e.py": None}
+        expected = {"server.py": install.sha(control / "serve/server.py"), "perf131k_e2e.py": None,
+                    "memory_harness.py": None}
         return root, stage, roots, control, expected
 
     def test_install_preserves_old_engines_and_whole_control_version(self):
@@ -58,6 +60,43 @@ class OverlayTests(unittest.TestCase):
             install.apply(stage, roots, control, root / "backup", expected)
         self.assertEqual(list(roots[0].iterdir()), [roots[0] / "old-version.txt"])
         self.assertEqual((control / "serve/server.py").read_bytes(), b"concurrent edit")
+
+    def test_server_is_replaced_only_after_both_imported_helpers(self):
+        root, stage, roots, control, expected = self.fixture()
+        copy = install.copy_checked
+        observed = []
+        def check_order(source, target, digest):
+            if source == stage / "control/serve/server.py" and target.parent == control / "serve":
+                self.assertEqual((control / "serve/memory_harness.py").read_bytes(), b"new memory helper")
+                self.assertEqual((control / "serve/perf131k_e2e.py").read_bytes(), b"new observer")
+                observed.append(True)
+            return copy(source, target, digest)
+        with patch.object(install, "copy_checked", side_effect=check_order):
+            install.apply(stage, roots, control, root / "backup", expected)
+        self.assertEqual(observed, [True])
+
+    def test_missing_memory_payload_blocks_before_backup_or_install(self):
+        root, stage, roots, control, expected = self.fixture()
+        manifest = stage / "engine-component.json"
+        value = json.loads(manifest.read_text())
+        value["files"] = [row for row in value["files"] if row["path"] != "control/serve/memory_harness.py"]
+        manifest.write_text(json.dumps(value))
+        (stage / "control/serve/memory_harness.py").unlink()
+        with self.assertRaises(ValueError):
+            install.apply(stage, roots, control, root / "backup", expected)
+        self.assertFalse((root / "backup").exists())
+        self.assertEqual((control / "serve/server.py").read_bytes(), b"original server")
+
+    def test_existing_memory_helper_is_restored_on_publication_failure(self):
+        root, stage, roots, control, expected = self.fixture()
+        helper = control / "serve/memory_harness.py"
+        helper.write_bytes(b"original memory helper")
+        expected["memory_harness.py"] = install.sha(helper)
+        with patch.object(install, "publish", side_effect=OSError("injected publish failure")):
+            with self.assertRaises(OSError):
+                install.apply(stage, roots, control, root / "backup", expected)
+        self.assertEqual(helper.read_bytes(), b"original memory helper")
+        self.assertEqual((control / "serve/server.py").read_bytes(), b"original server")
 
     def test_publish_failure_restores_control_and_hides_new_components(self):
         root, stage, roots, control, expected = self.fixture()
