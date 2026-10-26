@@ -12,9 +12,10 @@
  */
 import { CONTEXT_TOKENS } from './catalog.mjs';
 import { spawn } from 'node:child_process';
-import { existsSync, readdirSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, realpathSync, readdirSync, statSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { MODELS_DIR } from './store.mjs';
+import { componentsDirectory } from './control-runtime.mjs';
 import { which } from './util.mjs';
 import { buildSpin8Args, probeBackendCapabilities } from './spin8-backend.mjs';
 import { resolveKvSettings, explicitKvEnvironment } from './kv-settings.mjs';
@@ -59,11 +60,25 @@ export function init(hub) {
 
 /* ------------------------------------------------------------------ binary --- */
 
-export function findBinary({ platform = process.platform, env = process.env, modelsDir = MODELS_DIR } = {}) {
+export function findBinary({ platform = process.platform, env = process.env, modelsDir = MODELS_DIR, componentsDir = componentsDirectory({ env, platform }) } = {}) {
   const binaryNames = platform === 'win32' ? ['llama-server.exe', 'llama-server'] : ['llama-server'];
   const candidates = [];
 
   if (env.STRATA_LLAMA_SERVER) candidates.push({ path: env.STRATA_LLAMA_SERVER, source: 'STRATA_LLAMA_SERVER' });
+
+  // The app's generic GGUF component is self-contained: its executable and DLLs stay together.
+  // A staged update only becomes active after its pointer is written, as with the Control component.
+  const genericRoot = join(componentsDir, 'generic-gguf');
+  try {
+    const pointer = JSON.parse(readFileSync(join(genericRoot, 'active.json'), 'utf8').replace(/^\uFEFF/, ''));
+    if (typeof pointer?.folder === 'string' && /^[\w.+-]+$/.test(pointer.folder) && !['.', '..'].includes(pointer.folder)) {
+      const activeDir = resolve(genericRoot, pointer.folder);
+      if (dirname(activeDir) === resolve(genericRoot) && dirname(realpathSync(activeDir)) === realpathSync(genericRoot)) {
+        for (const name of binaryNames) candidates.push({ path: join(activeDir, name), source: 'generic-gguf' });
+      }
+    }
+  } catch { /* no activated generic backend */ }
+  for (const name of binaryNames) candidates.push({ path: join(genericRoot, name), source: 'generic-gguf' });
 
   // A build downloaded into the app's own folder wins over anything on PATH:
   // it is the version Strata was tested against.
@@ -208,9 +223,21 @@ export function logs(limit = 200) {
   return state.logs.slice(-limit);
 }
 
-async function waitForHealth(port, timeoutMs = 90_000) {
+function earlyExitError(proc, spawnError, secret) {
+  if (spawnError) return new Error(`Engine could not start: ${spawnError.message}`);
+  if (proc.exitCode === null && proc.signalCode === null) return null;
+  const reason = proc.signalCode ? `signal ${proc.signalCode}` : `code ${proc.exitCode}`;
+  const diagnostic = state.logs.filter(entry => entry.stream === 'err' && /error|failed|invalid|unsupported|cannot|bad option|block size/i.test(entry.line)).slice(-3)
+    .map(entry => { const line = entry.line.replace(/\x1b\[[0-9;]*m/g, '').replace(/[\x00-\x1f\x7f]/g, ' '); return (secret ? line.replaceAll(secret, '[redacted]') : line).trim().slice(0, 300); })
+    .filter(Boolean).join(' | ');
+  return new Error(`Engine exited early with ${reason}${diagnostic ? `: ${diagnostic}` : '. Check engine logs for the cause.'}`);
+}
+
+async function waitForHealth(port, timeoutMs = 90_000, proc, getSpawnError = () => null, secret = '') {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
+    const stopped = earlyExitError(proc, getSpawnError(), secret);
+    if (stopped) throw stopped;
     try {
       const res = await fetch(`http://127.0.0.1:${port}/health`, { signal: AbortSignal.timeout(1500) });
       const body = await res.json().catch(() => ({}));
@@ -219,9 +246,8 @@ async function waitForHealth(port, timeoutMs = 90_000) {
     } catch {
       /* not up yet */
     }
-    if (child?.exitCode !== null && child?.exitCode !== undefined) {
-      throw new Error(`Engine exited early with code ${child.exitCode}`);
-    }
+    const stoppedAfterProbe = earlyExitError(proc, getSpawnError(), secret);
+    if (stoppedAfterProbe) throw stoppedAfterProbe;
     await new Promise((r) => setTimeout(r, 700));
   }
   throw new Error('Engine did not become healthy in time');
@@ -263,6 +289,9 @@ export async function start({ modelId, modelPath, port = 8080, config, hardware,
     env: { ...explicitKvEnvironment(), LLAMA_CACHE: join(MODELS_DIR, '..', 'cache') },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
+  const launched = child;
+  let spawnError = null;
+  launched.on('error', error => { spawnError = error; });
 
   state.pid = child.pid;
   state.startedAt = new Date().toISOString();
@@ -290,7 +319,7 @@ export async function start({ modelId, modelPath, port = 8080, config, hardware,
   });
 
   try {
-    await waitForHealth(port, timeoutMs);
+    await waitForHealth(port, timeoutMs, launched, () => spawnError, config.serving?.apiKey ?? '');
   } catch (err) {
     state.status = 'error';
     state.error = err.message;

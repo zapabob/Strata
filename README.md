@@ -39,6 +39,16 @@ Use the model files already present on the machine where possible. Leave the lis
 
 The preview includes its required CUDA/VC runtimes and notices. The legacy vision executable is retained unchanged for compatibility; image inference is not validated by these text tests. No model weights, API keys or user conversations are distributed.
 
+## GUI fixes in this preview
+
+Quiet local inference now has a finite 30-minute allowance instead of the previous four-minute cutoff. Remote-model and running-tool limits remain separate, and cancellation still ends a stalled turn.
+
+The local GGUF importer validates the file and tokenizer without restricting text models to a short architecture list. When the native engine cannot import a model, **Try with llama-server** opens the generic path with the same file selected. The GUI companion package supplies the tested generic backend. Actual architecture support is checked when loading; auxiliary files and unsupported configurations report their reason.
+
+Missing K/V metadata is shown as an unknown fit with a provisional estimate. Models whose head width cannot use the selected quantized cache request explicit FP16 selection. A backend that exits immediately reports its error promptly, and a failed load can be retried after correcting settings without downloading the same file again. Invalid K/V settings are rejected before stopping a running native model.
+
+The GUI/host regression set passed 36 tests; four additional tests passed with the real installed Harness. A small GGUF completed import, load, chat generation and unload through the GUI's actual host API, using an isolated synthetic profile and explicit FP16. The frontend builds successfully. Interactive screen testing was unavailable in this session; it is not claimed.
+
 ## Memory integration
 
 The optional memory harness is **disabled by default**. It requires server-side per-user identities, isolated databases, approved persona hashes and explicit per-turn consent. Normal requests keep their existing path. Native multiuser memory behavior and its resource/latency qualification remain open. See [MEMORY_HARNESS](serve/MEMORY_HARNESS.md).

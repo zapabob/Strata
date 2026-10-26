@@ -106,6 +106,11 @@ const HOST_DIR = fileURLToPath(new URL('../..', import.meta.url));
 
 const deferred = () => { let resolve; const promise = new Promise(r => { resolve = r; }); return { promise, resolve }; };
 
+/** A local model can spend several minutes reading a prompt before its first reply. Keep a finite silence guard. */
+export function turnStallLimit({ local, toolRunning, stallMs, localStallMs, stallToolMs }) {
+  return toolRunning ? stallToolMs : local ? localStallMs : stallMs;
+}
+
 /**
  * @param {object} options
  * @param {string} options.dataDir                      the host's data directory (agent state lives in `<dataDir>/agent`)
@@ -117,7 +122,7 @@ const deferred = () => { let resolve; const promise = new Promise(r => { resolve
  * @param {string} [options.nodePath]                   the Node runtime that runs the Harness
  * @param {(line:string)=>void} [options.log]
  */
-export function createAgentBridge({ dataDir, componentsDir = null, bundledDir = null, gate = true, localInstances, connections, tools = () => undefined, defaultLocalId = () => null, skillsDir = () => null, onGoal = () => {}, onPlan = () => {}, onQueue = () => {}, proxyBase = null, searchMock = null, expertSampling = () => null, engineProgress = () => null, engineGraceMs = 30 * 60_000, stallMs = 4 * 60_000, stallToolMs = 20 * 60_000, env = process.env, nodePath = process.execPath, log = () => {}, startTimeoutMs = 120_000, sessionReadyMs = 60_000, sessionRetryMs = 1_500 }) {
+export function createAgentBridge({ dataDir, componentsDir = null, bundledDir = null, gate = true, localInstances, connections, tools = () => undefined, defaultLocalId = () => null, skillsDir = () => null, onGoal = () => {}, onPlan = () => {}, onQueue = () => {}, proxyBase = null, searchMock = null, expertSampling = () => null, engineProgress = () => null, engineGraceMs = 30 * 60_000, stallMs = 4 * 60_000, localStallMs = 30 * 60_000, stallToolMs = 20 * 60_000, env = process.env, nodePath = process.execPath, log = () => {}, startTimeoutMs = 120_000, sessionReadyMs = 60_000, sessionRetryMs = 1_500 }) {
   const root = join(dataDir, 'agent');
   const home = join(root, 'home');
   const sessionsFile = join(root, 'sessions.json');
@@ -451,7 +456,7 @@ export function createAgentBridge({ dataDir, componentsDir = null, bundledDir = 
     turn.watchdog = setInterval(() => {
       if (turn.finished || turn.stopping) return;
       const toolRunning = [...projector.tools.values()].some(x => x.card?.state === 'running' || x.card?.state === 'proposed') || pending.size > 0 && pendingFor(chatId).length > 0;
-      const limit = toolRunning ? stallToolMs : stallMs;
+      const limit = turnStallLimit({ local: turn.route?.kind === 'local', toolRunning, stallMs, localStallMs, stallToolMs });
       // A local engine reading a long prompt sends the Harness nothing for minutes (#3623). Its /metrics progress counts as activity,
       // for at most engineGraceMs after the Harness last spoke: progress for another chat cannot keep a lost turn alive forever.
       if (turn.route?.kind === 'local' && Date.now() - turn.heard < engineGraceMs) {

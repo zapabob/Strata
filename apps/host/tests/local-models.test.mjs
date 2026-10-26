@@ -9,6 +9,7 @@ import { tmpdir } from 'node:os';
 import { createServer } from 'node:net';
 import { readGGUF } from '../server/gguf.mjs';
 import { browseLocalModels, inspectLocalModel, createLocalModels } from '../server/local-models.mjs';
+import { buildArgs } from '../server/supervisor.mjs';
 import { ggufFixture } from './helpers/local-gguf.mjs';
 const cwd=fileURLToPath(new URL('..',import.meta.url)),pause=ms=>new Promise(r=>setTimeout(r,ms));
 function fixture(t){const root=mkdtempSync(join(tmpdir(),'strata-local-model-'));t.after(()=>rmSync(root,{recursive:true,force:true}));return root;}
@@ -16,13 +17,32 @@ function fixture(t){const root=mkdtempSync(join(tmpdir(),'strata-local-model-'))
 test('bounded reader gets real metadata and rejects fake extensions, partial tensors, unsupported versions and duplicate metadata',t=>{
  const root=fixture(t),file=join(root,'huihui.gguf');ggufFixture(file,{version:2});const info=readGGUF(file);assert.equal(info.metadata['general.architecture'],'qwen3next');assert.equal(info.metadata['tokenizer.ggml.tokens'].count,1);assert.equal(info.parameters,16);
  const preview=inspectLocalModel(file);assert.equal(preview.variant.quant,'Q4_K_M');assert.equal(preview.variant.contextMax,32768);assert.equal(preview.variant.layerCount,48);assert.equal(preview.variant.experts,128);assert.equal(preview.variant.kvKbPerToken,12);assert.equal(preview.variant.family,'Local models');
+ assert.deepEqual(preview.variant.kvModes,['INT8','FP16']);
  assert.throws(()=>inspectLocalModel(root),/\.gguf|folder/);writeFileSync(file,'not a model');assert.throws(()=>inspectLocalModel(file),/truncated|not a GGUF/);
  ggufFixture(file,{truncate:10});assert.throws(()=>readGGUF(file),/incomplete/);
  ggufFixture(file,{version:1});assert.throws(()=>readGGUF(file),/version/);
  ggufFixture(file,{extra:[['general.name',8,'duplicate']]});assert.throws(()=>readGGUF(file),/duplicate/);
- ggufFixture(file,{arch:'clip'});assert.throws(()=>inspectLocalModel(file),/architecture.*not supported/);
+ ggufFixture(file,{arch:'clip'});assert.throws(()=>inspectLocalModel(file),/architecture.*not a text-generation model/);
+ ggufFixture(file,{omit:['general.architecture']});assert.throws(()=>inspectLocalModel(file),/missing or invalid model architecture/);
+ for(const arch of ['deepseek2','gpt-oss','future_text_model']){
+  ggufFixture(file,{arch});const custom=inspectLocalModel(file);
+  assert.equal(custom.variant.local.architecture,arch);
+  assert.equal(custom.variant.local.path,file);
+ }
+ ggufFixture(file,{arch:'future_text_model',omit:['future_text_model.block_count','future_text_model.embedding_length','future_text_model.attention.head_count','future_text_model.attention.head_count_kv']});
+ const partial=inspectLocalModel(file);assert.equal(partial.variant.kvKbPerToken,null);assert.ok(partial.warnings.some(w=>w.includes('KV memory metadata is incomplete')));
+ ggufFixture(file,{arch:'mamba',omit:['mamba.attention.head_count'],extra:[['mamba.attention.head_count',4,0]]});
+ assert.equal(readGGUF(file).metadata['mamba.attention.head_count'],0);
+ assert.equal(inspectLocalModel(file).variant.kvKbPerToken,null,'Mamba head count zero is a valid unknown KV estimate');
+ ggufFixture(file,{arch:'future_text_model',omit:['future_text_model.attention.head_count'],extra:[['future_text_model.attention.head_count',9,['0','0']]]});
+ assert.deepEqual(readGGUF(file).metadata['future_text_model.attention.head_count'],{count:2});
+ assert.equal(inspectLocalModel(file).variant.kvKbPerToken,null,'per-layer head counts remain an unknown KV estimate');
+ ggufFixture(file,{arch:'future_text_model',omit:['future_text_model.context_length']});
+ const noContext=inspectLocalModel(file);assert.equal(noContext.variant.contextMax,4096);assert.ok(noContext.warnings.some(w=>w.includes('Context length is not declared')));
  ggufFixture(file,{tensorCount:0});assert.throws(()=>inspectLocalModel(file),/missing tensors/);
- ggufFixture(file,{context:1024});assert.throws(()=>inspectLocalModel(file),/context_length/);
+ ggufFixture(file,{context:2048,extra:[['qwen3next.attention.key_length',4,8],['qwen3next.attention.value_length',4,8]]});
+ const narrow=inspectLocalModel(file);assert.equal(narrow.variant.contextMax,2048);assert.deepEqual(narrow.variant.kvModes,['FP16']);assert.ok(narrow.warnings.some(w=>w.includes('Choose FP16')));
+ ggufFixture(file,{context:512});assert.throws(()=>inspectLocalModel(file),/context_length/);
  const oversized=Buffer.alloc(24);oversized.write('GGUF');oversized.writeUInt32LE(3,4);oversized.writeBigUInt64LE(2n**63n,8);writeFileSync(file,oversized);assert.throws(()=>readGGUF(file),/unsupported integer/);
 });
 
@@ -34,6 +54,14 @@ test('choosing any shard finds the first, validates every shard and catches miss
  ggufFixture(second,{splitNo:0,splitCount:2});assert.throws(()=>inspectLocalModel(first),/matching set/);
  ggufFixture(second,{splitNo:1,splitCount:2,arch:'llama'});assert.throws(()=>inspectLocalModel(first),/different architectures/);
  rmSync(first);assert.throws(()=>inspectLocalModel(second),/first shard/);
+});
+
+test('a 2K custom GGUF keeps its original path and context in the llama-server command',t=>{
+ const root=fixture(t),file=join(root,'small.gguf');ggufFixture(file,{arch:'future_text_model',context:2048});
+ const model=inspectLocalModel(file).variant;
+ const args=buildArgs({modelPath:model.local.path,config:{beginner:{contextLength:'2k'},expert:[]},hardware:{cpu:{cores:4}}});
+ assert.equal(args[args.indexOf('-m')+1],file);
+ assert.equal(args[args.indexOf('-c')+1],'2048');
 });
 
 test('folder browsing shows only folders/GGUFs; reference persistence, deduplication and removal preserve original weights',t=>{
@@ -55,6 +83,24 @@ test('native library uses the exact imported path and keeps its reference across
  store.changeModelsDirectory(${JSON.stringify(next)});models.init({send(){}});assert.ok(models.isOnDisk(v.id));
  models.remove(v.id);assert.equal(catalog.variant(v.id),null);assert.ok(fs.existsSync(${JSON.stringify(file)}));
  `],{cwd,env:{...process.env,STRATA_HOME:join(root,'host'),STRATA_MODELS_DIR:join(root,'host','models'),STRATA_REAL_ENGINE:'1'},encoding:'utf8'});assert.equal(result.status,0,result.stderr);
+});
+
+test('a failed local backend leaves unchanged GGUF files ready for a corrected load',t=>{
+ const root=fixture(t),file=join(root,'retry.gguf');ggufFixture(file);
+ const result=spawnSync(process.execPath,['--input-type=module','-e',`
+ import assert from 'node:assert/strict';import {createServer} from 'node:net';
+ const catalog=await import('./server/catalog.mjs'),local=await import('./server/local-models.mjs'),models=await import('./server/models.mjs'),store=await import('./server/store.mjs');
+ const listen=createServer();await new Promise(r=>listen.listen(0,'127.0.0.1',r));const port=listen.address().port;await new Promise(r=>listen.close(r));
+ store.update({expert:{'server.port':port}});models.init({send(){}});
+ const preview=local.inspectLocalModel(${JSON.stringify(file)});catalog.localModels.add(preview);models.localModelAdded();
+ const config={beginner:{contextLength:'2k'},expert:[]};
+ for(let attempt=0;attempt<2;attempt++){
+  await assert.rejects(models.load(preview.variant.id,{config,hardware:{cpu:{cores:4}}}),/Engine exited early.*bad option: -m/);
+  const row=models.library().variants.find(v=>v.id===preview.variant.id);
+  assert.equal(row.state,'installed');assert.ok(row.error);assert.ok(models.isOnDisk(row.id));
+ }
+ `],{cwd,env:{...process.env,STRATA_HOME:join(root,'host'),STRATA_MODELS_DIR:join(root,'host','models'),STRATA_REAL_ENGINE:'1',STRATA_LLAMA_SERVER:process.execPath},encoding:'utf8',timeout:15_000});
+ assert.equal(result.status,0,result.stderr);
 });
 
 async function freePort(){const server=createServer();await new Promise(r=>server.listen(0,'127.0.0.1',r));const port=server.address().port;await new Promise(r=>server.close(r));return port;}

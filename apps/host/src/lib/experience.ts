@@ -79,17 +79,18 @@ export function estimate(v: ModelVariant | undefined, hw: Hardware | null, confi
         return result;
     if (config.context > v.contextMax)
         result.fit = 'unsupported';
-    if (v.kvKbPerToken !== undefined && Number.isFinite(config.context) && config.context > 0) {
+    if (Number.isFinite(config.context) && config.context > 0) {
         const cpu = hw?.accelerator.backend === 'cpu' || config.placement === 'CPU only';
         const unified = !!hw?.accelerator.unified;
         const placementKnown = cpu || unified || ['Automatic', 'All layers'].includes(config.placement);
         const budget = !hw ? null : cpu || unified ? hw.memory.totalGb * .72 : hw.accelerator.usableVramGb;
-        const cache = v.kvKbPerToken * config.context / 1024 ** 2 * (config.kv === 'FP16' ? 2 : config.kv === 'Q4_0' ? .5 : 1);
+        const kv = typeof v.kvKbPerToken === 'number' && Number.isFinite(v.kvKbPerToken) && v.kvKbPerToken > 0 ? v.kvKbPerToken : null;
+        const cache = (kv ?? 64) * config.context / 1024 ** 2 * (config.kv === 'FP16' ? 2 : config.kv === 'Q4_0' ? .5 : 1);
         const runtime = v.experts > 0 ? 2.5 : 1.2;
         const total = v.diskGb + cache + runtime;
         result.memory = { weights: v.diskGb, cache, runtime, total, budget: placementKnown ? budget : null, remaining: budget !== null && placementKnown ? budget - total : null, unified, systemBudget: hw && !unified && !cpu ? hw.memory.totalGb * .72 : null, pool: cpu ? 'System memory' : unified ? 'Unified memory' : 'GPU memory', placementKnown };
         if (result.fit !== 'unsupported')
-            result.fit = budget === null || !placementKnown ? 'unknown' : total > budget ? 'too-large' : total > budget * .85 ? 'tight' : 'comfortable';
+            result.fit = kv === null || budget === null || !placementKnown ? 'unknown' : total > budget ? 'too-large' : total > budget * .85 ? 'tight' : 'comfortable';
     }
     if (!result.fitsWorkload || result.fit === 'unsupported') {
         result.provenance = 'The sample or context is not supported by this setup.';

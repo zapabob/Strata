@@ -19,15 +19,17 @@ function problem(issues: string[]): { message: string; next: string } {
     if (has(/incomplete_or_invalid_shard_set/))
         return { message: 'Some parts of this model are missing.', next: 'Put every part of one model (all the -0000N-of-0000M files) in one folder, then check again.' };
     if (has(/unsupported_architecture|unsupported_or_missing_architecture/))
-        return { message: 'This model type isn’t supported by the Strata engine.', next: 'Add it as a Custom model API instead: start it with llama-server, then open Settings > Models > Add model provider > Custom model API.' };
-    if (has(/unrecognized_or_unsupported_model_variant|expert_quantization|tokenizer/))
-        return { message: 'Strata can’t run these files yet.', next: 'Strata runs the Qwen3.8-Flash-Next models. Download one from Models, or choose a folder with its files.' };
+        return { message: 'This model type isn’t supported by the Strata engine.', next: 'Try the local llama-server backend below. Its compatibility is checked when the model loads.' };
+    if (has(/unrecognized_or_unsupported_model_variant|expert_quantization/))
+        return { message: 'Strata can’t run these files with its native engine.', next: 'Try the local llama-server backend below, or choose a model supported by the Strata engine.' };
+    if (has(/tokenizer/))
+        return { message: 'This model tokenizer could not be checked.', next: 'Choose a complete model GGUF file with its tokenizer.' };
     return { message: 'These files could not be checked.', next: 'Check that the folder holds complete GGUF files, then try again. The file named under Details says what is wrong with it.' };
 }
 
 /** "Use a local GGUF": choose the folder of a model you already have, Strata checks it, and prepares and loads it without copying
  *  or downloading the model files. The same page layout and cards as the optimized models page. */
-export function NativeLocalModel({ onBack }: { onBack: () => void }) {
+export function NativeLocalModel({ onBack, onAlternative }: { onBack: () => void; onAlternative: (path: string) => void }) {
     const native = useNative();
     const [typed, setTyped] = useState(''), [checked, setChecked] = useState<Preview | null>(null), [pending, setPending] = useState(false), [error, setError] = useState(''), [jobId, setJobId] = useState('');
     const job = native?.jobs.find(j => j.id === jobId);
@@ -68,6 +70,7 @@ export function NativeLocalModel({ onBack }: { onBack: () => void }) {
         finally { setPending(false); }
     }
     const found = checked ? problem(checked.preview.issues) : null;
+    const alternative = !!checked && !usable && checked.preview.issues.some(i => /unsupported_architecture|unsupported_or_missing_architecture|unrecognized_or_unsupported_model_variant|expert_quantization/.test(i));
     return <Screen plainHeader title={tr("Model")} actions={<Btn onClick={onBack}>{tr("Back")}</Btn>}>
   <div className="native-model-layout">
    <div className="stack stack--lg">
@@ -85,6 +88,7 @@ export function NativeLocalModel({ onBack }: { onBack: () => void }) {
      </> : <>
       <h2 className="h3">{tr(found!.message)}</h2>
       <p className="small muted">{tr(found!.next)}</p>
+      {tr(alternative ? <Btn icon="models" onClick={() => onAlternative(checked!.path)}>{tr("Try with llama-server")}</Btn> : null)}
       {tr(checked.preview.plain_issues?.map(m => <p className="small muted" key={m}>{tr(m)}</p>))}
       {tr(checked.preview.messages?.map(m => <p className="small muted" key={m}>{tr(m)}</p>))}
       {tr(checked.preview.issues.length ? <details><summary className="small">{tr("Details")}</summary><pre className="small muted error-detail-text">{checked.preview.issues.join(String.fromCharCode(10))}</pre></details> : null)}

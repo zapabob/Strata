@@ -11,6 +11,7 @@
  *
  *   SCRIPT:hello                    reasoning then a short text reply
  *   SCRIPT:slow [n]                 n (default 400) text chunks, 40 ms apart: a window for Stop
+ *   SCRIPT:pause <ms> <text>        silent wait before the first reply, then one text chunk
  *   SCRIPT:tool <file> <text>       one shell call that appends <text> to <file>; it asks the sandbox for
  *                                   wider access, so the approval gate is exercised
  *   SCRIPT:plain <file> <text>      the same call without the escalation (no approval needed)
@@ -187,6 +188,12 @@ export async function startScriptedWorker({ port = 0, chunkDelayMs = 40, model =
       return say(Array.from({ length: n }, (_, i) => `w${i} `));
     }
     if (name === 'hang') { send({ role: 'assistant', content: '' }); return; }   // headers sent, then silence: a model server that went quiet
+    if (name === 'pause') {
+      const [duration, ...words] = args.split(/\s+/);
+      await delay(Math.min(30_000, Math.max(0, Number(duration) || 0)));
+      if (!closed) return say([words.join(' ') || 'finished']);
+      return;
+    }
     if (name === 'echo') return say([args]);
     if (name === 'retrywrite' || name === 'retryshell') {
       const [file, ...rest] = args.split(/\s+/);

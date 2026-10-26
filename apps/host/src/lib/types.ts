@@ -62,7 +62,7 @@ export interface ModelVariant {
   local?: { path: string; files: { path: string; bytes: number; mtimeMs: number; ctimeMs: number }[]; architecture: string; contextLength: number; hasChatTemplate: boolean; shards: number; metadataSignature: string };
   source?: { repo: string; file: string; bytes?: number };
   downloadUrl?: string;
-  kvKbPerToken?: number;
+  kvKbPerToken?: number | null;
   catalog?: { family: string; version: string; purpose: string; capabilities: string[]; agentApproved: boolean; balancedRank: number; review: string };
   performance?: import('./experience').SpeedEvidence[];
   id: string;
@@ -77,7 +77,7 @@ export interface ModelVariant {
   diskGb: number;
   downloadGb: number;
   contextMax: number;
-  layerCount: number;
+  layerCount: number | null;
   experts: number;
   hasDraft: boolean;
   kvModes: string[];

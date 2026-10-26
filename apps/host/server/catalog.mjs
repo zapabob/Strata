@@ -53,7 +53,7 @@ export function modelFile(v) {
  * lever Strata offers in Engine tuning.
  */
 export function footprint(v, contextTokens) {
-  const kvGb = (v.kvKbPerToken * contextTokens) / 1024 / 1024;
+  const kvGb = ((v.kvKbPerToken ?? 64) * contextTokens) / 1024 / 1024;
   const overheadGb = v.experts > 0 ? 2.5 : 1.2;
   return { weightsGb: v.diskGb, kvGb, overheadGb, totalGb: v.diskGb + kvGb + overheadGb };
 }
@@ -117,4 +117,4 @@ export function expertParams(cores = null) {
   ];
 }
 
-export const CONTEXT_TOKENS = { recommended: 131072, ...Object.fromEntries(Array.from({length:1021}, (_, i) => [`${i+4}k`, (i+4)*1024])) };
+export const CONTEXT_TOKENS = { recommended: 131072, ...Object.fromEntries(Array.from({length:1024}, (_, i) => [`${i+1}k`, (i+1)*1024])) };

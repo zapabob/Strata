@@ -50,6 +50,7 @@ import * as engineInstall from './engine-install.mjs';
 import { detectBackend, currentBackend, streamChat, inferenceLine } from './inference.mjs';
 import { CONTEXT_TOKENS, VARIANTS, localModels, variant } from './catalog.mjs';
 import { browseLocalModels, inspectLocalModel } from './local-models.mjs';
+import { requireModelKvCompatible } from './kv-settings.mjs';
 import { EventHub, error, json, readBody, readRaw, uid } from './util.mjs';
 import { createUploads } from './chat-uploads.mjs';
 import { createNativeDrops } from './native-drop.mjs';
@@ -1474,10 +1475,13 @@ async function api(req, res, path, method, url) {
         await monitor.setModel(id);engine.markRunning(hw.accelerator.backend);hub.send('engine',await engine.config());
         return json(res,200,runtimeModels.libraryState(models.library()));
       }
-      if(!supervisor.findBinary())return error(res,409,'Install a compatible llama-server engine before switching from native Strata.');const candidate=models.library().variants.find(v=>v.id===id);if(!candidate||!['installed','loaded'].includes(candidate.state))return error(res,409,'Download this model before loading it.');for(const instance of native.state().instances)await native.unload(instance.id);
+      if(!supervisor.findBinary())return error(res,409,'Install a compatible llama-server engine before switching from native Strata.');const candidate=models.library().variants.find(v=>v.id===id);if(!candidate||!models.isOnDisk(id)||['loading','downloading','unloading'].includes(candidate.state))return error(res,409,'Download this model before loading it.');
+      const loadConfig={ beginner: store.get().beginner, expert: engine.params(), serving: store.get().serving };
+      try{requireModelKvCompatible(candidate,loadConfig.expert);}catch(err){return error(res,409,err.message);}
+      for(const instance of native.state().instances)await native.unload(instance.id);
       const lib = await models.load(id, {
         hardware: hw,
-        config: { beginner: store.get().beginner, expert: engine.params(), serving: store.get().serving },
+        config: loadConfig,
         onPhase: async (phase, variantId) => {
           if (phase === 'loading') await monitor.beginLoading(variantId);
           if (phase === 'ready') {

@@ -39,6 +39,15 @@ export function resolveKvSettings(expert = []) {
   return { k, v };
 }
 
+export function requireModelKvCompatible(model, expert = []) {
+  if (!model?.local || model.kvModes?.includes('INT8')) return;
+  const { k, v } = resolveKvSettings(expert);
+  if (k === 'f16' && v === 'f16') return;
+  const error = new Error('This GGUF needs an FP16 K/V cache. Set KV mode to FP16 and K/V cache precision to Inherit or FP16, then load it again.');
+  error.code = 'KV_MODEL_WIDTH';
+  throw error;
+}
+
 /** Retains the host's nominal memory estimate; actual allocation is measured
  * by the engine. Assumes equal K/V widths, as the previous combined selector did. */
 export function kvMemoryFactor(expert = []) {

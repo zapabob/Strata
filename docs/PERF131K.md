@@ -278,3 +278,23 @@ exit15, active0 and termination confirmed. Preserve its invalid-measurement rece
 and the separate scope-change cancellation record; it is neither a successful
 capacity test nor evidence of an engine failure. No retry occurred.
 Evidence: `H:/Strata/evidence/p01-boundary-20261026/normal-capacity-series-20261027/`.
+
+## GUI operational fixes, 27 October 2026
+
+The local silent-turn guard is 30 minutes, with remote and tool limits separate.
+Thirty-six focused GUI/host regression tests passed. Four real-Harness tests passed
+without skips, including local silence beyond the remote limit, cancellation and
+subsequent recovery. The frontend build and type check passed.
+
+A 1,185,376-byte pinned ggml-org stories260K GGUF exercised the real GUI host API:
+file inspect/import, explicit FP16 + 2048 context, load, chat generation (233 input
+and 16 output tokens), and unload. This used an isolated synthetic user profile.
+The first inherited INT8 attempt exposed unsupported 8-wide heads and delayed
+backend-exit reporting; both are now handled explicitly, and valid local files
+remain retryable after an error. The default persona exceeded this tiny model's
+context, so no claim is made that the fixture supports the full personal prompt.
+The test model is not distributed and is not a quality reference.
+
+Computer-use browser/native surfaces were unavailable, so interactive GUI testing
+is NOT_RUN. Evidence is the actual host HTTP receipt, built frontend and regression
+logs; these are distinct from a manual desktop interaction result.

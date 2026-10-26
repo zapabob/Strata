@@ -9,10 +9,10 @@ export function modelReservation(model, config, hardware, gpuIds, checkCapacity=
   const expert = Object.fromEntries((config.expert ?? []).map(p => [p.id,p.value]));
   const label = config.beginner?.contextLength === 'recommended' ? '128k' : config.beginner?.contextLength;
   const context = Number.parseInt(label ?? '128k') * 1024;
-  if (!Number.isFinite(context) || context < 4096 || checkCapacity && context > model.contextMax) throw new Error('Choose a supported conversation context.');
+  if (!Number.isFinite(context) || context < 1024 || checkCapacity && context > model.contextMax) throw new Error('Choose a supported conversation context.');
   const chosen = hardware.gpus.filter(g => gpuIds.includes(deviceId(g)));
   const reserve = config.extra?.headroom === 'full' ? Math.max(2,hardware.memory.totalGb*.125) : Math.max(4,hardware.memory.totalGb*.25);
-  const cache = (model.kvKbPerToken ?? 24) * context / 1024**2 * kvMemoryFactor(config.expert) * Math.max(1,Number(expert['server.parallel'] ?? 1));
+  const cache = (model.kvKbPerToken ?? 64) * context / 1024**2 * kvMemoryFactor(config.expert) * Math.max(1,Number(expert['server.parallel'] ?? 1));
   const fixed = cache + (model.experts>0?2.5:1.2);
   const weights = model.diskGb;
   // Equal placement is a planning assumption, never a claim about engine allocation.

@@ -22,6 +22,7 @@ import { MODELS_DIR, diskFreeGb, get as getStore, update } from './store.mjs';
 import * as supervisor from './supervisor.mjs';
 import { EventHub, nowIso, round, uid } from './util.mjs';
 import { locateModelFile } from './model-files.mjs';
+import { requireModelKvCompatible } from './kv-settings.mjs';
 
 /** In-memory runtime state that never needs persisting. */
 const runtime = new Map(); // id -> { state, progress, error }
@@ -105,7 +106,7 @@ export function library() {
       const onDisk = isOnDisk(v.id);
       const loading = REAL ? engine.status === 'starting' && engine.modelId === v.id : entry.state === 'loading';
       const isLoaded = REAL ? engine.running && engine.modelId === v.id : s.loaded === v.id;
-      const state = loading ? 'loading' : entry.state === 'error' ? 'error' : onDisk ? (isLoaded ? 'loaded' : 'installed') : v.local ? 'error' : entry.state;
+      const state = loading ? 'loading' : onDisk ? (isLoaded ? 'loaded' : 'installed') : entry.state === 'error' || v.local ? 'error' : entry.state;
       return {
         ...v,
         catalog: {
@@ -208,6 +209,7 @@ export async function load(id, hooks = {}) {
   const v = variant(id);
   if (!v) throw new Error(`Unknown model ${id}`);
   if (!isOnDisk(id)) throw new Error(`${v.label} is not downloaded yet`);
+  requireModelKvCompatible(v, hooks.config?.expert);
 
   const s = getStore();
   const port = Number(s.expert?.['server.port'] ?? 8080);

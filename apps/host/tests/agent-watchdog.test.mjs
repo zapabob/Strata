@@ -5,15 +5,34 @@ import { mkdtempSync, mkdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startScriptedWorker } from './helpers/scripted-worker.mjs';
-import { createAgentBridge } from '../server/agent/agent-bridge.mjs';
+import { createAgentBridge, turnStallLimit } from '../server/agent/agent-bridge.mjs';
 import { resolveHarness } from '../server/agent/harness-runtime.mjs';
 const HARNESS = process.env.STRATA_HARNESS_DIR;
 const skip = !HARNESS || !resolveHarness({ env: process.env }).ok ? 'STRATA_HARNESS_DIR is not set to a built Harness' : false;
 
+test('local inference has time for a long prompt, while remote silence and running tools retain their limits', () => {
+  const limits = { stallMs: 4 * 60_000, localStallMs: 30 * 60_000, stallToolMs: 20 * 60_000 };
+  assert.equal(turnStallLimit({ ...limits, local: true, toolRunning: false }), 30 * 60_000);
+  assert.equal(turnStallLimit({ ...limits, local: false, toolRunning: false }), 4 * 60_000);
+  assert.equal(turnStallLimit({ ...limits, local: true, toolRunning: true }), 20 * 60_000);
+});
+
+test('a local reply survives silence beyond the remote stall limit and finishes normally', { skip, timeout: 90_000 }, async t => {
+  const worker = await startScriptedWorker({});
+  const dir = mkdtempSync(join(tmpdir(), 'strata-wd-')); const ws = join(dir, 'ws'); mkdirSync(ws, { recursive: true });
+  const bridge = createAgentBridge({ dataDir: dir, localInstances: () => [{ id: 'i', label: 'S', baseUrl: worker.url, modelId: 'scripted-model', context: 32768, slots: 2 }], connections: () => [], env: process.env, startTimeoutMs: 90_000, stallMs: 2500, localStallMs: 8000, stallToolMs: 6000 });
+  t.after(async () => { await bridge.close(); await worker.close(); try { rmSync(dir, { recursive: true, force: true, maxRetries: 3 }); } catch { /* best effort */ } });
+  const out = [], started = Date.now();
+  await bridge.runTurn({ chatId: 'w-pause', message: 'SCRIPT:pause 4000 answered', workspacePath: ws, mode: 'bypass', onFrame: f => out.push(f) });
+  assert.ok(Date.now() - started >= 4000, 'the worker stayed silent longer than the remote stall limit');
+  assert.match(out.filter(f => f.type === 'delta').map(f => f.text).join(''), /answered/);
+  assert.equal(out.some(f => f.type === 'error'), false, 'the local turn completed without watchdog cancellation');
+});
+
 test('a silent model ends the turn with a plain message, and the chat works again afterwards', { skip }, async (t) => {
   const worker = await startScriptedWorker({});
   const dir = mkdtempSync(join(tmpdir(), 'strata-wd-')); const ws = join(dir, 'ws'); mkdirSync(ws, { recursive: true });
-  const bridge = createAgentBridge({ dataDir: dir, localInstances: () => [{ id: 'i', label: 'S', baseUrl: worker.url, modelId: 'scripted-model', context: 32768, slots: 2 }], connections: () => [], env: process.env, startTimeoutMs: 90_000, stallMs: 2500, stallToolMs: 6000 });
+  const bridge = createAgentBridge({ dataDir: dir, localInstances: () => [{ id: 'i', label: 'S', baseUrl: worker.url, modelId: 'scripted-model', context: 32768, slots: 2 }], connections: () => [], env: process.env, startTimeoutMs: 90_000, stallMs: 2500, localStallMs: 2500, stallToolMs: 6000 });
   t.after(async () => { await bridge.close(); await worker.close(); try { rmSync(dir, { recursive: true, force: true, maxRetries: 3 }); } catch { /* best effort */ } });
   const out = [];
   const t0 = Date.now();
@@ -31,7 +50,7 @@ test('engine progress keeps a long prompt read alive past the stall limit, then 
   const worker = await startScriptedWorker({});
   const dir = mkdtempSync(join(tmpdir(), 'strata-wd-')); const ws = join(dir, 'ws'); mkdirSync(ws, { recursive: true });
   const started = Date.now();
-  const bridge = createAgentBridge({ dataDir: dir, localInstances: () => [{ id: 'i', label: 'S', baseUrl: worker.url, modelId: 'scripted-model', context: 32768, slots: 2 }], connections: () => [], env: process.env, startTimeoutMs: 90_000, stallMs: 2500, stallToolMs: 6000, engineGraceMs: 60_000,
+  const bridge = createAgentBridge({ dataDir: dir, localInstances: () => [{ id: 'i', label: 'S', baseUrl: worker.url, modelId: 'scripted-model', context: 32768, slots: 2 }], connections: () => [], env: process.env, startTimeoutMs: 90_000, stallMs: 2500, localStallMs: 2500, stallToolMs: 6000, engineGraceMs: 60_000,
     // The engine moves for 7 s (a prompt being read), then goes quiet.
     engineProgress: () => (Date.now() - started < 7_000 ? `reading:${Date.now()}` : null) });
   t.after(async () => { await bridge.close(); await worker.close(); try { rmSync(dir, { recursive: true, force: true, maxRetries: 3 }); } catch { /* best effort */ } });

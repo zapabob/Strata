@@ -37,14 +37,16 @@ export function ModelRunScreen() {
     const native = useNative();
     const location = parseLocation(window.location.hash), entry = location.param;
     const [other, setOther] = useState(entry === 'local' || entry === 'local-import'), [importFirst, setImportFirst] = useState(entry === 'local-import');
-    if (native && other)
-        return <NativeLocalModel onBack={() => { setOther(false); setImportFirst(false); }}/>;
+    const [llamaPath, setLlamaPath] = useState<string | null>(null);
+    if (native && other && llamaPath === null)
+        return <NativeLocalModel onBack={() => { setOther(false); setImportFirst(false); }} onAlternative={path => setLlamaPath(path)}/>;
     if (native && !other)
         return <NativeModels onOtherModels={() => setOther(true)} onImport={() => { setImportFirst(true); setOther(true); }}/>;
-    return <><LegacyModelRunScreen importFirst={importFirst} initialVariant={location.query.get('variant') ?? undefined}/>{tr(other ? <button className="st-btn native-return" onClick={() => setOther(false)}>{tr("Back")}</button> : null)}</>;
+    return <><LegacyModelRunScreen importFirst={importFirst || llamaPath !== null} importPath={llamaPath ?? undefined} initialVariant={location.query.get('variant') ?? undefined}/>{tr(other ? <button className="st-btn native-return" onClick={() => { setLlamaPath(null); setOther(false); }}>{tr("Back")}</button> : null)}</>;
 }
-function LegacyModelRunScreen({ importFirst = false, initialVariant }: {
+function LegacyModelRunScreen({ importFirst = false, importPath, initialVariant }: {
     importFirst?: boolean;
+    importPath?: string;
     initialVariant?: string;
 }) {
     const engine = useStore(s => s.engine), hardware = useStore(s => s.hardware), library = useStore(s => s.library);
@@ -288,7 +290,7 @@ function LegacyModelRunScreen({ importFirst = false, initialVariant }: {
             if (engine && hardware) {
                 const nextConfig = recommendedConfig(engine, hardware);
                 if (next?.local) {
-                    const k = [4, 8, 16, 32, 64, 128, 256, 512, 1024].filter(k => k * 1024 <= next.contextMax).at(-1) ?? 4;
+                    const k = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024].filter(k => k * 1024 <= next.contextMax).at(-1) ?? 1;
                     const context = Math.min(32, k);
                     nextConfig.beginner.contextLength = `${context}k`;
                     nextConfig.expert['ctx.length'] = `${context}K`;
@@ -436,7 +438,7 @@ function LegacyModelRunScreen({ importFirst = false, initialVariant }: {
           </section>
           <section className="run-card run-context"><div className="run-card__head"><span><Icon name="chat" size={19}/><h2>{tr("Conversation context")}</h2></span><strong>{tr(ctx / 1024)}{tr("K ")}<small>{tr("tokens")}</small></strong></div><p>{tr("How much your model can keep in mind.")}</p>
             <div className="run-context-presets" role="group" aria-label={tr("Context presets")}>{tr([32, 64, 128, 256].map(k => <button key={k} disabled={k > contextMax} aria-pressed={ctx === k * 1024} onClick={() => setContext(k)}><span>{tr(k)}{tr("K")}</span></button>))}</div>
-            <div className="run-context-bottom"><label className="run-context-exact">{tr("Custom ")}<input className="st-input" aria-label={tr("Custom context in K tokens")} type="number" min="4" max={contextMax} step="1" value={Number.isFinite(ctx) ? ctx / 1024 : ''} onChange={e => {
+            <div className="run-context-bottom"><label className="run-context-exact">{tr("Custom ")}<input className="st-input" aria-label={tr("Custom context in K tokens")} type="number" min="1" max={contextMax} step="1" value={Number.isFinite(ctx) ? ctx / 1024 : ''} onChange={e => {
             if (e.target.value)
                 setContext(Number(e.target.value));
         }}/><span>{tr("K")}</span></label></div>
@@ -484,7 +486,7 @@ function LegacyModelRunScreen({ importFirst = false, initialVariant }: {
       {tr(selectedProfile && profileChanged ? <button role="menuitem" className="menu__item run-settings-action" onClick={() => { setProfileMenu(false); chooseProfile(selectedProfile.id); }}><span className="run-settings-icon"><Icon name="refresh" size={18}/></span>{tr("Restore saved settings")}</button> : null)}
     </FloatingMenu> : null)}
     <Dialog open={libraryOpen} className="run-library-dialog" title={tr("Manage models")} onClose={() => setLibraryOpen(false)}><ModelsScreen embedded familyOverride={model.family} selectedVariant={model.id} contextOverride={ctx} onChoose={id => { chooseModel(id); setLibraryOpen(false); }}/></Dialog>
-    <LocalModelImport open={localModelOpen} directory={library.disk.modelsDir} onClose={() => setLocalModelOpen(false)} onChoose={id => chooseModel(id)}/>
+    <LocalModelImport open={localModelOpen} directory={library.disk.modelsDir} initialPath={importPath} onClose={() => setLocalModelOpen(false)} onChoose={id => chooseModel(id)}/>
     <Dialog open={profileOpen} compact title={tr(updateExisting ? 'Update saved settings' : 'Save settings')} onClose={() => !pending && setProfileOpen(false)} actions={<><Btn disabled={pending} onClick={() => setProfileOpen(false)}>{tr("Cancel")}</Btn><Btn variant="primary" disabled={!profileName.trim() || pending || imagePending || invalid} onClick={() => void storeProfile()}>{tr(pending ? 'Saving…' : updateExisting ? 'Update settings' : 'Save settings')}</Btn></>}><div className="run-save-profile"><label className="input-field"><span>{tr("Name")}</span><input className="st-input" aria-label={tr("Settings name")} maxLength={64} value={profileName} onChange={e => setProfileName(e.target.value)}/></label><p className="small muted">{tr(model.name)} · {tr(ctx / 1024)}{tr("K \u00B7 ")}{tr(use === 'full' ? 'Maximum performance' : 'Room for other apps')}</p><label className="run-default-choice"><input type="checkbox" checked={makeDefault} onChange={e => setMakeDefault(e.target.checked)}/><span>{tr("Use by default for this model")}<small>{tr("On this computer. Restore it whenever you open Models.")}</small></span></label>{tr(profileError ? <ErrorNotice message={profileError}/> : null)}</div></Dialog>
     <DemoTest open={testOpen} onClose={() => setTestOpen(false)} experience={experience}/>
     <Dialog open={discardOpen} compact title={tr("Restore saved settings?")} onClose={() => setDiscardOpen(false)} actions={<><Btn onClick={() => setDiscardOpen(false)}>{tr("Keep editing")}</Btn><Btn onClick={() => { setConfigDraft(null); void chooseImage(imageModels?.applied ?? 'off'); setActiveProfile('current'); setIssues([]); setDiscardOpen(false); }}>{tr("Restore settings")}</Btn></>}><p>{tr("Replace this draft with the settings last saved to the engine.")}</p></Dialog>

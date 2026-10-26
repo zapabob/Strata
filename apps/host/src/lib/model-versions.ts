@@ -2,13 +2,14 @@ import type { Hardware, ModelVariant, ModelLibrary } from './types';
 export type VersionFit = {zone:'fast'|'slower'|'too-big'|'unknown';needed:number;fastBudget:number;budget:number;over:number};
 /** Fit uses detected pools without double-counting unified memory. No speed benchmark is implied. */
 export function versionFit(v:ModelVariant, hardware:Hardware|null, context=32768):VersionFit {
- const needed=v.diskGb+(v.kvKbPerToken??0)*context/1024**2+(v.experts?2.5:1.2);
+ const kv=typeof v.kvKbPerToken==='number'&&Number.isFinite(v.kvKbPerToken)&&v.kvKbPerToken>0?v.kvKbPerToken:null;
+ const needed=v.diskGb+(kv??64)*context/1024**2+(v.experts?2.5:1.2);
  if(!hardware)return {zone:'unknown',needed,fastBudget:0,budget:0,over:0};
  const ram=Math.max(0,hardware.memory.totalGb),gpu=Math.max(0,hardware.accelerator.usableVramGb);
  const unified=hardware.accelerator.unified;
  const fastBudget=unified?ram*.72:hardware.accelerator.backend==='cpu'?0:gpu*.92;
  const budget=unified?ram*.9:gpu+ram*.6;
- const zone=context>v.contextMax||needed>budget?'too-big':needed<=fastBudget?'fast':'slower';
+ const zone=context>v.contextMax?'too-big':kv===null?'unknown':needed>budget?'too-big':needed<=fastBudget?'fast':'slower';
  return {zone,needed,fastBudget,budget,over:Math.max(0,needed-budget)};
 }
 export function modelFamilies(library:ModelLibrary){return [...new Set(library.variants.map(v=>v.family))];}

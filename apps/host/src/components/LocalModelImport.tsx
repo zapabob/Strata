@@ -7,9 +7,10 @@ import { addLocalModel } from '../lib/store';
 import { sizeGb } from '../lib/format';
 import type { LocalModelFolder, LocalModelPreview } from '../lib/types';
 const fileSize = (bytes: number) => bytes < 1024 ** 2 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : bytes < 1024 ** 3 ? `${Math.round(bytes / 1024 ** 2)} MB` : sizeGb(bytes / 1024 ** 3);
-export function LocalModelImport({ open, directory, onClose, onChoose }: {
+export function LocalModelImport({ open, directory, initialPath, onClose, onChoose }: {
     open: boolean;
     directory: string;
+    initialPath?: string;
     onClose: () => void;
     onChoose: (id: string) => void;
 }) {
@@ -19,7 +20,8 @@ export function LocalModelImport({ open, directory, onClose, onChoose }: {
         if (open) {
             setPreview(null);
             setError('');
-            void browse(directory);
+            const chosen=initialPath?.trim();
+            void (chosen ? /\.gguf$/i.test(chosen) ? inspect(chosen) : browse(chosen) : browse(directory));
         }
     }, [open]);
     async function browse(input: string) {
@@ -83,7 +85,7 @@ export function LocalModelImport({ open, directory, onClose, onChoose }: {
    <details className="local-model-files"><summary>{tr(preview.variant.local!.shards === 1 ? 'File location' : 'Model files')}</summary><code>{preview.variant.local!.path}</code>{tr(preview.files.length > 1 ? <ul>{tr(preview.files.map(file => <li key={file}>{tr(file)}</li>))}</ul> : null)}</details>
    <p className="small muted">{tr("Strata uses these files in place. You can load the model after adding it.")}</p>
    <p className="local-model-compatibility small"><Icon name="info" size={16}/><span>{tr("Custom model \u00B7 engine compatibility is checked when loading. Memory estimates use the file\u2019s metadata.")}</span></p>
-   {tr(!preview.variant.local!.hasChatTemplate ? <p className="small muted">{tr("No chat template is declared; response formatting depends on the engine.")}</p> : null)}
+   {tr(preview.warnings.map(warning => <p className="small muted" key={warning}>{tr(warning)}</p>))}
   </div> : <div className="local-model-browser">
    <p className="small muted">{tr("Choose the model’s .gguf file. For a split model, choose any shard; Strata finds the first and checks the full set.")}</p>
    <form className="local-model-browser__path" onSubmit={e => {

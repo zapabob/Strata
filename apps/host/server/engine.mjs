@@ -4,7 +4,7 @@ import { cachedHardware, detect } from './hardware.mjs';
 import { get as getStore, update } from './store.mjs';
 import * as supervisor from './supervisor.mjs';
 import { nowIso } from './util.mjs';
-import { kvMemoryFactor, resolveKvSettings } from './kv-settings.mjs';
+import { kvMemoryFactor, resolveKvSettings, requireModelKvCompatible } from './kv-settings.mjs';
 
 const engineState = {
   running: false,
@@ -263,11 +263,12 @@ export async function validate(draft = {}) {
     else if (p.type === 'select' && !p.options?.includes(value)) addError(p.id, 'choose a supported value.');
     else if (p.type === 'text' && typeof value !== 'string') addError(p.id, 'enter text.');
   }
-  if (!CONTEXT_TOKENS[String(values['ctx.length']).toLowerCase()] || String(values['ctx.length']).toLowerCase() === 'recommended') addError('ctx.length', 'enter a whole context size from 4K to 1024K.');
+  if (!CONTEXT_TOKENS[String(values['ctx.length']).toLowerCase()] || String(values['ctx.length']).toLowerCase() === 'recommended') addError('ctx.length', 'enter a whole context size from 1K to 1024K.');
   let kvFactor = 1;
   try {
     const cacheParams = Object.entries(values).map(([id, value]) => ({ id, value }));
     resolveKvSettings(cacheParams);
+    requireModelKvCompatible(v, cacheParams);
     kvFactor = kvMemoryFactor(cacheParams);
   } catch (error) {
     addError('ctx.kType', error.message);

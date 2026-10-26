@@ -6,6 +6,8 @@ import { build } from 'esbuild';
 const result=await build({entryPoints:[fileURLToPath(new URL('../src/lib/experience.ts',import.meta.url))],bundle:true,write:false,platform:'node',format:'esm'});
 const code=result.outputFiles[0].text;
 const { estimate, recommend, configKey, hardwareKey, groupVariants, DEFAULT_EXECUTION: config } = await import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`);
+const versionCode=(await build({entryPoints:[fileURLToPath(new URL('../src/lib/model-versions.ts',import.meta.url))],bundle:true,write:false,platform:'node',format:'esm'})).outputFiles[0].text;
+const { versionFit }=await import(`data:text/javascript;base64,${Buffer.from(versionCode).toString('base64')}`);
 const hw = { cpu: { model: 'Fixture CPU' }, gpus: [{ name: 'Fixture GPU' }], memory: { totalGb: 32 }, accelerator: { unified: true, backend: 'metal', usableVramGb: 24 } };
 const base = { id: 'fixture-q4', name: 'Fixture', family: 'Fixture-8B', params: '8B', quant: 'Q4', diskGb: 4, kvKbPerToken: 24, experts: 0, contextMax: 32768, catalog: { family: 'Fixture', version: '8B', purpose: 'Test', capabilities: ['Text'], agentApproved: false, balancedRank: 2, review: 'Not reviewed' } };
 function measured(v, reading, answer, extra = {}) { return { ...v, performance: [{ source: 'measured', hardware: hardwareKey(hw), backend: 'metal', config: configKey(v, config), workload: 'document', cache: 'cold-prompt', reading: { low: reading, high: reading + 10 }, answer: { low: answer, high: answer + 5 }, date: '2026-10-05', attribution: 'Test fixture', ...extra }] }; }
@@ -26,6 +28,15 @@ test('context changes memory; unified pools are never doubled; offload remains u
   assert.equal(estimate(base, hw, { ...config, context: 4096 }, 'document').fitsWorkload, false);
   assert.equal(estimate(base, hw, { ...config, context: 4096 }, 'document', true).reading, null);
   assert.equal(estimate(base, hw, { ...config, context: 65536 }).fit, 'unsupported');
+});
+test('incomplete local KV metadata uses provisional memory without claiming a comfortable fit', () => {
+  const partial={...base,kvKbPerToken:null,layerCount:null};
+  const result=estimate(partial,hw,config);
+  assert.equal(result.memory.cache,64*config.context/1024**2);
+  assert.equal(result.fit,'unknown');
+  const fit=versionFit(partial,hw,config.context);
+  assert.equal(fit.needed,base.diskGb+result.memory.cache+1.2);
+  assert.equal(fit.zone,'unknown');
 });
 test('agent capability gating beats raw reading speed; output speed selects Performance', () => {
   const fast = measured({ ...base, id: 'fast' }, 900, 150);

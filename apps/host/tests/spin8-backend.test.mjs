@@ -49,15 +49,25 @@ test('Windows resolver finds root, version, and CMake bin llama-server.exe paths
   try {
     const engine = join(base, 'engine');
     const modelsDir = join(base, 'models');
+    const componentsDir = join(base, 'components');
     const dir = join(engine, 'prism', 'bin', 'Release');
     mkdirSync(dir, { recursive: true });
     const nested = join(dir, 'llama-server.exe');
     writeFileSync(nested, 'fixture');
-    assert.equal(findBinary({ platform: 'win32', env: {}, modelsDir }).path, nested);
+    assert.equal(findBinary({ platform: 'win32', env: {}, modelsDir, componentsDir }).path, nested);
     const root = join(engine, 'llama-server.exe');
     writeFileSync(root, 'fixture');
-    assert.equal(findBinary({ platform: 'win32', env: {}, modelsDir }).path, root);
-    assert.equal(findBinary({ platform: 'win32', env: { STRATA_LLAMA_SERVER: nested }, modelsDir }).path, nested);
+    assert.equal(findBinary({ platform: 'win32', env: {}, modelsDir, componentsDir }).path, root);
+    const generic=join(componentsDir,'generic-gguf'),activated=join(generic,'v1');mkdirSync(activated,{recursive:true});
+    const packaged=join(activated,'llama-server.exe');writeFileSync(packaged,'fixture');
+    writeFileSync(join(generic,'active.json'),JSON.stringify({folder:'v1'}));
+    assert.deepEqual(findBinary({ platform: 'win32', env: {}, modelsDir, componentsDir }),{path:packaged,source:'generic-gguf'});
+    const outside=join(componentsDir,'llama-server.exe');writeFileSync(outside,'outside fixture');
+    for(const folder of ['..','.']){
+      writeFileSync(join(generic,'active.json'),JSON.stringify({folder}));
+      assert.equal(findBinary({ platform: 'win32', env: {}, modelsDir, componentsDir }).path, root,`unsafe active pointer ${folder} is ignored`);
+    }
+    assert.equal(findBinary({ platform: 'win32', env: { STRATA_LLAMA_SERVER: nested }, modelsDir, componentsDir }).path, nested);
   } finally { rmSync(base, { recursive: true, force: true }); }
 });
 

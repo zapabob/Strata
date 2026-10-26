@@ -4,7 +4,9 @@ import { createHash } from 'node:crypto';
 import { basename, dirname, extname, isAbsolute, join } from 'node:path';
 import { homedir } from 'node:os';
 import { readGGUF } from './gguf.mjs';
-const ARCHITECTURES=new Set(['qwen2','qwen2moe','qwen3','qwen3moe','qwen3next','qwen35','qwen35moe','llama','gemma','gemma2','gemma3','phi3']);
+// Reject known auxiliary/embedding architectures. The installed llama-server checks text-model support at load time.
+const NON_GENERATIVE=new Set(`clip bert modern-bert nomic-bert nomic-bert-moe neo-bert jina-bert-v2 jina-bert-v3 eurobert
+ t5encoder gemma-embedding llama-embed wavtokenizer-dec pangu-embedded eagle3 dflash paddleocr qwen3tts pockettts talkie`.trim().split(/\s+/));
 const QUANTS={0:'F32',1:'F16',2:'Q4_0',3:'Q4_1',7:'Q8_0',8:'Q5_0',9:'Q5_1',10:'Q2_K',11:'Q3_K_S',12:'Q3_K_M',13:'Q3_K_L',14:'Q4_K_S',15:'Q4_K_M',16:'Q5_K_S',17:'Q5_K_M',18:'Q6_K',19:'IQ2_XXS',20:'IQ2_XS',21:'Q2_K_S',22:'IQ3_XS',23:'IQ3_XXS',24:'IQ1_S',25:'IQ4_NL',26:'IQ3_S',27:'IQ3_M',28:'IQ2_S',29:'IQ2_M',30:'IQ4_XS',31:'IQ1_M',32:'BF16'};
 const clean=value=>String(value??'').replace(/[\x00-\x1f\x7f]/g,' ').trim().slice(0,160);
 function fullPath(input){if(typeof input!=='string'||!input.trim()||input.includes('\0'))throw new Error('Choose a model file or enter its full path.');const path=input.trim().replace(/^~(?=$|[\\/])/,homedir());if(!isAbsolute(path))throw new Error('Enter a full path.');try{return realpathSync(path);}catch{throw new Error('This file or folder is unavailable. Check its location and permissions.');}}
@@ -26,13 +28,21 @@ export function inspectLocalModel(input){
   try{selected=readGGUF(file);}catch{throw new Error('The first shard is missing or invalid. Keep all model shards in the same folder.');}
  }
  const m=selected.metadata,arch=m['general.architecture'];
- if(!ARCHITECTURES.has(arch))throw new Error(`The declared architecture ${clean(arch)||'(missing)'} is not supported by this importer. This model type isn’t supported by the Strata engine; add it as a Custom model API (llama-server) instead.`);
+ if(typeof arch!=='string'||!arch||!(/^[a-z][a-z0-9_-]{0,63}$/).test(arch))throw new Error('This GGUF has a missing or invalid model architecture. Choose a complete text-generation model.');
+ if(NON_GENERATIVE.has(arch))throw new Error(`The declared architecture ${clean(arch)} is not a text-generation model. Choose a chat model GGUF instead.`);
  if(m['general.type']&&m['general.type']!=='model')throw new Error('This is an adapter or auxiliary file. Choose the full model GGUF.');
  if(!m['tokenizer.ggml.model']||!m['tokenizer.ggml.tokens']?.count)throw new Error('This GGUF does not include its tokenizer. Choose the full model, not an adapter. A picture reader (mmproj) goes next to its model, not in its place.');
  const integer=(key,min,max)=>{const value=m[key];if(!Number.isInteger(value)||value<min||value>max)throw new Error(`Missing or invalid ${key} metadata. This model cannot be configured safely.`);return value;};
- const context=integer(`${arch}.context_length`,4096,100_000_000),layers=integer(`${arch}.block_count`,1,4096),embedding=integer(`${arch}.embedding_length`,1,1_000_000),heads=integer(`${arch}.attention.head_count`,1,8192);
- const kvHeads=m[`${arch}.attention.head_count_kv`]??heads,keyLength=m[`${arch}.attention.key_length`]??embedding/heads,valueLength=m[`${arch}.attention.value_length`]??keyLength,experts=m[`${arch}.expert_count`]??0;
- if(![kvHeads,keyLength,valueLength].every(n=>Number.isInteger(n)&&n>=1&&n<=1_000_000)||!Number.isInteger(experts)||experts<0||experts>100_000)throw new Error('This model has invalid attention or expert metadata.');
+ const optionalInteger=(key,min,max)=>m[key]===undefined?null:integer(key,min,max);
+ const estimateInteger=(key,max)=>Number.isInteger(m[key])&&m[key]>=1&&m[key]<=max?m[key]:null;
+ const declaredContext=optionalInteger(`${arch}.context_length`,1024,100_000_000),context=declaredContext??4096;
+ const layers=optionalInteger(`${arch}.block_count`,1,4096),embedding=optionalInteger(`${arch}.embedding_length`,1,1_000_000),heads=estimateInteger(`${arch}.attention.head_count`,8192);
+ const kvHeads=m[`${arch}.attention.head_count_kv`]===undefined?heads:estimateInteger(`${arch}.attention.head_count_kv`,8192);
+ const keyLength=m[`${arch}.attention.key_length`]===undefined?(embedding&&heads&&embedding%heads===0?embedding/heads:null):estimateInteger(`${arch}.attention.key_length`,1_000_000);
+ const valueLength=m[`${arch}.attention.value_length`]===undefined?keyLength:estimateInteger(`${arch}.attention.value_length`,1_000_000);
+ const experts=optionalInteger(`${arch}.expert_count`,0,100_000)??0;
+ const kvKbPerToken=layers&&heads&&kvHeads&&keyLength&&valueLength?layers*kvHeads*(keyLength+valueLength)/1024:null;
+ const quantizedKvSupported=keyLength!==null&&valueLength!==null&&keyLength%32===0&&valueLength%32===0;
  const count=m['split.count']??1;if(!Number.isInteger(count)||count<1||count>256)throw new Error('This split model has an unsupported number of shards.');
  const files=[],names=[];let totalTensors=0,parameters=0;
  for(let i=0;i<count;i++){
@@ -46,8 +56,8 @@ export function inspectLocalModel(input){
  const bytes=files.reduce((sum,f)=>sum+f.bytes,0),name=clean(m['general.name'])||basename(file).replace(/-00001-of-\d{5}/,'').replace(/\.gguf$/i,''),quant=QUANTS[m['general.file_type']]??'GGUF';
  const id=`local-${createHash('sha256').update(file).digest('hex').slice(0,24)}`,gb=bytes/1024**3;
  const local={path:file,files,architecture:arch,hasChatTemplate:!!m['tokenizer.chat_template'],contextLength:context,shards:count,metadataSignature:createHash('sha256').update(JSON.stringify(m)).digest('hex')};
- const variant={id,name,family:'Local models',quant,label:`${name} · ${quant}`,params:parameters>=1e9?`${(parameters/1e9).toFixed(1)}B`:`${Math.round(parameters/1e6)}M`,blurb:'Local model. Engine compatibility is checked when loading.',role:'option',tier:'local',ramClass:{minGb:gb+2,maxGb:gb+6,label:'From GGUF metadata'},diskGb:gb,downloadGb:0,contextMax:Math.min(context,1048576),layerCount:layers,experts,kvKbPerToken:layers*kvHeads*(keyLength+valueLength)/1024,hasDraft:false,kvModes:['INT8','FP16'],tags:['local'],source:{repo:'local',file:basename(file),bytes},local};
- return {variant,files:names,warnings:[...(local.hasChatTemplate?[]:['No chat template was declared. Response formatting depends on the engine.']),'Memory is estimated from metadata; engine support and actual allocation are checked when loading.']};
+ const variant={id,name,family:'Local models',quant,label:`${name} · ${quant}`,params:parameters>=1e9?`${(parameters/1e9).toFixed(1)}B`:`${Math.round(parameters/1e6)}M`,blurb:'Local model. Engine compatibility is checked when loading.',role:'option',tier:'local',ramClass:{minGb:gb+2,maxGb:gb+6,label:'From GGUF metadata'},diskGb:gb,downloadGb:0,contextMax:Math.min(context,1048576),layerCount:layers,experts,kvKbPerToken,hasDraft:false,kvModes:quantizedKvSupported?['INT8','FP16']:['FP16'],tags:['local'],source:{repo:'local',file:basename(file),bytes},local};
+ return {variant,files:names,warnings:[...(local.hasChatTemplate?[]:['No chat template was declared. Response formatting depends on the engine.']),...(declaredContext===null?['Context length is not declared. Start at 4K tokens; the engine checks the actual limit when loading.']:[]),...(kvKbPerToken===null?['KV memory metadata is incomplete. A conservative estimate is used; the engine checks actual allocation when loading.']:[]),...(!quantizedKvSupported?['This GGUF cannot use a quantized K/V cache with its declared attention width. Choose FP16 for KV mode and leave K/V cache precision at Inherit or FP16.']:[]),'Memory is estimated from metadata; engine support and actual allocation are checked when loading.']};
 }
 export function createLocalModels(dataDir){
  mkdirSync(dataDir,{recursive:true});const file=join(dataDir,'local-models.json');let records=[];
