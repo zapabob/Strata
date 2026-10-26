@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Strata — Extreme Local Inference on Normal PCs</title>
-  <meta name="description" content="Native DeepSeek-V4.1-Flash Uncensored MLA, Arbitrary GGUF ModelBundle, Spin(8) Triality, and Hermes Persistent Memory on 32GB RAM.">
+  <meta name="description" content="Local inference with a desktop app, a Terminal and native or generic GGUF engines. Windows inference results and preview limits are documented.">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="icon" href="media/favicon.ico" type="image/x-icon">
 </head>
@@ -37,25 +37,24 @@
   <!-- Hero Section -->
   <main>
     <section class="container" aria-labelledby="preview131k-title" style="padding:1rem;border:2px solid #b7791f;border-radius:12px;margin:1rem auto;">
-      <h2 id="preview131k-title">Experimental131k measurement preview / 131k計測の実験版</h2>
-      <p><strong>0.3.2-preview.20261026.1: NOT QUALIFIED for131k inference, speed or quality.</strong>
-      The8/10 GiB guarded attempts stopped before READY at capacity131072, spec4 + MTP, k8v4, reserve256.
-      CPU tests passed; no completed model request or throughput result. Reused binary provenance: UNRESOLVED.
-      GUI unchanged. Latest-source cloud CI: BLOCKED (GitHub HTTP422); measured checkpoint CI passed. モデル推論・速度・品質は未認定です。</p>
-      <p><a href="https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261026.1">Preview download / ダウンロード</a> ·
-      <a href="https://github.com/zapabob/Strata/blob/main/docs/PERF131K.md">Evidence and limitations / 実測と制限</a></p>
+      <h2 id="preview131k-title">Windows inference preview / 推論動作確認プレビュー</h2>
+      <p><strong>0.3.2-preview.20261027.1: actual 4K and 32K inference passed.</strong>
+      Configured capacity 131072, spec4 + MTP, k8v4. First and repeated requests completed at both lengths; all four recall probes passed on RTX 5060 Ti 16 GiB / RAM 32 GiB.</p>
+      <p>GUI fixes extend quiet local inference to 30 minutes and provide a generic GGUF path when native import is unsupported. The companion bundle includes the generic backend. File and engine compatibility are checked; unsupported models are not promised to work.</p>
+      <p>4K・32Kの生成を実機確認済みです。ローカル推論の4分打ち切りとGGUF導入経路を修正しました。
+      Full-length 131k, broad quality, statistical performance, interactive screen testing and long-run stability remain unqualified. Memory integration stays disabled by default.</p>
+      <p><a href="https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261027.1">Preview, GUI companion and checksums / 配布とハッシュ</a> ·
+      <a href="https://github.com/zapabob/Strata/blob/main/docs/PERF131K.md">Measurements and limits / 実測と制限</a></p>
     </section>
 
     <section class="hero-section">
       <div class="container">
         <div class="hero-pill">
           <span class="pill-dot"></span>
-          <span data-i18n="hero_pill">v0.3.0 Released • sm_120 Blackwell & sm_89 Native</span>
+          <span data-i18n="hero_pill">Windows inference preview: 27 October 2026</span>
         </div>
-        <h1 class="hero-title" data-i18n="hero_title">Extreme Local Inference on Normal PCs</h1>
-        <p class="hero-desc" data-i18n="hero_desc">
-          Native DeepSeek-V4.1-Flash Uncensored MLA, Arbitrary GGUF ModelBundle, Spin(8) Triality, and Hermes Persistent Memory on 32GB RAM.
-        </p>
+        <h1 class="hero-title" data-i18n="hero_title">Local inference, with measured limits</h1>
+        <p class="hero-desc" data-i18n="hero_desc">Desktop and Terminal interfaces for native inference and compatible GGUF models. Actual 4K and 32K generation is documented; full 131k certification remains open.</p>
 
         <div class="cta-group">
           <a href="#downloads" class="btn-primary">
@@ -64,7 +63,7 @@
               <polyline points="7 10 12 15 17 10"></polyline>
               <line x1="12" y1="15" x2="12" y2="3"></line>
             </svg>
-            <span data-i18n="hero_download">Download v0.3.0 for Windows</span>
+            <span data-i18n="hero_download">Download v0.3.1 for Windows</span>
           </a>
           <a href="https://github.com/zapabob/Strata" class="btn-secondary" target="_blank" rel="noopener">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -88,7 +87,7 @@
             </div>
           </div>
           <div class="terminal-body">
-            <code class="terminal-cmd" id="terminal-cmd">irm https://github.com/zapabob/Strata/releases/latest/download/install.ps1 | iex</code>
+            <code class="terminal-cmd" id="terminal-cmd">Start-Process https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261027.1</code>
             <button class="copy-btn" id="copy-cmd-btn" aria-label="Copy Command">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -107,65 +106,51 @@
       <div class="container">
         <div class="section-head">
           <span class="section-pill" data-i18n="feat_pill">Technical Highlights</span>
-          <h2 class="section-title" data-i18n="feat_title">Engineered for Mathematical & Hardware Precision</h2>
-          <p class="section-desc" data-i18n="feat_desc">
-            Direct native tensor execution, zero-cloud fallback, and verified dialect boundaries.
-          </p>
+          <h2 class="section-title" data-i18n="feat_title">What this preview changes</h2>
+          <p class="section-desc" data-i18n="feat_desc">Measured on RTX 5060 Ti 16 GiB and 32 GiB RAM. Model compatibility depends on the selected backend.</p>
         </div>
 
         <div class="features-grid">
           <div class="feature-card">
             <div class="feature-icon">⚡</div>
-            <h3 class="feature-title" data-i18n="f1_title">DeepSeek-V4.1-Flash-1017 Uncensored MLA</h3>
-            <p class="feature-text" data-i18n="f1_desc">
-              Native Multi-Head Latent Attention (MLA) with 128-rank KV compression. Eliminates 75% KV memory bandwidth bottleneck with full precision uncensored reasoning.
-            </p>
-            <span class="feature-tag" data-i18n="f1_tag">MLA Native Kernel</span>
+            <h3 class="feature-title" data-i18n="f1_title">Qwen3.8 inference verified</h3>
+            <p class="feature-text" data-i18n="f1_desc">Q2_0, configured capacity 131072, spec4 + MTP and k8v4 completed exact 4096- and 32768-token requests. This does not certify full-length inference.</p>
+            <span class="feature-tag" data-i18n="f1_tag">Actual generation</span>
           </div>
 
           <div class="feature-card">
             <div class="feature-icon">📦</div>
-            <h3 class="feature-title" data-i18n="f2_title">Arbitrary GGUF ModelBundle Loader</h3>
-            <p class="feature-text" data-i18n="f2_desc">
-              Deep content-based format inspection and dialect verification. Never guesses from file extensions; rejects broken shards and connects to sandboxed backends.
-            </p>
-            <span class="feature-tag" data-i18n="f2_tag">Dialect Safe-Guard</span>
+            <h3 class="feature-title" data-i18n="f2_title">Local GGUF import</h3>
+            <p class="feature-text" data-i18n="f2_desc">Inspect local text GGUF files and offer a generic backend when native import is unsupported. Loading still checks actual backend compatibility.</p>
+            <span class="feature-tag" data-i18n="f2_tag">Explicit compatibility checks</span>
           </div>
 
           <div class="feature-card">
             <div class="feature-icon">📐</div>
-            <h3 class="feature-title" data-i18n="f3_title">Spin(8) Triality & Clifford Algebra</h3>
-            <p class="feature-text" data-i18n="f3_desc">
-              Exact octonionic triality projection and zero-drift dynamic scaling. Fixed 3.375 GiB CUDA thread stack exhaustion via 64 KiB dynamic shared memory.
-            </p>
-            <span class="feature-tag" data-i18n="f3_tag">Zero-Drift Geometry</span>
+            <h3 class="feature-title" data-i18n="f3_title">Startup resource lifetime</h3>
+            <p class="feature-text" data-i18n="f3_desc">Join completed prefetch threads so their I/O scratch is released. CPU failure-injection tests and the CUDA build have separate evidence.</p>
+            <span class="feature-tag" data-i18n="f3_tag">Measured startup fix</span>
           </div>
 
           <div class="feature-card">
             <div class="feature-icon">🧠</div>
-            <h3 class="feature-title" data-i18n="f4_title">Hermes & Hakua Long-Term Memory</h3>
-            <p class="feature-text" data-i18n="f4_desc">
-              Persistent agent personality (SOUL.md) and rolling conversational context (Memory.md) lifecycle. Automatically synchronizes across engine reboots.
-            </p>
-            <span class="feature-tag" data-i18n="f4_tag">Stateful Agent Core</span>
+            <h3 class="feature-title" data-i18n="f4_title">Optional memory harness</h3>
+            <p class="feature-text" data-i18n="f4_desc">Disabled by default. Per-user isolation, approved persona files and explicit per-turn consent are required. Runtime resource qualification remains open.</p>
+            <span class="feature-tag" data-i18n="f4_tag">Opt-in; qualification open</span>
           </div>
 
           <div class="feature-card">
             <div class="feature-icon">🚀</div>
-            <h3 class="feature-title" data-i18n="f5_title">32GB RAM Zero-VRAM Drafter</h3>
-            <p class="feature-text" data-i18n="f5_desc">
-              Speculative draft heads execute entirely in system RAM without consuming GPU VRAM, allowing full 16GB VRAM allocation for primary model context.
-            </p>
-            <span class="feature-tag" data-i18n="f5_tag">Hybrid CPU/GPU Lifecycle</span>
+            <h3 class="feature-title" data-i18n="f5_title">Long local requests</h3>
+            <p class="feature-text" data-i18n="f5_desc">The quiet local inference allowance is 30 minutes. Remote and tool limits remain separate. Cancellation and subsequent recovery passed real Harness tests.</p>
+            <span class="feature-tag" data-i18n="f5_tag">Finite timeout and cancellation</span>
           </div>
 
           <div class="feature-card">
             <div class="feature-icon">⚙️</div>
-            <h3 class="feature-title" data-i18n="f6_title">Native sm_120 & sm_89 CUDA 13.3</h3>
-            <p class="feature-text" data-i18n="f6_desc">
-              Direct CUDA 13.3 compilation with sm_120 Blackwell and sm_89 Ada Lovelace architecture targets. Dynamic MSVC runtime with full AVX2 CPU fallback.
-            </p>
-            <span class="feature-tag" data-i18n="f6_tag">Hardware Pinned</span>
+            <h3 class="feature-title" data-i18n="f6_title">Windows CUDA SM120 preview</h3>
+            <p class="feature-text" data-i18n="f6_desc">The tested artifact targets Windows x64 and RTX 5060 Ti. HIP, SYCL, other GPUs and image inference are not qualified by these results.</p>
+            <span class="feature-tag" data-i18n="f6_tag">Hardware scope stated</span>
           </div>
         </div>
       </div>
@@ -175,30 +160,28 @@
     <section class="section" id="benchmarks">
       <div class="container">
         <div class="section-head">
-          <span class="section-pill" data-i18n="bench_pill">Real Hardware Benchmarks</span>
-          <h2 class="section-title" data-i18n="bench_title">Measured on RTX 5060 Ti 16GB + 32GB RAM</h2>
-          <p class="section-desc" data-i18n="bench_desc">
-            Empirical verification on AMD Ryzen 5 4500 (6C/12T), NVIDIA GeForce RTX 5060 Ti 16 GiB, and 32GB DDR4 System RAM.
-          </p>
+          <span class="section-pill" data-i18n="bench_pill">Actual synthetic inference</span>
+          <h2 class="section-title" data-i18n="bench_title">RTX 5060 Ti 16 GiB + RAM 32 GiB</h2>
+          <p class="section-desc" data-i18n="bench_desc">One synthetic recall task; diagnostics OFF. First and repeated requests each generated 52 tokens. No paired statistical speed or broad quality conclusion.</p>
         </div>
 
         <div class="benchmark-layout">
           <div class="metric-cards">
             <div class="metric-card">
-              <div class="metric-val" data-i18n="m1_val">1,643 MB/s</div>
-              <div class="metric-label" data-i18n="m1_label">Expert Cache Prefill Speed</div>
+              <div class="metric-val" data-i18n="m1_val">4096 / 32768</div>
+              <div class="metric-label" data-i18n="m1_label">Actual input tokens</div>
             </div>
             <div class="metric-card">
-              <div class="metric-val" data-i18n="m2_val">3.375 GiB</div>
-              <div class="metric-label" data-i18n="m2_label">CUDA VRAM Stack Saved</div>
+              <div class="metric-val" data-i18n="m2_val">4 / 4</div>
+              <div class="metric-label" data-i18n="m2_label">Sentinel recall probes passed</div>
             </div>
             <div class="metric-card">
-              <div class="metric-val" data-i18n="m3_val">42.8 t/s</div>
-              <div class="metric-label" data-i18n="m3_label">Decode Speed (DeepSeek MLA)</div>
+              <div class="metric-val" data-i18n="m3_val">494.76 s</div>
+              <div class="metric-label" data-i18n="m3_label">32K first prompt processing</div>
             </div>
             <div class="metric-card">
-              <div class="metric-val" data-i18n="m4_val">11.3 GiB</div>
-              <div class="metric-label" data-i18n="m4_label">Free VRAM Maintained (32k Ctx)</div>
+              <div class="metric-val" data-i18n="m4_val">22.69 GiB</div>
+              <div class="metric-label" data-i18n="m4_label">32K peak Job commit</div>
             </div>
           </div>
 
@@ -206,34 +189,34 @@
             <table class="benchmark-table">
               <thead>
                 <tr>
-                  <th data-i18n="th_model">Model / Backend</th>
-                  <th data-i18n="th_engine">Architecture</th>
-                  <th data-i18n="th_vram">VRAM Used</th>
-                  <th data-i18n="th_prefill">Prefill Rate</th>
-                  <th data-i18n="th_decode">Generation Speed</th>
+                  <th data-i18n="th_model">Input / request</th>
+                  <th data-i18n="th_engine">Configuration</th>
+                  <th data-i18n="th_vram">Peak Job commit</th>
+                  <th data-i18n="th_prefill">Prompt time</th>
+                  <th data-i18n="th_decode">Decode time (52 tokens)</th>
                 </tr>
               </thead>
               <tbody>
                 <tr class="highlight">
-                  <td style="font-weight: 600;" data-i18n="tb1_model">DeepSeek-V4.1-Flash (Uncensored)</td>
-                  <td data-i18n="tb1_eng">Strata Native MLA + Spin(8)</td>
-                  <td data-i18n="tb1_vram">4.7 GiB</td>
-                  <td data-i18n="tb1_pre">1,643 MB/s</td>
-                  <td class="badge-fast" data-i18n="tb1_dec">42.8 tokens/sec</td>
+                  <td style="font-weight: 600;" data-i18n="tb1_model">4096 / first</td>
+                  <td data-i18n="tb1_eng">Qwen3.8 Q2_0, spec4 + MTP</td>
+                  <td data-i18n="tb1_vram">22.14 GiB</td>
+                  <td data-i18n="tb1_pre">105.562 s</td>
+                  <td class="badge-fast" data-i18n="tb1_dec">13.531 s</td>
                 </tr>
                 <tr>
-                  <td data-i18n="tb2_model">Qwen3.8-Flash-Next 27B-A3B</td>
-                  <td data-i18n="tb2_eng">Strata Native Compressed MoE</td>
-                  <td data-i18n="tb2_vram">4.67 GiB</td>
-                  <td data-i18n="tb2_pre">624 MB/s</td>
-                  <td class="badge-fast" data-i18n="tb2_dec">34.5 tokens/sec</td>
+                  <td data-i18n="tb2_model">32768 / first</td>
+                  <td data-i18n="tb2_eng">Qwen3.8 Q2_0, spec4 + MTP</td>
+                  <td data-i18n="tb2_vram">22.69 GiB</td>
+                  <td data-i18n="tb2_pre">494.758 s</td>
+                  <td class="badge-fast" data-i18n="tb2_dec">13.759 s</td>
                 </tr>
                 <tr>
-                  <td style="color: var(--text-muted);" data-i18n="tb3_model">Standard llama.cpp (Baseline)</td>
-                  <td style="color: var(--text-muted);" data-i18n="tb3_eng">CPU/GPU Split (No Drafter)</td>
-                  <td style="color: var(--text-muted);" data-i18n="tb3_vram">12.8 GiB</td>
-                  <td style="color: var(--text-muted);" data-i18n="tb3_pre">310 MB/s</td>
-                  <td style="color: var(--text-muted);" data-i18n="tb3_dec">14.2 tokens/sec</td>
+                  <td style="color: var(--text-muted);" data-i18n="tb3_model">32768 / repeated</td>
+                  <td style="color: var(--text-muted);" data-i18n="tb3_eng">Same run; prefix reuse</td>
+                  <td style="color: var(--text-muted);" data-i18n="tb3_vram">22.69 GiB (run peak)</td>
+                  <td style="color: var(--text-muted);" data-i18n="tb3_pre">0.646 s</td>
+                  <td style="color: var(--text-muted);" data-i18n="tb3_dec">3.255 s</td>
                 </tr>
               </tbody>
             </table>
@@ -247,10 +230,8 @@
       <div class="container">
         <div class="section-head">
           <span class="section-pill" data-i18n="arch_pill">System Overview</span>
-          <h2 class="section-title" data-i18n="arch_title">Three-Tier Strict Architecture</h2>
-          <p class="section-desc" data-i18n="arch_desc">
-            Rigid boundary separation prevents engine faults from crashing the user host or CLI.
-          </p>
+          <h2 class="section-title" data-i18n="arch_title">Desktop, Control and inference backend</h2>
+          <p class="section-desc" data-i18n="arch_desc">Separate processes manage the interface, model lifecycle and inference. Ownership checks stop recovery when a child cannot be identified.</p>
         </div>
 
         <div class="arch-diagram">
@@ -267,7 +248,7 @@
           <div class="arch-layer">
             <div class="arch-layer-info">
               <h4 data-i18n="arch_l2_title">Strata Control & Agent Runtime</h4>
-              <p data-i18n="arch_l2_desc">Python 3.10/3.12 control suite, Hermes SOUL/Memory lifecycles, MCP tool endpoints, model bundle verification.</p>
+              <p data-i18n="arch_l2_desc">Python profile and runtime ownership management, model setup and API service. Optional memory integration is disabled by default.</p>
             </div>
             <span class="arch-tech">strata_control • strata_cli • serve</span>
           </div>
@@ -277,9 +258,9 @@
           <div class="arch-layer">
             <div class="arch-layer-info">
               <h4 data-i18n="arch_l3_title">Native C++/CUDA Inference Engine</h4>
-              <p data-i18n="arch_l3_desc">strata.exe, strata_kq.dll, Spin(8) Triality kernels, dynamic shared memory cache, direct GGUF mmap.</p>
+              <p data-i18n="arch_l3_desc">The native CUDA engine and the separately packaged generic GGUF backend. Support and resource needs depend on model and configuration.</p>
             </div>
-            <span class="arch-tech">CUDA 13.3 • sm_120 / sm_89 • AVX2</span>
+            <span class="arch-tech">Windows x64 • CUDA • SM120 preview</span>
           </div>
         </div>
       </div>
@@ -291,45 +272,39 @@
         <div class="section-head">
           <span class="section-pill" data-i18n="dl_pill">Distribution & Verification</span>
           <h2 class="section-title" data-i18n="dl_title">Download Releases</h2>
-          <p class="section-desc" data-i18n="dl_desc">
-            All packages are SHA-256 pinned and audited against external PE dependencies.
-          </p>
+          <p class="section-desc" data-i18n="dl_desc">Preview archives have SHA-256 checksums and dependency manifests. Read their scope and installation instructions before applying an overlay.</p>
         </div>
 
         <div class="download-grid">
           <div class="download-card">
             <div>
-              <span class="dl-badge" data-i18n="d1_badge">Official Release</span>
-              <h3 class="dl-title" data-i18n="d1_title">Strata v0.3.0 Engine & GUI (Windows x64)</h3>
-              <p class="dl-desc" data-i18n="d1_desc">
-                Complete bundle including strata.exe native engine, strata_kq.dll, CUDA 13.3 runtimes, Python control suite, and Tauri/Vite Web UI.
-              </p>
+              <span class="dl-badge" data-i18n="d1_badge">Earlier desktop bundle</span>
+              <h3 class="dl-title" data-i18n="d1_title">Strata v0.3.1 Engine & GUI (Windows x64)</h3>
+              <p class="dl-desc" data-i18n="d1_desc">Existing Windows desktop bundle. Apply the separately documented preview overlays for the new engine and GUI fixes.</p>
               <div class="dl-checksum">
-                SHA-256: 97a2d28bc91474bd37c0dcfd0bc8abc1ed10ae8db3b0c774d5ceb5a4f3c9c374
+                SHA-256: 5f2b27d9a10719115cf62dffb0e1ffc645e1dc793e01d5c50101992bc34630ae
               </div>
             </div>
-            <a href="https://github.com/zapabob/Strata/releases/download/v0.3.0/Strata-0.3.0-windows-x64-sm120-engine-gui.tar.7z" class="btn-primary">
+            <a href="https://github.com/zapabob/Strata/releases/download/v0.3.1/Strata-0.3.1-windows-x64-sm120-engine-gui.tar.7z" class="btn-primary">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                 <polyline points="7 10 12 15 17 10"></polyline>
                 <line x1="12" y1="15" x2="12" y2="3"></line>
               </svg>
-              <span data-i18n="d1_btn">Download (.tar.7z) [412 MB]</span>
+              <span data-i18n="d1_btn">Download v0.3.1 desktop bundle (412.7 MB)</span>
             </a>
           </div>
 
           <div class="download-card">
             <div>
-              <span class="dl-badge" data-i18n="d2_badge">One-Line Terminal Install</span>
-              <h3 class="dl-title" data-i18n="d2_title">Automated Setup Script</h3>
-              <p class="dl-desc" data-i18n="d2_desc">
-                Downloads engine binary for your specific GPU architecture, checks system RAM, and connects to your local terminal path without administrator privileges.
-              </p>
+              <span class="dl-badge" data-i18n="d2_badge">Preview instructions</span>
+              <h3 class="dl-title" data-i18n="d2_title">Read before applying an overlay</h3>
+              <p class="dl-desc" data-i18n="d2_desc">Open the release page for archives, checksums and exact installation limits. These archives are not desktop setup executables.</p>
               <div class="dl-checksum">
-                irm https://github.com/zapabob/Strata/releases/latest/download/install.ps1 | iex
+                Start-Process https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261027.1
               </div>
             </div>
-            <a href="https://github.com/zapabob/Strata#installing-strata-for-a-user" class="btn-secondary" target="_blank" rel="noopener">
+            <a href="https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261027.1" class="btn-secondary" target="_blank" rel="noopener">
               <span>Read Installation Guide →</span>
             </a>
           </div>
@@ -341,7 +316,7 @@
   <!-- Footer -->
   <footer class="footer">
     <div class="container footer-inner">
-      <p data-i18n="footer_text">Strata Fork — High-performance MoE & MLA local inference engine. Licensed under MIT.</p>
+      <p data-i18n="footer_text">Strata fork. Source and measured preview limitations are available on GitHub.</p>
       <div class="footer-links">
         <a href="https://github.com/zapabob/Strata" target="_blank" rel="noopener">GitHub</a>
         <a href="https://github.com/zapabob/Strata/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>

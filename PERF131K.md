@@ -1,3 +1,124 @@
+# Windows inference preview evidence — 27 October 2026
+
+The current preview completed exact 4K and 32K first and repeated generation at
+configured capacity 131072. Full-length inference and scientific qualification
+remain open. See the operational acceptance and GUI sections below, and
+[the release record](WINDOWS_PREVIEW_20261027.md). Earlier entries are retained
+as historical evidence, including failures and unqualified boundary checks.
+
+## Historical boundary candidate — 26 October 2026
+
+Source commit `00c1b770` adds opt-in `--exact-context-boundary` to the native
+engine. The Python server uses zero slack only when its configured native args
+include that flag. For a strict capacity check, also set `fit_max_tokens` to
+`false`; otherwise the usual API behavior may shorten an oversized reservation.
+The default still keeps eight spare context cells. This opt-in mode requires
+single-request serial serving: `--batch` and `--pipeline-windows` must be off.
+
+Commit `6955c759` rejects pipeline and batch modes for this option after
+independent static review found that their final-cell paths were not covered.
+The CPU contract accepts 130048 input tokens with a separate 1024-token output
+reservation and 131071 input tokens with one output token, and rejects each
+one-over request. The API mock passed two focused tests; the native boundary
+helper compiled and exited 0; the Windows CUDA SM120 executable linked and
+its read-only `--help` exited 0. That historical boundary executable is 80,759,296 bytes,
+SHA256 `6f3374e3a6438023aad5b7a8dad9020a9c4383f90b3a31e3402bbfcf271d15b3`.
+The receipt is `H:\Strata\evidence\p01-boundary-20261026\p02-cpu-receipt-after-review.json`.
+No full-context native request or model startup ran on this build. P02 device
+behavior and 131072-token qualification remain unverified.
+
+The current executable includes joined profile prefetch and the foreground
+affinity guard at engine source `56c4613b`. It is 80,752,128 bytes, SHA256
+`20373ca6b9b16b9d220820a902b584d604a64e068d383a26ba11dd4e43f85d93`.
+The CUDA link and read-only help passed; the later one-shot model startup
+failed before READY under the 10 GiB Job condition. A later explicitly authorized
+PC-memory diagnostic reached READY 131072 and completed two 4K requests, both
+passing the sentinel recall probe. Native boundary execution remains NOT_RUN. Its build receipt is
+`H:\Strata\evidence\p01-boundary-20261026\joined-prefetch-receipt.json`.
+The combined CPU gate ran 88 tests with two Windows symlink subcases skipped;
+the later overlay dependency gate passed 11 tests. These do not establish
+hardware correctness or qualification.
+
+## Earlier diagnostic candidate and pilot
+
+The earlier diagnostic candidate had SHA256
+`a8ec8e3d4ed948fafcc5c20e829b0d6b49f4f8482d30e279a1d0314e5e1004dd`
+and was80,742,400 bytes. It is separate from the published .1 preview and is not
+installed. Blob diagnostics passed8 CPU tests plus18 selected regression tests;
+4 mutations were detected. Actual expert_source/generate host compilation, engine
+archive and final link passed with independent read-only acceptance. No new device
+compile or GPU execution is implied. Reused-object/source provenance is UNRESOLVED.
+
+The authorized single diagnostic ran with4K input,capacity131072,spec4+MTP,
+k8v4,reserve256,traceOFF,CPU memory and blob diagnostics ON. Consumer admission
+met the RAM12GiB/commit16GiB/H8GiB gates. Controller-observed elapsed was41.61s,
+including monitoring and cleanup; startup ended before READY. The controller reported COMMIT_BUDGET_EXCEEDED/125 and native exit1 was observed before
+cleanup. Job peak10,740,895,744B exceeded the10,737,418,240B limit. All Job processes
+terminated. The one-shot approval is consumed; no retry or cap increase occurred.
+
+The snapshot retained32 new(nothrow) allocation failures requesting1,382,400B each;
+99 additional records were dropped. These failed requests are not allocated bytes
+or disk traffic. Worker context is unknown; terminal file-source blob-null at
+layer46/expert185 remains cause=unknown. Retained heap failures are not proven to
+belong to that terminal pair. cuMemCreate error2 attempts recovered via smaller
+cache before this terminal failure. Independent review accepted the corrected
+evidence scope, not inference or131k qualification.
+The wrapper pins the full launch binding,controller sources/import origins and
+binary; default startup does not invoke this operator-specific helper.
+
+The [reviewed statistical protocol](perf131k-statistical-protocol.json) has a
+schema 2 offline executor checked by 16 synthetic tests. It binds the analyzer
+source hash, reports five fixed grouped evaluation summaries and keeps paired
+task families together, avoiding treatment of
+folds or technical repetitions as independent observations, and separates initial
+4K/32K measurements from full qualification. Full boundaries wait for P02;64K,
+126k-history/512 actual steps,reference PPL/KL and32turn/2h stability remain separate
+gates. No measured p-value, confidence interval or performance improvement is
+reported. Fitting/tuning and final held-out execution remain NOT_RUN.
+
+Actions permissions currently report enabled. Latest-candidate CI is still pending;
+permission status does not prove the earlier HTTP422 dispatch failure is fixed.
+P00/P01 remain PARTIAL. Earlier-candidate GPU startup RAN_FAILED_BEFORE_READY;
+current-candidate startup later passed with the separately authorized PC-memory
+condition. Two 4K requests completed; statistical performance and broader quality
+remain NOT_RUN, and full131k is NOT_QUALIFIED.
+
+## Current executable: authorized 10 GiB diagnostic
+
+After the user manually stopped Hikari, admission observed 20,132,864,000
+available RAM bytes and 47,326,261,248 bytes of commit headroom. The current
+`20373ca6` executable launched once. Controller elapsed was 13.14 seconds,
+status COMMIT_BUDGET_EXCEEDED/125, native exit 1. Peak Job commit was
+10,788,929,536 bytes against 10,737,418,240 configured. Cleanup confirmed
+termination and active 0; no automatic retry or cap increase occurred within
+that attempt. The later PC-memory condition had separate explicit user authorization.
+
+Cache attempts requested 5283, 3962 and 2971 slots before successfully opening
+2228 slots (2.87 GiB reported). Profile pair 15 then failed blob acquisition at
+layer 3, expert 474, cause unknown. Controller memory diagnostics were enabled;
+`STRATA_PERF131K_BLOB_DIAG` was omitted, so no source failure-ring evidence binds
+an allocation failure to that terminal pair. The diagnostic is not a performance
+sample. Hikari remained in the user's stopped baseline; the wrapper made no
+service or maintenance-state changes. Evidence:
+`H:\Strata\evidence\p01-boundary-20261026\authorized-direct-attempt\closeout.json`.
+
+The controller now has a separate `--blob-diagnostics` option. It records the
+actual case-insensitive Windows child flag in both launch and result receipts,
+rejects duplicate spellings and excludes source-diagnostic runs from performance
+comparison. `--memory-diagnostics` continues to control memory sampling only.
+Twelve scripted CPU tests passed; they did not launch a model. The controller
+also accepts an explicitly selected 16 GiB diagnostic cap while keeping its
+8 GiB default. That arm requires separate approval, at least 18 GiB available
+RAM, 22 GiB commit headroom and 8 GiB free disk. Adding this option does not
+authorize or execute it; no automatic cap escalation is implemented.
+
+---
+
+## Historical published-preview records
+
+The following records describe earlier checkpoints and binaries. Their present-tense
+wording is historical and does not override the current-candidate status above.
+
 # Experimental 131k measurement tooling
 
 This checkpoint adds measurement infrastructure. It does not establish that a
@@ -127,3 +248,70 @@ workflow dispatch with HTTP422 while repository Actions permissions were enabled
 and workflow states were active. No check-run was created. Local installer CPU
 tests and independent review are separate evidence; no cloud CI pass is claimed
 for that newer source. Repository/billing safeguards were not bypassed.
+
+## PC-memory diagnostic, 27 October 2026
+
+The user explicitly authorized using the PC memory capacity. Before launch, the
+controller fixed the Job commit cap at 32,010,928,128 bytes (29.8125 GiB), leaving
+2 GiB below measured physical total and requiring 6 GiB process-available commit
+headroom beyond the cap. This is a commit limit, not reserved physical memory.
+Runtime RAM/commit floors of 2/6 GiB are sampled abort thresholds.
+
+The same executable reached READY 131072, completed two exact 4096-token inputs
+with 52 generated tokens each, and passed both sentinel recall probes. Job peak
+was 23,745,859,584 bytes; controller elapsed was 201.406 seconds. Cleanup confirmed
+termination and zero active Job processes. Source blob diagnostics and controller
+memory diagnostics were ON, so this run is excluded from performance comparisons.
+Evidence: `H:/Strata/evidence/p01-boundary-20261026/authorized-pc-memory-attempt/native-4096-off/result.json`.
+
+Normal capacity trials predeclare the same 32,010,928,128-byte cap for every
+cell, with source/controller diagnostics OFF. Fixtures, order and binding are
+frozen before the first cell. The 4K/32K/64K recall task is a capacity smoke test;
+it does not establish full-length inference, broad quality or statistical speed.
+The original pilot output reserve remains 256. The separate full-capacity gate
+requires input 126000, output reserve 1024, and at least 512 actual generated steps.
+
+## Operational inference acceptance, 27 October 2026
+
+The user changed acceptance to reliable working inference. Statistical speed,
+PPL and full-length certification remain deferred and are not release claims.
+With diagnostics OFF and fixed Job cap 32,010,928,128 bytes, exact 4K and 32K
+inputs each completed first and repeated requests; all four sentinel recall
+checks passed. Both stages confirmed termination and zero remaining Job processes.
+The 32K run took 621.86 controller seconds including startup, both requests and
+cleanup. Its first prompt took 494758.3 ms; repeated prompt 645.7 ms. Both generated
+52 tokens, with decode times 13758.7/3254.9 ms. These are one-task observations.
+The 64K stage was intentionally terminated after the acceptance change; controller
+exit15, active0 and termination confirmed. Preserve its invalid-measurement receipt
+and the separate scope-change cancellation record; it is neither a successful
+capacity test nor evidence of an engine failure. No retry occurred.
+Evidence: `H:/Strata/evidence/p01-boundary-20261026/normal-capacity-series-20261027/`.
+
+## GUI operational fixes, 27 October 2026
+
+The local silent-turn guard is 30 minutes, with remote and tool limits separate.
+Thirty-six focused GUI/host regression tests passed. Four real-Harness tests passed
+without skips, including local silence beyond the remote limit, cancellation and
+subsequent recovery. The frontend build and type check passed.
+
+A 1,185,376-byte pinned ggml-org stories260K GGUF exercised the real GUI host API:
+file inspect/import, explicit FP16 + 2048 context, load, chat generation (233 input
+and 16 output tokens), and unload. This used an isolated synthetic user profile.
+The first inherited INT8 attempt exposed unsupported 8-wide heads and delayed
+backend-exit reporting; both are now handled explicitly, and valid local files
+remain retryable after an error. The default persona exceeded this tiny model's
+context, so no claim is made that the fixture supports the full personal prompt.
+The test model is not distributed and is not a quality reference.
+
+Computer-use browser/native surfaces were unavailable, so interactive GUI testing
+is NOT_RUN. Evidence is the actual host HTTP receipt, built frontend and regression
+logs; these are distinct from a manual desktop interaction result.
+
+The runtime writes an exact no-child ownership marker before publishing host
+state. Three focused recovery tests passed; absent markers remain fail-closed.
+The broader runtime suite is not all green. The old app-1 state on the test PC
+had no ownership marker; its 171 bytes were preserved by a same-directory rename
+under the profile start lock after verifying the exact digest, private state,
+absent host, unheld state lease, no old-port listener and empty process registry.
+No unrelated service was signalled. This one-time inspected preservation does
+not relax automatic recovery policy.
