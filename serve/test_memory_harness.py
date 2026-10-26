@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import sqlite3
+import sys
 import tempfile
 import threading
 import types
@@ -201,6 +202,11 @@ class HarnessTests(unittest.TestCase):
             folder.mkdir()
             (folder / "SOUL.md").write_text("synthetic persona " + name, encoding="utf-8")
             (folder / "USER.md").write_text("synthetic user " + name, encoding="utf-8")
+        self.h = mh.Harness([
+            {"principal": name, "key_env": "TEST_MEMORY_" + name.upper(), "root": str(self.root / name),
+             "persona_sha256": {file: hashlib.sha256((self.root / name / file).read_bytes()).hexdigest()
+                                for file in ("SOUL.md", "USER.md")}}
+            for name in ("a", "b")], ["synthetic-a", "synthetic-b"])
         _, messages = self.begin()
         context = messages[0]["content"]
         self.assertIn("synthetic persona a", context)
@@ -208,6 +214,30 @@ class HarnessTests(unittest.TestCase):
         _, messages = self.h.begin("synthetic-a", {"read": False, "store_summary": False, "turn_id": "none"},
                                     [{"role": "user", "content": "hello"}], threading.Event())
         self.assertEqual(len(messages), 1)
+
+    def test_persona_requires_immutable_operator_approval_and_bounded_exact_bytes(self):
+        folder = self.root / "a"
+        folder.mkdir()
+        path = folder / "SOUL.md"
+        path.write_bytes(b"approved persona")
+        _, messages = self.begin()
+        self.assertEqual(len(messages), 1)  # no approval means no persona
+        approved = {"SOUL.md": hashlib.sha256(path.read_bytes()).hexdigest()}
+        self.h = mh.Harness([{"principal": "a", "key_env": "TEST_MEMORY_A", "root": str(folder),
+                              "persona_sha256": approved}], ["synthetic-a"])
+        approved["SOUL.md"] = "0" * 64  # caller mutation cannot alter the binding
+        self.assertIn("approved persona", self.begin()[1][0]["content"])
+        path.write_bytes(b"changed persona")
+        self.assertEqual(len(self.begin()[1]), 1)
+        path.write_bytes(b"x" * 8193)
+        self.h = mh.Harness([{"principal": "a", "key_env": "TEST_MEMORY_A", "root": str(folder),
+                              "persona_sha256": {"SOUL.md": hashlib.sha256(path.read_bytes()).hexdigest()}}],
+                            ["synthetic-a"])
+        self.assertEqual(len(self.begin()[1]), 1)  # even approved oversized content is omitted
+        for approval in ({"elsewhere.md": "a" * 64}, {"SOUL.md": "bad"}, []):
+            with self.subTest(approval=approval), self.assertRaises(ValueError):
+                mh.Harness([{"principal": "a", "key_env": "TEST_MEMORY_A", "root": str(folder),
+                             "persona_sha256": approval}], ["synthetic-a"])
 
     def test_hardlinked_persona_and_memory_files_are_not_read(self):
         turn, _ = self.begin()
@@ -217,6 +247,9 @@ class HarnessTests(unittest.TestCase):
         (self.root / "a" / "SOUL.md").write_text("private persona", encoding="utf-8")
         (other / "SOUL.md").hardlink_to(self.root / "a" / "SOUL.md")
         (other / "ebbinghaus.db").hardlink_to(self.root / "a" / "ebbinghaus.db")
+        self.h = mh.Harness([{"principal": "b", "key_env": "TEST_MEMORY_B", "root": str(other),
+                              "persona_sha256": {"SOUL.md": hashlib.sha256((other / "SOUL.md").read_bytes()).hexdigest()}}],
+                            ["synthetic-b"])
         _, messages = self.begin("synthetic-b")
         self.assertEqual(len(messages), 1)
 
@@ -253,7 +286,8 @@ class HarnessTests(unittest.TestCase):
 
     def test_failed_writer_is_uncertain_and_never_replayed(self):
         turn, _ = self.begin()
-        with patch("hakua_memory.ebbinghaus.store.EbbinghausMemoryStore", side_effect=RuntimeError("crash")) as writer:
+        with patch.object(sys.modules["hakua_memory.ebbinghaus.store"], "EbbinghausMemoryStore",
+                          side_effect=RuntimeError("crash")) as writer:
             with self.assertRaises(RuntimeError):
                 self.h.complete(turn, "answer", lambda *args: "summary")
             self.assertEqual(self.h.complete(turn, "answer", lambda *args: self.fail("no replay")), "uncertain")

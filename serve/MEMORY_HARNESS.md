@@ -21,6 +21,20 @@ Each environment variable must contain a unique ASCII key already accepted by
 the server's existing `api_key` configuration. The ASCII restriction makes
 HTTP header identity unambiguous across the server's legacy UTF-8 decoding.
 No keys are generated or logged.
+Each user may also supply `persona_sha256`, an operator-owned object mapping
+`SOUL.md` and/or `USER.md` to their approved lowercase SHA256 values. Missing
+approvals omit persona files. Changed bytes, links and files over 8192 bytes
+are omitted, even with read consent. Approval is checked against the same byte
+buffer inserted into the prompt; content updates require explicit operator
+reapproval and a configuration reload. No approval is inferred from a request
+or from the file merely existing. The configuration example above enables no
+persona files until those approvals are added.
+The approval change was checked with Python 3.12: 27 tests ran, including the
+temporary-profile real hakua writer; two symlink subcases were skipped for
+missing Windows privilege. Astra xhigh found no actionable defect in static
+review. The logs are under
+`H:\Strata\evidence\p01-boundary-20261026\memory-persona-approval-python312.log`.
+These checks do not qualify native model cache switching or summary quality.
 Principal names and paths come from this operator configuration, never the
 request. Roots must be absolute, separate directories. Protect them with the
 operating system's file permissions. Hostile concurrent filesystem replacement
@@ -54,7 +68,7 @@ Each request independently supplies:
 
 The two boolean consents are independent. Omitting this field performs no
 memory read or summary write. `read` permits bounded reads of that principal's
-`SOUL.md`, `USER.md` and `ebbinghaus.db`. Recall uses SQLite read-only immutable
+approved `SOUL.md`, `USER.md` and `ebbinghaus.db`. Recall uses SQLite read-only immutable
 mode and query-only enforcement, without constructing a hakua store. It omits
 databases with WAL, shared-memory or rollback-journal sidecars. Recall is lexical
 over at most 64 recent accessible, current, active records; at most four bounded

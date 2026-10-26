@@ -27,7 +27,7 @@ Control settings, models and installed engine have not been replaced by this bui
 | Scope, checked 26 October 2026 | Result |
 | --- | --- |
 | Startup, diagnostics and statistics CPU tests | 43 passed with `pytest-randomly` disabled |
-| Opt-in memory harness tests | 25 passed including temporary-profile real hakua writer, 1 Windows symlink test skipped for missing privilege; native multiuser isolation remains unqualified |
+| Opt-in memory harness tests | Python 3.12 ran 27 tests, including temporary-profile real hakua writer; two Windows symlink subcases skipped for missing privilege. Approved persona hashes checked; native multiuser isolation remains unqualified |
 | Fresh Windows CUDA SM120 `Release/x64` engine link | Passed with GGML `3cf0325`, CUDA 13.3 and MSVC |
 | Windows native preview CPU checks on the pushed branch | Spin8 6/6, tqcodec 10/10, packaging tests 12/12 passed; Linux, HIP and SYCL not checked |
 | Opt-in 131072 boundary admission | `130048+1024` and `131071+1` accepted by strict API mock; one-over rejected; native CPU contract and CUDA link passed. Serial serving only; final-cell device execution NOT_RUN |
