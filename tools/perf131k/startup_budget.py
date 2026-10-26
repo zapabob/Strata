@@ -99,6 +99,10 @@ def evaluate(manifest: dict) -> dict:
                 raise ValueError("release needs a live allocation")
             if event.get("kind") != "actual_uncommit":
                 raise ValueError("pool reuse or logical release does not reduce commit")
+            basis = event.get("basis")
+            if (event.get("outcome") != "confirmed_success" or
+                    not isinstance(basis, str) or not basis.strip()):
+                raise ValueError("uncommit needs confirmed success and an evidence basis")
             del live[ident]
         else:
             raise ValueError("unknown startup event")

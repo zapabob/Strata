@@ -45,7 +45,8 @@ class StartupBudgetTests(unittest.TestCase):
             {"action": "enter", "phase": "profile_fill"},
             {"action": "acquire", "id": "new", "category": "scratch", "bytes": 5000,
              "basis": "synthetic replacement scratch"},
-            {"action": "release", "id": "old", "kind": "actual_uncommit"},
+            {"action": "release", "id": "old", "kind": "actual_uncommit",
+             "outcome": "confirmed_success", "basis": "synthetic successful uncommit receipt"},
             {"action": "enter", "phase": "resident_complement"},
             {"action": "enter", "phase": "ready"},
         ]
@@ -61,6 +62,22 @@ class StartupBudgetTests(unittest.TestCase):
         events.insert(3, {"action": "release", "id": "stage", "kind": "pool_return"})
         with self.assertRaisesRegex(ValueError, "logical release"):
             evaluate(proposed(events))
+
+    def test_unknown_or_unsubstantiated_uncommit_cannot_reduce_peak(self):
+        for release in (
+            {"kind": "actual_uncommit"},
+            {"kind": "actual_uncommit", "outcome": "unknown", "basis": "release API failed"},
+            {"kind": "actual_uncommit", "outcome": "confirmed_success", "basis": " "},
+        ):
+            with self.subTest(release=release):
+                events = proposed()["events"]
+                events[1:1] = [
+                    {"action": "acquire", "id": "old", "category": "scratch", "bytes": 3000,
+                     "basis": "synthetic allocation"},
+                    {"action": "release", "id": "old", **release},
+                ]
+                with self.assertRaisesRegex(ValueError, "confirmed success"):
+                    evaluate(proposed(events))
 
     def test_unknown_charge_and_missing_phase_block(self):
         with self.assertRaisesRegex(ValueError, "known nonnegative"):

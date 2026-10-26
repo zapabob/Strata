@@ -34,7 +34,12 @@ build passed, but backend runtime qualification remains open.
 `tools/perf131k/startup_budget.py` accepts an ordered host-commit event ledger.
 Every acquire needs a byte count and its evidence basis. Only actual uncommit
 releases a charge; pool return does not. A positive documented bound for
-untracked host commit is mandatory. Unknown amounts and omitted phases block
+untracked host commit is mandatory. A release event also requires
+`kind: actual_uncommit`, `outcome: confirmed_success` and a nonempty `basis`
+identifying the successful release evidence. Unknown, failed or unsupported
+release claims block the calculation instead of reducing the estimate. Heap
+object destruction alone does not establish allocator uncommit.
+Unknown amounts and omitted phases block
 the calculation. The estimated peak is computed independently of any Job cap;
 an optional declared cap gives a separate comparison for that experimental
 condition. `ESTIMATE_ONLY` always has `launch_authorized=false` and
@@ -195,6 +200,23 @@ commands and case outputs are under
 `H:\Strata\evidence\p01-boundary-20261026\79e6f3c53f5d48f19423509e7770244d`.
 The source integration check also rejects reintroducing `std::async` into this
 profile block or declaring the referenced callable after its thread owner.
+
+## Additional host owners under audit
+
+The local shard header reports `token_embd.weight` as Q3_K, 635,699,200
+elements and 273,152,000 payload bytes. `NativeEmbed::load` copies this payload
+into mapped/portable `cudaHostAlloc` storage when pinning succeeds; its fallback
+uses device storage instead. File-mapping size and this committed copy are
+separate quantities. This header inspection did not load the model on a GPU.
+
+The selected MTP pack has a 116,099,072-byte `dense.bin`. With no `--mtp-q4`,
+`MtpDrafter::load` reads it into a host vector and uploads it, then later uses
+a separate 64 MiB vector for chunked expert uploads. Their C++ scopes do not
+overlap, but the allocator may retain commit after vector destruction. Without
+uncommit evidence the ledger cannot subtract either charge. Device dense and
+expert allocations require separate Windows/driver accounting. MTP's windowed
+K/V host copy, prefill staging and the resident arena remain additional owners;
+none is covered by the profile-stage payload bound.
 
 On Windows, `read_direct` retains its `VirtualAlloc` scratch in thread-local
 storage. Its capacity rounds each batch's merged read span up to 1 MiB. The
