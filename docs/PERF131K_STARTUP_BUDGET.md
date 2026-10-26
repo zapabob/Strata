@@ -9,9 +9,9 @@ not a Strata or 131072-token requirement. No cap change is authorized here.
 
 | Item | Current identification | Launch status |
 | --- | --- | --- |
-| Source | Base HEAD `93e9c0ac9f8145209a480d704eb8104bd49395db`; startup fix `dd0b797a`, benchmark executor `fe7f5159`, opt-in exact boundary `00c1b770`, and mode guard `6955c759`. Current `expert_source.cpp` Git blob is `d0f331379eb8e00e9e1446543773da6610c8406a`. | Linked to the CUDA build receipts below; no same-source CI or model run. |
-| Build objects | Fresh `Release/x64` SM120 CUDA build in `H:\Strata\build\p01-startup-cuda-20261026`, then incremental rebuilds after the complement and boundary changes. The last `strata` link exited 0. Startup source/build hashes are in `H:\Strata\evidence\p01-full-build-20261026\build-provenance-after-complement.json`; current boundary source, executable and build log are bound in `H:\Strata\evidence\p01-boundary-20261026\p02-cpu-receipt-after-review.json`. | Link passed; no GPU model execution. |
-| Executable | Current `strata.exe` SHA256 `20373ca6b9b16b9d220820a902b584d604a64e068d383a26ba11dd4e43f85d93`, 80,752,128 bytes, built with joined prefetch and affinity guard at `56c4613b`; `strata_kq.dll` SHA256 `919db9448abedaeac4bdf963160b09c47ad55cca28ca6d1ebec2024c92ae94f2`. Both are in `H:\Strata\build\p01-startup-cuda-20261026\Release`. | CUDA link and read-only `--help` returned exit 0; model launch not run. |
+| Source | Base HEAD `93e9c0ac9f8145209a480d704eb8104bd49395db`; startup fix `dd0b797a`, benchmark executor `fe7f5159`, opt-in exact boundary `00c1b770`, and mode guard `6955c759`. Current `expert_source.cpp` Git blob is `d0f331379eb8e00e9e1446543773da6610c8406a`. | Linked to the CUDA build receipts below; no same-source CI; latest model start failed before READY. |
+| Build objects | Fresh `Release/x64` SM120 CUDA build in `H:\Strata\build\p01-startup-cuda-20261026`, then incremental rebuilds after the complement and boundary changes. The last `strata` link exited 0. Startup source/build hashes are in `H:\Strata\evidence\p01-full-build-20261026\build-provenance-after-complement.json`; current boundary source, executable and build log are bound in `H:\Strata\evidence\p01-boundary-20261026\p02-cpu-receipt-after-review.json`. | Link passed; latest model start failed before READY. |
+| Executable | Current `strata.exe` SHA256 `20373ca6b9b16b9d220820a902b584d604a64e068d383a26ba11dd4e43f85d93`, 80,752,128 bytes, built with joined prefetch and affinity guard at `56c4613b`; `strata_kq.dll` SHA256 `919db9448abedaeac4bdf963160b09c47ad55cca28ca6d1ebec2024c92ae94f2`. Both are in `H:\Strata\build\p01-startup-cuda-20261026\Release`. | CUDA link and read-only `--help` returned exit 0; latest model start failed before READY. |
 | Model/pack | SHA256 and sizes of both GGUF shards, native pack and MTP dense/expert files are in `H:\Strata\evidence\p01-full-build-20261026\artifact-sha256.json`; tokenizer and profile hashes are in `small-input-sha256.json`. | Content identity recorded; compatibility and runtime provenance not proved. |
 | Statistical JSON | `docs/perf131k-statistical-protocol.json` SHA256 `7322c8fba38297cdfecfa278d69c2e5fb92691dcf10733c9991c48b63fb898ff` records design, not measured pairs. | `DESIGN_NOT_RUN`. |
 
@@ -94,7 +94,7 @@ bytes of system commit headroom. This also failed the older controller's
 12 GiB available-RAM condition. Its receipt is
 `H:\Strata\evidence\p01-boundary-20261026\offline-admission-final.json`.
 There is still no complete source-grounded startup upper bound, and this
-candidate has not launched a model.
+candidate had not launched a model at that snapshot; the later authorized run is recorded below.
 
 The stage-buffer pool can retain buffers after logical reuse, the direct-I/O
 scratch remains allocated in its thread, and Windows may charge device
@@ -192,7 +192,7 @@ is unchanged. These payload bounds still exclude metadata, stack, runtime,
 weights, sessions, device/driver commit and the complete phase overlap.
 The artifact receipt is
 `H:\Strata\evidence\p01-boundary-20261026\joined-prefetch-receipt.json`.
-HIP/SYCL builds and real model execution remain unperformed.
+HIP/SYCL builds and completed model inference remain unperformed.
 The joined-thread test is now part of
 `python -m unittest tests.perf131k.test_startup_lifetime` under the existing
 local CPU receipt gate. All eight tests passed; generated source, compile
@@ -249,6 +249,30 @@ A new read-only resource check reported 8,082,767,872 available physical bytes,
 23,051,309,056 bytes of commit headroom and 131,753,775,104 free H: bytes.
 Available RAM still fails the older 12 GiB admission condition. No new model
 launch, diagnostic authorization, cap change or service action followed.
+
+## Later authorized execution of the joined-prefetch candidate
+
+The user authorized one 10 GiB diagnostic and then manually stopped Hikari.
+The model/pack/MTP hash loop completed before the original pause wrapper
+observed that its old Hikari PID no longer existed. That wrapper performed no
+service action or native launch. A separately reviewed direct-only wrapper
+preserved the user's stopped baseline and launched the candidate once.
+
+Admission observed 20,132,864,000 available RAM bytes and 47,326,261,248 bytes
+of commit headroom. The run failed before READY after 13.14 controller-observed
+seconds: controller 125, native 1, peak Job commit 10,788,929,536 bytes versus
+10,737,418,240 configured. Cleanup confirmed termination and active 0. Actual
+cache capacity was 2228 slots after three allocation-driven reductions;
+terminal profile pair 15 (layer 3, expert 474) failed blob acquisition.
+
+Controller memory diagnostics were on, but source blob diagnostics were
+omitted. No source-ring record proves the terminal allocation cause. This
+setup omission is recorded, not repaired by an unapproved rerun. The cap is
+an artificial diagnostic condition; failure does not prove the machine cannot
+run 131072 tokens or that any particular higher cap succeeds. No request
+completed and no performance/quality measurement is valid. The new one-shot
+permission is consumed. Receipt:
+`H:\Strata\evidence\p01-boundary-20261026\authorized-direct-attempt\closeout.json`.
 
 On Windows, `read_direct` retains its `VirtualAlloc` scratch in thread-local
 storage. Its capacity rounds each batch's merged read span up to 1 MiB. The

@@ -22,8 +22,9 @@ behavior and 131072-token qualification remain unverified.
 The current executable includes joined profile prefetch and the foreground
 affinity guard at engine source `56c4613b`. It is 80,752,128 bytes, SHA256
 `20373ca6b9b16b9d220820a902b584d604a64e068d383a26ba11dd4e43f85d93`.
-The CUDA link and read-only help passed; model startup, native boundary
-execution and inference remain NOT_RUN. Its receipt is
+The CUDA link and read-only help passed; the later one-shot model startup
+failed before READY under the 10 GiB Job condition. Native boundary execution
+and completed inference remain NOT_RUN. Its build receipt is
 `H:\Strata\evidence\p01-boundary-20261026\joined-prefetch-receipt.json`.
 The combined CPU gate ran 88 tests with two Windows symlink subcases skipped;
 the later overlay dependency gate passed 11 tests. These do not establish
@@ -69,8 +70,26 @@ reported. Fitting/tuning and final held-out execution remain NOT_RUN.
 Actions permissions currently report enabled. Latest-candidate CI is still pending;
 permission status does not prove the earlier HTTP422 dispatch failure is fixed.
 P00/P01 remain PARTIAL. Earlier-candidate GPU startup RAN_FAILED_BEFORE_READY;
-current-candidate model execution is NOT_RUN. Completed inference,
+current-candidate startup also failed before READY. Completed inference,
 performance and quality remain NOT_RUN; full131k is NOT_QUALIFIED.
+
+## Current executable: authorized 10 GiB diagnostic
+
+After the user manually stopped Hikari, admission observed 20,132,864,000
+available RAM bytes and 47,326,261,248 bytes of commit headroom. The current
+`20373ca6` executable launched once. Controller elapsed was 13.14 seconds,
+status COMMIT_BUDGET_EXCEEDED/125, native exit 1. Peak Job commit was
+10,788,929,536 bytes against 10,737,418,240 configured. Cleanup confirmed
+termination and active 0; no retry or cap increase followed.
+
+Cache attempts requested 5283, 3962 and 2971 slots before successfully opening
+2228 slots (2.87 GiB reported). Profile pair 15 then failed blob acquisition at
+layer 3, expert 474, cause unknown. Controller memory diagnostics were enabled;
+`STRATA_PERF131K_BLOB_DIAG` was omitted, so no source failure-ring evidence binds
+an allocation failure to that terminal pair. The diagnostic is not a performance
+sample. Hikari remained in the user's stopped baseline; the wrapper made no
+service or maintenance-state changes. Evidence:
+`H:\Strata\evidence\p01-boundary-20261026\authorized-direct-attempt\closeout.json`.
 
 ---
 

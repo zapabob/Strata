@@ -34,7 +34,7 @@ Control settings, models and installed engine have not been replaced by this bui
 | Same-source GitHub Actions | NOT_RUN: branch push produced no run; manual dispatch returned HTTP 422 saying Actions is disabled |
 | Fresh executable read-only `--help` | Exit 0; no model loaded |
 | Earlier 10 GiB Job diagnostic | RAN_FAILED_BEFORE_READY; this was a different executable |
-| Fresh candidate GPU startup / completed model inference | NOT_RUN |
+| Current candidate GPU startup / completed model inference | One authorized 10 GiB diagnostic FAILED_BEFORE_READY (controller 125, native 1); completed inference NOT_RUN |
 | Paired performance statistics / cross-validation evaluation | Offline executor passed 16 synthetic tests; analyzer hash freeze and five fixed grouped evaluation summaries supported. Measured pairs and fitting/tuning NOT_RUN |
 | PPL / KL / full-context quality / stability | NOT_RUN |
 | Practical 131072-token qualification | NOT_QUALIFIED |
@@ -70,6 +70,12 @@ Source commits `73cfa347` and `56c4613b` replace task-pool profile prefetch with
 so completed batches release their thread-local I/O scratch. Its CPU lifetime
 test, CUDA link and read-only help passed; model execution remains NOT_RUN.
 The current artifact binding is `joined-prefetch-receipt.json` in that directory.
+The later authorized run of this executable ended after 13.14 controller-observed
+seconds, before READY, with peak Job commit 10,788,929,536 bytes against a
+10,737,418,240-byte cap. Cleanup confirmed active 0. Controller memory observation
+was on, but source blob diagnostics were accidentally omitted; the terminal
+blob failure remains cause unknown. No retry or cap increase occurred. The receipt
+is `authorized-direct-attempt/closeout.json` under the same evidence directory.
 
 ## What the candidate changes
 

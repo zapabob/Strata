@@ -103,7 +103,7 @@
     "statistics_synthetic_tests_passed": 16,
     "statistics_manifest_schema": 2,
     "evaluation_design": "five fixed grouped evaluation folds; no fitting or tuning",
-    "GPU_model_execution": "NOT_RUN",
+    "GPU_model_execution": "GPU_STARTUP_RAN_FAILED_BEFORE_READY",
     "completed_inference": "NOT_RUN",
     "measured_statistical_execution": "NOT_RUN",
     "quality_and_stability": "NOT_RUN",
@@ -112,6 +112,24 @@
     "same_source_CI": "NOT_RUN",
     "HIP_SYCL_validation": "NOT_RUN",
     "total_Job_commit_bound": "INCOMPLETE",
-    "new_launch_authorization": "NOT_GRANTED; previous one-shot consumed"
+    "new_launch_authorization": "CONSUMED; one native launch; no retry",
+    "latest_diagnostic": {
+      "job_cap_bytes": 10737418240,
+      "peak_job_commit_bytes": 10788929536,
+      "controller_exit": 125,
+      "native_exit": 1,
+      "controller_elapsed_s": 13.141,
+      "termination_confirmed": true,
+      "job_active_after": 0,
+      "successful_cache_slots": 2228,
+      "terminal_profile_pair": 15,
+      "terminal_layer": 3,
+      "terminal_expert": 474,
+      "terminal_cause": "unknown",
+      "controller_memory_diagnostics": true,
+      "source_blob_diagnostics": false,
+      "measurement_valid": false,
+      "service_baseline": "user manually stopped Hikari; no wrapper service actions"
+    }
   }
 }
