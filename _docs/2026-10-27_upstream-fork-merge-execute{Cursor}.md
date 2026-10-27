@@ -44,13 +44,17 @@
 - packaged-control + session-workspace: 34/34
 - native-settled + engine-version: 2/2
 - `py -3 tools/check_upstream_cut.py` → `LOCKED`, `all_passed: true`
+- **CUDA/CMake engine (2026-10-27 23:32 JST):** `build-cuda-sm120-verify` CONFIG_EXIT=0 BUILD_EXIT=0; `strata.exe --version` → `strata 0.1.51` (CUDA 13.3, arch 120, ggml `H:/Strata/deps/ggml-3cf03257`). Log: `_docs/cmake-cuda-sm120-20261027.log`. Detail: `_docs/2026-10-27_upstream-merge-build-release-evidence{Cursor}.md`
 
-**Not run (recorded blockers, do not invent):**
+**Ran (fail / incomplete):**
 
-- Full engine CMake/CUDA GPU build on RTX 5060 Ti
-- Full `npm test` suite in `apps/host` (subset only)
-- Signed feed / Tauri updater artifacts (`packaging/UPDATES.md` release PC keys)
-- `git push` / GitHub Release asset upload (no auto-push)
+- Full `npm test` in `apps/host`: partial ✔39 / ✖1 / ﹣40 then hung (~28 min CPU0); force-killed. Fail: `without the agent component the chat says so and still uses the model the user chose`. Log: `_docs/npm-test-20261027.log`
+
+**Blocked (release):**
+
+- Signed feed / Tauri updater artifacts — no private keys on this PC (`packaging/UPDATES.md`)
+- `git push` / GitHub Release — no auto-push; needs explicit user OK
+- Draft notes prepared: `_docs/2026-10-27_v032-preview-release-notes-draft{Cursor}.md`
 
 ## README status
 
@@ -58,4 +62,4 @@
 
 ## Goal status
 
-**ACTIVE** — merge + conflict resolve + host critical tests + local tag + README rewrite are done. Missing for COMPLETE: signed release packaging / optional remote publish after explicit network allow, and optional full GPU engine build evidence.
+**ACTIVE** — CUDA sm_120 build evidence now green; proprietary greps still hit. Still missing for COMPLETE under packaging definition: **signed release** (feed + Tauri keys) and **explicit push/publish OK**. Full `npm test` also unfinished (1 fail + hang).
