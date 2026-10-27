@@ -8,7 +8,7 @@
 ## Verdict
 
 **Push to `origin/main`: YES (FF only, no force).**  
-**Cloud CI all-green on tip `93dbc023`: BLOCKED** — GitHub Actions refused every `workflow_dispatch` / new push run with HTTP 422 `Actions has been disabled for this repository`, even though `GET /repos/zapabob/Strata/actions/permissions` returns `{"enabled":true,"allowed_actions":"all"}`.
+**Cloud CI all-green on tip `91d6fb4a`: BLOCKED** — GitHub Actions refused every `workflow_dispatch` / new push run with HTTP 422 `Actions has been disabled for this repository`, even though `GET /repos/zapabob/Strata/actions/permissions` returns `{"enabled":true,"allowed_actions":"all"}`.
 
 This is an **irreducible external blocker** from the agent side (admin API cannot flip the live runner switch). Product-side CI-equivalent checks that can run locally on this Windows host passed.
 
@@ -17,15 +17,16 @@ This is an **irreducible external blocker** from the agent side (admin API canno
 | Item | Value |
 |------|-------|
 | Before `origin/main` | `4cf0cf1ea3f0e97204d6171c6ed200236099fd7f` |
-| After tip / `origin/main` | `93dbc023fbb5c07919e07ae00dc0b140e7aed494` |
+| After tip / `origin/main` | `91d6fb4aa6b633c29ee201404af9795f5d1f964b` |
 | Feature branch sync | `origin/codex/strata-hakua-chatbot-20261027` → same tip |
-| Push URLs | https://github.com/zapabob/Strata/commit/3c717fe6 · https://github.com/zapabob/Strata/commit/93dbc023 |
+| Push URLs | https://github.com/zapabob/Strata/commit/3c717fe6 · https://github.com/zapabob/Strata/commit/93dbc023 · https://github.com/zapabob/Strata/commit/91d6fb4a |
 | Force push | **No** |
 
 ### Commits landed
 
 1. `3c717fe6` — `[Docs] record build/release evidence and NSIS overwrite install notes`
 2. `93dbc023` — `[GUI] sync desktop preview lockfiles and empty engine-bundle marker`
+3. `91d6fb4a` — `[Docs] record main CI green attempt and Actions disablement blocker`
 
 ### Explicitly excluded from commit
 
@@ -99,7 +100,7 @@ gh workflow run 'Portable monitor client' --repo zapabob/Strata --ref main
 gh workflow run 'Deploy GitHub Pages' --repo zapabob/Strata --ref main
 ```
 
-4. Confirm tip `93dbc023` check matrix is all success.
+4. Confirm tip `91d6fb4a` (or later) check matrix is all success.
 
 Settings URL was opened in the system browser during this session; Cursor Computer Use sidecar was unavailable, so the UI toggle could not be actuated by the agent.
 
