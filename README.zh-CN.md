@@ -1,179 +1,188 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="apps/host/public/brand/strata-lockup-dark.svg">
-    <img src="apps/host/public/brand/strata-lockup-light.svg" alt="Strata" width="380">
+    <img src="apps/host/public/brand/strata-lockup-light.svg" alt="Strata" width="340">
   </picture>
 </p>
 
-<p align="center"><a href="README.md">English</a> · <b>简体中文</b> · <a href="README.ja.md">日本語</a> · <a href="README.de.md">Deutsch</a> · <a href="README.fr.md">Français</a> · <a href="README.es.md">Español</a> · <a href="README.pt-BR.md">Português</a></p>
-
-<h3 align="center">Strata — Spin(8) 三元性 KV 缓存、DeepSeek-V4.1 无审查、任意 GGUF 加载与长期记忆</h3>
+<h3 align="center">在你自己的电脑上运行强大的 AI。</h3>
+<p align="center">本地聊天、写代码、处理图片。</p>
 
 <p align="center">
-  <b><a href="https://github.com/Niko1221/Strata">Niko1221/Strata</a> 最新上游集成工程分支</b> · 正式发布 v0.3.0 · Spin(8) $\mathrm{Cl}(8,0)$ 三元性注意力 · DeepSeek-V4.1-Flash MLA 无审查衍生 · 任意 GGUF 内容验证加载 · Hermes & 白亚（Hakua）长期记忆 · 32GB RAM & RTX 50系列（sm_120）原生支持
+  <a href="#模型">模型</a> · <a href="#安装"><b>安装</b></a> ·
+  <a href="#硬件">硬件</a> · <a href="#工具">工具</a> ·
+  <a href="#帮助">帮助</a> · <a href="#支持-strata">支持</a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/zapabob/Strata/releases/tag/v0.3.0"><img src="https://img.shields.io/github/v/release/zapabob/Strata?label=release%20v0.3.0" alt="Release v0.3.0"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/zapabob/Strata" alt="MIT license"></a>
-  <a href="https://github.com/zapabob/Strata/stargazers"><img src="https://img.shields.io/github/stars/zapabob/Strata?style=flat" alt="GitHub stars"></a>
-  <img src="https://img.shields.io/badge/tests-71%2F71%20全通过-brightgreen" alt="Tests 71/71 passing">
-  <img src="https://img.shields.io/badge/cuda-sm__120%20%7C%20sm__89-blue" alt="CUDA sm_120 | sm_89">
-  <img src="https://img.shields.io/badge/memory-32GB%20RAM%20实机验证-success" alt="32GB RAM verified">
+  <a href="https://github.com/Niko1221/Strata/releases/latest"><img src="https://img.shields.io/github/v/release/Niko1221/Strata?label=download&color=0ab887" alt="下载 Strata"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/Niko1221/Strata" alt="MIT 许可证"></a>
+  <a href="https://buymeacoffee.com/strataengine"><img src="https://img.shields.io/badge/Buy_me_a_coffee-FFDD00?logo=buymeacoffee&logoColor=000" alt="在 Buy Me a Coffee 上支持 Strata"></a>
 </p>
 
----
+<p align="center"><sub><a href="README.md">English</a> · <b>简体中文</b> · <a href="README.ja.md">日本語</a> · <a href="README.de.md">Deutsch</a> · <a href="README.fr.md">Français</a> · <a href="README.es.md">Español</a> · <a href="README.pt-BR.md">Português</a></sub></p>
 
-## 什么是 Strata v0.3.0？
+**免费、开源，由你自己运行。** 在桌面上使用 Strata，或搭配你喜欢的编程工具。无需账号。
 
-**Strata** 支持在普通消费级 PC 上本地运行 1250 亿参数的混合专家（MoE）模型与前沿推理模型。通过在 GPU 显存、系统内存与高速 NVMe SSD 之间动态流式传输专家权重，Strata 允许 **Qwen3.8-Flash-Next** (125B)、**DeepSeek-V4.1-Flash** (MLA) 以及 **Qwen3.6-35B-A3B** 等大型模型仅依赖一张 NVIDIA GeForce 显卡和 32 GB 内存即可流畅运行。
+## 模型
 
-**`zapabob/Strata` v0.3.0** 是与最新上游 Strata（v0.2.4.2 / 引擎 0.1.49.2）完全同步的正式工程发布版。该版本原生支持 **RTX 50 系列 (`sm_120` Blackwell)** 与 **RTX 40 系列 (`sm_89` Ada)** CUDA 深度优化、正式集成 **DeepSeek-V4.1-Flash 无审查衍生模型**、新增 **任意 GGUF 内容安全检验器 (ModelBundle)**，并将 **Hermes Agent 与白亚 (Hakua) 长期记忆** 直接接入本地推理管线。
+我们**首先推荐 ISTA-DASLab**，其次是 **Unsloth** 和其他提供方，前提是有内存放得下的兼容模型。
 
----
+<details>
+<summary><img src="docs/media/models/qwen.svg" width="22" alt="" align="middle"> &nbsp;<b>Qwen3.8-Flash-Next</b></summary>
 
-## 实机测定性能基准
+| 提供方 | 可选项 |
+| --- | --- |
+| **ISTA-DASLab · 推荐** | Q2\_0, IQ2\_XS, IQ3\_XXS, IQ3\_S。[Coder：IQ1\_M](docs/MODELS.md#coder)，适合写代码。 |
+| **Unsloth** | UD-IQ4\_XS, UD-Q4\_K\_XL, UD-Q5\_K\_XL, UD-Q6\_K\_XL, Q8\_0 |
+| **Gyro · agentionai** | [Gyro-S, Gyro-M](https://huggingface.co/agentionai/Qwen3.8-Flash-Next-Gyro-GGUF)。占用内存更少，但速度更慢。 |
+| **其他选项** | [Swift 1.5](docs/MODELS.md#swift-15), [NVFP4](docs/NVFP4.md), [OrcaRouter](docs/ORCA.md) |
 
-以下数据均在标准消费级台式机实机测定：
-- **CPU**: AMD Ryzen 5 4500 (6 核 / 12 线程, AVX2)
-- **内存**: 32 GB 物理 DDR4 RAM (34.22 GB 提交空间)
-- **GPU**: NVIDIA GeForce RTX 5060 Ti 16 GB (`sm_120` Blackwell 架构)
-- **存储**: PCIe NVMe SSD (权重流式加载)
-- **操作系统**: Windows 11 64-bit
+[比较大小、内存需求和兼容性](docs/MODELS.md)。
 
-### 1. 真实模型推理表现
+</details>
 
-| 模型与量化版本 | 架构 | 生成速度 | GPU 命中率 | 主机内存占用 | 活跃显存 | 资源判定 |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Qwen3.8-Flash-Next (Q2_0)** | 125B MoE | **6.7 tok/s** | **61.7%** | 18.20 GB | 14.10 GB | **合格** (空闲 13.6 GB) |
-| **DeepSeek-V4.1-Flash (Maya-S)** | MoE + MLA | **5.8 tok/s** | **56.4%** | 18.79 GB | 8.80 GB | **合格** (空闲 15.4 GB) |
-| **DeepSeek-V4.1 AtomicChat** | MoE + MLA | **5.9 tok/s** | **57.1%** | 18.79 GB | 8.80 GB | **合格** (空闲 15.4 GB) |
-| **Prism / TheTom (Q2K-XL)** | MoE + Query-v3 | **7.4 tok/s** | **68.2%** | 16.50 GB | 13.20 GB | **合格** (空闲 15.3 GB) |
+<details>
+<summary><img src="docs/media/models/qwen.svg" width="22" alt="" align="middle"> &nbsp;<b>Qwen3.6-35B-A3B</b></summary>
 
-> [!NOTE]
-> 所有推理任务的主机内存占用严格控制在 24.0 GiB 上限之内，并随时保留 4.0 GiB 以上的未分配内存供 Windows 系统调度。
+**Unsloth:** UD-Q4_K_XL, UD-Q6_K_XL, Q8_0。这些是目前文档中收录的该模型的版本。
 
-### 2. 显存栈与动态共享内存优化
+[模型指南和兼容性](docs/QWEN36.md)。
 
-- **优化前**: `audit_kernel` 为每个线程分配 `float f[128 * 128]` 局部数组，引发高达 **3.375 GiB** 的 CUDA 线程栈显存预留。
-- **v0.3.0 优化**: 重构为线程块共享的动态共享内存 (`65,536` 字节)。
-- **实测效果**: **3.375 GiB 显存完整释放回专家缓存**，在 16 GB 显卡上彻底杜绝栈溢出崩溃。
+</details>
 
----
+<details>
+<summary><img src="docs/media/models/deepseek.svg" width="22" alt="" align="middle"> &nbsp;<b>DeepSeekV4.1-Flash-1017</b></summary>
 
-## 安装与配置
+可在**桌面应用**和**终端**中使用。内存放不下的部分会从 SSD 读取，所以需要大量空闲磁盘空间。
 
-Strata 支持 **桌面图形界面 (GUI)** 与 **终端命令行 (CLI)** 两种使用方式。
+| 版本（IST-DAS） | 下载大小 | 所需空闲磁盘 |
+| --- | ---: | ---: |
+| 1.75 bpw | 239 GB | 约245 GB |
+| 2.00 bpw | 257 GB | 约265 GB |
+| 2.25 bpw | 274 GB | 约280 GB |
 
-### 下载官方正式发布包 v0.3.0
+支持 NVIDIA RTX 30、40 和 50 系列（Windows 和 Linux），以及 AMD Radeon AI PRO R9700（Linux）。安装程序会下载模型文件和 DeepSeek 引擎，然后启动模型。
 
-请从 GitHub Releases 获取经过完整受入验证的安装包：
-- **发布页面**: [Strata v0.3.0 发布页](https://github.com/zapabob/Strata/releases/tag/v0.3.0)
-- **归档包 1: 独立可执行程序包 (EXE 集合包)**:
-  - `Strata-0.3.0-windows-x64-sm120-exe.tar.7z` (479.3 MB)
-  - **SHA-256**: `ca37ff9f0120fccac47ddb8e8b1b7f3341889aab4c32e9b2ef9ccf63e1497a9a`
-  - *包含组件*: `strata.exe` (原生 CUDA sm_120 推理引擎)、`strata-desktop.exe`、`strata-vision.exe`、`strata_kq.dll`、`cublas64_13.dll`、`cublasLt64_13.dll` 及 MSVC 运行库。
-- **归档包 2: 完整集成引擎与桌面 GUI 归档包**:
-  - `Strata-0.3.0-windows-x64-sm120-engine-gui.tar.7z` (412.7 MB)
-  - **SHA-256**: `97a2d28bc91474bd37c0dcfd0bc8abc1ed10ae8db3b0c774d5ceb5a4f3c9c374`
-  - *包含组件*: 原生推理引擎、Python 控制环境及完整 Host Web UI。
-
-### 方式 A: 桌面应用程序 (GUI)
-
-1. **安装路径**:
-   `C:\Users\downl\AppData\Local\Programs\Strata\Strata.exe` (或桌面快捷方式 `Strata`)。
-2. **Web 界面**:
-   浏览器访问 `http://127.0.0.1:18500`。
-3. **覆盖升级**:
-   新版 80.7 MB 原生 CUDA 引擎 (`0.3.0-windows-x86_64-cuda-cuda13`) 会自动覆盖安装到：
-   - 应用程序包：`%LOCALAPPDATA%\Programs\Strata\engine-bundle\`
-   - 组件缓存区：`%LOCALAPPDATA%\Strata\components\engine\`
-   原有的 `0.1.45.3` 和 `0.1.47` 组件均已平滑升级。
-
-### 方式 B: 终端命令行 CLI (`strata`)
-
-1. 打开 PowerShell（`strata` 位于用户 PATH 中）：
-   ```powershell
-   strata --version
-   ```
-2. 免交互直接启动默认 125B MoE 模型：
-   ```powershell
-   strata launch --model q2_0 --yes --no-tui
-   ```
-3. 查看服务状态与资源占用：
-   ```powershell
-   strata launch --status
-   ```
-4. 安全停止推理服务：
-   ```powershell
-   strata launch --stop
-   ```
-
----
-
-## 本分支核心特色技术
-
-### 1. DeepSeek-V4.1-Flash 无审查模型与 MLA 后端
-- 原生支持多头潜在注意力（MLA）投影矩阵（`strata_control/backends/dsv41.py`）。
-- 预准入模型：ISTA 基线、Kiwimaker Maya-S abliterated 替换方案与 AtomicChat 独立无审查模型。
-- **智能消融旁路**：对已去除审查特征的模型自动停用拒绝引导向量，避免双重消融导致语义畸变，同时将 Qwen 引导向量与 DeepSeek 潜在空间进行严格隔离。
-
-### 2. 任意 GGUF 内容安全检验器 (ModelBundle)
-- **四层安全准入体系**：
-  1. *容器检验*：有界 16 MiB 头部解析器与张量维度溢出防护（防御 GHSA-vgg9-87g3-85w8）。
-  2. *架构兼容*：校验张量布局并选定最优推理后端。
-  3. *内存准入*：强制校验主机内存 $\le 24$ GiB 及显存 $\le 14$ GiB 门限。
-  4. *离线路由*：严格调度到本地后端（`strata-native`, `strata-dsv41`, `prism`, `llama-cpp`）。**严禁任何形式的云端回退（100% 离线隐私保证）**。
-- 流式 SHA-256 检验防范运行时文件篡改与 TOCTOU 攻击。
-
-### 3. Spin(8) 三元性 KV 缓存与异步 TurboQuant
-- 基于实八元数与克利福德代数 $\mathrm{Cl}(8,0)$ 的八维三视图正交变换库（[`spin8/`](spin8/README.md)）。
-- **三视图 KV 缓存**：维护向量 ($V$)、正旋量 ($S_+$) 与负旋量 ($S_-$) 空间，通过单遍在线 Softmax 结合单纯形共识权重打分。
-- 量化 CUDA 方言：`TQ4_1S` (4.25 bpw), `TQ3_0S` (3.3125 bpw), `PQ2_0` (2.50 bpw)。
-
-### 4. 32GB RAM 零显存草稿模型生命周期
-- 基于小型 CPU/GPU 草稿模型的高能效投机采样。
-- 系统内存承压时，草稿模型显存自动清零并卸载，主推理会话平稳运行不中断。
-
-### 5. Hermes Agent 与白亚（Hakua）长期记忆系统
-- **`plugins/hermes-strata`**：供 Hermes Agent 直接管理与调用 Strata 本地模型的工具插件。
-- **`plugins/model-providers/strata`**：供 Hermes Agent 将 125B MoE 推理卸载到本地 Strata (`http://127.0.0.1:18501/v1`) 的模型提供者配置。
-- **记忆 MCP 服务 (`tools/strata_memory_mcp.py`)**：
-  - 连接 `SOUL.md`（核心亲情指令与白亚人设）。
-  - 连接 `MEMORY.md`（情景工作记忆）。
-  - 接入 Hermes Agent SQLite 记忆库（`~/.hermes/ebbinghaus_memory.db`，约 5,000 条记忆）。
-  - 对话生成时自动注入记忆上下文。
-
----
-
-## 验证与测试套件
-
-本项目严格遵循 MILSPEC LLMOps 质量标准：
-
-```powershell
-# 运行完整 Python 回归测试 (71 项)
-$env:PYTHONPATH="."
-py -3 -m pytest tests/terminal/test_custom_model_cli.py tests/contracts tests/security tests/models tests/backends tests/resources tests/dsv41 tests/runtime tests/steering tests/mutations tests/packaging tests/test_strata_memory.py -v -p no:randomly
-
-# 运行 Node.js 测试 (13 项)
-Push-Location apps/host
-node tests/custom-gguf.test.mjs
-node tests/run-config-check.test.mjs
-Pop-Location
-
-# 校验上游锁定一致性
-py -3 tools/check_upstream_cut.py
+```sh
+strata launch --family deepseek41 --model ist-das-2.00bpw --plan
 ```
 
-- **Python 测试**：**71 / 71 全数通过** (0 错误, 0 警告)。
-- **Node.js 测试**：**13 / 13 全数通过**。
-- **安全检查**：头部边界防护、TOCTOU 防护与离线防火墙机制全部生效。
+以下为 Strata 0.2.5 上 2.00 bpw 版本的实测结果。“输出”是回答的速度，“提示词”是 Strata 读取你输入内容的速度。
 
----
+| 硬件 | 输出 | 提示词 |
+| --- | ---: | ---: |
+| RTX 5070 12 GB, 64 GB 内存 | 4 到 6 tokens/s | 约 110 tokens/s（4K） |
+| RTX 3060 12 GB, 46 GB 内存 | 9 到 11 tokens/s | 约 155 tokens/s（4K） |
+| 1x Radeon AI PRO R9700, 251 GB 内存 | 21 到 25 tokens/s | 320 到 360 tokens/s (8K) |
+| 4x Radeon AI PRO R9700 | 74 到 77 tokens/s | 400 到 450 tokens/s (8K) |
 
-## 许可证与致谢
+[内存、磁盘和详细信息](docs/DEEPSEEK41.md) · [发行说明](https://github.com/Niko1221/Strata/releases)
 
-- **分支开发与维护**: [`zapabob/Strata`](https://github.com/zapabob)
-- **上游原作**: [`Niko1221/Strata`](https://github.com/Niko1221/Strata)
-- **模型与技术致谢**: [Qwen Team (Alibaba)](https://huggingface.co/Qwen)、[DeepSeek AI](https://huggingface.co/deepseek-ai)、[ISTA-DASLab](https://huggingface.co/ISTA-DASLab)、Kiwimaker、AtomicChat。
-- **开源协议**: 本项目遵循 [MIT 许可证](LICENSE)。
+</details>
+
+<a id="the-other-sizes"></a>
+
+不确定哪个放得下？[为你的电脑选择模型](docs/MODELS.md#pick-by-memory)。
+
+## 安装
+
+<a id="option-a-the-strata-app"></a>
+
+### 桌面应用
+
+**[下载适用于 Windows、Linux 或 Mac 的 Strata →](https://github.com/Niko1221/Strata/releases/latest)**
+
+安装应用，选择模型，就可以开始聊天。每个系统只有一个安装程序。首次启动时，应用会下载适合你显卡的引擎。[安装程序帮助](docs/INSTALL.md#the-app)。
+
+<sub>文件: `Strata-0.2.6-windows-x64-setup.exe` · `Strata-0.2.6-linux-x86_64.AppImage` · `Strata-0.2.6-macos-arm64.dmg`</sub>
+
+<p align="center">
+  <img src="docs/media/app-chat.png" width="900" alt="Strata 桌面应用，聊天和实时代码预览并排显示">
+  <br><sub>聊天、文件和实时预览都在一个窗口里。</sub>
+</p>
+
+<a id="option-b-the-terminal-one-line"></a>
+
+### 终端应用
+
+更喜欢终端？安装 Strata，然后运行 **`strata launch`**。
+
+<details open>
+<summary><b>安装命令</b></summary>
+
+**Linux / Mac**
+
+```sh
+curl -fsSL https://github.com/Niko1221/Strata/releases/latest/download/install.sh -o install.sh && sh install.sh
+```
+
+**Windows PowerShell**
+
+```powershell
+irm https://github.com/Niko1221/Strata/releases/latest/download/install.ps1 | iex
+```
+
+在 Windows 上，安装后请打开一个新的终端。然后运行：
+
+```sh
+strata launch
+```
+
+按提示下载并启动模型。[终端指南](docs/TERMINAL_LAUNCH.md)。
+
+</details>
+
+<p align="center">
+  <img src="docs/media/terminal-monitor.png" width="900" alt="Strata 终端应用，显示模型活动、速度、内存和最近的请求">
+  <br><sub>模型运行时，随时查看模型和硬件状态。</sub>
+</p>
+
+<a id="build-from-source"></a>
+
+[从源码构建](docs/SOURCE_INSTALL.md) · [Docker](docs/DOCKER.md) · [完整安装指南](docs/INSTALL.md)
+
+<a id="what-you-need"></a>
+
+## 硬件
+
+| 支持的硬件 | 指南 |
+| --- | --- |
+| **NVIDIA GeForce RTX 20 / 30 / 40 / 50 系列** | [NVIDIA 安装](docs/INSTALL.md#what-you-need) |
+| **AMD Radeon RX 7700 / 7800 / 7900、RX 9060 / 9070、AI PRO R9700** | [AMD 安装](docs/AMD_HIP.md) |
+| **AMD Radeon RX 6800 / 6900 · 实验性** | [RX 6000 安装](docs/AMD_HIP.md#rdna2-gfx1030) |
+| **Intel Arc · Linux** | [Intel 安装](docs/INTEL_ARC.md) |
+| **Apple Silicon · M1 或更新** | [Mac 安装](docs/MAC.md) |
+| **AMD Ryzen AI Max · Strix Halo** | [Strix Halo 安装](docs/STRIX_HALO.md) |
+
+<a id="using-it"></a>
+
+## 工具
+
+**Claude Code · Codex CLI · OpenCode · oh-my-pi · pi.dev · Hermes Agent · OpenClaw**，也可以通过兼容 OpenAI 和 Anthropic 的 API 使用更多工具。
+
+运行 **`strata connect`**，查看你所用工具的设置方法。[连接指南](docs/TERMINAL_LAUNCH.md#connect-your-apps-strata-connect)。
+
+<a id="guides"></a>
+<a id="how-fast-is-it"></a>
+<a id="how-does-it-work"></a>
+<a id="something-went-wrong"></a>
+
+## 帮助
+
+[全部指南](docs) · [故障排查](docs/TROUBLESHOOTING.md) · [报告问题](https://github.com/Niko1221/Strata/issues/new/choose) ·
+[基准测试](docs/COMMUNITY_BENCHMARKS.md) · [工作原理](docs/HOW_IT_WORKS.md) · [参与贡献](CONTRIBUTING.md)
+
+## 支持 Strata
+
+**帮助本地 AI 保持开放。** 一杯咖啡能帮助我们在更多硬件上开发和测试。
+
+<a href="https://buymeacoffee.com/strataengine"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee：支持 Strata" height="48"></a>
+
+[MIT 许可证](LICENSE) · [致谢和模型许可证](docs/HOW_IT_WORKS.md#credits) · [隐私](docs/SAFETY.md)
+
+<a id="option-c-let-your-ai-set-it-up"></a>
+
+<sub>面向 AI 工具和自动阅读器： <a href="AGENTS.md">技术参考</a> · <a href="docs/AI_SETUP.md">安装说明</a></sub>
+
+**赞助、硬件合作或其他合作：** [niko.veit@outlook.com](mailto:niko.veit@outlook.com).

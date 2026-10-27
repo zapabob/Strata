@@ -144,3 +144,34 @@ test('F03: cancelled load whose start resolves late must not unload the newer re
     await f.cleanup();
   }
 });
+
+test('F03b: late-resolving cancelled start must stop its own profile so reload is not blocked', async () => {
+  const f = cancelRaceFixture();
+  try {
+    await f.native.refresh(true);
+
+    const first = f.native.operation('load', { model: 'iq2_xs', gpus: [0] });
+    await f.waitForStartGate();
+    await f.native.cancel(first.id);
+    assert.equal(f.native.state().jobs.find(j => j.id === first.id).state, 'cancelled');
+
+    const stopsBeforeRelease = f.calls.filter(c => c[0] === 'stop').length;
+    f.releaseOldestStart();
+    await finish(f.native, first.id);
+    await new Promise(r => setTimeout(r, 50));
+
+    const stopsAfter = f.calls.filter(c => c[0] === 'stop').length;
+    assert.ok(
+      stopsAfter > stopsBeforeRelease,
+      'cancelled load must stop its profile after a late Control start resolves',
+    );
+
+    f.allowImmediateStarts();
+    const second = f.native.operation('load', { model: 'iq2_xs', gpus: [0] });
+    const done = await finish(f.native, second.id);
+    assert.equal(done.state, 'done', done.error ?? done.summary);
+    assert.ok(f.native.state().instances.some(i => i.status === 'ready'), 'reload reaches ready');
+  } finally {
+    await f.cleanup();
+  }
+});

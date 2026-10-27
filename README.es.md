@@ -1,75 +1,188 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="apps/host/public/brand/strata-lockup-dark.svg">
-    <img src="apps/host/public/brand/strata-lockup-light.svg" alt="Strata" width="380">
+    <img src="apps/host/public/brand/strata-lockup-light.svg" alt="Strata" width="340">
   </picture>
 </p>
 
-<p align="center"><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ja.md">日本語</a> · <a href="README.de.md">Deutsch</a> · <a href="README.fr.md">Français</a> · <b>Español</b> · <a href="README.pt-BR.md">Português</a></p>
-
-<h3 align="center">Strata — Caché KV Spin(8) Triality, DeepSeek-V4.1 Sin Censura, Cargador GGUF y Memoria a Largo Plazo</h3>
+<h3 align="center">IA potente en tu propio ordenador.</h3>
+<p align="center">Chatea, programa y trabaja con imágenes, en local.</p>
 
 <p align="center">
-  <b>Fork de ingeniería de <a href="https://github.com/Niko1221/Strata">Niko1221/Strata</a></b> · Upstream Integrado · Atención Spin(8) $\mathrm{Cl}(8,0)$ Triality · DeepSeek-V4.1-Flash MLA Sin Censura · Verificación de Contenido GGUF · Memoria a Largo Plazo Hermes y Hakua · Optimizado para 32 GB RAM
+  <a href="#modelos">Modelos</a> · <a href="#instalación"><b>Instalación</b></a> ·
+  <a href="#hardware">Hardware</a> · <a href="#herramientas">Herramientas</a> ·
+  <a href="#ayuda">Ayuda</a> · <a href="#apoya-strata">Apoyar</a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/zapabob/Strata/releases/tag/v0.3.0-preview.20261024.2"><img src="https://img.shields.io/github/v/release/zapabob/Strata?include_prereleases&label=fork%20release" alt="Fork release"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/zapabob/Strata" alt="MIT license"></a>
-  <a href="https://github.com/zapabob/Strata/stargazers"><img src="https://img.shields.io/github/stars/zapabob/Strata?style=flat" alt="GitHub stars"></a>
+  <a href="https://github.com/Niko1221/Strata/releases/latest"><img src="https://img.shields.io/github/v/release/Niko1221/Strata?label=download&color=0ab887" alt="Descargar Strata"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/Niko1221/Strata" alt="Licencia MIT"></a>
+  <a href="https://buymeacoffee.com/strataengine"><img src="https://img.shields.io/badge/Buy_me_a_coffee-FFDD00?logo=buymeacoffee&logoColor=000" alt="Apoya Strata en Buy Me a Coffee"></a>
 </p>
 
----
+<p align="center"><sub><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ja.md">日本語</a> · <a href="README.de.md">Deutsch</a> · <a href="README.fr.md">Français</a> · <b>Español</b> · <a href="README.pt-BR.md">Português</a></sub></p>
 
-## Visión general de este Fork (`zapabob/Strata`)
+**Gratis, de código abierto y tuyo para ejecutar.** Usa Strata en tu escritorio o con tus herramientas de programación favoritas. No necesitas cuenta.
 
-**`zapabob/Strata`** es un fork avanzado sincronizado con la última versión upstream v0.2.4.2 / motor 0.1.49.2 de [Strata](https://github.com/Niko1221/Strata). Además de ejecutar modelos MoE de 125B parámetros (**Qwen3.8-Flash-Next**, **Qwen3.6-35B-A3B**, **Gyro**, **Swift 1.5**, **NVFP4**) en una sola PC mediante streaming coordinado entre VRAM, RAM y SSD, este fork integra **Caché KV Spin(8) Triality**, **derivados sin censura DeepSeek-V4.1**, **carga segura de modelos GGUF basada en contenido** y **memoria a largo plazo para agentes**:
+## Modelos
 
-1. **Biblioteca de Transformación Ortogonal Spin(8) Triality y $\mathrm{Cl}(8,0)$ ([`spin8/`](spin8/README.md))**
-   - Basada en octoniones reales ($1, e_1, \dots, e_7$) y generadores de Clifford simétricos $\mathrm{Cl}(8,0)$.
-   - Descompone espinores 16×16 en tres representaciones octodimensionales: **Vector ($V$)**, **Semiespín Positivo ($S_+$)** y **Semiespín Negativo ($S_-$)**.
-   - Auditoría matemática de cada plan de rotación antes de su admisión ($E_F \le 10^{-12}$).
-   - Transformadas de Sylvester-Hadamard y monitor de invariantes en tiempo de ejecución (`spin8_monitor`).
+Recomendamos **primero ISTA-DASLab**, después **Unsloth** y otros proveedores, siempre que haya un modelo compatible que quepa en tu memoria.
 
-2. **Caché KV Triality de Tres Vistas y Dialectos TurboQuant CUDA ([`tqcodec/`](tqcodec/README.md))**
-   - **Caché CUDA de Tres Vistas (`cache_cuda.cu`)**: Matrices de claves rotadas ($V, S_+, S_-$), valores cuantizados compartidos, softmax online y corrección de residuos **QJL**.
-   - **Dialectos asíncronos**: `TQ4_1S` (4.25 bpw), `TQ3_0S` (3.3125 bpw) y `PQ2_0` (2.50 bpw).
-   - **Optimización SM120 (Serie RTX 50)**: Memoria compartida dinámica que ahorra 3.375 GiB de reserva de pila VRAM en CUDA.
+<details>
+<summary><img src="docs/media/models/qwen.svg" width="22" alt="" align="middle"> &nbsp;<b>Qwen3.8-Flash-Next</b></summary>
 
-3. **Derivados Sin Censura DeepSeek-V4.1-Flash-1017 y Backend MLA ([`strata_control/backends/dsv41.py`](strata_control/backends/dsv41.py))**
-   - Soporte nativo para matrices de proyección Multi-Head Latent Attention (MLA) mediante el backend `strata-dsv41`.
-   - Modelos precalificados: Base ISTA, receta de reemplazo abliterada Kiwimaker Maya-S y paquete independiente AtomicChat.
-   - Supresión automática de vectores de rechazo en modelos abliterados para evitar distorsiones de respuesta.
+| Proveedor | Opciones |
+| --- | --- |
+| **ISTA-DASLab · recomendado** | Q2\_0, IQ2\_XS, IQ3\_XXS, IQ3\_S. [Coder: IQ1\_M](docs/MODELS.md#coder) para programar. |
+| **Unsloth** | UD-IQ4\_XS, UD-Q4\_K\_XL, UD-Q5\_K\_XL, UD-Q6\_K\_XL, Q8\_0 |
+| **Gyro · agentionai** | [Gyro-S, Gyro-M](https://huggingface.co/agentionai/Qwen3.8-Flash-Next-Gyro-GGUF). Usa menos memoria, pero es más lento. |
+| **Otras opciones** | [Swift 1.5](docs/MODELS.md#swift-15), [NVFP4](docs/NVFP4.md), [OrcaRouter](docs/ORCA.md) |
 
-4. **Resolver ModelBundle Basado en Contenido y Enrutador Local ([`strata_control/model_bundle.py`](strata_control/model_bundle.py))**
-   - Análisis acotado de cabeceras ($\le 16$ MiB) y prevención de desbordamientos ($\operatorname{rank} \le 4, \operatorname{dim} \le 2^{30}$, mitigando GHSA-vgg9-87g3-85w8).
-   - Resumen SHA-256 en flujo continuo y detección de alteraciones.
-   - Enrutamiento local determinista (`strata-dsv41`, `strata-native`, `prism`, `llama-cpp`) con **prohibición estricta de respaldo en la nube** (100% privacidad local).
+[Compara tamaños, necesidades de memoria y compatibilidad](docs/MODELS.md).
 
-5. **Memoria a Largo Plazo Hermes Agent y Hakua ([`tools/strata_memory_mcp.py`](tools/strata_memory_mcp.py))**
-   - Servidor MCP stdio + CLI:
-     - `SOUL.md`: Personalidad principal y directiva de afinidad Hakua con copia de seguridad automática.
-     - `MEMORY.md`: Memoria episódica estructurada en formato `§ [category] YYYY-MM-DD: Title`.
-     - Base SQLite de Hermes Agent (`~/.hermes/ebbinghaus_memory.db`, ~5.000 memorias indexadas).
-     - Hakua Composite Memory (`~/.hakua-memory`).
-   - Inyección automática en sesiones de chat mediante `apps/host/server/memory.mjs`.
+</details>
 
-6. **Presupuesto de Hardware 32GB RAM / 16GB VRAM y Ciclo de Vida Drafter Zero-VRAM**
-   - Verificado en Windows 11 con 32 GB RAM y RTX 5060 Ti 16 GB (`sm_120`).
-   - Respeto estricto: RAM de host $\le 24.0$ GiB, reserva de SO $\ge 4.0$ GiB, presupuesto VRAM $\le 14.0$ GiB.
-   - Descarga automática del modelo borrador ante presión de memoria sin detener el proceso principal.
+<details>
+<summary><img src="docs/media/models/qwen.svg" width="22" alt="" align="middle"> &nbsp;<b>Qwen3.6-35B-A3B</b></summary>
 
----
+**Unsloth:** UD-Q4_K_XL, UD-Q6_K_XL, Q8_0. Son los paquetes documentados actualmente para este modelo.
 
-## Verificación e Integración Upstream: `v0.3.0` Upstream Integrated Edition
+[Guía del modelo y compatibilidad](docs/QWEN36.md).
 
-- **Upstream SHA**: `7dd5cf18e68c639a8773e096c5c79f971ea2a9f5`
-- **Parche de seguridad GUI**: `c487c875d05075113965bc61d822b27179f70639`
-- **Contratos del Fork (F01–F11)**: Preservados en su totalidad.
-- **Pruebas**: **71/71 pruebas Python aprobadas**, **13/13 pruebas Node.js aprobadas**.
+</details>
 
----
+<details>
+<summary><img src="docs/media/models/deepseek.svg" width="22" alt="" align="middle"> &nbsp;<b>DeepSeekV4.1-Flash-1017</b></summary>
 
-## Licencia
+En la **aplicación de escritorio** y en el **Terminal**. Lo que no cabe en la memoria se lee desde tu SSD, así que hace falta mucho espacio libre en disco.
 
-Publicado bajo la [Licencia MIT](LICENSE).
+| Conjunto (IST-DAS) | Descarga | Espacio libre necesario |
+| --- | ---: | ---: |
+| 1.75 bpw | 239 GB | unos 245 GB |
+| 2.00 bpw | 257 GB | unos 265 GB |
+| 2.25 bpw | 274 GB | unos 280 GB |
+
+Funciona en NVIDIA RTX 30, 40 y 50 (Windows y Linux) y en AMD Radeon AI PRO R9700 (Linux). La instalación descarga los archivos y el motor de DeepSeek, y después inicia el modelo.
+
+```sh
+strata launch --family deepseek41 --model ist-das-2.00bpw --plan
+```
+
+Medido con el conjunto de 2.00 bpw en Strata 0.2.5. «Salida» es la velocidad de la respuesta; «Prompt» es la rapidez con la que Strata lee tu texto.
+
+| Hardware | Salida | Prompt |
+| --- | ---: | ---: |
+| RTX 5070 12 GB, 64 GB de RAM | 4 a 6 tokens/s | unos 110 tokens/s (4K) |
+| RTX 3060 12 GB, 46 GB de RAM | 9 a 11 tokens/s | unos 155 tokens/s (4K) |
+| 1x Radeon AI PRO R9700, 251 GB de RAM | 21 a 25 tokens/s | 320 a 360 tokens/s (8K) |
+| 4x Radeon AI PRO R9700 | 74 a 77 tokens/s | 400 a 450 tokens/s (8K) |
+
+[Memoria, disco y detalles](docs/DEEPSEEK41.md) · [Notas de la versión](https://github.com/Niko1221/Strata/releases)
+
+</details>
+
+<a id="the-other-sizes"></a>
+
+¿No sabes qué cabe? [Elige un modelo para tu ordenador](docs/MODELS.md#pick-by-memory).
+
+## Instalación
+
+<a id="option-a-the-strata-app"></a>
+
+### Aplicación de escritorio
+
+**[Descargar Strata para Windows, Linux o Mac →](https://github.com/Niko1221/Strata/releases/latest)**
+
+Instala la aplicación, elige un modelo y empieza a chatear. Hay un instalador por sistema. En el primer arranque, la aplicación descarga el motor para tu tarjeta gráfica. [Ayuda con el instalador](docs/INSTALL.md#the-app).
+
+<sub>Archivos: `Strata-0.2.6-windows-x64-setup.exe` · `Strata-0.2.6-linux-x86_64.AppImage` · `Strata-0.2.6-macos-arm64.dmg`</sub>
+
+<p align="center">
+  <img src="docs/media/app-chat.png" width="900" alt="Aplicación de escritorio de Strata con un chat y una vista previa del código en vivo, una junto a otra">
+  <br><sub>Chat, archivos y vista previa en vivo en una sola ventana.</sub>
+</p>
+
+<a id="option-b-the-terminal-one-line"></a>
+
+### Aplicación de Terminal
+
+¿Prefieres la terminal? Instala Strata y ejecuta **`strata launch`**.
+
+<details open>
+<summary><b>Comandos de instalación</b></summary>
+
+**Linux / Mac**
+
+```sh
+curl -fsSL https://github.com/Niko1221/Strata/releases/latest/download/install.sh -o install.sh && sh install.sh
+```
+
+**Windows PowerShell**
+
+```powershell
+irm https://github.com/Niko1221/Strata/releases/latest/download/install.ps1 | iex
+```
+
+En Windows, abre una terminal nueva después. Luego:
+
+```sh
+strata launch
+```
+
+Sigue las indicaciones para descargar e iniciar un modelo. [Guía del Terminal](docs/TERMINAL_LAUNCH.md).
+
+</details>
+
+<p align="center">
+  <img src="docs/media/terminal-monitor.png" width="900" alt="Aplicación de Terminal de Strata con la actividad del modelo, la velocidad, la memoria y las peticiones recientes">
+  <br><sub>Observa tu modelo y tu hardware mientras se ejecuta.</sub>
+</p>
+
+<a id="build-from-source"></a>
+
+[Compilar desde el código fuente](docs/SOURCE_INSTALL.md) · [Docker](docs/DOCKER.md) · [Guía de instalación completa](docs/INSTALL.md)
+
+<a id="what-you-need"></a>
+
+## Hardware
+
+| Hardware compatible | Guía |
+| --- | --- |
+| **NVIDIA GeForce RTX 20 / 30 / 40 / 50** | [Instalación en NVIDIA](docs/INSTALL.md#what-you-need) |
+| **AMD Radeon RX 7700 / 7800 / 7900, RX 9060 / 9070, AI PRO R9700** | [Instalación en AMD](docs/AMD_HIP.md) |
+| **AMD Radeon RX 6800 / 6900 · experimental** | [Instalación en RX 6000](docs/AMD_HIP.md#rdna2-gfx1030) |
+| **Intel Arc · Linux** | [Instalación en Intel](docs/INTEL_ARC.md) |
+| **Apple Silicon · M1 o posterior** | [Instalación en Mac](docs/MAC.md) |
+| **AMD Ryzen AI Max · Strix Halo** | [Instalación en Strix Halo](docs/STRIX_HALO.md) |
+
+<a id="using-it"></a>
+
+## Herramientas
+
+**Claude Code · Codex CLI · OpenCode · oh-my-pi · pi.dev · Hermes Agent · OpenClaw**, y más, mediante las API compatibles con OpenAI y Anthropic.
+
+Ejecuta **`strata connect`** para ver las instrucciones de tu herramienta. [Guía de conexión](docs/TERMINAL_LAUNCH.md#connect-your-apps-strata-connect).
+
+<a id="guides"></a>
+<a id="how-fast-is-it"></a>
+<a id="how-does-it-work"></a>
+<a id="something-went-wrong"></a>
+
+## Ayuda
+
+[Todas las guías](docs) · [Solución de problemas](docs/TROUBLESHOOTING.md) · [Informar de un error](https://github.com/Niko1221/Strata/issues/new/choose) ·
+[Benchmarks](docs/COMMUNITY_BENCHMARKS.md) · [Cómo funciona](docs/HOW_IT_WORKS.md) · [Contribuir](CONTRIBUTING.md)
+
+## Apoya Strata
+
+**Ayuda a mantener la IA local abierta a todos.** Un café ayuda a financiar el desarrollo y las pruebas en más hardware.
+
+<a href="https://buymeacoffee.com/strataengine"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee: apoya Strata" height="48"></a>
+
+[Licencia MIT](LICENSE) · [Créditos y licencias de los modelos](docs/HOW_IT_WORKS.md#credits) · [Privacidad](docs/SAFETY.md)
+
+<a id="option-c-let-your-ai-set-it-up"></a>
+
+<sub>Para herramientas de IA y lectores automáticos: <a href="AGENTS.md">referencia técnica</a> · <a href="docs/AI_SETUP.md">instrucciones de instalación</a>.</sub>
+
+**Patrocinios, alianzas de hardware o colaboraciones:** [niko.veit@outlook.com](mailto:niko.veit@outlook.com).

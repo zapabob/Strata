@@ -1,0 +1,144 @@
+{
+  "generated_at": "2026-10-27T14:06:40.161855+00:00",
+  "mode": "execute",
+  "branch": "codex/strata-hakua-chatbot-20261027",
+  "head_sha": "67313f58287adaf08b9ae053ebd2222b7178944b",
+  "upstream_remote": "upstream",
+  "upstream_ref": "upstream/main",
+  "upstream_sha": "4b9e05a2a806a3fe24f7b2560d98626c37dade35",
+  "merge_base": "7dd5cf18e68c639a8773e096c5c79f971ea2a9f5",
+  "ahead": 143,
+  "behind": 163,
+  "dirty": false,
+  "dirty_paths": [],
+  "remotes": [
+    {
+      "name": "origin",
+      "fetch_url": "https://github.com/zapabob/Strata.git",
+      "push_url": "https://github.com/zapabob/Strata.git"
+    },
+    {
+      "name": "upstream",
+      "fetch_url": "https://github.com/Niko1221/Strata.git",
+      "push_url": "https://github.com/Niko1221/Strata.git"
+    }
+  ],
+  "proprietary_features": [
+    {
+      "id": "F01",
+      "name": "Clifford/Spin(8)/Triality KV Cache",
+      "anchor": "spin8"
+    },
+    {
+      "id": "F02",
+      "name": "Query-v3 & Identity Initialization",
+      "anchor": "tqcodec / adapters"
+    },
+    {
+      "id": "F03",
+      "name": "TurboQuant Dialects",
+      "anchor": "tqcodec"
+    },
+    {
+      "id": "F04",
+      "name": "Dynamic Shared Audit Fix & Guard",
+      "anchor": "src + host guards"
+    },
+    {
+      "id": "F05",
+      "name": "Model/Pack/Position/Hash Snapshot Integrity",
+      "anchor": "native-control / run-config"
+    },
+    {
+      "id": "F06",
+      "name": "GUI/CLI Fork-Specific Settings & Clean OFF",
+      "anchor": "apps/host"
+    },
+    {
+      "id": "F07",
+      "name": "Windows Ownership, Job Guard & Fail-Closed",
+      "anchor": "packaging / control"
+    },
+    {
+      "id": "F08",
+      "name": "Hikari 27B PQ2_0 & Nimble Weights",
+      "anchor": "prism / model bundles"
+    },
+    {
+      "id": "F09",
+      "name": "Research PoC, Negative Results & Ledger",
+      "anchor": "_docs"
+    },
+    {
+      "id": "F10",
+      "name": "Refusal-Direction / Control Vector Steering",
+      "anchor": "research opt-in"
+    },
+    {
+      "id": "F11",
+      "name": "Arbitrary GGUF & DeepSeek Derivative Integration",
+      "anchor": "ModelBundle router"
+    },
+    {
+      "id": "HAKUA",
+      "name": "Hakua consented authenticated memory chat",
+      "anchor": "apps/host + serve/memory_harness.py"
+    },
+    {
+      "id": "KEYS",
+      "name": "Fork / Hakua harness API keys + run-config known keys",
+      "anchor": "run-config-check / native keys"
+    },
+    {
+      "id": "HERMES",
+      "name": "Hermes agent + long-term memory integration",
+      "anchor": "serve / docs"
+    },
+    {
+      "id": "PKG",
+      "name": "Hakua-labelled Windows full packaging (-hakua)",
+      "anchor": "packaging/full_windows.py"
+    }
+  ],
+  "proprietary_path_status": {
+    "_docs/upstream-intake/fork-contracts.json": true,
+    "adapters/upstream": false,
+    "apps/host/server/memory.mjs": true,
+    "apps/host/server/native-control.mjs": true,
+    "apps/host/server/run-config-check.mjs": true,
+    "apps/host/src/lib/store.ts": true,
+    "packaging/full_windows.py": true,
+    "serve/memory_harness.py": true,
+    "spin8": true,
+    "tests/contracts/test_fork_feature_matrix.py": true,
+    "tests/contracts/test_upstream_compatibility.py": true,
+    "tools/check_upstream_cut.py": true,
+    "tools/generate_t00_intake.py": true,
+    "tools/merge_upstream_fork.py": true,
+    "tqcodec": true
+  },
+  "backup_branch": "backup/pre-upstream-merge-20261027T140640Z",
+  "blockers": [],
+  "next_steps": [
+    "Review this plan JSON/Markdown; keep proprietary features listed below.",
+    "Ensure dirty Hakua edits are committed or stashed (script can --stash-dirty).",
+    "Re-run: py -3 tools/merge_upstream_fork.py --plan --upstream-ref upstream/main",
+    "When ready (explicit): py -3 tools/merge_upstream_fork.py --execute --upstream-ref upstream/main --stash-dirty --backup",
+    "Resolve conflicts preferring fork proprietary anchors + upstream security/bugfixes.",
+    "Run host tests + check_upstream_cut; then build, tag/release (no auto-push), rewrite README."
+  ],
+  "merge_tree_conflicts": [
+    "changed in both"
+  ],
+  "notes": [
+    "Fork is ahead=143, behind=163 vs upstream/main.",
+    "merge-tree heuristic flagged 1 conflict hint(s).",
+    "Some proprietary paths are absent from the worktree (sparse-checkout or not yet landed): adapters/upstream",
+    "Stashed dirty work: pre-upstream-merge-hakua-20261027T140640Z",
+    "Merge stopped with conflicts or error; working tree may be mid-merge. Resolve manually.",
+    "To abort: git merge --abort",
+    "Restore stash later with: git stash list  # look for pre-upstream-merge-hakua-20261027T140640Z"
+  ],
+  "executed": false,
+  "execute_result": "merge failed (1): Auto-merging CMakeLists.txt\nAuto-merging README.de.md\nCONFLICT (content): Merge conflict in README.de.md\nAuto-merging README.es.md\nCONFLICT (content): Merge conflict in README.es.md\nAuto-merging README.fr.md\nCONFLICT (content): Merge conflict in README.fr.md\nAuto-merging README.ja.md\nCONFLICT (content): Merge conflict in README.ja.md\nAuto-merging README.md\nCONFLICT (content): Merge conflict in README.md\nAuto-merging README.pt-BR.md\nCONFLICT (content): Merge conflict in README.pt-BR.md\nAuto-merging README.zh-CN.md\nCONFLICT (content): Merge conflict in README.zh-CN.md\nAuto-merging apps/desktop/package.json\nCONFLICT (content): Merge conflict in apps/desktop/package.json\nAuto-merging apps/desktop/src-tauri/Cargo.lock\nCONFLICT (content): Merge conflict in apps/desktop/src-tauri/Cargo.lock\nAuto-merging apps/desktop/src-tauri/Cargo.toml\nCONFLICT (content): Merge conflict in apps/desktop/src-tauri/Cargo.toml\nAuto-merging apps/host/package.json\nCONFLICT (content): Merge conflict in apps/host/package.json\nAuto-merging apps/host/server/index.mjs\nCONFLICT (content): Merge conflict in apps/host/server/index.mjs\nAuto-merging apps/host/server/native-control.mjs\nCONFLICT (content): Merge conflict in apps/host/server/native-control.mjs\nAuto-merging apps/host/server/native-settings.mjs\nAuto-merging apps/host/src/lib/native.ts\nAuto-merging apps/host/src/lib/store.ts\nCONFLICT (content): Merge conflict in apps/host/src/lib/store.ts\nAuto-merging apps/host/src/lib/types.ts\nAuto-merging apps/host/src/screens/ModelRun.tsx\nCONFLICT (content): Merge conflict in apps/host/src/screens/ModelRun.tsx\nAuto-merging apps/host/tests/packaged-control.test.mjs\nAuto-merging serve/server.py\nAuto-merging src/program/generate.cpp\nAuto-merging strata_cli/cli.py\nAuto-merging strata_control/models.py\nCONFLICT (content): Merge conflict in strata_control/models.py\nAuto-merging strata_control/runtime.py\nAuto-merging tests/terminal/test_runtime.py\nAutomatic merge failed; fix conflicts and then commit the result."
+}

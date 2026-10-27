@@ -1,14 +1,192 @@
-# Strata
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="apps/host/public/brand/strata-lockup-dark.svg">
+    <img src="apps/host/public/brand/strata-lockup-light.svg" alt="Strata" width="340">
+  </picture>
+</p>
 
-Local LLM inference with a desktop app, a command-line controller and a native engine. This fork retains Spin(8) / Triality, Query-v3, TurboQuant and Bonsai alongside the upstream runtime.
+<h3 align="center">Run powerful AI on your own computer.</h3>
+<p align="center">Chat, code and work with images, locally.</p>
 
-[Project website](https://zapabob.github.io/Strata/) · [Stable v0.3.1](https://github.com/zapabob/Strata/releases/tag/v0.3.1) · [Windows inference preview](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261027.1)
+<p align="center">
+  <a href="#models">Models</a> · <a href="#install"><b>Install</b></a> ·
+  <a href="#hardware">Hardware</a> · <a href="#tools">Tools</a> ·
+  <a href="#fork-notes">Fork notes</a> ·
+  <a href="#help">Help</a> · <a href="#support-strata">Support</a>
+</p>
 
-## Windows inference preview
+<p align="center">
+  <a href="https://github.com/zapabob/Strata/releases/latest"><img src="https://img.shields.io/github/v/release/zapabob/Strata?label=fork%20release&color=0ab887" alt="Download this fork"></a>
+  <a href="https://github.com/Niko1221/Strata/releases/latest"><img src="https://img.shields.io/github/v/release/Niko1221/Strata?label=upstream&color=555" alt="Upstream Strata"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/Niko1221/Strata" alt="MIT license"></a>
+</p>
 
-`0.3.2-preview.20261027.1` packages the engine tested on Windows, RTX 5060 Ti 16 GiB and 32 GiB system RAM. It is a CUDA 13 / SM120 preview, not a new desktop installer. Existing models and settings are retained by the local overlay installation.
+<p align="center"><sub><b>English</b> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ja.md">日本語</a> · <a href="README.de.md">Deutsch</a> · <a href="README.fr.md">Français</a> · <a href="README.es.md">Español</a> · <a href="README.pt-BR.md">Português</a></sub></p>
 
-The tested configuration is Qwen3.8 Q2_0, capacity **131072**, **spec4 + MTP**, **k8v4**, and a 256-token output reservation. Startup profile prefetch now uses joined threads so completed batches release their retained I/O scratch.
+**Free, open source, and yours to run.** This repository is a fork of [Niko1221/Strata](https://github.com/Niko1221/Strata) that keeps proprietary Spin(8) / Triality, Query-v3, TurboQuant, Bonsai, Hakua memory chat and Windows `-hakua` packaging, while tracking upstream security and bugfixes. Official model, install and hardware guidance below matches upstream **v0.2.6** (`4b9e05a2`) after the 2026-10-27 sync. Fork-only notes and measured preview evidence sit in [Fork notes](#fork-notes).
+
+## Models
+
+We recommend **ISTA-DASLab first**, then **Unsloth** and other providers, where a compatible model fits.
+
+<details>
+<summary><img src="docs/media/models/qwen.svg" width="22" alt="" align="middle"> &nbsp;<b>Qwen3.8-Flash-Next</b></summary>
+
+| Provider | Choices |
+| --- | --- |
+| **ISTA-DASLab · recommended** | Q2\_0, IQ2\_XS, IQ3\_XXS, IQ3\_S. [Coder: IQ1\_M](docs/MODELS.md#coder) for coding. |
+| **Unsloth** | UD-IQ4\_XS, UD-Q4\_K\_XL, UD-Q5\_K\_XL, UD-Q6\_K\_XL, Q8\_0 |
+| **Gyro · agentionai** | [Gyro-S, Gyro-M](https://huggingface.co/agentionai/Qwen3.8-Flash-Next-Gyro-GGUF). Lower memory use but slower. |
+| **Other options** | [Swift 1.5](docs/MODELS.md#swift-15), [NVFP4](docs/NVFP4.md), [OrcaRouter](docs/ORCA.md) |
+
+[Compare sizes, memory needs and compatibility](docs/MODELS.md).
+
+</details>
+
+<details>
+<summary><img src="docs/media/models/qwen.svg" width="22" alt="" align="middle"> &nbsp;<b>Qwen3.6-35B-A3B</b></summary>
+
+**Unsloth:** UD-Q4_K_XL, UD-Q6_K_XL, Q8_0. These are the currently documented packs for this model.
+
+[Model guide and compatibility](docs/QWEN36.md).
+
+</details>
+
+<details>
+<summary><img src="docs/media/models/deepseek.svg" width="22" alt="" align="middle"> &nbsp;<b>DeepSeekV4.1-Flash-1017</b></summary>
+
+In the **desktop app** and the **Terminal**. What does not fit in memory is read from your SSD, so it needs a lot of free
+disk space.
+
+| Set (IST-DAS) | Download | Free disk needed |
+| --- | ---: | ---: |
+| 1.75 bpw | 239 GB | about 245 GB |
+| 2.00 bpw | 257 GB | about 265 GB |
+| 2.25 bpw | 274 GB | about 280 GB |
+
+Runs on NVIDIA RTX 30, 40 and 50 series (Windows and Linux) and AMD Radeon AI PRO R9700 (Linux). Setup downloads the
+files and the DeepSeek engine, then starts the model.
+
+```sh
+strata launch --family deepseek41 --model ist-das-2.00bpw --plan
+```
+
+Measured with the 2.00 bpw set on Strata 0.2.5. Output is the speed of the answer, prompt is how fast Strata reads your input.
+
+| Hardware | Output | Prompt |
+| --- | ---: | ---: |
+| RTX 5070 12 GB, 64 GB RAM | 4 to 6 tokens/s | about 110 tokens/s (4K) |
+| RTX 3060 12 GB, 46 GB RAM | 9 to 11 tokens/s | about 155 tokens/s (4K) |
+| 1x Radeon AI PRO R9700, 251 GB RAM | 21 to 25 tokens/s | 320 to 360 tokens/s (8K) |
+| 4x Radeon AI PRO R9700 | 74 to 77 tokens/s | 400 to 450 tokens/s (8K) |
+
+[Memory, disk and details](docs/DEEPSEEK41.md) · [Upstream release notes](https://github.com/Niko1221/Strata/releases)
+
+</details>
+
+<a id="the-other-sizes"></a>
+
+Not sure what fits? [Choose a model for your computer](docs/MODELS.md#pick-by-memory).
+
+## Install
+
+<a id="option-a-the-strata-app"></a>
+
+### Desktop app
+
+**Upstream installers:** [Niko1221/Strata releases](https://github.com/Niko1221/Strata/releases/latest)  
+**This fork's releases:** [zapabob/Strata releases](https://github.com/zapabob/Strata/releases/latest)
+
+Install the app, choose a model, and start chatting. On first start the app downloads the engine for your graphics card. [Help with the installer](docs/INSTALL.md#the-app).
+
+<sub>Upstream 0.2.6 files: `Strata-0.2.6-windows-x64-setup.exe` · `Strata-0.2.6-linux-x86_64.AppImage` · `Strata-0.2.6-macos-arm64.dmg`. Fork packages may use a `-hakua` label; see the release notes for that tag.</sub>
+
+<p align="center">
+  <img src="docs/media/app-chat.png" width="900" alt="Strata desktop app with a chat and live code preview side by side">
+  <br><sub>Chat, files and a live preview in one window.</sub>
+</p>
+
+<a id="option-b-the-terminal-one-line"></a>
+
+### Terminal app
+
+Prefer the terminal? Install Strata, then run **`strata launch`**.
+
+<details open>
+<summary><b>Install commands</b></summary>
+
+**Linux / Mac**
+
+```sh
+curl -fsSL https://github.com/Niko1221/Strata/releases/latest/download/install.sh -o install.sh && sh install.sh
+```
+
+**Windows PowerShell**
+
+```powershell
+irm https://github.com/Niko1221/Strata/releases/latest/download/install.ps1 | iex
+```
+
+On Windows, open a new terminal afterwards. Then:
+
+```sh
+strata launch
+```
+
+Follow the prompts to download and start a model. [Terminal guide](docs/TERMINAL_LAUNCH.md).
+
+</details>
+
+<p align="center">
+  <img src="docs/media/terminal-monitor.png" width="900" alt="Strata terminal app showing model activity, speed, memory and recent requests">
+  <br><sub>Watch your model and hardware while it runs.</sub>
+</p>
+
+<a id="build-from-source"></a>
+
+[Build from source](docs/SOURCE_INSTALL.md) · [Docker](docs/DOCKER.md) · [Full install guide](docs/INSTALL.md)
+
+<a id="what-you-need"></a>
+
+## Hardware
+
+| Supported hardware | Guide |
+| --- | --- |
+| **NVIDIA GeForce RTX 20 / 30 / 40 / 50 series** | [NVIDIA setup](docs/INSTALL.md#what-you-need) |
+| **AMD Radeon RX 7700 / 7800 / 7900, RX 9060 / 9070, AI PRO R9700** | [AMD setup](docs/AMD_HIP.md) |
+| **AMD Radeon RX 6800 / 6900 · experimental** | [RX 6000 setup](docs/AMD_HIP.md#rdna2-gfx1030) |
+| **Intel Arc · Linux** | [Intel setup](docs/INTEL_ARC.md) |
+| **Apple Silicon · M1 or newer** | [Mac setup](docs/MAC.md) |
+| **AMD Ryzen AI Max · Strix Halo** | [Strix Halo setup](docs/STRIX_HALO.md) |
+
+<a id="using-it"></a>
+
+## Tools
+
+**Claude Code · Codex CLI · OpenCode · oh-my-pi · pi.dev · Hermes Agent · OpenClaw**, and more through the OpenAI- and Anthropic-compatible APIs.
+
+Run **`strata connect`** to see setup instructions for your tool. [Connection guide](docs/TERMINAL_LAUNCH.md#connect-your-apps-strata-connect).
+
+<a id="fork-notes"></a>
+
+## Fork notes
+
+This fork (`zapabob/Strata`) keeps the following surfaces while aligning new host/control APIs with upstream:
+
+| Area | What is kept |
+| --- | --- |
+| Engine research | Spin(8) / Triality KV, Query-v3, TurboQuant dialects, Bonsai / Prism paths |
+| Host | Hakua consented memory chat, run-config known keys, native load cancel ownership |
+| Packaging | Windows full packaging with optional `-hakua` label |
+| Intake | `_docs/upstream-intake/` contracts and `tools/merge_upstream_fork.py` |
+
+Upstream sync checkpoint: **official v0.2.6 / `upstream/main@4b9e05a2`** (Windows uninstaller fixes and 0.2.6 docs/feed). Fork app version in-tree after merge: **`0.3.2-preview.20261027.2`**.
+
+### Windows inference preview (measured on this fork)
+
+Earlier tag `0.3.2-preview.20261027.1` packages the engine tested on Windows, RTX 5060 Ti 16 GiB and 32 GiB system RAM. It is a CUDA 13 / SM120 preview overlay, not a claim that every upstream installer path was re-measured here.
+
+The tested configuration is Qwen3.8 Q2_0, capacity **131072**, **spec4 + MTP**, **k8v4**, and a 256-token output reservation.
 
 | Actual input | First and repeated generation | Recall check | Cleanup |
 | --- | --- | --- | --- |
@@ -17,52 +195,24 @@ The tested configuration is Qwen3.8 Q2_0, capacity **131072**, **spec4 + MTP**, 
 
 These runs had source and controller diagnostics OFF. The 32K first prompt took 494.76 seconds; the repeated prompt took 0.646 seconds with prefix reuse. Decode took 13.759 and 3.255 seconds respectively. These are observations from one synthetic task, not a statistical speed or broad quality claim.
 
-The fixed Windows Job commit cap was 29.8125 GiB; the 32K Job peak was 22.69 GiB. This cap is an explicit safety condition, separate from physical RAM and context capacity. Earlier 10 GiB attempts failed before READY. The larger condition was separately authorized; there was no automatic memory-cap escalation.
+Read [the measurement record](docs/PERF131K.md) and [machine-readable status](docs/perf131k-status.json) before using that preview. Full-length 126000-token certification, image inference and HIP/SYCL remain unqualified on that record.
 
-A 64K trial was intentionally cancelled after the user changed acceptance to reliable working inference. Full-length 126000-token inference with at least 512 generated steps, exact final-cell device boundaries, PPL/KL, paired statistical performance, 32-turn/2-hour stability, image inference and HIP/SYCL remain unqualified. The preview does not claim full 131k certification. Same-source cloud CI is reported separately from local tests and actual inference.
+The optional memory harness stays **disabled by default**. See [MEMORY_HARNESS](serve/MEMORY_HARNESS.md).
 
-Read [the measurement record](docs/PERF131K.md), [machine-readable status](docs/perf131k-status.json), and the archive's README and status before using this preview. Previous previews and historical failures remain documented.
+<a id="guides"></a>
 
-## Install and use
+## Help
 
-For the desktop app, use the appropriate release installer and follow [INSTALL](docs/INSTALL.md). The Windows inference preview archive is an engine/component overlay for an existing installation; it is not a desktop setup executable. Keep the previous component and rollback backup.
+[All guides](docs) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [Report a bug on this fork](https://github.com/zapabob/Strata/issues/new/choose) ·
+[Upstream issues](https://github.com/Niko1221/Strata/issues/new/choose) ·
+[Benchmarks](docs/COMMUNITY_BENCHMARKS.md) · [How it works](docs/HOW_IT_WORKS.md) · [Contribute](CONTRIBUTING.md)
 
-For terminal setup and explicit model selection, follow [AI_SETUP](docs/AI_SETUP.md) and [TERMINAL](docs/TERMINAL.md). Check the proposed configuration before starting a model:
+## Support Strata
 
-```sh
-strata launch --plan --family qwen --model q2_0
-```
+**Help keep local AI open to everyone.** Upstream maintains the public project; a coffee helps their development and testing.
 
-Use the model files already present on the machine where possible. Leave the listener on `127.0.0.1` unless remote access is needed. Model downloads, hardware compatibility and licenses are documented in [MODELS](docs/MODELS.md).
+<a href="https://buymeacoffee.com/strataengine"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee: support Strata" height="48"></a>
 
-The preview includes its required CUDA/VC runtimes and notices. The legacy vision executable is retained unchanged for compatibility; image inference is not validated by these text tests. No model weights, API keys or user conversations are distributed.
+[MIT license](LICENSE) · [Credits and model licenses](docs/HOW_IT_WORKS.md#credits) · [Privacy](docs/SAFETY.md)
 
-## GUI fixes in this preview
-
-Quiet local inference now has a finite 30-minute allowance instead of the previous four-minute cutoff. Remote-model and running-tool limits remain separate, and cancellation still ends a stalled turn.
-
-The local GGUF importer validates the file and tokenizer without restricting text models to a short architecture list. When the native engine cannot import a model, **Try with llama-server** opens the generic path with the same file selected. The GUI companion package supplies the tested generic backend. Actual architecture support is checked when loading; auxiliary files and unsupported configurations report their reason.
-
-Missing K/V metadata is shown as an unknown fit with a provisional estimate. Models whose head width cannot use the selected quantized cache request explicit FP16 selection. A backend that exits immediately reports its error promptly, and a failed load can be retried after correcting settings without downloading the same file again. Invalid K/V settings are rejected before stopping a running native model.
-
-The runtime now records that no child has been launched before publishing its host state. This closes a recovery gap if the host stops before launching the server. Missing child ownership records still require inspection; the app does not guess which process to stop. On the test PC, the exact legacy orphan state was preserved after verifying that its host and listener were absent.
-
-The GUI/host regression set passed 36 tests; four additional tests passed with the real installed Harness. A small GGUF completed import, load, chat generation and unload through the GUI's actual host API, using an isolated synthetic profile and explicit FP16. The frontend builds successfully. Interactive screen testing was unavailable in this session; it is not claimed.
-
-## Memory integration
-
-The optional memory harness is **disabled by default**. It requires server-side per-user identities, isolated databases, approved persona hashes and explicit per-turn consent. Normal requests keep their existing path. Native multiuser memory behavior and its resource/latency qualification remain open. See [MEMORY_HARNESS](serve/MEMORY_HARNESS.md).
-
-## Development and verification
-
-The tested executable SHA-256 is `20373ca6b9b16b9d220820a902b584d604a64e068d383a26ba11dd4e43f85d93`. The engine source checkpoint is `56c4613be8e5f63868f8dbd52e41ab644a324aba`; later controller and documentation commits are separate.
-
-The integrated CPU gate ran 88 tests with two Windows symlink subcases skipped. The native controller passed 15 tests; package and overlay tests passed 23. These checks complement actual inference; they do not substitute for untested backends or long-run stability. The offline statistical executor passed 16 synthetic tests; measured paired comparisons have not been run.
-
-The code is split between the [engine](src/), [server](serve/), [Terminal](strata_cli/) and [desktop/host](apps/). Build and API details are in [DETAILS](docs/DETAILS.md); model-specific and platform guidance is in [docs](docs/). Other hardware and model families have separate requirements and are outside this Windows preview's tested scope.
-
-Read [AGENTS.md](AGENTS.md) and [CONTRIBUTING.md](CONTRIBUTING.md) before changing the project. Preserve existing inference features, keep new features opt-in, and provide actual evidence for performance claims. Local evidence and private model/configuration files are not committed.
-
-## License
-
-[MIT](LICENSE). Based on [Niko1221/Strata](https://github.com/Niko1221/Strata), with work by the upstream and fork contributors, Spin(8)/TurboQuant authors and model authors. Model licenses remain separate. Runtime redistribution notices accompany the archive.
+<sub>For AI tools and automated readers: <a href="AGENTS.md">technical reference</a> · <a href="docs/AI_SETUP.md">setup instructions</a> · <a href="_docs/upstream-intake/fork-contracts.json">fork contracts</a>.</sub>

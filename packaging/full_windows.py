@@ -322,6 +322,7 @@ def _payload_name(value: str, native: str, generic: str, neutral_assets: set[str
         or name.startswith("programs/host/server/")
         or name.startswith("programs/host/dist/")
         or name == "programs/host/package.json"
+        or name == "programs/host/hakua-chatbot.enabled"
         or name == "programs/node/node.exe"
         or name.startswith("programs/control/")
         or name.startswith("programs/harness/")
