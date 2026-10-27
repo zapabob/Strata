@@ -11,18 +11,19 @@
 <p align="center">
   <a href="#モデル">モデル</a> · <a href="#インストール"><b>インストール</b></a> ·
   <a href="#ハードウェア">ハードウェア</a> · <a href="#ツール">ツール</a> ·
+  <a href="#フォークについて">フォークについて</a> ·
   <a href="#ヘルプ">ヘルプ</a> · <a href="#strata-を支援する">支援</a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/Niko1221/Strata/releases/latest"><img src="https://img.shields.io/github/v/release/Niko1221/Strata?label=download&color=0ab887" alt="Strata をダウンロード"></a>
+  <a href="https://github.com/zapabob/Strata/releases/latest"><img src="https://img.shields.io/github/v/release/zapabob/Strata?label=fork%20release&color=0ab887" alt="このフォークをダウンロード"></a>
+  <a href="https://github.com/Niko1221/Strata/releases/latest"><img src="https://img.shields.io/github/v/release/Niko1221/Strata?label=upstream&color=555" alt="上流の Strata"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/Niko1221/Strata" alt="MIT ライセンス"></a>
-  <a href="https://buymeacoffee.com/strataengine"><img src="https://img.shields.io/badge/Buy_me_a_coffee-FFDD00?logo=buymeacoffee&logoColor=000" alt="Buy Me a Coffee で Strata を支援する"></a>
 </p>
 
 <p align="center"><sub><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a> · <b>日本語</b> · <a href="README.de.md">Deutsch</a> · <a href="README.fr.md">Français</a> · <a href="README.es.md">Español</a> · <a href="README.pt-BR.md">Português</a></sub></p>
 
-**無料でオープンソース。自分の環境で動かせます。** デスクトップで、またはお好みのコーディングツールと一緒に Strata を使えます。アカウントは不要です。
+**無料でオープンソース。自分の環境で動かせます。** このリポジトリは [Niko1221/Strata](https://github.com/Niko1221/Strata) のフォークです。Spin(8) / Triality、Query-v3、TurboQuant、Bonsai、Hakua メモリチャット、Windows の `-hakua` パッケージを残しつつ、上流のセキュリティ修正とバグ修正を取り込みます。モデル・インストール・ハードウェアの案内は、2026-10-27 同期後の上流 **v0.2.6**（`4b9e05a2`）に合わせています。フォーク固有の説明と測定済みプレビューは [フォークについて](#フォークについて) にあります。
 
 ## モデル
 
@@ -77,7 +78,7 @@ Strata 0.2.5 で 2.00 bpw のセットを使って測定しました。「出力
 | 1x Radeon AI PRO R9700, 251 GB RAM | 21〜25 トークン/秒 | 320〜360 トークン/秒 (8K) |
 | 4x Radeon AI PRO R9700 | 74〜77 トークン/秒 | 400〜450 トークン/秒 (8K) |
 
-[メモリ、ディスク、詳細](docs/DEEPSEEK41.md) · [リリースノート](https://github.com/Niko1221/Strata/releases)
+[メモリ、ディスク、詳細](docs/DEEPSEEK41.md) · [上流のリリースノート](https://github.com/Niko1221/Strata/releases)
 
 </details>
 
@@ -91,11 +92,12 @@ Strata 0.2.5 で 2.00 bpw のセットを使って測定しました。「出力
 
 ### デスクトップアプリ
 
-**[Windows、Linux、Mac 用の Strata をダウンロード →](https://github.com/Niko1221/Strata/releases/latest)**
+**上流のインストーラー:** [Niko1221/Strata のリリース](https://github.com/Niko1221/Strata/releases/latest)  
+**このフォークのリリース:** [zapabob/Strata のリリース](https://github.com/zapabob/Strata/releases/latest)
 
-アプリをインストールし、モデルを選んで、チャットを始めましょう。インストーラーはシステムごとに1つです。初回起動時に、アプリがお使いのグラフィックスカード用のエンジンをダウンロードします。[インストーラーのヘルプ](docs/INSTALL.md#the-app)。
+アプリをインストールし、モデルを選んで、チャットを始めましょう。初回起動時に、アプリがお使いのグラフィックスカード用のエンジンをダウンロードします。[インストーラーのヘルプ](docs/INSTALL.md#the-app)。
 
-<sub>ファイル: `Strata-0.2.6-windows-x64-setup.exe` · `Strata-0.2.6-linux-x86_64.AppImage` · `Strata-0.2.6-macos-arm64.dmg`</sub>
+<sub>上流 0.2.6 のファイル: `Strata-0.2.6-windows-x64-setup.exe` · `Strata-0.2.6-linux-x86_64.AppImage` · `Strata-0.2.6-macos-arm64.dmg`。フォークのパッケージには `-hakua` ラベルが付くことがあります。タグのリリースノートを見てください。</sub>
 
 <p align="center">
   <img src="docs/media/app-chat.png" width="900" alt="チャットとライブのコードプレビューを並べて表示した Strata デスクトップアプリ">
@@ -163,26 +165,52 @@ strata launch
 
 **`strata connect`** を実行すると、お使いのツールの設定方法が表示されます。[接続ガイド](docs/TERMINAL_LAUNCH.md#connect-your-apps-strata-connect)。
 
+<a id="フォークについて"></a>
+
+## フォークについて
+
+このフォーク（`zapabob/Strata`）は、上流の新しい Host / Control API に合わせつつ、次の面を残しています。
+
+| 領域 | 残しているもの |
+| --- | --- |
+| エンジン研究 | Spin(8) / Triality KV、Query-v3、TurboQuant 方言、Bonsai / Prism 経路 |
+| Host | Hakua 同意付きメモリチャット、run-config の既知キー、ネイティブ読み込みキャンセルの所有権 |
+| パッケージ | Windows フルパッケージ（任意の `-hakua` ラベル） |
+| 取り込み | `_docs/upstream-intake/` の契約と `tools/merge_upstream_fork.py` |
+
+上流同期の到達点: **公式 v0.2.6 / `upstream/main@4b9e05a2`**（Windows アンインストーラ修正と 0.2.6 の docs/feed）。マージ後のツリー上のアプリ版: **`0.3.2-preview.20261027.2`**。
+
+### Windows 推論プレビュー（このフォークで測定）
+
+以前のタグ `0.3.2-preview.20261027.1` は、Windows・RTX 5060 Ti 16 GiB・システム RAM 32 GiB で試したエンジンを同梱します。CUDA 13 / SM120 のプレビュー重ね合わせであり、上流インストーラの全経路をここで再測定したという意味ではありません。
+
+試した設定は Qwen3.8 Q2_0、容量 **131072**、**spec4 + MTP**、**k8v4**、出力予約 256 トークンです。
+
+| 実入力 | 初回と再生成 | 想起チェック | 後始末 |
+| --- | --- | --- | --- |
+| 4096 トークン | 両方完了、各 52 出力トークン | 両方合格 | 残 Job プロセスなし |
+| 32768 トークン | 両方完了、各 52 出力トークン | 両方合格 | 残 Job プロセスなし |
+
+これらの実行では source / controller 診断は OFF でした。32K の初回プロンプトは 494.76 秒、再プロンプトは接頭辞再利用で 0.646 秒でした。デコードはそれぞれ 13.759 秒と 3.255 秒でした。1 つの合成タスクの観察であり、統計的な速度や広い品質の主張ではありません。
+
+使う前に [測定記録](docs/PERF131K.md) と [機械可読ステータス](docs/perf131k-status.json) を読んでください。その記録では、126000 トークンの全日長認定、画像推論、HIP/SYCL は未認定です。
+
+任意のメモリハーネスは **既定では無効** です。[MEMORY_HARNESS](serve/MEMORY_HARNESS.md) を見てください。
+
 <a id="guides"></a>
-<a id="how-fast-is-it"></a>
-<a id="how-does-it-work"></a>
-<a id="something-went-wrong"></a>
 
 ## ヘルプ
 
-[すべてのガイド](docs) · [トラブルシューティング](docs/TROUBLESHOOTING.md) · [不具合を報告](https://github.com/Niko1221/Strata/issues/new/choose) ·
+[すべてのガイド](docs) · [トラブルシューティング](docs/TROUBLESHOOTING.md) · [このフォークへ不具合を報告](https://github.com/zapabob/Strata/issues/new/choose) ·
+[上流の issue](https://github.com/Niko1221/Strata/issues/new/choose) ·
 [ベンチマーク](docs/COMMUNITY_BENCHMARKS.md) · [仕組み](docs/HOW_IT_WORKS.md) · [貢献する](CONTRIBUTING.md)
 
 ## Strata を支援する
 
-**ローカル AI をみんなに開かれたものに。** コーヒー1杯が、開発と、より多くのハードウェアでのテストの支えになります。
+**ローカル AI をみんなに開かれたものに。** 上流が公開プロジェクトを維持しています。コーヒー 1 杯が、その開発と試験の支えになります。
 
 <a href="https://buymeacoffee.com/strataengine"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee: Strata を支援する" height="48"></a>
 
 [MIT ライセンス](LICENSE) · [クレジットとモデルのライセンス](docs/HOW_IT_WORKS.md#credits) · [プライバシー](docs/SAFETY.md)
 
-<a id="option-c-let-your-ai-set-it-up"></a>
-
-<sub>AI ツールと自動リーダー向け: <a href="AGENTS.md">技術リファレンス</a> · <a href="docs/AI_SETUP.md">セットアップ手順</a></sub>
-
-**スポンサー、ハードウェア提携、共同開発のご相談:** [niko.veit@outlook.com](mailto:niko.veit@outlook.com).
+<sub>AI ツールと自動リーダー向け: <a href="AGENTS.md">技術リファレンス</a> · <a href="docs/AI_SETUP.md">セットアップ手順</a> · <a href="_docs/upstream-intake/fork-contracts.json">フォーク契約</a>。</sub>

@@ -97,7 +97,7 @@ Not sure what fits? [Choose a model for your computer](docs/MODELS.md#pick-by-me
 **Upstream installers:** [Niko1221/Strata releases](https://github.com/Niko1221/Strata/releases/latest)  
 **This fork's releases:** [zapabob/Strata releases](https://github.com/zapabob/Strata/releases/latest)
 
-Install the app, choose a model, and start chatting. On first start the app downloads the engine for your graphics card. [Help with the installer](docs/INSTALL.md#the-app).
+Install the app, choose a model, and start chatting. On first start the app downloads the engine for your graphics card. On Windows, running a newer fork setup into the same per-user folder upgrades in place; chats and models stay outside the install directory. [Help with the installer](docs/INSTALL.md#the-app).
 
 <sub>Upstream 0.2.6 files: `Strata-0.2.6-windows-x64-setup.exe` · `Strata-0.2.6-linux-x86_64.AppImage` · `Strata-0.2.6-macos-arm64.dmg`. Fork packages may use a `-hakua` label; see the release notes for that tag.</sub>
 
