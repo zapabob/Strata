@@ -98,14 +98,27 @@ function textBlocks(message) {
  * the middle is replaced by a line saying how much was left out. Only the copy sent to the summariser is cut; the conversation keeps
  * the whole message until the summary replaces it.
  */
-export function clipMessage(message, maxTokens, density = 1) {
-  if (estimateMessage(message) * density <= maxTokens) return message;
+/** Bound a tool-call / tool-result for the summariser only: keep protocol shape as plain text, never execute. */
+function summariseHeavyBlock(block) {
+  if (block?.type === 'tool-call') {
+    const args = String(block.arguments ?? '');
+    return { type: 'text', text: `[Summary stand-in for tool-call ${block.name ?? 'tool'} id=${block.id ?? '?'}: ${args.length.toLocaleString('en-US')} argument characters omitted]` };
+  }
+  if (block?.type === 'tool-result' || block?.type === 'tool-result-error') {
+    const body = String(block.output ?? block.content ?? block.text ?? '');
+    return { type: 'text', text: `[Summary stand-in for tool result id=${block.tool_use_id ?? block.id ?? '?'}: ${body.length.toLocaleString('en-US')} characters omitted]` };
+  }
+  return { type: 'text', text: `[Summary stand-in for ${block?.type ?? 'block'}: ${JSON.stringify(block ?? {}).length.toLocaleString('en-US')} characters omitted]` };
+}
+
+function clipTextBlocks(message, maxTokens, density) {
   const blocks = textBlocks(message);
   if (!blocks.length) return message;
-  const others = estimateMessage({ ...message, content: (message.content ?? []).filter(b => !blocks.includes(b)) }) * density;
+  const content0 = message.content ?? [];
+  const others = estimateMessage({ ...message, content: content0.filter(b => !blocks.includes(b)) }) * density;
   const room = Math.max(256, maxTokens - others);
-  const share = room / blocks.reduce((n, b) => n + b.text.length, 0) / density * CHARS_PER_TOKEN;   // characters kept per character
-  const content = (message.content ?? []).map((block) => {
+  const share = room / blocks.reduce((n, b) => n + b.text.length, 0) / density * CHARS_PER_TOKEN;
+  const content = content0.map((block) => {
     if (!blocks.includes(block)) return block;
     const keep = Math.max(200, Math.floor(block.text.length * Math.min(1, share) - 120));
     if (block.text.length <= keep) return block;
@@ -114,6 +127,22 @@ export function clipMessage(message, maxTokens, density = 1) {
     return { ...block, text: `${block.text.slice(0, head)}\n\n[… ${left.toLocaleString('en-US')} characters from the middle are left out of this summary request …]\n\n${block.text.slice(block.text.length - tail)}` };
   });
   return { ...message, content };
+}
+
+export function clipMessage(message, maxTokens, density = 1) {
+  if (estimateMessage(message) * density <= maxTokens) return message;
+  let next = clipTextBlocks(message, maxTokens, density);
+  // Text-only clipping can leave a huge tool-call intact; bound non-text blocks for the summariser copy only.
+  if (estimateMessage(next) * density > maxTokens) {
+    next = {
+      ...next,
+      content: (next.content ?? []).map((block) => (
+        block?.type === 'text' || block?.type === 'reasoning' ? block : summariseHeavyBlock(block)
+      )),
+    };
+    if (estimateMessage(next) * density > maxTokens) next = clipTextBlocks(next, maxTokens, density);
+  }
+  return next;
 }
 
 /** Whether cutting the list in front of index `i` would separate a tool call from its result. */

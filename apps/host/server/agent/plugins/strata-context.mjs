@@ -134,8 +134,15 @@ export function apply(ctx) {
     if (tools && estimateTools({ tools }) * density > window / 3) tools = undefined;   // a long tool list only describes tools: the summary does not need it
     const fixed = (system ? estimateMessage(system) : 0) * density + estimateTools({ tools }) * density + estimateMessage(instruction) * density;
     let budget = summaryBudget({ window, summaryTokens: summaryTokens * 2, systemTokens: fixed, instructionTokens: 0 });
+    let previousFingerprint = '';
     for (let attempt = 0; ; attempt++) {
       const runs = splitMessages(body, Math.max(1024, budget), density);
+      const fingerprint = runs.map(run => run.reduce((n, m) => n + estimateMessage(m), 0)).join(',');
+      // Same oversized request again: retries alone will not shrink it (F08).
+      if (fingerprint && fingerprint === previousFingerprint) {
+        throw Object.assign(new Error('the summary request does not fit the window after shrinking tool blocks'), { code: 'CONTEXT_WINDOW_EXCEEDED' });
+      }
+      previousFingerprint = fingerprint;
       log('info', `summarising ${body.length} messages in ${runs.length} piece(s) for a ${window}-token window (density ${density.toFixed(2)}, about ${Math.round(budget)} tokens a piece)`);
       let failed = null, summary = '';
       for (let i = 0; i < runs.length && !failed; i++) {

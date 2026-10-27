@@ -31,7 +31,7 @@ test('the card shows "Ran" unless the person approved, and never "Demo approval"
   assert.match(chat, /t\.live && t\.state === 'done' && t\.approved \? 'Approved' : 'Done'/);
   const store = readFileSync(resolve(root, 'src/lib/store.ts'), 'utf8');
   assert.ok(!/Demo approval/i.test(store));
-  assert.match(store, /mode:state\.sessions\.find\(s=>s\.id===sessionId\)\?\.preferences\?\.mode\?\?'manual'/, 'the Mode menu choice travels with the turn');
+  assert.match(store, /mode: turnPrefs\.mode|mode:state\.sessions\.find\(s=>s\.id===sessionId\)\?\.preferences\?\.mode\?\?'manual'/, 'the Mode menu choice travels with the turn');
 });
 
 test('every language has the same keys', () => {

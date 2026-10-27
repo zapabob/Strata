@@ -331,6 +331,8 @@ export interface ChatMessage {
   /** A line from the app itself (for example from /loop), never sent to the model. */
   local?: boolean;
   ttftMs?: number;
+  /** First answer body token; distinct from ttftMs which may be first reasoning. */
+  firstVisibleAnswerMs?: number;
   example?: boolean;
   media?: {kind: 'image' | 'video' | 'gif'; src:string; title:string; caption?:string; poster?:string}[];
   artifacts?: import('./artifacts').PreviewArtifact[];

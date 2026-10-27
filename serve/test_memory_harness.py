@@ -407,6 +407,30 @@ class HarnessTests(unittest.TestCase):
             with self.assertRaises(sqlite3.OperationalError):
                 conn.execute("DELETE FROM memories")
 
+    def test_japanese_partial_match_and_english_word_recall(self):
+        """F09: space-less Japanese n-grams hit; English words still work; empty query is inert."""
+        turn, _ = self.begin()
+        db = turn.principal.root / "ebbinghaus.db"
+        turn.principal.root.mkdir(parents=True, exist_ok=True)
+        with closing(sqlite3.connect(db)) as conn, conn:
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS memories(memory_id INTEGER PRIMARY KEY, content TEXT UNIQUE, "
+                "state TEXT DEFAULT 'active', access_state TEXT DEFAULT 'accessible', "
+                "belief_status TEXT DEFAULT 'current')")
+            conn.execute("INSERT INTO memories(content) VALUES (?)", ("ボブにゃんはコーヒーが好きです。",))
+            conn.execute("INSERT INTO memories(content) VALUES (?)", ("Bob likes coffee.",))
+        before = {p.name: hashlib.sha256(p.read_bytes()).digest() for p in turn.principal.root.iterdir()}
+        jp = self.h.recall(turn.principal, "コーヒー")
+        self.assertEqual(len(jp), 1, jp)
+        self.assertIn("コーヒー", jp[0])
+        en = self.h.recall(turn.principal, "coffee")
+        self.assertEqual(len(en), 1, en)
+        self.assertIn("coffee", en[0].casefold())
+        self.assertEqual(self.h.recall(turn.principal, ""), [])
+        self.assertEqual(self.h.recall(turn.principal, "x" * 600), [])
+        after = {p.name: hashlib.sha256(p.read_bytes()).digest() for p in turn.principal.root.iterdir()}
+        self.assertEqual(before, after)
+
     def test_cancel_before_completion_never_creates_files(self):
         turn, _ = self.begin()
         turn.cancel.set()

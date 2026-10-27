@@ -270,7 +270,7 @@ let state: AppState = {
 const listeners = new Set<() => void>();
 
 /** Chats with a turn in flight: the abort handle, and whether the host is running it as an agent turn. */
-const liveTurns = new Map<string, { abort: AbortController; agent: boolean }>();
+const liveTurns = new Map<string, { abort: AbortController; agent: boolean; stopTimer?: ReturnType<typeof setTimeout> }>();
 
 function set(patch: Partial<AppState> | ((s: AppState) => Partial<AppState>)) {
   const before = state.activeSession;
@@ -1341,7 +1341,9 @@ function startTimeSkipDemo(prompt: string) {
   go('chat', sessionId);
 }
 
-function markTurn(sessionId: string, turn: { abort: AbortController; agent: boolean } | null) {
+function markTurn(sessionId: string, turn: { abort: AbortController; agent: boolean; stopTimer?: ReturnType<typeof setTimeout> } | null) {
+  const previous = liveTurns.get(sessionId);
+  if (previous?.stopTimer) clearTimeout(previous.stopTimer);
   if (turn) liveTurns.set(sessionId, turn); else liveTurns.delete(sessionId);
   set({ streaming: !!state.activeSession && liveTurns.has(state.activeSession), liveChats: liveTurns.size });
   document.documentElement.dataset.streaming = liveTurns.size ? 'true' : 'false';
@@ -1357,13 +1359,22 @@ export function stopStreaming() {
   const turn = id ? liveTurns.get(id) : undefined;
   if (!id || !turn) return;
   const abort = () => { turn.abort.abort(); };
+  // Start the stop deadline at click time; do not wait for the HTTP response (F06).
+  if (turn.stopTimer) clearTimeout(turn.stopTimer);
+  turn.stopTimer = setTimeout(() => { if (liveTurns.get(id) === turn) abort(); }, 30000);
   void api.post<{ stopped: boolean }>('/api/chat/stop', { sessionId: id }).then(
     result => {
-      if (!result.stopped) abort();
-      // An agent turn that was told to stop but is slow to end must not leave the chat stuck.
-      else setTimeout(() => { if (liveTurns.get(id) === turn) abort(); }, 30000);
+      if (!result.stopped) {
+        clearTimeout(turn.stopTimer);
+        turn.stopTimer = undefined;
+        abort();
+      }
     },
-    abort,
+    () => {
+      clearTimeout(turn.stopTimer);
+      turn.stopTimer = undefined;
+      abort();
+    },
   );
 }
 
@@ -1562,9 +1573,21 @@ export function stopChat(id: string) {
   const turn = liveTurns.get(id);
   if (!turn) return;
   const abort = () => { turn.abort.abort(); };
+  if (turn.stopTimer) clearTimeout(turn.stopTimer);
+  turn.stopTimer = setTimeout(() => { if (liveTurns.get(id) === turn) abort(); }, 30000);
   void api.post<{ stopped: boolean }>('/api/chat/stop', { sessionId: id }).then(
-    result => { if (!result.stopped) abort(); else setTimeout(() => { if (liveTurns.get(id) === turn) abort(); }, 30000); },
-    abort,
+    result => {
+      if (!result.stopped) {
+        clearTimeout(turn.stopTimer);
+        turn.stopTimer = undefined;
+        abort();
+      }
+    },
+    () => {
+      clearTimeout(turn.stopTimer);
+      turn.stopTimer = undefined;
+      abort();
+    },
   );
 }
 
@@ -1619,12 +1642,41 @@ export async function approvePlan(sessionId: string, planId: string) {
 /** "Start as goal" (and Resume on a paused plan): the host streams the run like any chat turn. */
 export async function startPlanGoal(planId: string) { await sendMessage('', { planId }); }
 
-export async function sendMessage(text: string, options: { fromLoop?: boolean; goalAction?: 'resume'; planId?: string; shown?: string; title?: string; markdown?: boolean } = {}) {
-  if (state.streaming) {
-    // Typed while the assistant works: behind a running goal it waits in the queue; otherwise there is nothing to do but wait.
-    const waiting = state.activeSession, line = text.trim();
-    if (waiting && line && !options.planId && !options.goalAction) {
-      try { if (!(await queueMessage(waiting, line))) pushToast('info', 'The assistant is still answering', 'Send your message when it has finished.'); }
+type SendMessageOptions = {
+  fromLoop?: boolean;
+  goalAction?: 'resume';
+  planId?: string;
+  shown?: string;
+  title?: string;
+  markdown?: boolean;
+  /** Own the turn for this chat even if another is open (queued-release, loops). */
+  sessionId?: string;
+  workspaceId?: string | null;
+  remoteModel?: RemoteModelSelection | null;
+};
+
+function copyRemote(remote: RemoteModelSelection | null | undefined): RemoteModelSelection | null {
+  return remote ? { connectionId: remote.connectionId, modelId: remote.modelId } : null;
+}
+
+/**
+ * Send into a chat. The open chat is the default target; callers that already
+ * own a session (queued-release) pass `sessionId` so a later tab switch cannot
+ * redirect the body. Model and workspace used for the request are fixed before
+ * the first await.
+ */
+export async function sendMessage(text: string, options: SendMessageOptions = {}) {
+  if (options.sessionId && !state.sessions.some(s => s.id === options.sessionId)) {
+    // Owning chat was deleted while a release waited: drop it, never retarget.
+    return;
+  }
+  let sessionId = options.sessionId ?? state.activeSession;
+  // In-flight for this chat: queue there. Do not use the open-chat streaming flag —
+  // another chat can be mid-turn while this one is free, and the reverse.
+  if (sessionId && liveTurns.has(sessionId)) {
+    const line = text.trim();
+    if (line && !options.planId && !options.goalAction) {
+      try { if (!(await queueMessage(sessionId, line))) pushToast('info', 'The assistant is still answering', 'Send your message when it has finished.'); }
       catch (e) { pushToast('error', 'The message was not queued', plainFailureText(e instanceof Error ? e.message : String(e)).message); }
     }
     return;
@@ -1640,21 +1692,42 @@ export async function sendMessage(text: string, options: { fromLoop?: boolean; g
     else startTimeSkipDemo(demoPrompt);
     return;
   }
+  // Preview destination settings for the no-model guard before creating a chat.
+  const previewSession = sessionId ? state.sessions.find(s => s.id === sessionId) : undefined;
+  const previewRemote = options.remoteModel !== undefined
+    ? copyRemote(options.remoteModel)
+    : copyRemote(
+        previewSession?.preferences?.remoteModel !== undefined
+          ? previewSession.preferences.remoteModel
+          : ((sessionId ? state.activeSession === sessionId : true) ? state.remoteModel : null),
+      );
+  const previewModel = state.library?.loaded ?? state.library?.current ?? null;
   // Whatever sent this (the box, a loop, a plan): with no model to answer, say so in plain words and start nothing.
   if (state.connection === 'live') {
     // The first read of the engine's state has not come back yet: do not say "no model" about something not known yet, and do not send.
-    if (!nativeState() && !state.remoteModel && !state.library?.loaded) { pushToast('info', 'Still starting up', 'Strata is still checking your models. Try again in a moment.'); return; }
-    const why = noModelNotice(nativeState(), { remote: !!state.remoteModel, libraryLoaded: !!state.library?.loaded });
+    if (!nativeState() && !previewRemote && !previewModel) { pushToast('info', 'Still starting up', 'Strata is still checking your models. Try again in a moment.'); return; }
+    const why = noModelNotice(nativeState(), { remote: !!previewRemote, libraryLoaded: !!previewModel });
     if (why) { pushToast('info', why.title, why.message); return; }
   }
-  const pictureCheck=pictureStatus(nativeState(),state.remoteModel,state.providers);
-  if(pendingChatPhotos(state.activeSession).length&&!pictureCheck.ok){pushToast('error','This model cannot read pictures',tr(pictureCheck.message));return;}
-  const pictures=takeChatPhotos(state.activeSession);
+  if (!sessionId) sessionId = newSession().id;
+  const session = state.sessions.find(s => s.id === sessionId);
+  // Freeze destination settings before any await (picture bytes, upload, stream).
+  const turnRemote = previewRemote;
+  const turnWorkspace = options.workspaceId !== undefined ? options.workspaceId : state.activeWorkspace;
+  const turnModel = previewModel;
+  const turnNativeId = nativeState()?.instances.length ? nativeState()?.defaultId : undefined;
+  const turnPrefs = {
+    useTools: session?.preferences?.useTools === true,
+    agent: session?.preferences?.agent,
+    thinking: session?.preferences?.thinking ?? 'Medium',
+    thinkingBudget: session?.preferences?.thinkingBudget ?? 0,
+    mode: session?.preferences?.mode ?? 'manual',
+  };
+  const pictureCheck=pictureStatus(nativeState(),turnRemote,state.providers);
+  if(pendingChatPhotos(sessionId).length&&!pictureCheck.ok){pushToast('error','This model cannot read pictures',tr(pictureCheck.message));return;}
+  const pictures=takeChatPhotos(sessionId);
   const body=text.trim()||(pictures.length?'Describe this picture.':'');
   if(!body&&!resume&&!planStart)return;
-
-  let sessionId = state.activeSession;
-  if (!sessionId) sessionId = newSession().id;
 
   const userMsg: ChatMessage = { id: uid('m'), role: 'user', content: options.shown ?? body, at: new Date().toISOString(),...(pictures.length?{photos:pictures}:{}),...(options.markdown?{markdown:true}:{}) };
   let assistantId = uid('m');
@@ -1709,26 +1782,28 @@ export async function sendMessage(text: string, options: { fromLoop?: boolean; g
 
   const imageSlots=photoHistorySlots(prior,pictures.length);
   try {
+    const history = await Promise.all(prior.map(async(m,index)=>{const included=pictureCheck.ok?(m.photos??[]).filter((_,p)=>imageSlots.has(`${index}:${p}`)):[];const omitted=(m.photos??[]).filter(p=>!included.includes(p));const text=m.content+(omitted.length?`\n[Earlier pictures: ${omitted.map(p=>p.name).join(', ')}. Their pixels are outside this model's image context; ask to reattach them if needed.]`:'');return {role:m.role,content:included.length?[{type:'text',text},...await Promise.all(included.map(async photo=>({type:'image_url',image_url:{url:(await photoData(photo)).url}})))]:text};}));
+    const imageIds = pictures.length ? await uploadChatPhotos(pictures, sessionId) : undefined;
     await streamPost(
       planStart ? '/api/plan/start-goal' : '/api/chat/stream',
       {
         sessionId,
         ...(planStart ? { planId: planStart } : {}),
         ...(resume ? { goalAction: 'resume' } : planStart ? {} : { message: options.shown ? body : body }),
-        history:await Promise.all(prior.map(async(m,index)=>{const included=pictureCheck.ok?(m.photos??[]).filter((_,p)=>imageSlots.has(`${index}:${p}`)):[];const omitted=(m.photos??[]).filter(p=>!included.includes(p));const text=m.content+(omitted.length?`\n[Earlier pictures: ${omitted.map(p=>p.name).join(', ')}. Their pixels are outside this model's image context; ask to reattach them if needed.]`:'');return {role:m.role,content:included.length?[{type:'text',text},...await Promise.all(included.map(async photo=>({type:'image_url',image_url:{url:(await photoData(photo)).url}})))]:text};})),
-        model: state.library?.loaded ?? state.library?.current ?? null,
-        remoteModel: state.remoteModel,
-        nativeModelId:nativeState()?.instances.length?nativeState()?.defaultId:undefined,
-        ...(pictures.length ? { imageIds: await uploadChatPhotos(pictures, sessionId) } : {}),
-        useTools:state.sessions.find(s=>s.id===sessionId)?.preferences?.useTools===true,
+        history,
+        model: turnModel,
+        remoteModel: turnRemote,
+        nativeModelId: turnNativeId,
+        ...(imageIds ? { imageIds } : {}),
+        useTools: turnPrefs.useTools,
         // A chat set to plain talk (preferences.agent === false) never runs a tool: the host answers it directly.
-        ...(state.sessions.find(s=>s.id===sessionId)?.preferences?.agent===false?{agent:false}:{}),
-        thinking:state.sessions.find(s=>s.id===sessionId)?.preferences?.thinking??'Medium',
-        thinkingBudget:state.sessions.find(s=>s.id===sessionId)?.preferences?.thinkingBudget??0,
+        ...(turnPrefs.agent === false ? { agent: false } : {}),
+        thinking: turnPrefs.thinking,
+        thinkingBudget: turnPrefs.thinkingBudget,
         // The Mode menu's choice for this chat, read when the turn starts; the host applies it to the agent.
-        mode:state.sessions.find(s=>s.id===sessionId)?.preferences?.mode??'manual',
+        mode: turnPrefs.mode,
         // So a skill narrowed to another workspace does not fire here.
-        workspaceId: state.activeWorkspace,
+        workspaceId: turnWorkspace,
       },
       (frame) => {
         // A line from the app itself carries `key` (the English sentence): shown in the person's language.
@@ -1759,8 +1834,12 @@ export async function sendMessage(text: string, options: { fromLoop?: boolean; g
           }
         } else if (type === 'queued-release') {
           // The goal ended with messages left: they go out now, in order, as ordinary messages once this turn has finished.
+          // Keep this turn's session / model / workspace so a later tab switch cannot retarget them.
           const left = Array.isArray(frame.messages) ? frame.messages.flatMap(q => (q && typeof (q as { text?: unknown }).text === 'string' ? [String((q as { text: string }).text)] : [])) : [];
-          if (left.length) releasedMessages.set(sessionId, [...(releasedMessages.get(sessionId) ?? []), ...left]);
+          if (left.length) {
+            const owned = left.map(text => ({ text, workspaceId: turnWorkspace, remoteModel: copyRemote(turnRemote) }));
+            releasedMessages.set(sessionId, [...(releasedMessages.get(sessionId) ?? []), ...owned]);
+          }
         } else if (type === 'plan-step') {
           /* the whole plan follows in a plan frame; the live status already says which step is running */
         } else if (type === 'reasoning') {
@@ -1827,6 +1906,7 @@ export async function sendMessage(text: string, options: { fromLoop?: boolean; g
             durationMs: Number(frame.durationMs ?? performance.now() - started),
             tokens: typeof frame.tokensOut === 'number' ? frame.tokensOut : undefined,
             ttftMs: typeof frame.ttftMs === 'number' ? frame.ttftMs : undefined,
+            firstVisibleAnswerMs: typeof frame.firstVisibleAnswerMs === 'number' ? frame.firstVisibleAnswerMs : undefined,
             inputTokens: typeof frame.tokensIn === 'number' ? frame.tokensIn : undefined,
             contextUsed: typeof frame.contextTokens === 'number' ? frame.contextTokens : undefined,
             usageSource: frame.usageSource === 'reported' || frame.usageSource === 'demo' ? frame.usageSource : 'unavailable',
@@ -1851,17 +1931,30 @@ export async function sendMessage(text: string, options: { fromLoop?: boolean; g
       patchAssistant((m) => ({ ...m, streaming: false }));
     }
   } finally {
+    // EOF without done/error must not leave the bubble "generating" (F07).
+    patchAssistant((m) => m.streaming
+      ? { ...m, streaming: false, error: m.error ?? 'The reply was cut off. The partial answer is kept.' }
+      : m);
     // A cancelled or failed turn is still worth keeping.
     flushSessions();
     clearStatus(sessionId);
     markTurn(sessionId, null);
     const next = releasedMessages.get(sessionId)?.shift();
-    if (next !== undefined) { if (!releasedMessages.get(sessionId)?.length) releasedMessages.delete(sessionId); setTimeout(() => void sendMessage(next), 0); }
+    if (next !== undefined) {
+      if (!releasedMessages.get(sessionId)?.length) releasedMessages.delete(sessionId);
+      setTimeout(() => {
+        if (!state.sessions.some(s => s.id === sessionId)) {
+          releasedMessages.delete(sessionId);
+          return;
+        }
+        void sendMessage(next.text, { sessionId, workspaceId: next.workspaceId, remoteModel: next.remoteModel });
+      }, 0);
+    }
   }
 }
 
-/** Messages the host handed back when a goal ended with some still waiting; sent one after another. */
-const releasedMessages = new Map<string, string[]>();
+/** Messages the host handed back when a goal ended with some still waiting; sent one after another to the owning chat. */
+const releasedMessages = new Map<string, { text: string; workspaceId: string | null; remoteModel: RemoteModelSelection | null }[]>();
 
 /* -------------------------------------------------------------- tool grants */
 

@@ -16,6 +16,6 @@ test('Off is sent as none and Max as high; the budget only with thinking on', ()
 test('the budget travels from the menu to the request', () => {
   assert.match(composer, /THINKING_BUDGETS/);
   assert.match(composer, /thinkingBudget: value/);
-  assert.match(store, /thinkingBudget:state\.sessions\.find/);
+  assert.match(store, /thinkingBudget: turnPrefs\.thinkingBudget|thinkingBudget:state\.sessions\.find/);
   assert.match(host, /thinkingBudget:Number\.isInteger\(body\.thinkingBudget\)/);
 });

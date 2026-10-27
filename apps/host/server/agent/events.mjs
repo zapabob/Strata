@@ -214,6 +214,8 @@ export class TurnProjector {
     this.contextTokens = null;       // the LAST model request's prompt + reply: what the context holds now (the sums above count every request again)
     this.usageSeen = false;
     this.firstTokenAt = null;
+    /** First visible answer body (text-delta), distinct from first reasoning (ttftMs). */
+    this.firstVisibleAnswerAt = null;
     this.streams = new Map();        // attemptId -> { first, last, chunks, chars }: the time a model request actually spent producing
     this.lastStats = 0;
     this.emittedText = new Map();    // attemptId -> chars sent live
@@ -274,6 +276,7 @@ export class TurnProjector {
         const c = f.chunk;
         if (c.type === 'text-delta' && c.text) {
           this.firstTokenAt ??= Date.now();
+          this.firstVisibleAnswerAt ??= Date.now();
           this.#produced(f.attemptId, c.text, out);
           this.emittedAny = true;
           this.#status({ phase: 'answering', code: 'answering', text: 'Writing the answer…' });
@@ -436,7 +439,12 @@ export class TurnProjector {
     else if (generated > 0 && decoded.seconds >= 0.3) tps = Number((generated / decoded.seconds).toFixed(1));
     else if (generated > 0 && this.tools.size === 0 && this.firstTokenAt && Date.now() - this.firstTokenAt >= 50) tps = Number((generated / ((Date.now() - this.firstTokenAt) / 1000)).toFixed(1));
     const promptTps = engine?.promptTps > 0 ? engine.promptTps : null;
-    const base = { durationMs, ttftMs: this.firstTokenAt ? this.firstTokenAt - this.startedAt : null, model, contextMax, tps, ...(promptTps ? { promptTps } : {}), contextTokens: this.contextTokens };
+    const base = {
+      durationMs,
+      ttftMs: this.firstTokenAt ? this.firstTokenAt - this.startedAt : null,
+      firstVisibleAnswerMs: this.firstVisibleAnswerAt ? this.firstVisibleAnswerAt - this.startedAt : null,
+      model, contextMax, tps, ...(promptTps ? { promptTps } : {}), contextTokens: this.contextTokens,
+    };
     switch (reason.kind) {
       case 'completed':
         return [{ type: 'done', ...base, ...usage, finishReason: 'stop' }];

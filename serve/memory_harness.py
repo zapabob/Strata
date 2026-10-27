@@ -34,6 +34,36 @@ def _plain_file(path):
         return False
 
 
+def _recall_terms(query: str) -> set[str]:
+    """Word tokens plus small character n-grams for space-less Japanese queries."""
+    folded = query.casefold()
+    terms = set(re.findall(r"\w+", folded, flags=re.UNICODE))
+    compact = re.sub(r"\s+", "", folded)
+    # Cap n-gram work on long queries; skip 1-grams (too noisy).
+    limit = min(len(compact), 64)
+    for n in (2, 3):
+        if limit < n:
+            continue
+        for i in range(limit - n + 1):
+            terms.add(compact[i:i + n])
+    return terms
+
+
+def _recall_score(text: str, terms: set[str]) -> int:
+    folded = text.casefold()
+    found = set(re.findall(r"\w+", folded, flags=re.UNICODE))
+    compact = re.sub(r"\s+", "", folded)
+    limit = min(len(compact), 2048)
+    for n in (2, 3):
+        if limit < n:
+            continue
+        for i in range(limit - n + 1):
+            gram = compact[i:i + n]
+            if gram in terms:
+                found.add(gram)
+    return len(terms & found)
+
+
 @dataclass(frozen=True)
 class Principal:
     name: str
@@ -156,6 +186,12 @@ class Harness:
         if (principal.root.resolve() != principal.root or not _plain_file(path)
                 or any(Path(str(path) + suffix).exists() for suffix in ("-wal", "-journal", "-shm"))):
             return []
+        if not isinstance(query, str):
+            return []
+        # Bound query work: empty / extreme inputs never scan.
+        raw = query.strip()
+        if not raw or len(raw) > 512:
+            return []
         try:
             with closing(_read_db(path)) as conn:
                 # Audited against hakua-memory 2908c6b9. Fail closed on older or
@@ -165,8 +201,10 @@ class Harness:
                     "SELECT substr(content,1,2048) FROM memories WHERE state='active' "
                     "AND access_state='accessible' AND belief_status='current' "
                     "ORDER BY memory_id DESC LIMIT 64").fetchall()
-            terms = set(re.findall(r"\w+", query.casefold()))
-            ranked = sorted(((len(terms & set(re.findall(r"\w+", r[0].casefold()))), r[0]) for r in rows),
+            terms = _recall_terms(raw)
+            if not terms:
+                return []
+            ranked = sorted(((_recall_score(r[0], terms), r[0]) for r in rows),
                             key=lambda r: r[0], reverse=True)
             return [text for score, text in ranked[:4] if score]
         except (OSError, sqlite3.Error):
