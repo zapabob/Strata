@@ -1,0 +1,7 @@
+﻿zapabob/Strata Pages snapshot
+tip: 06387b47
+tag: v0.3.2-preview.20261028.1
+upstream: Niko1221/Strata v0.2.7.1 (46c152a1)
+merge: e54b90f7
+updated: 2026-10-28
+note: Actions Deploy GitHub Pages workflow_dispatch blocked (HTTP 422 Actions disabled). This gh-pages branch was refreshed manually from docs/.

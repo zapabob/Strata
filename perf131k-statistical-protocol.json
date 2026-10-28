@@ -1,0 +1,116 @@
+{
+  "status": "DESIGN_NOT_RUN",
+  "scope": "fixed installed baseline vs newly verified candidate; hardware-local paired comparison; model classes not pooled",
+  "capacity": 131072,
+  "initial_input_lengths": [
+    4096,
+    32768
+  ],
+  "output_reserve": 256,
+  "normal_series": "spec4+MTP+k8v4; exact pack/tokenizer/views/argv/env fixed within series",
+  "series_separation": [
+    "draftless diagnostic separate",
+    "trace OFF/ON overhead comparison separate",
+    "blob diagnostics ON pilot excluded from performance inference",
+    "cold/first/repeated warm separated"
+  ],
+  "release_boundary_gate": "130048+1024 and131071+1 wait P02 capacity contract; no small-capacity substitution; no silent fit_max_tokens reservation shortening",
+  "spec_minimums": {
+    "warmup": 3,
+    "alternating_warm_pairs": 10,
+    "cold_runs_minimum": 3,
+    "retrieval_tasks_position_stratified": 16,
+    "practical_tasks": {
+      "Japanese": 10,
+      "English": 10,
+      "code": 10
+    },
+    "stability": "32turn/2h; capacity bounded"
+  },
+  "cross_validation": {
+    "folds": 5,
+    "group": "original task/prompt family; all lengths/positions/technical repetitions stay together",
+    "stratification": "task category,language,position,length where feasible; deterministic seed recorded",
+    "heldout": "score held-out groups; all build/profile choices frozen first; if tuning occurs use train folds only and separately held-out final test",
+    "disclosure": "fixed executables require no model fitting; label evaluation folds honestly; fold scores/repetitions are not independent observations"
+  },
+  "pairing": "same exact token IDs, weights/pack/tokenizer,capacity,reserve,KV/views,device/cache regime,output rubric; randomized balanced AB/BA order; failed/unmatched runs retained and block pass",
+  "statistics": {
+    "primary_effect": "paired median difference and95% task-cluster bootstrap CI; relative speedup plus absolute timings",
+    "primary_test": "two-sided paired label-swap/sign-flip permutation at independent task group; exact if feasible else finite seeded Monte Carlo with add-one correction",
+    "multiple_endpoints": "predeclare family and Holm-adjust p-values",
+    "quality_binary": "Use group-level paired label-swap as primary. If McNemar is reported, predefine one binary outcome per original task family per executable (all required variants must pass); exactly one discordance pair per independent group, never per length/position/repetition.",
+    "noninferiority": "nonsignificance is not equivalence; independently meet predeclared quality/SLO thresholds",
+    "latency": "stream token timestamps for TTFT/ITL; engine DONE timings are separate metrics and cannot substitute",
+    "failure": "no p-value/performance verdict when valid pairs absent, source/binary identities unresolved or131072 capacity fails",
+    "low_n": "raw n/CI and small-sample limits; no stable p95 claim from one pilot",
+    "aggregation": "Within each prompt variant aggregate technical repeats by median; within original family give variants equal prespecified weight and aggregate by median; equal weight per independent family. Effects and bootstrap resample whole families. Folds and technical repetitions do not increase independent n. Report n_family, n_variant, n_repeat separately. Stratified length-specific reports retain original grouping.",
+    "permutation_statistic": "absolute mean of paired family differences; two-sided family sign flips; descriptive effect and bootstrap use paired median differences"
+  },
+  "acceptance_targets": {
+    "decode_median_tps_min": 5,
+    "ITL_p95_ms_max": 500,
+    "warm_131k_plus256_TTFT_p95_s_max": 10,
+    "cold_131k_TTFT_median_s_max": 300,
+    "cancel_p95_s_max": 2,
+    "stability": "zero crash/history loss,32turn/2h",
+    "same_weights_reference_PPL_ratio_max": 1.01,
+    "new_function_failures_max": 0,
+    "candidate_adoption_E2E_improvement_min_percent": 5,
+    "monitoring_throughput_regression_goal_max_percent": 1
+  },
+  "quality_reference": "same weights independently validated reference runtime and frozen scoring; absent reference/PPL/logits remain NOT_RUN, never substitute sentinel recall for full quality",
+  "resources": "single heavy job; no budgets expanded from resource availability",
+  "primary_sources": [
+    "https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats/permutation_test.html",
+    "https://scikit-learn.org/stable/modules/cross_validation.html"
+  ],
+  "execution": "NOT_RUN on measured pairs; tools/perf131k/statistics.py validated only with synthetic CPU fixtures",
+  "revision": "v4; schema2 binds analyzer source and reports fixed grouped evaluation folds; no measurements run",
+  "full_qualification_stages": [
+    "4K",
+    "32K",
+    "64K",
+    "131072-capacity full gate after P02/P16; not replaced by initial pilot"
+  ],
+  "full_qualification_gate": {
+    "history_tokens": 126000,
+    "actual_generated_steps_min": 512,
+    "independent_receipt_required": true,
+    "pilot_output_reserve": 256,
+    "full_test_reserve": 1024,
+    "boundary_tests": "130048+1024 and131071+1 after P02; separate from pilot",
+    "current_status": "NOT_RUN",
+    "capacity": 131072,
+    "required_progress": [
+      "exact token IDs SHA256",
+      "processed_input_tokens=126000",
+      "kv_progress_tokens=126000",
+      "recurrence_progress_tokens=126000",
+      "generated_steps>=512",
+      "independent receipt SHA256"
+    ]
+  },
+  "offline_executor": {
+    "command": "py -3.12 -B -m tools.perf131k.statistics manifest.json runs.json --frozen-sha256 <previously recorded canonical SHA256>",
+    "hash": "SHA256 of UTF-8 JSON with sort_keys=True, separators=(comma,colon), allow_nan=False; digest() helper; record independently before collection. Self-rehash after observing runs is not a freeze.",
+    "manifest": "schema=2; analysis_sha256=SHA256 of the frozen statistics.py source artifact; data_kind=synthetic|measured; stage=pilot|full; capacity=131072; integer seed; bootstrap_draws/permutation_draws 100..100000; arms baseline/candidate each source_sha256 and binary_sha256; shared_identity_sha256; endpoints mapping metric name to lower|higher; families mapping original-family ID to {fold:0..4}, all five folds represented; pairs list.",
+    "shared_identity_contents": "Before collection freeze model/pack/tokenizer contents, capacity, KV/views, argv/env, device/cache regime, scoring rubric and series (cold/first/warm; trace; diagnostic settings). Shared identity SHA256 binds this external canonical record. Model classes and series never pooled.",
+    "pair_fields": [
+      "family",
+      "variant",
+      "repeat",
+      "order (balanced AB/BA)",
+      "token_ids_sha256",
+      "input_tokens",
+      "output_reserve"
+    ],
+    "run_fields": "Every pair field plus arm, status=PASS, manifest_sha256, identity=arm identity, shared_identity_sha256, capacity, data_kind, raw_artifact_sha256, metrics with exactly all frozen endpoint names and finite positive values. Full additionally generated_steps>=512, independent_receipt_sha256, processed_input_tokens=kv_progress_tokens=recurrence_progress_tokens=126000.",
+    "supported_metrics": "Positive timing/throughput endpoints only. Stream TTFT/ITL and engine DONE must be different frozen endpoints. Binary quality, PPL, quality/SLO decisions and stratified score reports are separate NOT_RUN gates.",
+    "resampling": "Median repeats within variant; median equally weighted variants within original family. Equal family weight. Whole-family percentile bootstrap 95% CI, linear quantiles. Exact family sign flips through 16 independent groups; otherwise seeded finite Monte Carlo with add-one correction. Holm across entire frozen endpoint map. Permutation tie comparison uses relative tolerance1e-12 with zero absolute tolerance to preserve metric-unit scale invariance.",
+    "outputs": "stdout JSON, exit 0 for analysis, exit 2 BLOCKED; all invalid/failed/missing/duplicate/unregistered/mismatched records block all endpoint statistics. Synthetic status DESIGN_NOT_RUN. Valid measured records status ANALYZED means offline calculations only; performance_verdict always NOT_EVALUATED. Includes verified analysis_sha256 and per-endpoint evaluation_fold_summaries with family IDs/counts and paired family medians; fold counts do not increase independent n.",
+    "trust_boundary": "Normalized collector records and digest strings are inputs, not independent proof of their contents. Verify raw artifacts, source-to-binary provenance, collection chronology/freeze, independent receipt and quality/reference gates before any performance claim. No automatic adoption verdict.",
+    "evaluation_folds": "One immutable fold per original family, all variants/repeats inherit it. Five evaluation folds, no fitting or tuning performed here; fold scores are not independent observations. Stratification must be reviewed in the frozen external map. Reports five fixed grouped evaluation summaries; no train-fold fitting/tuning or independently held-out final test is implemented. Freeze the analyzer source and Python environment before collection; schema1 manifests are rejected.",
+    "protocol_minimums": "Executor computes offline statistics; warmups, minimum ten alternating warm pairs, cold runs, retrieval/practical task counts, boundary checks and 32turn/2h stability remain independent qualification checks. Successful analysis does not establish those checks."
+  }
+}
