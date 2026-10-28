@@ -1,0 +1,139 @@
+{
+  "generated_at": "2026-10-28T12:51:02.589321+00:00",
+  "mode": "plan",
+  "branch": "codex/strata-hakua-chatbot-20261027",
+  "head_sha": "7466066ffc3fd8431c18d72a6d2a6780311f142a",
+  "upstream_remote": "upstream",
+  "upstream_ref": "upstream/main",
+  "upstream_sha": "46c152a1310f77cd2f0ce2c7cd213962df14fe83",
+  "merge_base": "4b9e05a2a806a3fe24f7b2560d98626c37dade35",
+  "ahead": 154,
+  "behind": 494,
+  "dirty": false,
+  "dirty_paths": [],
+  "remotes": [
+    {
+      "name": "origin",
+      "fetch_url": "https://github.com/zapabob/Strata.git",
+      "push_url": "https://github.com/zapabob/Strata.git"
+    },
+    {
+      "name": "upstream",
+      "fetch_url": "https://github.com/Niko1221/Strata.git",
+      "push_url": "https://github.com/Niko1221/Strata.git"
+    }
+  ],
+  "proprietary_features": [
+    {
+      "id": "F01",
+      "name": "Clifford/Spin(8)/Triality KV Cache",
+      "anchor": "spin8"
+    },
+    {
+      "id": "F02",
+      "name": "Query-v3 & Identity Initialization",
+      "anchor": "tqcodec / adapters"
+    },
+    {
+      "id": "F03",
+      "name": "TurboQuant Dialects",
+      "anchor": "tqcodec"
+    },
+    {
+      "id": "F04",
+      "name": "Dynamic Shared Audit Fix & Guard",
+      "anchor": "src + host guards"
+    },
+    {
+      "id": "F05",
+      "name": "Model/Pack/Position/Hash Snapshot Integrity",
+      "anchor": "native-control / run-config"
+    },
+    {
+      "id": "F06",
+      "name": "GUI/CLI Fork-Specific Settings & Clean OFF",
+      "anchor": "apps/host"
+    },
+    {
+      "id": "F07",
+      "name": "Windows Ownership, Job Guard & Fail-Closed",
+      "anchor": "packaging / control"
+    },
+    {
+      "id": "F08",
+      "name": "Hikari 27B PQ2_0 & Nimble Weights",
+      "anchor": "prism / model bundles"
+    },
+    {
+      "id": "F09",
+      "name": "Research PoC, Negative Results & Ledger",
+      "anchor": "_docs"
+    },
+    {
+      "id": "F10",
+      "name": "Refusal-Direction / Control Vector Steering",
+      "anchor": "research opt-in"
+    },
+    {
+      "id": "F11",
+      "name": "Arbitrary GGUF & DeepSeek Derivative Integration",
+      "anchor": "ModelBundle router"
+    },
+    {
+      "id": "HAKUA",
+      "name": "Hakua consented authenticated memory chat",
+      "anchor": "apps/host + serve/memory_harness.py"
+    },
+    {
+      "id": "KEYS",
+      "name": "Fork / Hakua harness API keys + run-config known keys",
+      "anchor": "run-config-check / native keys"
+    },
+    {
+      "id": "HERMES",
+      "name": "Hermes agent + long-term memory integration",
+      "anchor": "serve / docs"
+    },
+    {
+      "id": "PKG",
+      "name": "Hakua-labelled Windows full packaging (-hakua)",
+      "anchor": "packaging/full_windows.py"
+    }
+  ],
+  "proprietary_path_status": {
+    "_docs/upstream-intake/fork-contracts.json": true,
+    "adapters/upstream": true,
+    "apps/host/server/memory.mjs": true,
+    "apps/host/server/native-control.mjs": true,
+    "apps/host/server/run-config-check.mjs": true,
+    "apps/host/src/lib/store.ts": true,
+    "packaging/full_windows.py": true,
+    "serve/memory_harness.py": true,
+    "spin8": true,
+    "tests/contracts/test_fork_feature_matrix.py": true,
+    "tests/contracts/test_upstream_compatibility.py": true,
+    "tools/check_upstream_cut.py": true,
+    "tools/generate_t00_intake.py": true,
+    "tools/merge_upstream_fork.py": true,
+    "tqcodec": true
+  },
+  "backup_branch": "backup/pre-upstream-merge-20261028T125102Z",
+  "blockers": [],
+  "next_steps": [
+    "Review this plan JSON/Markdown; keep proprietary features listed below.",
+    "Ensure dirty Hakua edits are committed or stashed (script can --stash-dirty).",
+    "Re-run: py -3 tools/merge_upstream_fork.py --plan --upstream-ref upstream/main",
+    "When ready (explicit): py -3 tools/merge_upstream_fork.py --execute --upstream-ref upstream/main --stash-dirty --backup",
+    "Resolve conflicts preferring fork proprietary anchors + upstream security/bugfixes.",
+    "Run host tests + check_upstream_cut; then build, tag/release (no auto-push), rewrite README."
+  ],
+  "merge_tree_conflicts": [
+    "changed in both"
+  ],
+  "notes": [
+    "Fork is ahead=154, behind=494 vs upstream/main.",
+    "merge-tree heuristic flagged 1 conflict hint(s)."
+  ],
+  "executed": false,
+  "execute_result": null
+}
