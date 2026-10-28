@@ -12,10 +12,10 @@ const translations = {
     nav_arch: "Architecture",
     nav_github: "GitHub",
 
-    hero_pill: "Windows inference preview: 27 October 2026",
+    hero_pill: "Windows fork preview: 28 October 2026",
     hero_title: "Local inference, with measured limits",
     hero_desc: "Desktop and Terminal interfaces for native inference and compatible GGUF models. Actual 4K and 32K generation is documented; full 131k certification remains open.",
-    hero_download: "Download v0.3.1 for Windows",
+    hero_download: "Download Windows NSIS (0.3.2-preview.20261027.2)",
     hero_github: "View on GitHub",
     copied_toast: "Command copied to clipboard!",
 
@@ -91,14 +91,14 @@ const translations = {
     dl_title: "Download Releases",
     dl_desc: "Preview archives have SHA-256 checksums and dependency manifests. Read their scope and installation instructions before applying an overlay.",
 
-    d1_badge: "Earlier desktop bundle",
-    d1_title: "Strata v0.3.1 Engine & GUI (Windows x64)",
-    d1_desc: "Existing Windows desktop bundle. Apply the separately documented preview overlays for the new engine and GUI fixes.",
-    d1_btn: "Download v0.3.1 desktop bundle (412.7 MB)",
+    d1_badge: "Windows NSIS installer",
+    d1_title: "Strata 0.3.2-preview.20261027.2 (unsigned NSIS)",
+    d1_desc: "Overwrite-capable Windows x64 setup. Unsigned preview; signed feed/Tauri updater is not included. Keep your models folder when upgrading.",
+    d1_btn: "Download NSIS (~168 MiB)",
 
-    d2_badge: "Preview instructions",
-    d2_title: "Read before applying an overlay",
-    d2_desc: "Open the release page for archives, checksums and exact installation limits. These archives are not desktop setup executables.",
+    d2_badge: "Upstream sync notes",
+    d2_title: "v0.3.2-preview.20261028.1 (source sync)",
+    d2_desc: "Fork tip notes after merging official Strata v0.2.7.1. No installer asset on this tag — use the NSIS card for setup.exe.",
 
     arch_pill: "System Overview",
     arch_title: "Desktop, Control and inference backend",
@@ -122,10 +122,10 @@ const translations = {
     nav_arch: "アーキテクチャ",
     nav_github: "GitHub",
 
-    hero_pill: "Windows inference preview: 27 October 2026",
+    hero_pill: "Windows フォークプレビュー: 2026年10月28日",
     hero_title: "Local inference, with measured limits",
     hero_desc: "Desktop and Terminal interfaces for native inference and compatible GGUF models. Actual 4K and 32K generation is documented; full 131k certification remains open.",
-    hero_download: "Windows版 v0.3.1 をダウンロード",
+    hero_download: "Windows NSIS をダウンロード (0.3.2-preview.20261027.2)",
     hero_github: "GitHubリポジトリを表示",
     copied_toast: "コマンドをクリップボードにコピーしました！",
 
@@ -201,14 +201,14 @@ const translations = {
     dl_title: "リリースダウンロード",
     dl_desc: "Preview archives have SHA-256 checksums and dependency manifests. Read their scope and installation instructions before applying an overlay.",
 
-    d1_badge: "Earlier desktop bundle",
-    d1_title: "Strata v0.3.1 Engine & GUI (Windows x64)",
-    d1_desc: "Existing Windows desktop bundle. Apply the separately documented preview overlays for the new engine and GUI fixes.",
-    d1_btn: "Download v0.3.1 desktop bundle (412.7 MB)",
+    d1_badge: "Windows NSIS インストーラ",
+    d1_title: "Strata 0.3.2-preview.20261027.2（署名なし NSIS）",
+    d1_desc: "上書きインストール可能な Windows x64 セットアップ。署名付き feed / Tauri updater は含みません。モデルフォルダは残してください。",
+    d1_btn: "NSIS をダウンロード（約 168 MiB）",
 
-    d2_badge: "Preview instructions",
-    d2_title: "Read before applying an overlay",
-    d2_desc: "Open the release page for archives, checksums and exact installation limits. These archives are not desktop setup executables.",
+    d2_badge: "上流同期メモ",
+    d2_title: "v0.3.2-preview.20261028.1（ソース同期）",
+    d2_desc: "公式 Strata v0.2.7.1 取り込み後のフォーク tip メモ。このタグにインストーラ資産はありません。setup.exe は NSIS カードを使ってください。",
 
     arch_pill: "システム全体像",
     arch_title: "Desktop, Control and inference backend",
@@ -232,10 +232,10 @@ const translations = {
     nav_arch: "系统架构",
     nav_github: "GitHub",
 
-    hero_pill: "Windows inference preview: 27 October 2026",
+    hero_pill: "Windows 分叉预览：2026 年 10 月 28 日",
     hero_title: "Local inference, with measured limits",
     hero_desc: "Desktop and Terminal interfaces for native inference and compatible GGUF models. Actual 4K and 32K generation is documented; full 131k certification remains open.",
-    hero_download: "下载 Windows 版 (v0.3.1)",
+    hero_download: "下载 Windows NSIS (0.3.2-preview.20261027.2)",
     hero_github: "查看 GitHub 仓库",
     copied_toast: "安装命令已复制到剪贴板！",
 
@@ -311,14 +311,14 @@ const translations = {
     dl_title: "下载发行包",
     dl_desc: "Preview archives have SHA-256 checksums and dependency manifests. Read their scope and installation instructions before applying an overlay.",
 
-    d1_badge: "Earlier desktop bundle",
-    d1_title: "Strata v0.3.1 Engine & GUI (Windows x64)",
-    d1_desc: "Existing Windows desktop bundle. Apply the separately documented preview overlays for the new engine and GUI fixes.",
-    d1_btn: "Download v0.3.1 desktop bundle (412.7 MB)",
+    d1_badge: "Windows NSIS 安装包",
+    d1_title: "Strata 0.3.2-preview.20261027.2（未签名 NSIS）",
+    d1_desc: "可覆盖安装的 Windows x64 安装程序。不含签名 feed / Tauri 更新器。升级时请保留模型文件夹。",
+    d1_btn: "下载 NSIS（约 168 MiB）",
 
-    d2_badge: "Preview instructions",
-    d2_title: "Read before applying an overlay",
-    d2_desc: "Open the release page for archives, checksums and exact installation limits. These archives are not desktop setup executables.",
+    d2_badge: "上游同步说明",
+    d2_title: "v0.3.2-preview.20261028.1（源码同步）",
+    d2_desc: "合并官方 Strata v0.2.7.1 后的分叉 tip 说明。此标签无安装包——请用 NSIS 卡片下载 setup.exe。",
 
     arch_pill: "系统概览",
     arch_title: "Desktop, Control and inference backend",
@@ -361,8 +361,8 @@ function initTerminalTabs() {
   const tabs = document.querySelectorAll(".term-tab");
   const cmd = document.getElementById("terminal-cmd");
   const cmds = {
-    pwsh: "Start-Process https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261027.1",
-    bash: "if command -v open >/dev/null 2>&1; then open https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261027.1; else xdg-open https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261027.1; fi"
+    pwsh: "Start-Process https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261027.2",
+    bash: "if command -v open >/dev/null 2>&1; then open https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261027.2; else xdg-open https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261027.2; fi"
   };
 
   tabs.forEach((tab) => {
