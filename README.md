@@ -11,19 +11,19 @@
 <p align="center">
   <a href="#models">Models</a> · <a href="#install"><b>Install</b></a> ·
   <a href="#hardware">Hardware</a> · <a href="#tools">Tools</a> ·
-  <a href="#fork-notes">Fork notes</a> ·
-  <a href="#help">Help</a> · <a href="#support-strata">Support</a>
+  <a href="#fork-notes">Fork notes</a> · <a href="#help">Help</a> · <a href="#support-strata">Support</a>
 </p>
 
 <p align="center">
   <a href="https://github.com/zapabob/Strata/releases/latest"><img src="https://img.shields.io/github/v/release/zapabob/Strata?label=fork%20release&color=0ab887" alt="Download this fork"></a>
   <a href="https://github.com/Niko1221/Strata/releases/latest"><img src="https://img.shields.io/github/v/release/Niko1221/Strata?label=upstream&color=555" alt="Upstream Strata"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/Niko1221/Strata" alt="MIT license"></a>
+  <a href="https://buymeacoffee.com/strataengine"><img src="https://img.shields.io/badge/Buy_me_a_coffee-FFDD00?logo=buymeacoffee&logoColor=000" alt="Support Strata on Buy Me a Coffee"></a>
 </p>
 
-<p align="center"><sub><b>English</b> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ja.md">日本語</a> · <a href="README.de.md">Deutsch</a> · <a href="README.fr.md">Français</a> · <a href="README.es.md">Español</a> · <a href="README.pt-BR.md">Português</a></sub></p>
+<p align="center"><sub><b>English</b> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ja.md">日本語</a> · <a href="README.de.md">Deutsch</a> · <a href="README.fr.md">Français</a> · <a href="README.es.md">Español</a> · <a href="README.pt-BR.md">Português</a> · <a href="README.pl.md">Polski</a></sub></p>
 
-**Free, open source, and yours to run.** This repository is a fork of [Niko1221/Strata](https://github.com/Niko1221/Strata) that keeps proprietary Spin(8) / Triality, Query-v3, TurboQuant, Bonsai, Hakua memory chat and Windows `-hakua` packaging, while tracking upstream security and bugfixes. Official model, install and hardware guidance below matches upstream **v0.2.6** (`4b9e05a2`) after the 2026-10-27 sync. Fork-only notes and measured preview evidence sit in [Fork notes](#fork-notes).
+**Free, open source, and yours to run.** This repository is a fork of [Niko1221/Strata](https://github.com/Niko1221/Strata) that keeps proprietary Spin(8)/Triality, Query-v3, TurboQuant, Bonsai, Hakua consented memory chat, Hermes hooks and Windows `-hakua` packaging, while tracking upstream security and bugfixes. Official model/install/hardware guidance below matches upstream **v0.2.7.1** (`46c152a1`) after the 2026-10-28 sync. Fork-only notes and measured preview evidence sit in [Fork notes](#fork-notes).
 
 ## Models
 
@@ -64,14 +64,14 @@ disk space.
 | 2.00 bpw | 257 GB | about 265 GB |
 | 2.25 bpw | 274 GB | about 280 GB |
 
-Runs on NVIDIA RTX 30, 40 and 50 series (Windows and Linux) and AMD Radeon AI PRO R9700 (Linux). Setup downloads the
-files and the DeepSeek engine, then starts the model.
+Runs on NVIDIA RTX 30, 40 and 50 series (Windows and Linux), AMD Radeon AI PRO R9700 (Linux), AMD Ryzen AI Max — Strix Halo
+(Windows), and Apple Silicon Macs with 64 GB or more, text only ([Mac](docs/DEEPSEEK_MAC.md)). Setup downloads the files and the DeepSeek engine, then starts the model.
 
 ```sh
 strata launch --family deepseek41 --model ist-das-2.00bpw --plan
 ```
 
-Measured with the 2.00 bpw set on Strata 0.2.5. Output is the speed of the answer, prompt is how fast Strata reads your input.
+Measured with the 2.00 bpw set on Strata 0.2.5 (Strix Halo: 0.2.7). Output is the speed of the answer, prompt is how fast Strata reads your input.
 
 | Hardware | Output | Prompt |
 | --- | ---: | ---: |
@@ -79,8 +79,9 @@ Measured with the 2.00 bpw set on Strata 0.2.5. Output is the speed of the answe
 | RTX 3060 12 GB, 46 GB RAM | 9 to 11 tokens/s | about 155 tokens/s (4K) |
 | 1x Radeon AI PRO R9700, 251 GB RAM | 21 to 25 tokens/s | 320 to 360 tokens/s (8K) |
 | 4x Radeon AI PRO R9700 | 74 to 77 tokens/s | 400 to 450 tokens/s (8K) |
+| Ryzen AI Max+ 395 (Strix Halo), 128 GB unified | 19 to 21 tokens/s (code), 11 (chat) | 87 tokens/s (4K), 125 tokens/s (8K) |
 
-[Memory, disk and details](docs/DEEPSEEK41.md) · [Upstream release notes](https://github.com/Niko1221/Strata/releases)
+[Memory, disk and details](docs/DEEPSEEK41.md) · [Release notes](https://github.com/Niko1221/Strata/releases)
 
 </details>
 
@@ -94,12 +95,12 @@ Not sure what fits? [Choose a model for your computer](docs/MODELS.md#pick-by-me
 
 ### Desktop app
 
-**Upstream installers:** [Niko1221/Strata releases](https://github.com/Niko1221/Strata/releases/latest)  
-**This fork's releases:** [zapabob/Strata releases](https://github.com/zapabob/Strata/releases/latest)
+**[Download this fork →](https://github.com/zapabob/Strata/releases/latest)** · [Upstream releases](https://github.com/Niko1221/Strata/releases/latest)
 
-Install the app, choose a model, and start chatting. On first start the app downloads the engine for your graphics card. On Windows, running a newer fork setup into the same per-user folder upgrades in place; chats and models stay outside the install directory. [Help with the installer](docs/INSTALL.md#the-app).
+Install the app, choose a model, and start chatting. There is one installer for each system. On first start the app
+downloads the engine for your graphics card. [Help with the installer](docs/INSTALL.md#the-app).
 
-<sub>Upstream 0.2.6 files: `Strata-0.2.6-windows-x64-setup.exe` · `Strata-0.2.6-linux-x86_64.AppImage` · `Strata-0.2.6-macos-arm64.dmg`. Fork packages may use a `-hakua` label; see the release notes for that tag.</sub>
+<sub>Files: `Strata-0.2.7-windows-x64-setup.exe` · `Strata-0.2.7-linux-x86_64.AppImage` · `Strata-0.2.7-macos-arm64.dmg`</sub>
 
 <p align="center">
   <img src="docs/media/app-chat.png" width="900" alt="Strata desktop app with a chat and live code preview side by side">
@@ -158,6 +159,7 @@ Follow the prompts to download and start a model. [Terminal guide](docs/TERMINAL
 | **Intel Arc · Linux** | [Intel setup](docs/INTEL_ARC.md) |
 | **Apple Silicon · M1 or newer** | [Mac setup](docs/MAC.md) |
 | **AMD Ryzen AI Max · Strix Halo** | [Strix Halo setup](docs/STRIX_HALO.md) |
+| **NVIDIA DGX Spark · Linux** | [DGX Spark setup](docs/DGX_SPARK_LINUX.md) |
 
 <a id="using-it"></a>
 
@@ -167,52 +169,39 @@ Follow the prompts to download and start a model. [Terminal guide](docs/TERMINAL
 
 Run **`strata connect`** to see setup instructions for your tool. [Connection guide](docs/TERMINAL_LAUNCH.md#connect-your-apps-strata-connect).
 
+<a id="guides"></a>
+<a id="how-fast-is-it"></a>
+<a id="how-does-it-work"></a>
+<a id="something-went-wrong"></a>
+
+## Help
+
+[All guides](docs) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [Report a bug](https://github.com/Niko1221/Strata/issues/new/choose) ·
+[Benchmarks](docs/COMMUNITY_BENCHMARKS.md) · [How it works](docs/HOW_IT_WORKS.md) · [Contribute](CONTRIBUTING.md)
+
+
+
 <a id="fork-notes"></a>
 
 ## Fork notes
 
-This fork (`zapabob/Strata`) keeps the following surfaces while aligning new host/control APIs with upstream:
+This tree is **zapabob/Strata**, tracking upstream **Niko1221/Strata v0.2.7.1** (`46c152a1`).
 
-| Area | What is kept |
-| --- | --- |
-| Engine research | Spin(8) / Triality KV, Query-v3, TurboQuant dialects, Bonsai / Prism paths |
-| Host | Hakua consented memory chat, run-config known keys, native load cancel ownership |
-| Packaging | Windows full packaging with optional `-hakua` label |
-| Intake | `_docs/upstream-intake/` contracts and `tools/merge_upstream_fork.py` |
+Preserved proprietary surfaces: F01–F11 (Spin8 / Query-v3 / TurboQuant / guards / GGUF router), Hakua consented memory chat, harness/run-config keys, Hermes hooks, and Windows full packaging labelled `-hakua`.
 
-Upstream sync checkpoint: **official v0.2.6 / `upstream/main@4b9e05a2`** (Windows uninstaller fixes and 0.2.6 docs/feed). Fork app version in-tree after merge: **`0.3.2-preview.20261027.2`**.
-
-### Windows inference preview (measured on this fork)
-
-Earlier tag `0.3.2-preview.20261027.1` packages the engine tested on Windows, RTX 5060 Ti 16 GiB and 32 GiB system RAM. It is a CUDA 13 / SM120 preview overlay, not a claim that every upstream installer path was re-measured here.
-
-The tested configuration is Qwen3.8 Q2_0, capacity **131072**, **spec4 + MTP**, **k8v4**, and a 256-token output reservation.
-
-| Actual input | First and repeated generation | Recall check | Cleanup |
-| --- | --- | --- | --- |
-| 4096 tokens | Both completed, 52 output tokens each | Both passed | Zero remaining Job processes |
-| 32768 tokens | Both completed, 52 output tokens each | Both passed | Zero remaining Job processes |
-
-These runs had source and controller diagnostics OFF. The 32K first prompt took 494.76 seconds; the repeated prompt took 0.646 seconds with prefix reuse. Decode took 13.759 and 3.255 seconds respectively. These are observations from one synthetic task, not a statistical speed or broad quality claim.
-
-Read [the measurement record](docs/PERF131K.md) and [machine-readable status](docs/perf131k-status.json) before using that preview. Full-length 126000-token certification, image inference and HIP/SYCL remain unqualified on that record.
-
-The optional memory harness stays **disabled by default**. See [MEMORY_HARNESS](serve/MEMORY_HARNESS.md).
-
-<a id="guides"></a>
-
-## Help
-
-[All guides](docs) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [Report a bug on this fork](https://github.com/zapabob/Strata/issues/new/choose) ·
-[Upstream issues](https://github.com/Niko1221/Strata/issues/new/choose) ·
-[Benchmarks](docs/COMMUNITY_BENCHMARKS.md) · [How it works](docs/HOW_IT_WORKS.md) · [Contribute](CONTRIBUTING.md)
+App version in this preview tree: `0.3.2-preview.20261028.1`. Measured Windows preview numbers (when claimed) are only those already recorded under `docs/` / `_docs/` — no new speed claims were invented for this sync.
 
 ## Support Strata
 
-**Help keep local AI open to everyone.** Upstream maintains the public project; a coffee helps their development and testing.
+**Help keep local AI open to everyone.** A coffee helps fund development and testing on more hardware.
 
 <a href="https://buymeacoffee.com/strataengine"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee: support Strata" height="48"></a>
 
 [MIT license](LICENSE) · [Credits and model licenses](docs/HOW_IT_WORKS.md#credits) · [Privacy](docs/SAFETY.md)
 
-<sub>For AI tools and automated readers: <a href="AGENTS.md">technical reference</a> · <a href="docs/AI_SETUP.md">setup instructions</a> · <a href="_docs/upstream-intake/fork-contracts.json">fork contracts</a>.</sub>
+<a id="option-c-let-your-ai-set-it-up"></a>
+
+<sub>For AI tools and automated readers: <a href="AGENTS.md">technical reference</a> · <a href="docs/AI_SETUP.md">setup instructions</a>.</sub>
+
+**Sponsorships, hardware partnerships or collaborations:** [niko.veit@outlook.com](mailto:niko.veit@outlook.com).
+

@@ -11,19 +11,19 @@
 <p align="center">
   <a href="#模型">模型</a> · <a href="#安装"><b>安装</b></a> ·
   <a href="#硬件">硬件</a> · <a href="#工具">工具</a> ·
-  <a href="#分叉说明">分叉说明</a> ·
   <a href="#帮助">帮助</a> · <a href="#支持-strata">支持</a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/zapabob/Strata/releases/latest"><img src="https://img.shields.io/github/v/release/zapabob/Strata?label=fork%20release&color=0ab887" alt="下载本分叉"></a>
-  <a href="https://github.com/Niko1221/Strata/releases/latest"><img src="https://img.shields.io/github/v/release/Niko1221/Strata?label=upstream&color=555" alt="上游 Strata"></a>
+  <a href="https://github.com/Niko1221/Strata/releases/latest"><img src="https://img.shields.io/github/v/release/Niko1221/Strata?label=download&color=0ab887" alt="下载 Strata"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/Niko1221/Strata" alt="MIT 许可证"></a>
+  <a href="https://buymeacoffee.com/strataengine"><img src="https://img.shields.io/badge/Buy_me_a_coffee-FFDD00?logo=buymeacoffee&logoColor=000" alt="在 Buy Me a Coffee 上支持 Strata"></a>
 </p>
 
-<p align="center"><sub><a href="README.md">English</a> · <b>简体中文</b> · <a href="README.ja.md">日本語</a> · <a href="README.de.md">Deutsch</a> · <a href="README.fr.md">Français</a> · <a href="README.es.md">Español</a> · <a href="README.pt-BR.md">Português</a></sub></p>
+<p align="center"><sub><a href="README.md">English</a> · <b>简体中文</b> · <a href="README.ja.md">日本語</a> · <a href="README.de.md">Deutsch</a> · <a href="README.fr.md">Français</a> · <a href="README.es.md">Español</a> · <a href="README.pt-BR.md">Português</a> · <a href="README.pl.md">Polski</a></sub></p>
 
-**免费、开源，由你自己运行。** 本仓库是 [Niko1221/Strata](https://github.com/Niko1221/Strata) 的分叉。它保留专有的 Spin(8) / Triality、Query-v3、TurboQuant、Bonsai、Hakua 记忆聊天以及 Windows `-hakua` 打包，同时跟进上游的安全与缺陷修复。模型、安装与硬件说明在 2026-10-27 同步后对齐上游 **v0.2.6**（`4b9e05a2`）。分叉专有说明与已测量预览见 [分叉说明](#分叉说明)。
+**免费、开源。** 本仓库是 [Niko1221/Strata](https://github.com/Niko1221/Strata) 的分支，保留 Spin(8)/Triality、Query-v3、TurboQuant、Bonsai、Hakua 同意式记忆聊天、Hermes 与 Windows `-hakua` 打包，同时跟进上游安全与缺陷修复。下方官方说明对应上游 **v0.2.7.1** (`46c152a1`)（2026-10-28 同步）。分支专有说明见 [Fork notes](#fork-notes)。
+
 
 ## 模型
 
@@ -78,7 +78,7 @@ strata launch --family deepseek41 --model ist-das-2.00bpw --plan
 | 1x Radeon AI PRO R9700, 251 GB 内存 | 21 到 25 tokens/s | 320 到 360 tokens/s (8K) |
 | 4x Radeon AI PRO R9700 | 74 到 77 tokens/s | 400 到 450 tokens/s (8K) |
 
-[内存、磁盘和详细信息](docs/DEEPSEEK41.md) · [上游发行说明](https://github.com/Niko1221/Strata/releases)
+[内存、磁盘和详细信息](docs/DEEPSEEK41.md) · [发行说明](https://github.com/Niko1221/Strata/releases)
 
 </details>
 
@@ -92,12 +92,11 @@ strata launch --family deepseek41 --model ist-das-2.00bpw --plan
 
 ### 桌面应用
 
-**上游安装包：** [Niko1221/Strata 发行页](https://github.com/Niko1221/Strata/releases/latest)  
-**本分叉发行页：** [zapabob/Strata 发行页](https://github.com/zapabob/Strata/releases/latest)
+**[下载适用于 Windows、Linux 或 Mac 的 Strata →](https://github.com/Niko1221/Strata/releases/latest)**
 
-安装应用，选择模型，就可以开始聊天。首次启动时，应用会下载适合你显卡的引擎。[安装程序帮助](docs/INSTALL.md#the-app)。
+安装应用，选择模型，就可以开始聊天。每个系统只有一个安装程序。首次启动时，应用会下载适合你显卡的引擎。[安装程序帮助](docs/INSTALL.md#the-app)。
 
-<sub>上游 0.2.6 文件：`Strata-0.2.6-windows-x64-setup.exe` · `Strata-0.2.6-linux-x86_64.AppImage` · `Strata-0.2.6-macos-arm64.dmg`。分叉包可能带 `-hakua` 标签；请查看对应标签的发行说明。</sub>
+<sub>文件: `Strata-0.2.7-windows-x64-setup.exe` · `Strata-0.2.7-linux-x86_64.AppImage` · `Strata-0.2.7-macos-arm64.dmg`</sub>
 
 <p align="center">
   <img src="docs/media/app-chat.png" width="900" alt="Strata 桌面应用，聊天和实时代码预览并排显示">
@@ -165,52 +164,37 @@ strata launch
 
 运行 **`strata connect`**，查看你所用工具的设置方法。[连接指南](docs/TERMINAL_LAUNCH.md#connect-your-apps-strata-connect)。
 
-<a id="分叉说明"></a>
-
-## 分叉说明
-
-本分叉（`zapabob/Strata`）在对齐上游新的 Host / Control API 的同时，保留下列能力：
-
-| 区域 | 保留内容 |
-| --- | --- |
-| 引擎研究 | Spin(8) / Triality KV、Query-v3、TurboQuant 方言、Bonsai / Prism 路径 |
-| Host | Hakua 同意式记忆聊天、run-config 已知键、原生加载取消所有权 |
-| 打包 | Windows 完整打包（可选 `-hakua` 标签） |
-| 接入 | `_docs/upstream-intake/` 契约与 `tools/merge_upstream_fork.py` |
-
-上游同步检查点：**官方 v0.2.6 / `upstream/main@4b9e05a2`**（Windows 卸载程序修复与 0.2.6 文档/feed）。合并后树内应用版本：**`0.3.2-preview.20261027.2`**。
-
-### Windows 推理预览（本分叉实测）
-
-较早标签 `0.3.2-preview.20261027.1` 打包了在 Windows、RTX 5060 Ti 16 GiB、系统内存 32 GiB 上测试过的引擎。这是 CUDA 13 / SM120 预览叠加，并不表示此处重新测量了每一条上游安装路径。
-
-测试配置为 Qwen3.8 Q2_0、容量 **131072**、**spec4 + MTP**、**k8v4**，以及 256 token 的输出预留。
-
-| 实际输入 | 首次与再次生成 | 召回检查 | 清理 |
-| --- | --- | --- | --- |
-| 4096 tokens | 均完成，各 52 个输出 token | 均通过 | 无残留 Job 进程 |
-| 32768 tokens | 均完成，各 52 个输出 token | 均通过 | 无残留 Job 进程 |
-
-这些运行关闭了 source / controller 诊断。32K 首次提示词耗时 494.76 秒；重复提示词在前缀复用下为 0.646 秒。解码分别耗时 13.759 秒与 3.255 秒。这是一次合成任务的观察，不是统计意义上的速度或广泛质量声明。
-
-使用前请阅读[测量记录](docs/PERF131K.md)与[机器可读状态](docs/perf131k-status.json)。该记录未覆盖完整 126000 token 认证、图像推理以及 HIP/SYCL。
-
-可选记忆 harness **默认关闭**。见 [MEMORY_HARNESS](serve/MEMORY_HARNESS.md)。
-
 <a id="guides"></a>
+<a id="how-fast-is-it"></a>
+<a id="how-does-it-work"></a>
+<a id="something-went-wrong"></a>
 
 ## 帮助
 
-[全部指南](docs) · [故障排查](docs/TROUBLESHOOTING.md) · [向本分叉报告问题](https://github.com/zapabob/Strata/issues/new/choose) ·
-[上游 issues](https://github.com/Niko1221/Strata/issues/new/choose) ·
+[全部指南](docs) · [故障排查](docs/TROUBLESHOOTING.md) · [报告问题](https://github.com/Niko1221/Strata/issues/new/choose) ·
 [基准测试](docs/COMMUNITY_BENCHMARKS.md) · [工作原理](docs/HOW_IT_WORKS.md) · [参与贡献](CONTRIBUTING.md)
 
 ## 支持 Strata
 
-**帮助本地 AI 保持开放。** 上游维护公开项目；一杯咖啡有助于他们的开发与测试。
+**帮助本地 AI 保持开放。** 一杯咖啡能帮助我们在更多硬件上开发和测试。
 
 <a href="https://buymeacoffee.com/strataengine"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee：支持 Strata" height="48"></a>
 
 [MIT 许可证](LICENSE) · [致谢和模型许可证](docs/HOW_IT_WORKS.md#credits) · [隐私](docs/SAFETY.md)
 
-<sub>面向 AI 工具和自动阅读器： <a href="AGENTS.md">技术参考</a> · <a href="docs/AI_SETUP.md">安装说明</a> · <a href="_docs/upstream-intake/fork-contracts.json">分叉契约</a>。</sub>
+<a id="option-c-let-your-ai-set-it-up"></a>
+
+<sub>面向 AI 工具和自动阅读器： <a href="AGENTS.md">技术参考</a> · <a href="docs/AI_SETUP.md">安装说明</a></sub>
+
+**赞助、硬件合作或其他合作：** [niko.veit@outlook.com](mailto:niko.veit@outlook.com).
+
+<a id="fork-notes"></a>
+
+## Fork notes
+
+This tree is **zapabob/Strata**, tracking upstream **Niko1221/Strata v0.2.7.1** (`46c152a1`).
+
+Preserved proprietary surfaces: F01–F11 (Spin8 / Query-v3 / TurboQuant / guards / GGUF router), Hakua consented memory chat, harness/run-config keys, Hermes hooks, and Windows full packaging labelled `-hakua`.
+
+App version in this preview tree: `0.3.2-preview.20261028.1`. Measured Windows preview numbers (when claimed) are only those already recorded under `docs/` / `_docs/` — no new speed claims were invented for this sync.
+

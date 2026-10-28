@@ -105,8 +105,8 @@ test('the text editor: Notepad on Windows, text mode on a Mac, the system text-f
   assert.deepEqual(seen, [['xdg-open', '/s/strata-q.json']], 'with no text editor known the file’s own program opens it');
 });
 
-test('every issue sentence exists in all eight languages and keeps its slots', async () => {
-  const languages = ['en', 'zh', 'ja', 'de', 'es', 'ru', 'pt', 'ko'];
+test('every issue sentence exists in all nine languages and keeps its slots', async () => {
+  const languages = ['en', 'zh', 'ja', 'de', 'es', 'ru', 'pt', 'ko', 'fr'];
   const compiled = await build({ stdin: { contents: "export * from './src/lib/run-config-issues'; export * from './src/lib/i18n';", resolveDir: process.cwd() }, bundle: true, write: false, platform: 'node', format: 'esm' });
   const { issueText, setTranslationLanguage } = await import(`data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`);
   const samples = [

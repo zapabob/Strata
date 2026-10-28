@@ -1,7 +1,7 @@
 {
   "name": "strata",
   "private": true,
-  "version": "0.3.2-preview.20261027.2",
+  "version": "0.3.2-preview.20261028.1",
   "type": "module",
   "description": "Strata — local AI, tuned to one model. Web shell + engine host.",
   "scripts": {
