@@ -1,4 +1,4 @@
-<p align="center">
+﻿<p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="apps/host/public/brand/strata-lockup-dark.svg">
     <img src="apps/host/public/brand/strata-lockup-light.svg" alt="Strata" width="340">
@@ -97,12 +97,12 @@ strata launch --family deepseek41 --model ist-das-2.00bpw --plan
 
 ### 桌面应用（本分支）
 
-**[Windows NSIS（未签名预览）→](https://github.com/zapabob/Strata/releases/download/v0.3.2-preview.20261027.2/Strata_0.3.2-preview.20261027.2_x64-setup.exe)**  
-发行说明: [v0.3.2-preview.20261027.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261027.2) · 源码同步: [v0.3.2-preview.20261028.1](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1) · [本分支全部发行](https://github.com/zapabob/Strata/releases) · [上游发行](https://github.com/Niko1221/Strata/releases/latest)
+**[Windows NSIS（未签名预览）→](https://github.com/zapabob/Strata/releases/download/v0.3.2-preview.20261028.2/Strata_0.3.2-preview.20261028.2_x64-setup.exe)**  
+发行说明: [v0.3.2-preview.20261028.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.2) · 源码同步: [v0.3.2-preview.20261028.1](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1) · [本分支全部发行](https://github.com/zapabob/Strata/releases) · [上游发行](https://github.com/Niko1221/Strata/releases/latest)
 
 安装或覆盖安装 Windows 应用，选择模型后即可聊天。首次启动会下载对应显卡引擎。升级时请保留模型文件夹。本预览为**未签名**构建。[安装程序帮助](docs/INSTALL.md#the-app)。
 
-<sub>本分支 Windows 文件: `Strata_0.3.2-preview.20261027.2_x64-setup.exe`（SHA-256 `839029112ef655466bdc04e92e5a97325b3ba03e05b5f92f4dcb96d015e4a0df`）。Linux / macOS 也可看上游 Niko1221/Strata。</sub>
+<sub>本分支 Windows 文件: `Strata_0.3.2-preview.20261028.2_x64-setup.exe`（SHA-256 `f0cdd5d84f3fada7e084e4aec0f65b558793834f58e2feaf9f89456d5a0604fd`）。Linux / macOS 也可看上游 Niko1221/Strata。</sub>
 
 <p align="center">
   <img src="docs/media/app-chat.png" width="900" alt="Strata 桌面应用，聊天和实时代码预览并排显示">
@@ -205,7 +205,7 @@ strata launch
 | 跟踪上游 | [Niko1221/Strata](https://github.com/Niko1221/Strata) **v0.2.7.1**（`46c152a1`） |
 | 树中应用版本 | `0.3.2-preview.20261028.2` |
 | 落地页 | https://zapabob.github.io/Strata/ |
-| 带资产的 Windows 安装包 | [v0.3.2-preview.20261027.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261027.2)（未签名 NSIS） |
+| 带资产的 Windows 安装包 | [v0.3.2-preview.20261028.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.2)（未签名 NSIS） |
 | 上游同步标签 | [v0.3.2-preview.20261028.1](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1) |
 
 **刻意保留：** Hakua 同意式记忆聊天、`hakua_harness` / run-config 密钥、加载取消所有权（`stopCancelledLoad`）、F01–F11（Spin8 / Query-v3 / TurboQuant 等）、Hermes、`-hakua` 打包。

@@ -1,4 +1,4 @@
-<p align="center">
+﻿<p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="apps/host/public/brand/strata-lockup-dark.svg">
     <img src="apps/host/public/brand/strata-lockup-light.svg" alt="Strata" width="340">
@@ -97,12 +97,12 @@ Strata 0.2.5 で 2.00 bpw のセットを使って測定しました。「出力
 
 ### デスクトップアプリ（このフォーク）
 
-**[Windows NSIS（署名なしプレビュー）→](https://github.com/zapabob/Strata/releases/download/v0.3.2-preview.20261027.2/Strata_0.3.2-preview.20261027.2_x64-setup.exe)**  
-リリース: [v0.3.2-preview.20261027.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261027.2) · ソース同期: [v0.3.2-preview.20261028.1](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1) · [フォークの全リリース](https://github.com/zapabob/Strata/releases) · [上流リリース](https://github.com/Niko1221/Strata/releases/latest)
+**[Windows NSIS（署名なしプレビュー）→](https://github.com/zapabob/Strata/releases/download/v0.3.2-preview.20261028.2/Strata_0.3.2-preview.20261028.2_x64-setup.exe)**  
+リリース: [v0.3.2-preview.20261028.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.2) · ソース同期: [v0.3.2-preview.20261028.1](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1) · [フォークの全リリース](https://github.com/zapabob/Strata/releases) · [上流リリース](https://github.com/Niko1221/Strata/releases/latest)
 
 インストールまたは上書きインストールして、モデルを選び、チャットを始めます。初回起動時にカード用エンジンを取得します。アップグレード時はモデルフォルダを残してください。このプレビューは**署名なし**です。[インストーラーのヘルプ](docs/INSTALL.md#the-app)。
 
-<sub>フォークの Windows ファイル: `Strata_0.3.2-preview.20261027.2_x64-setup.exe`（SHA-256 `839029112ef655466bdc04e92e5a97325b3ba03e05b5f92f4dcb96d015e4a0df`）。Linux / macOS は上流 Niko1221/Strata も参照。</sub>
+<sub>フォークの Windows ファイル: `Strata_0.3.2-preview.20261028.2_x64-setup.exe`（SHA-256 `f0cdd5d84f3fada7e084e4aec0f65b558793834f58e2feaf9f89456d5a0604fd`）。Linux / macOS は上流 Niko1221/Strata も参照。</sub>
 
 <p align="center">
   <img src="docs/media/app-chat.png" width="900" alt="チャットとライブのコードプレビューを並べて表示した Strata デスクトップアプリ">
@@ -205,7 +205,7 @@ strata launch
 | 追跡する上流 | [Niko1221/Strata](https://github.com/Niko1221/Strata) **v0.2.7.1**（`46c152a1`） |
 | 木のアプリ版 | `0.3.2-preview.20261028.2` |
 | ランディング | https://zapabob.github.io/Strata/ |
-| 資産付き Windows インストーラ | [v0.3.2-preview.20261027.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261027.2)（署名なし NSIS） |
+| 資産付き Windows インストーラ | [v0.3.2-preview.20261028.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.2)（署名なし NSIS） |
 | 上流同期タグ | [v0.3.2-preview.20261028.1](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1) |
 
 **意図して残しているもの:** Hakua 同意付きメモリチャット、`hakua_harness` / run-config キー、ロード取消の所有権（`stopCancelledLoad`）、F01–F11（Spin8 / Query-v3 / TurboQuant など）、Hermes、`-hakua` 包装。

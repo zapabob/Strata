@@ -1,4 +1,4 @@
-<p align="center">
+﻿<p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="apps/host/public/brand/strata-lockup-dark.svg">
     <img src="apps/host/public/brand/strata-lockup-light.svg" alt="Strata" width="340">
@@ -99,12 +99,12 @@ Not sure what fits? [Choose a model for your computer](docs/MODELS.md#pick-by-me
 
 ### Desktop app (this fork)
 
-**[Windows NSIS (unsigned preview) →](https://github.com/zapabob/Strata/releases/download/v0.3.2-preview.20261027.2/Strata_0.3.2-preview.20261027.2_x64-setup.exe)**  
-Release notes: [v0.3.2-preview.20261027.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261027.2) · Source sync: [v0.3.2-preview.20261028.1](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1) · [All fork releases](https://github.com/zapabob/Strata/releases) · [Upstream releases](https://github.com/Niko1221/Strata/releases/latest)
+**[Windows NSIS (unsigned preview) →](https://github.com/zapabob/Strata/releases/download/v0.3.2-preview.20261028.2/Strata_0.3.2-preview.20261028.2_x64-setup.exe)**  
+Release notes: [v0.3.2-preview.20261028.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.2) · Source sync: [v0.3.2-preview.20261028.1](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1) · [All fork releases](https://github.com/zapabob/Strata/releases) · [Upstream releases](https://github.com/Niko1221/Strata/releases/latest)
 
 Install or overwrite the Windows app, choose a model, and start chatting. On first start the app downloads the engine for your graphics card. Keep your models folder when upgrading. This preview build is **unsigned** (no signed updater feed). [Installer help](docs/INSTALL.md#the-app).
 
-<sub>Fork Windows file: `Strata_0.3.2-preview.20261027.2_x64-setup.exe` (SHA-256 `839029112ef655466bdc04e92e5a97325b3ba03e05b5f92f4dcb96d015e4a0df`). Upstream also ships Linux/macOS installers under Niko1221/Strata.</sub>
+<sub>Fork Windows file: `Strata_0.3.2-preview.20261028.2_x64-setup.exe` (SHA-256 `f0cdd5d84f3fada7e084e4aec0f65b558793834f58e2feaf9f89456d5a0604fd`). Upstream also ships Linux/macOS installers under Niko1221/Strata.</sub>
 
 <p align="center">
   <img src="docs/media/app-chat.png" width="900" alt="Strata desktop app with a chat and live code preview side by side">
@@ -195,7 +195,7 @@ Run **`strata connect`** to see setup instructions for your tool. [Connection gu
 | Upstream tracked | [Niko1221/Strata](https://github.com/Niko1221/Strata) **v0.2.7.1** (`46c152a1`) |
 | App version in tree | `0.3.2-preview.20261028.2` |
 | Landing page | https://zapabob.github.io/Strata/ |
-| Windows installer with assets | [v0.3.2-preview.20261027.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261027.2) (unsigned NSIS) |
+| Windows installer with assets | [v0.3.2-preview.20261028.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.2) (unsigned NSIS) |
 | Upstream sync tag | [v0.3.2-preview.20261028.1](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1) |
 
 **Kept on purpose:** Hakua consented memory chat, `hakua_harness` / run-config keys, load-cancel ownership (`stopCancelledLoad`), F01–F11 (Spin8 / Query-v3 / TurboQuant / guards / GGUF router), Hermes hooks, Windows packaging labelled `-hakua`.
