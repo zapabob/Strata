@@ -38,12 +38,14 @@
   <main>
     <section class="container" aria-labelledby="preview131k-title" style="padding:1rem;border:2px solid #b7791f;border-radius:12px;margin:1rem auto;">
       <h2 id="preview131k-title">Windows inference preview / 推論動作確認プレビュー</h2>
-      <p><strong>0.3.2-preview.20261027.1: actual 4K and 32K inference passed.</strong>
-      Configured capacity 131072, spec4 + MTP, k8v4. First and repeated requests completed at both lengths; all four recall probes passed on RTX 5060 Ti 16 GiB / RAM 32 GiB.</p>
-      <p>GUI fixes extend quiet local inference to 30 minutes and provide a generic GGUF path when native import is unsupported. The companion bundle includes the generic backend. File and engine compatibility are checked; unsupported models are not promised to work.</p>
-      <p>4K・32Kの生成を実機確認済みです。ローカル推論の4分打ち切りとGGUF導入経路を修正しました。
-      Full-length 131k, broad quality, statistical performance, interactive screen testing and long-run stability remain unqualified. Memory integration stays disabled by default.</p>
-      <p><a href="https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261027.1">Preview, GUI companion and checksums / 配布とハッシュ</a> ·
+      <p><strong>Fork tip 0.3.2-preview.20261028.2 — synced with upstream v0.2.7.1 (28 Oct 2026).</strong>
+      Hakua consented memory, run-config keys and load-cancel hardening stay in this fork. Earlier measured 4K/32K generation on RTX 5060 Ti 16 GiB / RAM 32 GiB still stands; full-length 131k certification remains open.</p>
+      <p>Windows NSIS installer with assets:
+      <a href="https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261027.2">v0.3.2-preview.20261027.2</a>.
+      Source sync notes:
+      <a href="https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1">v0.3.2-preview.20261028.1</a>.
+      Memory integration stays opt-in / disabled by default.</p>
+      <p><a href="https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261027.2">NSIS, checksums / 配布とハッシュ</a> ·
       <a href="https://github.com/zapabob/Strata/blob/main/docs/PERF131K.md">Measurements and limits / 実測と制限</a></p>
     </section>
 
@@ -51,19 +53,19 @@
       <div class="container">
         <div class="hero-pill">
           <span class="pill-dot"></span>
-          <span data-i18n="hero_pill">Windows inference preview: 27 October 2026</span>
+          <span data-i18n="hero_pill">Windows fork preview: 28 October 2026</span>
         </div>
         <h1 class="hero-title" data-i18n="hero_title">Local inference, with measured limits</h1>
         <p class="hero-desc" data-i18n="hero_desc">Desktop and Terminal interfaces for native inference and compatible GGUF models. Actual 4K and 32K generation is documented; full 131k certification remains open.</p>
 
         <div class="cta-group">
-          <a href="#downloads" class="btn-primary">
+          <a href="https://github.com/zapabob/Strata/releases/download/v0.3.2-preview.20261027.2/Strata_0.3.2-preview.20261027.2_x64-setup.exe" class="btn-primary">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="7 10 12 15 17 10"></polyline>
               <line x1="12" y1="15" x2="12" y2="3"></line>
             </svg>
-            <span data-i18n="hero_download">Download v0.3.1 for Windows</span>
+            <span data-i18n="hero_download">Download Windows NSIS (0.3.2-preview.20261027.2)</span>
           </a>
           <a href="https://github.com/zapabob/Strata" class="btn-secondary" target="_blank" rel="noopener">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -87,7 +89,7 @@
             </div>
           </div>
           <div class="terminal-body">
-            <code class="terminal-cmd" id="terminal-cmd">Start-Process https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261027.1</code>
+            <code class="terminal-cmd" id="terminal-cmd">Start-Process https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261027.2</code>
             <button class="copy-btn" id="copy-cmd-btn" aria-label="Copy Command">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -278,34 +280,34 @@
         <div class="download-grid">
           <div class="download-card">
             <div>
-              <span class="dl-badge" data-i18n="d1_badge">Earlier desktop bundle</span>
-              <h3 class="dl-title" data-i18n="d1_title">Strata v0.3.1 Engine & GUI (Windows x64)</h3>
-              <p class="dl-desc" data-i18n="d1_desc">Existing Windows desktop bundle. Apply the separately documented preview overlays for the new engine and GUI fixes.</p>
+              <span class="dl-badge" data-i18n="d1_badge">Windows NSIS installer</span>
+              <h3 class="dl-title" data-i18n="d1_title">Strata 0.3.2-preview.20261027.2 (unsigned NSIS)</h3>
+              <p class="dl-desc" data-i18n="d1_desc">Overwrite-capable Windows x64 setup. Unsigned preview; signed feed/Tauri updater is not included. Keep your models folder when upgrading.</p>
               <div class="dl-checksum">
-                SHA-256: 5f2b27d9a10719115cf62dffb0e1ffc645e1dc793e01d5c50101992bc34630ae
+                SHA-256: 839029112ef655466bdc04e92e5a97325b3ba03e05b5f92f4dcb96d015e4a0df
               </div>
             </div>
-            <a href="https://github.com/zapabob/Strata/releases/download/v0.3.1/Strata-0.3.1-windows-x64-sm120-engine-gui.tar.7z" class="btn-primary">
+            <a href="https://github.com/zapabob/Strata/releases/download/v0.3.2-preview.20261027.2/Strata_0.3.2-preview.20261027.2_x64-setup.exe" class="btn-primary">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                 <polyline points="7 10 12 15 17 10"></polyline>
                 <line x1="12" y1="15" x2="12" y2="3"></line>
               </svg>
-              <span data-i18n="d1_btn">Download v0.3.1 desktop bundle (412.7 MB)</span>
+              <span data-i18n="d1_btn">Download NSIS (~168 MiB)</span>
             </a>
           </div>
 
           <div class="download-card">
             <div>
-              <span class="dl-badge" data-i18n="d2_badge">Preview instructions</span>
-              <h3 class="dl-title" data-i18n="d2_title">Read before applying an overlay</h3>
-              <p class="dl-desc" data-i18n="d2_desc">Open the release page for archives, checksums and exact installation limits. These archives are not desktop setup executables.</p>
+              <span class="dl-badge" data-i18n="d2_badge">Upstream sync notes</span>
+              <h3 class="dl-title" data-i18n="d2_title">v0.3.2-preview.20261028.1 (source sync)</h3>
+              <p class="dl-desc" data-i18n="d2_desc">Fork tip notes after merging official Strata v0.2.7.1. No installer asset on this tag — use the NSIS card for setup.exe.</p>
               <div class="dl-checksum">
-                Start-Process https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261027.1
+                Start-Process https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1
               </div>
             </div>
-            <a href="https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261027.1" class="btn-secondary" target="_blank" rel="noopener">
-              <span>Read Installation Guide →</span>
+            <a href="https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1" class="btn-secondary" target="_blank" rel="noopener">
+              <span>Open sync release →</span>
             </a>
           </div>
         </div>
