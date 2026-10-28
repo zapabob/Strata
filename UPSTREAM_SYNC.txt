@@ -1,7 +1,7 @@
-﻿Pages refresh: 2026-10-29T01:25+09:00 (Cursor)
-main tip at publish: 37ea87d3 (0.3.2-preview.20261028.2 tree)
-upstream sync release: v0.3.2-preview.20261028.1 (official v0.2.7.1)
-Windows NSIS with assets: v0.3.2-preview.20261027.2
-  SHA-256: 839029112ef655466bdc04e92e5a97325b3ba03e05b5f92f4dcb96d015e4a0df
-Actions workflow_dispatch still blocked (HTTP 422); this branch is the live legacy source.
-
+﻿Pages refresh: 2026-10-29T02:22+09:00 (Cursor)
+main tip: see origin/main
+Windows NSIS with assets: v0.3.2-preview.20261028.2
+  setup.exe SHA-256: F0CDD5D84F3FADA7E084E4AEC0F65B558793834F58E2FEAF9F89456D5A0604FD
+  7z SHA-256: DE23C3DAC6EEAFA86D7A3A51581ABD7700E08832ADF47DD023A1DBF953411351
+Upstream sync note tag (no installer): v0.3.2-preview.20261028.1 (official v0.2.7.1)
+Actions workflow_dispatch may still be blocked (HTTP 422); gh-pages is the live legacy source.
