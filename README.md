@@ -23,7 +23,11 @@
 
 <p align="center"><sub><b>English</b> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ja.md">日本語</a> · <a href="README.de.md">Deutsch</a> · <a href="README.fr.md">Français</a> · <a href="README.es.md">Español</a> · <a href="README.pt-BR.md">Português</a> · <a href="README.pl.md">Polski</a></sub></p>
 
-**Free, open source, and yours to run.** This repository is a fork of [Niko1221/Strata](https://github.com/Niko1221/Strata) that keeps proprietary Spin(8)/Triality, Query-v3, TurboQuant, Bonsai, Hakua consented memory chat, Hermes hooks and Windows `-hakua` packaging, while tracking upstream security and bugfixes. Official model/install/hardware guidance below matches upstream **v0.2.7.1** (`46c152a1`) after the 2026-10-28 sync. Fork-only notes and measured preview evidence sit in [Fork notes](#fork-notes).
+**Free, open source, and yours to run.**
+
+This is **[zapabob/Strata](https://github.com/zapabob/Strata)** — a fork of [Niko1221/Strata](https://github.com/Niko1221/Strata). It keeps Hakua consented memory chat, Spin(8)/Triality, Query-v3, TurboQuant, Bonsai, Hermes hooks and Windows `-hakua` packaging, and tracks upstream features, security fixes and bugfixes. Model and hardware guidance below matches upstream **v0.2.7.1** (`46c152a1`, synced 2026-10-28). The app tree version is **`0.3.2-preview.20261028.2`**.
+
+Site: [zapabob.github.io/Strata](https://zapabob.github.io/Strata/) · Fork detail: [Fork notes](#fork-notes)
 
 ## Models
 
@@ -93,14 +97,14 @@ Not sure what fits? [Choose a model for your computer](docs/MODELS.md#pick-by-me
 
 <a id="option-a-the-strata-app"></a>
 
-### Desktop app
+### Desktop app (this fork)
 
-**[Download this fork →](https://github.com/zapabob/Strata/releases/latest)** · [Upstream releases](https://github.com/Niko1221/Strata/releases/latest)
+**[Windows NSIS (unsigned preview) →](https://github.com/zapabob/Strata/releases/download/v0.3.2-preview.20261027.2/Strata_0.3.2-preview.20261027.2_x64-setup.exe)**  
+Release notes: [v0.3.2-preview.20261027.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261027.2) · Source sync: [v0.3.2-preview.20261028.1](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1) · [All fork releases](https://github.com/zapabob/Strata/releases) · [Upstream releases](https://github.com/Niko1221/Strata/releases/latest)
 
-Install the app, choose a model, and start chatting. There is one installer for each system. On first start the app
-downloads the engine for your graphics card. [Help with the installer](docs/INSTALL.md#the-app).
+Install or overwrite the Windows app, choose a model, and start chatting. On first start the app downloads the engine for your graphics card. Keep your models folder when upgrading. This preview build is **unsigned** (no signed updater feed). [Installer help](docs/INSTALL.md#the-app).
 
-<sub>Files: `Strata-0.2.7-windows-x64-setup.exe` · `Strata-0.2.7-linux-x86_64.AppImage` · `Strata-0.2.7-macos-arm64.dmg`</sub>
+<sub>Fork Windows file: `Strata_0.3.2-preview.20261027.2_x64-setup.exe` (SHA-256 `839029112ef655466bdc04e92e5a97325b3ba03e05b5f92f4dcb96d015e4a0df`). Upstream also ships Linux/macOS installers under Niko1221/Strata.</sub>
 
 <p align="center">
   <img src="docs/media/app-chat.png" width="900" alt="Strata desktop app with a chat and live code preview side by side">
@@ -176,7 +180,7 @@ Run **`strata connect`** to see setup instructions for your tool. [Connection gu
 
 ## Help
 
-[All guides](docs) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [Report a bug](https://github.com/Niko1221/Strata/issues/new/choose) ·
+[All guides](docs) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [Report a bug on this fork](https://github.com/zapabob/Strata/issues/new/choose) ·
 [Benchmarks](docs/COMMUNITY_BENCHMARKS.md) · [How it works](docs/HOW_IT_WORKS.md) · [Contribute](CONTRIBUTING.md)
 
 
@@ -185,11 +189,18 @@ Run **`strata connect`** to see setup instructions for your tool. [Connection gu
 
 ## Fork notes
 
-This tree is **zapabob/Strata**, tracking upstream **Niko1221/Strata v0.2.7.1** (`46c152a1`).
+| Item | Value |
+| --- | --- |
+| Repository | [zapabob/Strata](https://github.com/zapabob/Strata) |
+| Upstream tracked | [Niko1221/Strata](https://github.com/Niko1221/Strata) **v0.2.7.1** (`46c152a1`) |
+| App version in tree | `0.3.2-preview.20261028.2` |
+| Landing page | https://zapabob.github.io/Strata/ |
+| Windows installer with assets | [v0.3.2-preview.20261027.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261027.2) (unsigned NSIS) |
+| Upstream sync tag | [v0.3.2-preview.20261028.1](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1) |
 
-Preserved proprietary surfaces: F01–F11 (Spin8 / Query-v3 / TurboQuant / guards / GGUF router), Hakua consented memory chat, harness/run-config keys, Hermes hooks, and Windows full packaging labelled `-hakua`.
+**Kept on purpose:** Hakua consented memory chat, `hakua_harness` / run-config keys, load-cancel ownership (`stopCancelledLoad`), F01–F11 (Spin8 / Query-v3 / TurboQuant / guards / GGUF router), Hermes hooks, Windows packaging labelled `-hakua`.
 
-App version in this preview tree: `0.3.2-preview.20261028.2`. Measured Windows preview numbers (when claimed) are only those already recorded under `docs/` / `_docs/` — no new speed claims were invented for this sync.
+**Not claimed here:** new speed or quality numbers beyond what already sits under `docs/` and `_docs/`. Full 131k certification remains open. Signed updater feed needs keys on a release PC.
 
 ## Support Strata
 

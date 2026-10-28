@@ -11,18 +11,23 @@
 <p align="center">
   <a href="#モデル">モデル</a> · <a href="#インストール"><b>インストール</b></a> ·
   <a href="#ハードウェア">ハードウェア</a> · <a href="#ツール">ツール</a> ·
-  <a href="#ヘルプ">ヘルプ</a> · <a href="#strata-を支援する">支援</a>
+  <a href="#フォーク注記">フォーク注記</a> · <a href="#ヘルプ">ヘルプ</a> · <a href="#strata-を支援する">支援</a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/Niko1221/Strata/releases/latest"><img src="https://img.shields.io/github/v/release/Niko1221/Strata?label=download&color=0ab887" alt="Strata をダウンロード"></a>
+  <a href="https://github.com/zapabob/Strata/releases/latest"><img src="https://img.shields.io/github/v/release/zapabob/Strata?label=fork%20release&color=0ab887" alt="このフォークをダウンロード"></a>
+  <a href="https://github.com/Niko1221/Strata/releases/latest"><img src="https://img.shields.io/github/v/release/Niko1221/Strata?label=upstream&color=555" alt="上流 Strata"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/Niko1221/Strata" alt="MIT ライセンス"></a>
   <a href="https://buymeacoffee.com/strataengine"><img src="https://img.shields.io/badge/Buy_me_a_coffee-FFDD00?logo=buymeacoffee&logoColor=000" alt="Buy Me a Coffee で Strata を支援する"></a>
 </p>
 
 <p align="center"><sub><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a> · <b>日本語</b> · <a href="README.de.md">Deutsch</a> · <a href="README.fr.md">Français</a> · <a href="README.es.md">Español</a> · <a href="README.pt-BR.md">Português</a> · <a href="README.pl.md">Polski</a></sub></p>
 
-**無料・オープンソース。** このリポジトリは [Niko1221/Strata](https://github.com/Niko1221/Strata) のフォークです。Spin(8)/Triality・Query-v3・TurboQuant・Bonsai・Hakua 同意付きメモリチャット・Hermes・Windows `-hakua` を保持しつつ、上流のセキュリティとバグ修正を追います。下記の公式案内は上流 **v0.2.7.1** (`46c152a1`) 同期後です。フォーク固有の注記は [Fork notes](#fork-notes) を参照。
+**無料・オープンソース。**
+
+これは **[zapabob/Strata](https://github.com/zapabob/Strata)** — [Niko1221/Strata](https://github.com/Niko1221/Strata) のフォークです。Hakua 同意付きメモリチャット、Spin(8)/Triality、Query-v3、TurboQuant、Bonsai、Hermes、Windows `-hakua` を残しつつ、上流の機能・セキュリティ・バグ修正を取り込みます。下記のモデル／ハードウェア案内は上流 **v0.2.7.1**（`46c152a1`、2026-10-28 同期）に合わせています。アプリの木の版は **`0.3.2-preview.20261028.2`** です。
+
+サイト: [zapabob.github.io/Strata](https://zapabob.github.io/Strata/) · 詳細: [フォーク注記](#フォーク注記)
 
 
 ## モデル
@@ -90,13 +95,14 @@ Strata 0.2.5 で 2.00 bpw のセットを使って測定しました。「出力
 
 <a id="option-a-the-strata-app"></a>
 
-### デスクトップアプリ
+### デスクトップアプリ（このフォーク）
 
-**[Windows、Linux、Mac 用の Strata をダウンロード →](https://github.com/Niko1221/Strata/releases/latest)**
+**[Windows NSIS（署名なしプレビュー）→](https://github.com/zapabob/Strata/releases/download/v0.3.2-preview.20261027.2/Strata_0.3.2-preview.20261027.2_x64-setup.exe)**  
+リリース: [v0.3.2-preview.20261027.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261027.2) · ソース同期: [v0.3.2-preview.20261028.1](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1) · [フォークの全リリース](https://github.com/zapabob/Strata/releases) · [上流リリース](https://github.com/Niko1221/Strata/releases/latest)
 
-アプリをインストールし、モデルを選んで、チャットを始めましょう。インストーラーはシステムごとに1つです。初回起動時に、アプリがお使いのグラフィックスカード用のエンジンをダウンロードします。[インストーラーのヘルプ](docs/INSTALL.md#the-app)。
+インストールまたは上書きインストールして、モデルを選び、チャットを始めます。初回起動時にカード用エンジンを取得します。アップグレード時はモデルフォルダを残してください。このプレビューは**署名なし**です。[インストーラーのヘルプ](docs/INSTALL.md#the-app)。
 
-<sub>ファイル: `Strata-0.2.7-windows-x64-setup.exe` · `Strata-0.2.7-linux-x86_64.AppImage` · `Strata-0.2.7-macos-arm64.dmg`</sub>
+<sub>フォークの Windows ファイル: `Strata_0.3.2-preview.20261027.2_x64-setup.exe`（SHA-256 `839029112ef655466bdc04e92e5a97325b3ba03e05b5f92f4dcb96d015e4a0df`）。Linux / macOS は上流 Niko1221/Strata も参照。</sub>
 
 <p align="center">
   <img src="docs/media/app-chat.png" width="900" alt="チャットとライブのコードプレビューを並べて表示した Strata デスクトップアプリ">
@@ -188,13 +194,21 @@ strata launch
 
 **スポンサー、ハードウェア提携、共同開発のご相談:** [niko.veit@outlook.com](mailto:niko.veit@outlook.com).
 
+<a id="フォーク注記"></a>
 <a id="fork-notes"></a>
 
-## Fork notes
+## フォーク注記
 
-This tree is **zapabob/Strata**, tracking upstream **Niko1221/Strata v0.2.7.1** (`46c152a1`).
+| 項目 | 値 |
+| --- | --- |
+| リポジトリ | [zapabob/Strata](https://github.com/zapabob/Strata) |
+| 追跡する上流 | [Niko1221/Strata](https://github.com/Niko1221/Strata) **v0.2.7.1**（`46c152a1`） |
+| 木のアプリ版 | `0.3.2-preview.20261028.2` |
+| ランディング | https://zapabob.github.io/Strata/ |
+| 資産付き Windows インストーラ | [v0.3.2-preview.20261027.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261027.2)（署名なし NSIS） |
+| 上流同期タグ | [v0.3.2-preview.20261028.1](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1) |
 
-Preserved proprietary surfaces: F01–F11 (Spin8 / Query-v3 / TurboQuant / guards / GGUF router), Hakua consented memory chat, harness/run-config keys, Hermes hooks, and Windows full packaging labelled `-hakua`.
+**意図して残しているもの:** Hakua 同意付きメモリチャット、`hakua_harness` / run-config キー、ロード取消の所有権（`stopCancelledLoad`）、F01–F11（Spin8 / Query-v3 / TurboQuant など）、Hermes、`-hakua` 包装。
 
-App version in this preview tree: `0.3.2-preview.20261028.2`. Measured Windows preview numbers (when claimed) are only those already recorded under `docs/` / `_docs/` — no new speed claims were invented for this sync.
+**ここに書いていないこと:** `docs/` と `_docs/` に無い新しい速度・品質の数字。131k の完全認定は未了。署名付き updater feed には release PC の鍵が要る。
 
