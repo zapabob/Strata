@@ -11,7 +11,7 @@
 |------|-------|
 | Memory stack commit | `582896f9` |
 | Product bump tip (pre-docs) | `df33131c` |
-| Docs commit | （本ログ作成直後の `[Docs]` commit SHA を親が確認） |
+| Docs commit | `68664423` (`68664423528d24d5575edddea15143798f82b32e`) — pushed `origin/main` |
 | VERSION / product | `0.3.2-preview.20261029.2` |
 | Engine | `0.1.53`（Metal `0.1.52-metal`） |
 | Release tag | pending `v0.3.2-preview.20261029.2`（`gh release view` → not found） |
