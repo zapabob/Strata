@@ -108,11 +108,11 @@ strata launch --family deepseek41 --model ist-das-2.00bpw --plan
 **[Windows NSIS（未签名预览）→](https://github.com/zapabob/Strata/releases/download/v0.3.2-preview.20261029.2/Strata_0.3.2-preview.20261029.2_x64-setup.exe)**  
 标签: [v0.3.2-preview.20261029.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2) · 更早源码同步: [v0.3.2-preview.20261028.1](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1) · [本分支全部发行](https://github.com/zapabob/Strata/releases) · [上游发行](https://github.com/Niko1221/Strata/releases/latest)
 
-标签上传资产后的计划文件名：
+已发布的 Windows 安装包文件名：
 
 `Strata_0.3.2-preview.20261029.2_x64-setup.exe`
 
-若下载返回 404，说明 NSIS 构建或 GitHub Release 尚未就绪——请到 [Releases](https://github.com/zapabob/Strata/releases) 取最新已上传的 setup，或等待父任务完成。SHA-256 会在文件发布后写在发行说明中。
+SHA-256 见[发行说明](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2)。若下载返回 404，请到 [Releases](https://github.com/zapabob/Strata/releases) 查看最新已上传的 setup。
 
 安装或覆盖安装（可用 `/S` 静默覆盖），选择模型后即可聊天。默认路径：`%LOCALAPPDATA%\Programs\Strata`。首次启动会下载对应显卡的**引擎**（**0.1.53** 线）。升级时请保留模型文件夹。包内含 `host/hakua-chatbot.enabled`。本预览为**未签名**构建。[安装程序帮助](docs/INSTALL.md#the-app)。
 
@@ -220,7 +220,7 @@ strata launch
 | 产品版 | `0.3.2-preview.20261029.2` |
 | 引擎版 | `0.1.53`（Metal `0.1.52-metal`） |
 | 落地页 | https://zapabob.github.io/Strata/ |
-| Windows 安装包（计划标签） | [v0.3.2-preview.20261029.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2) → `Strata_0.3.2-preview.20261029.2_x64-setup.exe`（未签名 NSIS） |
+| Windows 安装包（已发布标签） | [v0.3.2-preview.20261029.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2) → `Strata_0.3.2-preview.20261029.2_x64-setup.exe`（未签名 NSIS） |
 | 上游同步标签 | [v0.3.2-preview.20261028.1](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1) |
 | 记忆 pip pin | `hakua-memory==0.3.5`（`requirements.txt`；可选 `[obsidian,rag]`） |
 

@@ -110,11 +110,11 @@ Not sure what fits? [Choose a model for your computer](docs/MODELS.md#pick-by-me
 **[Windows NSIS (unsigned preview) →](https://github.com/zapabob/Strata/releases/download/v0.3.2-preview.20261029.2/Strata_0.3.2-preview.20261029.2_x64-setup.exe)**  
 Tag: [v0.3.2-preview.20261029.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2) · Earlier source sync: [v0.3.2-preview.20261028.1](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1) · [All fork releases](https://github.com/zapabob/Strata/releases) · [Upstream releases](https://github.com/Niko1221/Strata/releases/latest)
 
-Planned Windows file name (once the tag has assets):
+Released Windows installer file:
 
 `Strata_0.3.2-preview.20261029.2_x64-setup.exe`
 
-If that download 404s, the NSIS build or GitHub release is not up yet — use [Releases](https://github.com/zapabob/Strata/releases) for the newest uploaded setup, or wait for the parent release job. SHA-256 is listed on the release notes when the file is published.
+SHA-256 is listed on the [release notes](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2). If the download 404s, check [Releases](https://github.com/zapabob/Strata/releases) for the newest uploaded setup.
 
 Install or overwrite the Windows app (`/S` silent overwrite is fine), choose a model, and start chatting. Default install path: `%LOCALAPPDATA%\Programs\Strata`. On first start the app downloads the **engine** for your graphics card (engine **0.1.53** line). Keep your models folder when upgrading. The package includes `host/hakua-chatbot.enabled` (Hakua sidebar on). This preview build is **unsigned** (no signed updater feed). [Installer help](docs/INSTALL.md#the-app).
 
@@ -210,7 +210,7 @@ Run **`strata connect`** to see setup instructions for your tool. [Connection gu
 | Product version | `0.3.2-preview.20261029.2` |
 | Engine version | `0.1.53` (Metal `0.1.52-metal`) |
 | Landing page | https://zapabob.github.io/Strata/ |
-| Windows installer (planned tag) | [v0.3.2-preview.20261029.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2) → `Strata_0.3.2-preview.20261029.2_x64-setup.exe` (unsigned NSIS) |
+| Windows installer (released tag) | [v0.3.2-preview.20261029.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2) → `Strata_0.3.2-preview.20261029.2_x64-setup.exe` (unsigned NSIS) |
 | Upstream sync tag | [v0.3.2-preview.20261028.1](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1) |
 | Memory pip pin | `hakua-memory==0.3.5` (`requirements.txt`; optional `[obsidian,rag]`) |
 

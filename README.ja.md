@@ -108,11 +108,11 @@ Strata 0.2.5 で 2.00 bpw のセットを使って測定しました。「出力
 **[Windows NSIS（署名なしプレビュー）→](https://github.com/zapabob/Strata/releases/download/v0.3.2-preview.20261029.2/Strata_0.3.2-preview.20261029.2_x64-setup.exe)**  
 タグ: [v0.3.2-preview.20261029.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2) · 以前のソース同期: [v0.3.2-preview.20261028.1](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1) · [フォークの全リリース](https://github.com/zapabob/Strata/releases) · [上流リリース](https://github.com/Niko1221/Strata/releases/latest)
 
-タグに資産が載ったあとの予定ファイル名:
+公開済み Windows インストーラファイル:
 
 `Strata_0.3.2-preview.20261029.2_x64-setup.exe`
 
-ダウンロードが 404 なら、NSIS ビルドまたは GitHub リリースがまだです。[Releases](https://github.com/zapabob/Strata/releases) の最新 setup を使うか、親ジョブの完了を待ってください。SHA-256 はファイル公開後にリリースノートへ載せます。
+SHA-256 は[リリースノート](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2)にあります。ダウンロードが 404 なら [Releases](https://github.com/zapabob/Strata/releases) の最新 setup を確認してください。
 
 インストールまたは上書きインストール（`/S` 無言上書き可）して、モデルを選び、チャットを始めます。既定の場所は `%LOCALAPPDATA%\Programs\Strata`。初回起動時にカード用**エンジン**（**0.1.53** 系統）を取得します。アップグレード時はモデルフォルダを残してください。パッケージに `host/hakua-chatbot.enabled` が入ります。このプレビューは**署名なし**です。[インストーラーのヘルプ](docs/INSTALL.md#the-app)。
 
@@ -220,7 +220,7 @@ strata launch
 | 製品版 | `0.3.2-preview.20261029.2` |
 | エンジン版 | `0.1.53`（Metal `0.1.52-metal`） |
 | ランディング | https://zapabob.github.io/Strata/ |
-| Windows インストーラ（予定タグ） | [v0.3.2-preview.20261029.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2) → `Strata_0.3.2-preview.20261029.2_x64-setup.exe`（署名なし NSIS） |
+| Windows インストーラ（公開済みタグ） | [v0.3.2-preview.20261029.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2) → `Strata_0.3.2-preview.20261029.2_x64-setup.exe`（署名なし NSIS） |
 | 上流同期タグ | [v0.3.2-preview.20261028.1](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1) |
 | メモリ pip pin | `hakua-memory==0.3.5`（`requirements.txt`；任意で `[obsidian,rag]`） |
 
