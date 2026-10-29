@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -38,34 +38,36 @@
   <main>
     <section class="container" aria-labelledby="preview131k-title" style="padding:1rem;border:2px solid #b7791f;border-radius:12px;margin:1rem auto;">
       <h2 id="preview131k-title">Windows inference preview / 推論動作確認プレビュー</h2>
-      <p><strong>Fork tip 0.3.2-preview.20261028.2 — synced with upstream v0.2.7.1 (28 Oct 2026).</strong>
-      Hakua consented memory, run-config keys and load-cancel hardening stay in this fork. Earlier measured 4K/32K generation on RTX 5060 Ti 16 GiB / RAM 32 GiB still stands; full-length 131k certification remains open.</p>
-      <p>Windows NSIS installer with assets:
-      <a href="https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.2">v0.3.2-preview.20261028.2</a>.
+      <p><strong>Product 0.3.2-preview.20261029.2 · engine 0.1.53 — synced with upstream v0.2.7.1 (28 Oct 2026).</strong>
+      Hakua sidebar marker, Hermes <code>SOUL.md</code>/<code>MEMORY.md</code> → hakua-memory (Ebbinghaus, RAG + semantic graph, Obsidian, sleep), run-config keys and load-cancel hardening stay in this fork. Earlier measured 4K/32K generation on RTX 5060 Ti 16 GiB / RAM 32 GiB still stands; full-length 131k certification remains open.</p>
+      <p>Planned Windows NSIS (unsigned; publish when tagged):
+      <a href="https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2">v0.3.2-preview.20261029.2</a>
+      → <code>Strata_0.3.2-preview.20261029.2_x64-setup.exe</code>.
       Source sync notes:
       <a href="https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1">v0.3.2-preview.20261028.1</a>.
-      Memory integration stays opt-in / disabled by default.</p>
-      <p><a href="https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.2">NSIS, checksums / 配布とハッシュ</a> ·
-      <a href="https://github.com/zapabob/Strata/blob/main/docs/PERF131K.md">Measurements and limits / 実測と制限</a></p>
+      Memory harness stays opt-in; pip pin <code>hakua-memory==0.3.5</code>.</p>
+      <p><a href="https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2">NSIS, checksums / 配布とハッシュ</a> ·
+      <a href="https://github.com/zapabob/Strata/blob/main/docs/PERF131K.md">Measurements and limits / 実測と制限</a> ·
+      <a href="https://github.com/zapabob/Strata/blob/main/docs/PUBLISH_PAGES.md">Pages publish notes</a></p>
     </section>
 
     <section class="hero-section">
       <div class="container">
         <div class="hero-pill">
           <span class="pill-dot"></span>
-          <span data-i18n="hero_pill">Windows fork preview: 28 October 2026</span>
+          <span data-i18n="hero_pill">Windows fork preview: 29 October 2026</span>
         </div>
         <h1 class="hero-title" data-i18n="hero_title">Local inference, with measured limits</h1>
         <p class="hero-desc" data-i18n="hero_desc">Desktop and Terminal interfaces for native inference and compatible GGUF models. Actual 4K and 32K generation is documented; full 131k certification remains open.</p>
 
         <div class="cta-group">
-          <a href="https://github.com/zapabob/Strata/releases/download/v0.3.2-preview.20261028.2/Strata_0.3.2-preview.20261028.2_x64-setup.exe" class="btn-primary">
+          <a href="https://github.com/zapabob/Strata/releases/download/v0.3.2-preview.20261029.2/Strata_0.3.2-preview.20261029.2_x64-setup.exe" class="btn-primary">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="7 10 12 15 17 10"></polyline>
               <line x1="12" y1="15" x2="12" y2="3"></line>
             </svg>
-            <span data-i18n="hero_download">Download Windows NSIS (0.3.2-preview.20261028.2)</span>
+            <span data-i18n="hero_download">Download Windows NSIS (0.3.2-preview.20261029.2)</span>
           </a>
           <a href="https://github.com/zapabob/Strata" class="btn-secondary" target="_blank" rel="noopener">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -89,7 +91,7 @@
             </div>
           </div>
           <div class="terminal-body">
-            <code class="terminal-cmd" id="terminal-cmd">Start-Process https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.2</code>
+            <code class="terminal-cmd" id="terminal-cmd">Start-Process https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2</code>
             <button class="copy-btn" id="copy-cmd-btn" aria-label="Copy Command">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -281,19 +283,19 @@
           <div class="download-card">
             <div>
               <span class="dl-badge" data-i18n="d1_badge">Windows NSIS installer</span>
-              <h3 class="dl-title" data-i18n="d1_title">Strata 0.3.2-preview.20261028.2 (unsigned NSIS)</h3>
+              <h3 class="dl-title" data-i18n="d1_title">Strata 0.3.2-preview.20261029.2 (unsigned NSIS)</h3>
               <p class="dl-desc" data-i18n="d1_desc">Overwrite-capable Windows x64 setup. Unsigned preview; signed feed/Tauri updater is not included. Keep your models folder when upgrading.</p>
               <div class="dl-checksum">
-                SHA-256: f0cdd5d84f3fada7e084e4aec0f65b558793834f58e2feaf9f89456d5a0604fd
+                SHA-256: listed on the release page when the NSIS asset is published
               </div>
             </div>
-            <a href="https://github.com/zapabob/Strata/releases/download/v0.3.2-preview.20261028.2/Strata_0.3.2-preview.20261028.2_x64-setup.exe" class="btn-primary">
+            <a href="https://github.com/zapabob/Strata/releases/download/v0.3.2-preview.20261029.2/Strata_0.3.2-preview.20261029.2_x64-setup.exe" class="btn-primary">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                 <polyline points="7 10 12 15 17 10"></polyline>
                 <line x1="12" y1="15" x2="12" y2="3"></line>
               </svg>
-              <span data-i18n="d1_btn">Download NSIS (~111 MiB)</span>
+              <span data-i18n="d1_btn">Download NSIS (when published)</span>
             </a>
           </div>
 
