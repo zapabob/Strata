@@ -57,3 +57,5 @@ npm --prefix apps/host run typecheck
 [Build](packaging/README.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Issues](https://github.com/zapabob/Strata/issues)
 
 Strataを基盤とするMITライセンスのフォークです。Hakua-memoryとモデル重みには個別のライセンスがあります。原作者と上流への帰属を保持します。
+
+上流の約480KBの制御ベクトルは既定でOFFです。[Qwen Community License 1.0](data/experimental-speed-projection/LICENSE)の原文を同梱しています。推論用モデル本体は別途取得します。

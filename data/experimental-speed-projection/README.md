@@ -19,3 +19,5 @@ request. See `docs/DETAILS.md`, "Experimental speed projection".
 **Origin and license.** A local package of the vector (the published original uses filenames containing "refusal";
 the bytes are the same), made from Qwen3.8-Flash-Next activations, so the Qwen Community License 1.0 of the model
 applies to it. Made for the original Qwen3.8-Flash-Next (not Swift 1.5).
+
+The complete licence is included as `LICENSE`. `PROVENANCE.json` pins its official source revision and bytes, and the unchanged vector's hash. This optional control vector is configuration data, not a complete inference model; it remains off by default.

@@ -57,3 +57,5 @@ npm --prefix apps/host run typecheck
 [Build](packaging/README.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Issues](https://github.com/zapabob/Strata/issues)
 
 本项目是 MIT 许可的 Strata 分支。Hakua-memory 和模型权重各有许可，并保留原作者与上游的署名。
+
+上游可选的约 480KB 控制向量默认关闭，随附 [Qwen Community License 1.0](data/experimental-speed-projection/LICENSE) 原文。完整推理模型权重需另行下载。

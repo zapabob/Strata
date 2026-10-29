@@ -59,6 +59,20 @@ export function verifyNativeBuild(folder,root,manifest) {
     if(isAbsolute(name)||name.startsWith('..')||sha256(path)!==baseline.sha256)throw new Error('CUDA resource baseline changed: rebuild and qualify the engine');
   }
 }
+/** The one model-derived fixture allowed in the base runtime, with its full licence. */
+export function verifyControlData(source,staged) {
+ const dir='data/experimental-speed-projection',name='Qwen3.8-Flash-Next-experimental-speed-projection.gguf';
+ const provenance=JSON.parse(readFileSync(join(source,dir,'PROVENANCE.json'),'utf8'));
+ const vectorHash='ef0724c5b79297e481017be85769832bc26eb220c984ecba2b0e1b0c8426312b',licenseHash='a0dc422560841fd68e06d974907f8b4c709bca44a67daad2b528437bdf676c08';
+ if(provenance.vector?.sha256!==vectorHash||provenance.vector?.kind!=='controlvector'||provenance.vector?.default!=='off'||provenance.license?.sha256!==licenseHash)throw new Error('Unreviewed control-vector provenance');
+ for(const [file,hash] of [[name,vectorHash],['LICENSE',licenseHash]])for(const root of [source,staged])if(sha256(join(root,dir,file))!==hash)throw new Error('Missing or changed control-vector notice/data: '+file);
+ if(sha256(join(source,dir,'PROVENANCE.json'))!==sha256(join(staged,dir,'PROVENANCE.json')))throw new Error('Stale control-vector provenance');
+ const names=files(staged).map(path=>relative(staged,path).replaceAll('\\','/'));
+ const ggufs=names.filter(path=>/\.gguf$/i.test(path));
+ if(JSON.stringify(ggufs)!==JSON.stringify([dir+'/'+name]))throw new Error('Unreviewed model data in Control');
+ if(names.some(path=>/\.(?:db|sqlite|sqlite3|log)$/i.test(path)||/(?:^|\/)\.env(?:\.|$)/i.test(path)))throw new Error('Live profile data in Control');
+ return provenance;
+}
 export const PUBLIC_ASSET_COMMIT='03f11e2d6adc319ea21e9a1d5820a99cd3767257';
 export function verifyPublicAssets(root,record) {
  if(record?.lucide_commit!==PUBLIC_ASSET_COMMIT||!record.files||!Object.keys(record.files).length)throw new Error('Prepare the pinned public assets first');

@@ -6,4 +6,6 @@ Node's official licence contains its bundled dependency notices. Python's licenc
 
 The unmodified NVIDIA CUDA/cuBLAS DLLs carry the supplied toolkit EULA and licence documents. The installed NVIDIA driver is supplied by Windows/the user and is not redistributed. Microsoft VC release CRT and OpenMP DLLs retain Microsoft terms. The original Community 2022, Diagnostic Build Tools 2022 and C Runtime 2015–2022 licence documents are copied from the vendor URLs pinned in microsoft-2022-notice-sources.json. These components are distributed as part of this application, not relicensed under MIT.
 
-NOTICES.json identifies every notice file and SHA-256. No model weights, personal memory database, user keys or model-provider artwork are included.
+The upstream optional 480 KB Qwen3.8-Flash-Next control vector is kept unchanged and off by default. It is derived from model activations and carries Qwen Community License 1.0, included both in its data folder and here. Its source revision, byte size and SHA-256 are pinned in data/experimental-speed-projection/PROVENANCE.json. This component is not relicensed under MIT.
+
+NOTICES.json identifies every notice file and SHA-256. Complete inference model weight packs, personal memory databases, user keys and model-provider artwork are not included.

@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "vector": {
+    "file": "Qwen3.8-Flash-Next-experimental-speed-projection.gguf",
+    "kind": "controlvector",
+    "bytes": 483520,
+    "sha256": "ef0724c5b79297e481017be85769832bc26eb220c984ecba2b0e1b0c8426312b",
+    "default": "off",
+    "upstreamCommit": "46c152a1310f77cd2f0ce2c7cd213962df14fe83"
+  },
+  "license": {
+    "file": "LICENSE",
+    "name": "Qwen Community License 1.0",
+    "bytes": 3235,
+    "sha256": "a0dc422560841fd68e06d974907f8b4c709bca44a67daad2b528437bdf676c08",
+    "source": "https://huggingface.co/Qwen/Qwen3.8-Flash-Next/resolve/21a7c3ca68484a9987d62fd51b78130d9b9a11f8/LICENSE",
+    "sourceCommit": "21a7c3ca68484a9987d62fd51b78130d9b9a11f8"
+  }
+}

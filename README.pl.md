@@ -57,3 +57,5 @@ npm --prefix apps/host run typecheck
 [Build](packaging/README.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Issues](https://github.com/zapabob/Strata/issues)
 
 Fork Strata na licencji MIT. Hakua-memory i wagi mają osobne licencje. Zachowano uznanie autorstwa projektu źródłowego.
+
+Opcjonalny wektor sterujący upstream (480 KB) pozostaje domyślnie wyłączony i podlega [Qwen Community License 1.0](data/experimental-speed-projection/LICENSE). Pełne wagi modelu pobiera się oddzielnie.

@@ -2,7 +2,7 @@
 import {existsSync,readFileSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
 import {resolve,join,relative} from 'node:path';
-import {files,sha256,verifyHost,verifyTree,verifyEngine,verifyNativeBuild} from '../../host/scripts/release-integrity.mjs';
+import {files,sha256,verifyHost,verifyTree,verifyEngine,verifyNativeBuild,verifyControlData} from '../../host/scripts/release-integrity.mjs';
 import {HARNESS_BUDGET_PATCH} from './harness-budget.mjs';
 import {missingHarnessImports} from './harness-prune.mjs';
 import {LOCAL_BACKENDS,findLocalBackend,verifyLocalBackend} from '../../host/server/local-backends.mjs';
@@ -30,13 +30,16 @@ for(const path of files(join(control,'tools')).filter(path=>path.endsWith('.py')
  if(!existsSync(join(root,name)) || sha256(join(root,name))!==sha256(path)) throw new Error(`Stale Control tool: ${name}`);
 }
 for(const name of ['hakua_hermes_memory_stack.py','strata_memory_mcp.py']) if(!existsSync(join(control,'tools',name))) throw new Error(`Missing Hakua tool: ${name}`);
+const vectorProvenance=verifyControlData(root,control),qwenLicenseHash=vectorProvenance.license.sha256;
 const notices=join(resources,'notices'),noticeRecord=json(join(notices,'NOTICES.json'));
 if(noticeRecord.schema!==1||!noticeRecord.files||!Object.keys(noticeRecord.files).length)throw new Error('Stage the third-party notices');
-for(const name of ['Strata-MIT.txt','ggml-MIT.txt','NVIDIA-EULA.txt','NVIDIA-LICENSE.txt','Node-LICENSE.txt','Microsoft-VisualStudio-Community-2022.docx','Microsoft-Build-Tools-2022.docx','Microsoft-Visual-C-Runtime-2015-2022.docx'])if(!noticeRecord.files[name])throw new Error('Missing third-party notice: '+name);
+for(const name of ['Strata-MIT.txt','ggml-MIT.txt','NVIDIA-EULA.txt','NVIDIA-LICENSE.txt','Node-LICENSE.txt','Microsoft-VisualStudio-Community-2022.docx','Microsoft-Build-Tools-2022.docx','Microsoft-Visual-C-Runtime-2015-2022.docx','Qwen-Community-License-1.0.txt'])if(!noticeRecord.files[name])throw new Error('Missing third-party notice: '+name);
 const noticeNames=files(notices).map(path=>relative(notices,path).replaceAll('\\','/')).filter(name=>name!=='NOTICES.json').sort();
 if(JSON.stringify(noticeNames)!==JSON.stringify(Object.keys(noticeRecord.files).sort()))throw new Error('Third-party notice membership changed');
 for(const name of noticeNames)if(sha256(join(notices,name))!==noticeRecord.files[name])throw new Error('Third-party notice changed: '+name);
 if(JSON.stringify(noticeRecord.microsoftSources)!==JSON.stringify(json(join(root,'packaging/microsoft-2022-notice-sources.json'))))throw new Error('Pinned Microsoft notice provenance changed');
+if(JSON.stringify(noticeRecord.qwenSource)!==JSON.stringify(vectorProvenance.license)||sha256(join(notices,'Qwen-Community-License-1.0.txt'))!==qwenLicenseHash)throw new Error('Missing or changed Qwen notice');
+if(sha256(join(notices,'README.md'))!==sha256(join(root,'packaging/hakua-third-party-notices.md')))throw new Error('Stale third-party notice index');
 const bundle=json(join(control,'BUNDLE.json'));
 if(bundle.version!==engine || read(join(control,'VERSION')).trim()!==engine) throw new Error('Stale Control engine version');
 if(bundle.installed?.['hakua-memory']!=='0.3.5') throw new Error('Missing locked Hakua-memory runtime');

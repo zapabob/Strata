@@ -42,6 +42,8 @@ def main():
     copy(args.cuda_dir/"LICENSE","NVIDIA-LICENSE.txt")
     copy(args.node_dir/"LICENSE","Node-LICENSE.txt","ed34dd8e3f0a78dbaf00d0444ce8e285b015b765379c2e17880455f70370f8e9")
     copy(ROOT/"packaging/hakua-third-party-notices.md","README.md")
+    qwen=json.loads((ROOT/"data/experimental-speed-projection/PROVENANCE.json").read_text(encoding="utf-8"))["license"]
+    copy(ROOT/"data/experimental-speed-projection/LICENSE","Qwen-Community-License-1.0.txt",qwen["sha256"])
     vendor=json.loads((ROOT/"packaging/microsoft-2022-notice-sources.json").read_text(encoding="utf-8"))
     for item in vendor:
         if not re.fullmatch(r"[A-Za-z0-9.-]+",item["file"]):
@@ -67,7 +69,7 @@ def main():
         for source in sorted(info.rglob("*")):
             if source.is_file() and (re.match(r"^(license|licence|notice|copying)",source.name,re.I) or "licenses" in source.relative_to(info).parts):
                 copy(source,"python/distributions/"+info.name+"/"+source.relative_to(info).as_posix())
-    (out/"NOTICES.json").write_text(json.dumps({"schema":1,"microsoftSources":vendor,"files":entries},indent=2)+"\n",encoding="utf-8")
+    (out/"NOTICES.json").write_text(json.dumps({"schema":1,"microsoftSources":vendor,"qwenSource":qwen,"files":entries},indent=2)+"\n",encoding="utf-8")
     print(json.dumps({"notices":len(entries),"directory":str(out)}))
 
 if __name__=="__main__":

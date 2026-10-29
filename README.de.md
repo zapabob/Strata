@@ -57,3 +57,5 @@ npm --prefix apps/host run typecheck
 [Build](packaging/README.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Issues](https://github.com/zapabob/Strata/issues)
 
 MIT-lizenzierter Strata-Fork. Für Hakua-memory und Modellgewichte gelten eigene Lizenzen. Die Urheberschaft der ursprünglichen Autoren bleibt erhalten.
+
+Der optionale Kontrollvektor aus dem Upstream (480 KB) bleibt standardmäßig aus. Es gilt die [Qwen Community License 1.0](data/experimental-speed-projection/LICENSE). Die vollständigen Modellgewichte werden separat heruntergeladen.
