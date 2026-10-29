@@ -1,0 +1,18 @@
+{
+  "hakua_harness": {
+    "enabled": false,
+    "users": [
+      {
+        "principal": "hermes",
+        "key_env": "HAKUA_HERMES_KEY",
+        "root": "C:/Users/REPLACE/.hakua-memory/profiles/hermes",
+        "persona_sha256": {
+          "SOUL.md": "REPLACE_WITH_sha256_from_py_-3_tools/hakua_hermes_memory_stack.py_sync",
+          "MEMORY.md": "REPLACE_WITH_sha256_from_same_command"
+        },
+        "persona_max_bytes": 8192
+      }
+    ]
+  },
+  "_comment": "1) py -3 tools/hakua_hermes_memory_stack.py sync  2) copy persona_sha256 + absolute root from status/harness-snippet  3) set HAKUA_HERMES_KEY to an existing ASCII server api_key  4) enable=true only after cache flags --prompt-cache 0 --conversation-cache-mib 0. Never commit real keys."
+}

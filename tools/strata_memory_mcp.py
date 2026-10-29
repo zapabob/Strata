@@ -7,6 +7,8 @@ Provides:
    Ebbinghaus SQLite store (~/.hermes/ebbinghaus_memory.db).
 3. Both a CLI JSON interface (`--cli <action>`) for the Strata Node Host and a standard MCP
    (JSON-RPC 2.0 over stdio) server for Strata's MCP client (`serve/mcp.py`) and Agent Harness.
+4. Delegates stack operations (RAG / semantic graph / Obsidian / sleep) to
+   ``tools/hakua_hermes_memory_stack.py`` when available.
 """
 from __future__ import annotations
 
@@ -29,7 +31,7 @@ logger = logging.getLogger("strata_memory")
 
 PROTOCOL = "2025-06-18"
 PROTOCOLS = ("2025-06-18", "2025-03-26", "2024-11-05")
-VERSION = "0.3.0"
+VERSION = "0.3.1"
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 HOME = Path.home()
@@ -39,6 +41,13 @@ HAKUA_SRC_DIR = HOME / "Documents" / "New project" / "hakua-memory" / "src"
 
 if HAKUA_SRC_DIR.exists() and str(HAKUA_SRC_DIR) not in sys.path:
     sys.path.insert(0, str(HAKUA_SRC_DIR))
+if str(REPO_ROOT / "tools") not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT / "tools"))
+
+try:
+    from hakua_hermes_memory_stack import HakuaHermesMemoryStack
+except Exception:  # noqa: BLE001 - stack is optional at import time
+    HakuaHermesMemoryStack = None  # type: ignore[misc, assignment]
 
 
 def _configure_logging() -> None:
@@ -58,7 +67,18 @@ class StrataUnifiedMemory:
         self.hakua_mem_dir = HAKUA_MEM_DIR
         self.hakua_mem_dir.mkdir(parents=True, exist_ok=True)
         self.composite: Any = None
-        self._init_composite()
+        self.stack: Any = None
+        if HakuaHermesMemoryStack is not None:
+            try:
+                self.stack = HakuaHermesMemoryStack()
+                # Prefer the consented Hakua principal profile as Composite root.
+                self.composite = self.stack.composite
+                logger.info("Bound HakuaHermesMemoryStack profile=%s", self.stack.paths.profile_root)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("HakuaHermesMemoryStack init failed: %s", exc)
+                self.stack = None
+        if self.composite is None:
+            self._init_composite()
 
     def _init_composite(self) -> None:
         try:
@@ -70,6 +90,13 @@ class StrataUnifiedMemory:
             self.composite = None
 
     def get_soul_path(self) -> Path:
+        if self.stack is not None:
+            profile = self.stack.paths.profile_soul
+            if profile.exists():
+                return profile
+            hermes = self.stack.paths.hermes_soul
+            if hermes.exists():
+                return hermes
         primary = self.hermes_dir / "SOUL.md"
         if primary.exists():
             return primary
@@ -79,6 +106,13 @@ class StrataUnifiedMemory:
         return primary
 
     def get_memory_md_path(self) -> Path:
+        if self.stack is not None:
+            profile = self.stack.paths.profile_memory
+            if profile.exists():
+                return profile
+            hermes = self.stack.paths.hermes_memory
+            if hermes.exists():
+                return hermes
         primary = self.hermes_dir / "memories" / "MEMORY.md"
         if primary.exists():
             return primary
@@ -95,6 +129,7 @@ class StrataUnifiedMemory:
 
     def status(self) -> dict[str, Any]:
         """Return full health and statistics of all memory subsystems."""
+        stack_status = self.stack.status() if self.stack is not None else None
         soul_p = self.get_soul_path()
         soul_info = {
             "path": str(soul_p),
@@ -160,6 +195,7 @@ class StrataUnifiedMemory:
             "memory_md": mem_info,
             "hermes_ebbinghaus": hermes_info,
             "hakua_composite": composite_info,
+            "hakua_hermes_stack": stack_status,
         }
 
     def read_soul(self) -> dict[str, Any]:
@@ -364,9 +400,17 @@ class StrataUnifiedMemory:
         record_id = None
         composite_res = None
         tag_str = ",".join(tags)
+        stack_res = None
+
+        if self.stack is not None:
+            try:
+                stack_res = self.stack.remember(content, importance=importance, tags=tags)
+                composite_res = stack_res.get("ebbinghaus")
+            except Exception as exc:
+                logger.warning("Stack remember error: %s", exc)
 
         # Store in CompositeMemory
-        if self.composite:
+        if composite_res is None and self.composite:
             try:
                 composite_res = self.composite.remember(content, tags=tags, salience=importance)
                 logger.info("Recorded to hakua CompositeMemory: %s", composite_res)
@@ -416,6 +460,7 @@ class StrataUnifiedMemory:
             "saved": True,
             "hermes_memory_id": record_id,
             "composite_result": composite_res,
+            "stack_result": stack_res,
             "importance": importance,
             "tags": tags,
             "content": content,
@@ -425,7 +470,15 @@ class StrataUnifiedMemory:
         """Run consolidation & Ebbinghaus decay pass across subsystems."""
         results: dict[str, Any] = {"consolidated_at": datetime.now(timezone.utc).isoformat()}
 
-        # Hakua sleep
+        # Preferred path: full Hakua↔Hermes stack (RAG reindex + graph + Obsidian + sleep).
+        if self.stack is not None:
+            try:
+                results["hakua_hermes_stack"] = self.stack.sleep()
+                return results
+            except Exception as exc:
+                results["hakua_hermes_stack"] = {"error": str(exc)}
+
+        # Fallback: Hakua composite sleep only
         if self.composite:
             try:
                 c_sleep = self.composite.sleep()
