@@ -836,6 +836,30 @@ class RuntimeTests(unittest.TestCase):
         self.assertNotIn(secret, json.dumps(result))
         self.assertNotIn(secret, json.dumps(runtime.status("local")))
 
+    def test_memory_principal_first_uses_operator_key_for_readiness(self):
+        principal = "readiness-memory-principal-fixture"
+        operator = "readiness-operator-fixture"
+        cfg = json.loads(self.config.read_text())
+        cfg.update(api_key=[principal, operator],
+                   args=["--prompt-cache", "0", "--conversation-cache-mib", "0"],
+                   hakua_harness={"enabled": True, "users": [{
+                       "principal": "local", "key_env": "STRATA_READINESS_MEMORY_KEY",
+                       "root": str(self.root / "memory")}]})
+        self.config.write_text(json.dumps(cfg))
+        with mock.patch.dict(os.environ, {"STRATA_READINESS_MEMORY_KEY": principal,
+                                          "STRATA_BATCH_TRACE": ""}):
+            result = runtime.start("local", wait=10, shutdown_timeout=2)
+        self.assertTrue(result.get("generation_ready"), result)
+        self.assertTrue(result["launch_attested"])
+        request = urllib.request.Request(result["api_url"] + "/v1/telemetry",
+                                         headers={"Authorization": "Bearer " + principal})
+        with self.assertRaises(urllib.error.HTTPError) as denied:
+            urllib.request.urlopen(request, timeout=2)
+        self.assertEqual(denied.exception.code, 403)
+        public = json.dumps(runtime.status("local"))
+        self.assertNotIn(principal, public)
+        self.assertNotIn(operator, public)
+
     def test_remote_bind_preview_accepts_server_supported_key_list(self):
         cfg = json.loads(self.config.read_text())
         cfg.update(host="0.0.0.0", api_key=["first", "second"])

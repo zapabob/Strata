@@ -35,6 +35,8 @@ Source servers keep memory off unless their configuration enables it. Supply a d
 }
 ```
 
+Managed launches through `strata runtime start` also need an accepted API key that is not assigned to a memory principal. Readiness uses that operator key for telemetry and launch attestation; it does not grant management access to a memory key. The desktop app creates its separate Host key automatically. A source configuration with only memory-principal keys cannot complete managed readiness.
+
 The example creates no persona approvals. Protect the profile directory with the operating system's access controls. Do not point it at another application's database. Principal names, keys and roots come from this operator configuration; HTTP requests cannot select a principal or arbitrary path.
 
 The native engine's effective arguments must contain `--prompt-cache 0` and `--conversation-cache-mib 0`. Slot save/restore is rejected. Unset `STRATA_BATCH_TRACE`; a nonempty value enables private protocol tracing in the Python server. The desktop launcher removes explicit off values before starting it, but direct source launches must use the correct environment.

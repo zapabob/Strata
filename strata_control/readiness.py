@@ -49,6 +49,16 @@ def _credential(source_bytes: bytes) -> str | None:
     if str(raw).strip().lower() == "none":               # "api_key": "none" = served without a key on purpose
         return None
     keys = key_list(api_key_of(raw))
+    harness = cfg.get("hakua_harness")
+    if isinstance(harness, dict) and harness.get("enabled") is True:
+        # Memory principals deliberately cannot read shared telemetry. Readiness
+        # must use an accepted operator key, without widening principal access.
+        principals = {os.environ.get(user["key_env"], "")
+                      for user in harness.get("users", [])
+                      if isinstance(user, dict) and isinstance(user.get("key_env"), str)}
+        keys = [key for key in keys if key not in principals]
+        if not keys:
+            raise ReadinessError("probe_management_credential_unavailable")
     return keys[0] if keys else None
 
 
