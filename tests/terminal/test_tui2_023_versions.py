@@ -22,7 +22,7 @@ def first(path, pattern):
 class VersionBump(unittest.TestCase):
     def test_the_terminal_is_0_2_4_2_and_control_is_0_1_49_2_while_the_app_stays_0_2_3(self):
         # Hakua fork: product/app SemVer is preview (VERSION + Cargo + PRODUCT_VERSION); engine/Control stay CMake 0.3.3, Metal 0.3.3-metal.
-        # Upstream Niko1221 still ships 0.2.7.x; do not treat those installer names as this fork's product version.
+        # Integrated upstream Niko1221 ships 0.2.8; do not treat those installer names as this fork's product version.
         product = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
         self.assertEqual(strata_cli.PRODUCT_VERSION, product)
         self.assertEqual(strata_cli.version(), "0.3.3")                # the CMake project version: Control

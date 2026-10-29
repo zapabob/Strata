@@ -176,7 +176,7 @@ if(NOT STRATA_BUILD_ID)
   set(STRATA_BUILD_ID unknown)
 endif()
 set_source_files_properties(${DS4}/ds4_main.cpp PROPERTIES COMPILE_DEFINITIONS "DS4_BUILD_ID=\"${STRATA_BUILD_ID}\"")
-# -DSTRATA_DS4_VERSION=0.1.53-metal: the version this DeepSeek engine reports, when its package is released apart from the Qwen engine's
+# -DSTRATA_DS4_VERSION=0.1.54-metal: the version this DeepSeek engine reports, when its package is released apart from the Qwen engine's
 if(STRATA_DS4_VERSION)
   set_source_files_properties(${DS4}/ds4_main.cpp PROPERTIES COMPILE_OPTIONS "-USTRATA_VERSION;-DSTRATA_VERSION=\"${STRATA_DS4_VERSION}\"")
 endif()
