@@ -13,3 +13,23 @@ os.environ["XDG_CONFIG_HOME"] = _home
 os.environ["LOCALAPPDATA"] = _home
 os.environ["XDG_STATE_HOME"] = _home
 os.environ["XDG_DATA_HOME"] = _home
+
+
+def pytest_configure(config) -> None:
+    """Clamp thinc seeds: pytest-randomly passes (seed+offset) unclamped to entry-point seeders.
+
+    numpy gets ``seed % 2**32`` inside pytest-randomly, but thinc.util.fix_random_seed receives
+    the raw sum and can raise ``ValueError: Seed must be between 0 and 2**32 - 1`` (seen on
+    tests/test_hakua_hermes_memory_stack.py when hakua-memory pulls thinc in).
+    """
+    del config  # required pytest hook signature; unused
+    try:
+        import thinc.util as thinc_util
+    except Exception:
+        return
+    original = thinc_util.fix_random_seed
+
+    def _clamped_fix_random_seed(seed: int = 0) -> None:
+        original(int(seed) % (2**32))
+
+    thinc_util.fix_random_seed = _clamped_fix_random_seed  # type: ignore[assignment]
