@@ -33,6 +33,7 @@
       "../../host/dist": "host/dist",
       "../../host/server": "host/server",
       "../../host/package.json": "host/package.json",
+      "../../host/hakua-chatbot.enabled": "host/hakua-chatbot.enabled",
       "resources/node": "node",
       "resources/control": "control",
       "resources/harness": "harness",

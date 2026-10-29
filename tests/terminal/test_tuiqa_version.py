@@ -23,7 +23,8 @@ class ProductVersion(unittest.TestCase):
         m = re.search(r'^version\s*=\s*"([^"]+)"', cargo.read_text(encoding="utf-8"), re.MULTILINE)
         # 0.2.3.1 is a Control-only hotfix: the Terminal says 0.2.3.1 while the app (and its updater entry) stay 0.2.3
         # 0.2.4 is a Terminal release: the app stays 0.2.3 (the Terminal is never older than the app)
-        as_tuple = lambda v: tuple(int(p) for p in v.split("."))
+        # Hakua preview SemVer (0.3.2-preview.YYYYMMDD.N): compare the numeric core before the first '-'.
+        as_tuple = lambda v: tuple(int(p) for p in v.split("-", 1)[0].split("."))
         self.assertGreaterEqual(as_tuple(strata_cli.PRODUCT_VERSION), as_tuple(m.group(1)))
         self.assertEqual(as_tuple(strata_cli.PRODUCT_VERSION)[:2], as_tuple(m.group(1))[:2])
 
