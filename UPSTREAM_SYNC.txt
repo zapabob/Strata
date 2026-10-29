@@ -1,8 +1,8 @@
 ﻿Pages refresh prepared: 2026-10-29T17:45+09:00 (Cursor)
 Product VERSION: 0.3.2-preview.20261029.2
 Engine: 0.1.53 (Metal 0.1.52-metal)
-Planned Windows NSIS: v0.3.2-preview.20261029.2 / Strata_0.3.2-preview.20261029.2_x64-setup.exe
-  setup.exe SHA-256: pending (fill after NSIS publish)
+Released Windows NSIS: v0.3.2-preview.20261029.2 / Strata_0.3.2-preview.20261029.2_x64-setup.exe
+  setup.exe SHA-256: 1CF23A43D92932164C672DA4EA0A949D2079E1F5548A7D956D2B660E7137EC30
 Upstream sync note tag (no installer): v0.3.2-preview.20261028.1 (official v0.2.7.1)
 Hakua-memory: Hermes SOUL.md/MEMORY.md wire; pip hakua-memory==0.3.5; host/hakua-chatbot.enabled
 Actions workflow_dispatch may still be blocked (HTTP 422); publish via tools/publish_gh_pages.ps1 onto gh-pages.
