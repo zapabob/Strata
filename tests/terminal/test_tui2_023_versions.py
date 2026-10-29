@@ -21,34 +21,46 @@ def first(path, pattern):
 
 class VersionBump(unittest.TestCase):
     def test_the_terminal_is_0_2_4_2_and_control_is_0_1_49_2_while_the_app_stays_0_2_3(self):
-        # 0.2.7.1 (DGX Spark): Control and the linux-aarch64 engine packages are 0.1.53 (the CMake project version); the app and the Terminal stay 0.2.7, the Metal engine 0.1.52.
-        # 0.2.7: Terminal and app are 0.2.7; Control and every engine package (Qwen, DeepSeek, Metal) are 0.1.52 (the CMake project version; the Qwen and DeepSeek C++ both changed since 0.2.6)
-        self.assertEqual(strata_cli.PRODUCT_VERSION, "0.2.7")
+        # Hakua fork: product/app SemVer is preview (VERSION + Cargo + PRODUCT_VERSION); engine/Control stay CMake 0.1.53, Metal 0.1.52.
+        # Upstream Niko1221 still ships 0.2.7.x; do not treat those installer names as this fork's product version.
+        product = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+        self.assertEqual(strata_cli.PRODUCT_VERSION, product)
         self.assertEqual(strata_cli.version(), "0.1.53")                # the CMake project version: Control
         self.assertEqual(first("CMakeLists.txt", r"^project\(strata VERSION ([0-9.]+) "), "0.1.53")
         self.assertIn('STRATA_VERSION="0.1.52-metal"', (ROOT / "metal" / "CMakeLists.txt").read_text(encoding="utf-8"))
 
     def test_every_place_the_app_version_lives_says_0_2_3(self):
-        self.assertEqual(first("apps/desktop/src-tauri/Cargo.toml", r'^version = "([^"]+)"'), "0.2.7")
+        product = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+        self.assertEqual(first("apps/desktop/src-tauri/Cargo.toml", r'^version = "([^"]+)"'), product)
         lock = (ROOT / "apps/desktop/src-tauri/Cargo.lock").read_text(encoding="utf-8")
-        self.assertRegex(lock, r'name = "strata-desktop"\r?\nversion = "0.2.7"')
-        self.assertEqual(json.loads((ROOT / "apps/desktop/package.json").read_text(encoding="utf-8"))["version"], "0.2.7")
+        self.assertRegex(lock, rf'name = "strata-desktop"\r?\nversion = "{re.escape(product)}"')
+        self.assertEqual(json.loads((ROOT / "apps/desktop/package.json").read_text(encoding="utf-8"))["version"], product)
         host = json.loads((ROOT / "apps/host/package.json").read_text(encoding="utf-8"))
-        self.assertEqual(host["version"], "0.2.7")
+        self.assertEqual(host["version"], product)
         locked = json.loads((ROOT / "apps/host/package-lock.json").read_text(encoding="utf-8"))
-        self.assertEqual((locked["version"], locked["packages"][""]["version"]), ("0.2.7", "0.2.7"))
+        self.assertEqual((locked["version"], locked["packages"][""]["version"]), (product, product))
+        desk_lock = json.loads((ROOT / "apps/desktop/package-lock.json").read_text(encoding="utf-8"))
+        self.assertEqual((desk_lock["version"], desk_lock["packages"][""]["version"]), (product, product))
 
     def test_the_documents_that_state_the_current_version_agree(self):
-        self.assertIn("Version 0.2.7, engine 0.1.52.", (ROOT / "AGENTS.md").read_text(encoding="utf-8"))
+        product = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+        agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+        self.assertIn(f"Hakua product version {product}", agents)
+        self.assertIn("engine 0.1.53", agents)
         for name in ("README.md", "README.de.md", "README.es.md", "README.fr.md", "README.ja.md", "README.pl.md", "README.pt-BR.md", "README.zh-CN.md"):
             text = (ROOT / name).read_text(encoding="utf-8")
-            self.assertRegex(text, r"Strata-0[.]2[.][0-9]+-", name)       # (the restyled READMEs state the app version through the download buttons; their owner moves them to the release)
+            # Upstream official installer filenames remain in translated READMEs; Hakua product is in Fork notes (EN/JA/zh-CN).
+            self.assertRegex(text, r"Strata-0[.]2[.][0-9]+-", name)
             self.assertNotIn("Strata-0.2.2-", text, name)
+        for name in ("README.md", "README.ja.md", "README.zh-CN.md"):
+            text = (ROOT / name).read_text(encoding="utf-8")
+            self.assertIn(f"App version in this preview tree: `{product}`", text, name)
 
     def test_version_prints_the_product_and_the_build(self):
+        product = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
         done = subprocess.run([sys.executable, str(ROOT / "strata.py"), "--version"], capture_output=True, text=True, cwd=str(ROOT),
                               env={**os.environ, "STRATA_NO_HANDOVER": "1"})
-        self.assertTrue(done.stdout.startswith("strata 0.2.7 (build 0.1.53;"), done.stdout)
+        self.assertTrue(done.stdout.startswith(f"strata {product} (build 0.1.53;"), done.stdout)
 
 
 class UpdateFromTheLastRelease(test_updater.UpdaterCase):

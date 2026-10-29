@@ -48,9 +48,19 @@ CONTROL_TOOLS = {
 # This script runs on stock Windows PowerShell 5.1. It accepts only an empty
 # program target and previously absent component folders. It never consults
 # PATH for a package manager, Python, Node, or an engine.
-INSTALLER_SCRIPT = r'''param(
+#
+# Product folder name comes from repository-root VERSION (Hakua product SemVer).
+def product_version() -> str:
+    return (Path(__file__).resolve().parents[1] / "VERSION").read_text(encoding="utf-8").strip()
+
+
+def programs_folder() -> str:
+    return f"Strata-{product_version()}"
+
+
+INSTALLER_SCRIPT_TEMPLATE = r'''param(
   [Parameter(Mandatory=$true)][ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ExpectedManifestSha256,
-  [string]$ProgramsRoot = (Join-Path $env:LOCALAPPDATA 'Programs\Strata-0.3.2-preview.20261027.1'),
+  [string]$ProgramsRoot = (Join-Path $env:LOCALAPPDATA 'Programs\__PROGRAMS_FOLDER__'),
   [string]$ComponentsRoot = (Join-Path $env:LOCALAPPDATA 'Strata\components'),
   [string]$ShortcutRoot = ''
 )
@@ -138,7 +148,7 @@ if ($manifest.schema -ne 'strata-full-windows-v1') { throw 'Unsupported package 
 Require-Plain ([string]$manifest.public.native_folder)
 Require-Plain ([string]$manifest.public.generic_folder)
 Require-Plain ([string]$manifest.public.programs_folder)
-if ($manifest.public.programs_folder -ne 'Strata-0.3.2-preview.20261027.1') { throw 'Unexpected program version' }
+if ($manifest.public.programs_folder -ne '__PROGRAMS_FOLDER__') { throw 'Unexpected program version' }
 if ((Digest (Join-Path $package 'Install-Strata.ps1')) -ne [string]$manifest.public.installer_sha256) { throw 'Installer hash mismatch' }
 $starterExpected = "-ExpectedManifestSha256 $($ExpectedManifestSha256.ToLowerInvariant())"
 if (-not ([IO.File]::ReadAllText((Join-Path $package 'START-HERE.cmd')).Contains($starterExpected))) { throw 'Starter does not pin this manifest' }
@@ -167,7 +177,7 @@ foreach ($name in $actual) { if (-not $seen.Contains($name)) { throw "Unlisted p
 
 $programs = [IO.Path]::GetFullPath($ProgramsRoot)
 $components = [IO.Path]::GetFullPath($ComponentsRoot)
-$defaultPrograms = [IO.Path]::GetFullPath((Join-Path $env:LOCALAPPDATA 'Programs\Strata-0.3.2-preview.20261027.1'))
+$defaultPrograms = [IO.Path]::GetFullPath((Join-Path $env:LOCALAPPDATA 'Programs\__PROGRAMS_FOLDER__'))
 $defaultComponents = [IO.Path]::GetFullPath((Join-Path $env:LOCALAPPDATA 'Strata\components'))
 if ($programs -eq $components -or $programs.StartsWith($components + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase) -or
     $components.StartsWith($programs + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'Install roots overlap' }
@@ -303,6 +313,13 @@ exit /b %ERRORLEVEL%
 '''
 
 
+def installer_script() -> str:
+    folder = programs_folder()
+    if not FOLDER.fullmatch(folder):
+        raise ValueError(f"unsafe programs folder from VERSION: {folder}")
+    return INSTALLER_SCRIPT_TEMPLATE.replace("__PROGRAMS_FOLDER__", folder)
+
+
 def _folder(value: str) -> str:
     if not isinstance(value, str) or not FOLDER.fullmatch(value) or value in (".", ".."):
         raise ValueError("unsafe component folder")
@@ -377,7 +394,7 @@ def _manifest(spec: dict) -> dict:
     native = _folder(public["native_folder"])
     generic = _folder(public["generic_folder"])
     programs = _folder(public["programs_folder"])
-    if programs != "Strata-0.3.2-preview.20261027.1":
+    if programs != programs_folder():
         raise ValueError("unexpected program folder")
     neutral = public.get("neutral_assets", {})
     if not isinstance(neutral, dict) or any(not SHA.fullmatch(value) for value in neutral.values()):
@@ -535,7 +552,7 @@ def build(spec: dict, stage: Path, archive: Path, *, audit_native=None, audit_ge
         raise ValueError("full package must be a ZIP")
     no_reparse(stage.parent)
     public = dict(spec["public"])
-    public["installer_sha256"] = hashlib.sha256(INSTALLER_SCRIPT.encode("utf-8")).hexdigest()
+    public["installer_sha256"] = hashlib.sha256(installer_script().encode("utf-8")).hexdigest()
     local = {"public": public, "files": spec["files"]}
     manifest = _manifest(local)
     total = sum(item["bytes"] for item in manifest["files"])
@@ -551,7 +568,7 @@ def build(spec: dict, stage: Path, archive: Path, *, audit_native=None, audit_ge
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, target)
         check_source(target, item["sha256"])
-    (stage / INSTALLER).write_text(INSTALLER_SCRIPT, encoding="utf-8", newline="")
+    (stage / INSTALLER).write_text(installer_script(), encoding="utf-8", newline="")
     (stage / MANIFEST).write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     (stage / STARTER).write_bytes(STARTER_TEMPLATE.format(manifest_sha256=sha256(stage / MANIFEST)).encode("ascii"))
     verify(stage, audit_native=audit_native, audit_generic=audit_generic, audit_other=audit_other)

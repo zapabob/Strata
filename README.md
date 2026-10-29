@@ -189,7 +189,7 @@ This tree is **zapabob/Strata**, tracking upstream **Niko1221/Strata v0.2.7.1** 
 
 Preserved proprietary surfaces: F01–F11 (Spin8 / Query-v3 / TurboQuant / guards / GGUF router), Hakua consented memory chat, harness/run-config keys, Hermes hooks, and Windows full packaging labelled `-hakua`.
 
-App version in this preview tree: `0.3.2-preview.20261028.1`. Measured Windows preview numbers (when claimed) are only those already recorded under `docs/` / `_docs/` — no new speed claims were invented for this sync.
+App version in this preview tree: `0.3.2-preview.20261029.1`. Measured Windows preview numbers (when claimed) are only those already recorded under `docs/` / `_docs/` — no new speed claims were invented for this sync.
 
 ## Support Strata
 
