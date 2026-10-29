@@ -25,7 +25,7 @@
 
 **無料・オープンソース。**
 
-これは **[zapabob/Strata](https://github.com/zapabob/Strata)** — [Niko1221/Strata](https://github.com/Niko1221/Strata) のフォークです。Hakua 同意付きメモリチャット（サイドバー **Hakua**）を残し、Windows パッケージに `host/hakua-chatbot.enabled` を同梱してインストール後も Hakua をオンのままにします。Spin(8)/Triality、Query-v3、TurboQuant、Bonsai、Hermes、Windows `-hakua` も維持しつつ、上流の機能・セキュリティ・バグ修正を取り込みます。下記のモデル／ハードウェア案内は上流 **v0.2.7.1**（`46c152a1`、2026-10-28 同期）に合わせています。アプリの木の版は **`0.3.2-preview.20261029.1`** です。
+これは **[zapabob/Strata](https://github.com/zapabob/Strata)** — [Niko1221/Strata](https://github.com/Niko1221/Strata) のフォークです。Hakua 同意付きメモリチャット（サイドバー **Hakua**）を残し、Windows パッケージに `host/hakua-chatbot.enabled` を同梱してインストール後も Hakua をオンのままにします。本プレビューでは Hermes Agent の `SOUL.md` / `MEMORY.md` を Hakua メモリスタック（Ebbinghaus・RAG＋意味グラフ・Obsidian 同期・`hakua sleep`）へ配線しています。Spin(8)/Triality、Query-v3、TurboQuant、Bonsai、Hermes、Windows `-hakua` も維持しつつ、上流の機能・セキュリティ・バグ修正を取り込みます。下記のモデル／ハードウェア案内は上流 **v0.2.7.1**（`46c152a1`、2026-10-28 同期）に合わせています。アプリの木の版は **`0.3.2-preview.20261029.2`** です。
 
 サイト: [zapabob.github.io/Strata](https://zapabob.github.io/Strata/) · 詳細: [フォーク注記](#フォーク注記)
 
@@ -97,12 +97,12 @@ Strata 0.2.5 で 2.00 bpw のセットを使って測定しました。「出力
 
 ### デスクトップアプリ（このフォーク）
 
-**[Windows NSIS（署名なしプレビュー）→](https://github.com/zapabob/Strata/releases/download/v0.3.2-preview.20261029.1/Strata_0.3.2-preview.20261029.1_x64-setup.exe)**  
-リリース: [v0.3.2-preview.20261029.1](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.1) · ソース同期: [v0.3.2-preview.20261028.1](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1) · [フォークの全リリース](https://github.com/zapabob/Strata/releases) · [上流リリース](https://github.com/Niko1221/Strata/releases/latest)
+**[Windows NSIS（署名なしプレビュー）→](https://github.com/zapabob/Strata/releases/download/v0.3.2-preview.20261029.2/Strata_0.3.2-preview.20261029.2_x64-setup.exe)**
+リリース: [v0.3.2-preview.20261029.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2) · ソース同期: [v0.3.2-preview.20261028.1](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1) · [フォークの全リリース](https://github.com/zapabob/Strata/releases) · [上流リリース](https://github.com/Niko1221/Strata/releases/latest)
 
-インストールまたは上書きインストール（`/S` 無言上書き可）して、モデルを選び、チャットを始めます。既定の場所は `%LOCALAPPDATA%\Programs\Strata`。初回起動時にカード用エンジンを取得します。アップグレード時はモデルフォルダを残してください。パッケージに `host/hakua-chatbot.enabled` が入ります。このプレビューは**署名なし**です。SHA-256 はビルド後に[リリース](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.1)へ載せます。[インストーラーのヘルプ](docs/INSTALL.md#the-app)。
+インストールまたは上書きインストール（`/S` 無言上書き可）して、モデルを選び、チャットを始めます。既定の場所は `%LOCALAPPDATA%\Programs\Strata`。初回起動時にカード用エンジンを取得します。アップグレード時はモデルフォルダを残してください。パッケージに `host/hakua-chatbot.enabled` が入ります。このプレビューは**署名なし**です。SHA-256 は[リリース](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2)に載せます。[インストーラーのヘルプ](docs/INSTALL.md#the-app)。
 
-<sub>フォークの Windows ファイル: `Strata_0.3.2-preview.20261029.1_x64-setup.exe`（SHA-256 はリリースページに掲載。7z があれば併記）。Linux / macOS は上流 Niko1221/Strata も参照。</sub>
+<sub>フォークの Windows ファイル: `Strata_0.3.2-preview.20261029.2_x64-setup.exe`（SHA-256 はリリースページ。7z があれば併記）。Linux / macOS は上流 Niko1221/Strata も参照。</sub>
 
 <p align="center">
   <img src="docs/media/app-chat.png" width="900" alt="チャットとライブのコードプレビューを並べて表示した Strata デスクトップアプリ">
@@ -203,12 +203,24 @@ strata launch
 | --- | --- |
 | リポジトリ | [zapabob/Strata](https://github.com/zapabob/Strata) |
 | 追跡する上流 | [Niko1221/Strata](https://github.com/Niko1221/Strata) **v0.2.7.1**（`46c152a1`） |
-| App version in this preview tree | `0.3.2-preview.20261029.1` |
+| App version in this preview tree | `0.3.2-preview.20261029.2` |
 | ランディング | https://zapabob.github.io/Strata/ |
-| 資産付き Windows インストーラ | [v0.3.2-preview.20261029.1](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.1)（署名なし NSIS） |
+| 資産付き Windows インストーラ | [v0.3.2-preview.20261029.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2)（署名なし NSIS） |
 | 上流同期タグ | [v0.3.2-preview.20261028.1](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1) |
 
 **意図して残しているもの:** Hakua 同意付きメモリチャット、同梱マーカー `host/hakua-chatbot.enabled`、`hakua_harness` / run-config キー、ロード取消の所有権（`stopCancelledLoad`）、F01–F11（Spin8 / Query-v3 / TurboQuant など）、Hermes、`-hakua` 包装。製品 SemVer はルート `VERSION` と `tools/bump_hakua_product_version.py` で揃えます。
 
-**ここに書いていないこと:** `docs/` と `_docs/` に無い新しい速度・品質の数字。131k の完全認定は未了。署名付き updater feed には release PC の鍵が要る。
+### Hakua メモリスタック（このフォーク）
+
+| 部品 | 内容 |
+| --- | --- |
+| Hermes `SOUL.md` / `MEMORY.md` | Hakua principal プロファイル（`~/.hakua-memory/profiles/hermes/`）へ同期。`persona_sha256` 用（シンボリックリンク禁止・byte コピー）。 |
+| Ebbinghaus | 忘却曲線・sleep 再強化（`hakua_memory.ebbinghaus`）。 |
+| RAG＋意味グラフ | `rag.db` / `semantic.db`（`CompositeMemory`）。 |
+| Obsidian | `OBSIDIAN_VAULT_PATH`（または開いている vault）の `Hakua/` へ書き出し。 |
+| Sleep | `py -3 tools/hakua_hermes_memory_stack.py sleep`（または MCP `--cli sleep`）。 |
+
+テンプレ: `serve/examples/hakua_hermes_harness.example.json`。詳細: `_docs/2026-10-29_hakua-hermes-soul-memory-wire{Cursor}.md`。依存 pin: `requirements.txt` の `hakua-memory==0.3.5`（オペレータ環境は任意で `[obsidian,rag]`）。同意メモリは opt-in（秘密はリポジトリに書かない）。
+
+**ここに書いていないこと:** `docs/` と `_docs/` に無い新しい速度・品質の数字。131k の完全認定は未了。署名付き updater feed には release PC の鍵が要る。`hakua_harness` の multiuser native cache 切替は試作段階。
 

@@ -12,6 +12,9 @@ tqdm==4.70.1
 requests==2.34.2
 pillow==12.3.0
 psutil==7.2.2
+# Hakua consented memory / Hermes stack (Ebbinghaus writer). Base pin only here;
+# RAG/Obsidian extras are optional for operator envs: pip install "hakua-memory[obsidian,rag]==0.3.5"
+hakua-memory==0.3.5
 
 # their dependencies
 markupsafe==3.0.3
