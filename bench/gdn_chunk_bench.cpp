@@ -38,8 +38,13 @@ struct Rng {
 
 float timed(const char* mode, const char* warp, float* st, float* st0, float* h, float* g, float* b, float* z,
             float* ga, float* y, uint16_t* y16, int64_t T, int iters) {
+#ifdef _WIN32
+    _putenv_s("STRATA_GDN_CHUNK", mode);
+    _putenv_s("STRATA_GDN_REC_WARP", warp);
+#else
     setenv("STRATA_GDN_CHUNK", mode, 1);
     setenv("STRATA_GDN_REC_WARP", warp, 1);
+#endif
     cudaEvent_t e0, e1;
     check(cudaEventCreate(&e0), "event");
     check(cudaEventCreate(&e1), "event");

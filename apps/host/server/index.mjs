@@ -1522,9 +1522,9 @@ async function api(req, res, path, method, url) {
         await monitor.setModel(id);engine.markRunning(hw.accelerator.backend);hub.send('engine',await engine.config());
         return json(res,200,runtimeModels.libraryState(models.library()));
       }
-      if(!supervisor.findBinary())return error(res,409,'Install a compatible llama-server engine before switching from native Strata.');const candidate=models.library().variants.find(v=>v.id===id);if(!candidate||!models.isOnDisk(id)||['loading','downloading','unloading'].includes(candidate.state))return error(res,409,'Download this model before loading it.');
+      const candidate=models.library().variants.find(v=>v.id===id);if(!candidate||!models.isOnDisk(id)||['loading','downloading','unloading'].includes(candidate.state))return error(res,409,'Download this model before loading it.');
       const loadConfig={ beginner: store.get().beginner, expert: engine.params(), serving: store.get().serving };
-      try{requireModelKvCompatible(candidate,loadConfig.expert);}catch(err){return error(res,409,err.message);}
+      try{requireModelKvCompatible(candidate,loadConfig.expert);await supervisor.preflight({config:loadConfig,modelPath:models.pathFor(candidate)});}catch(err){return error(res,409,err.message);}
       for(const instance of native.state().instances)await native.unload(instance.id);
       const lib = await models.load(id, {
         hardware: hw,

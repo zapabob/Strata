@@ -314,9 +314,9 @@ fn dev_node_candidate(res: &Path) -> PathBuf {
     let root = res.join("..").join("..").join("..").join("toolchain").join("node");
     if cfg!(windows) {
         // the Windows zip has node.exe at the top of the folder, not under bin/
-        root.join("node-v24.12.0-win-x64").join("node.exe")
+        root.join("node-v24.22.2-win-x64").join("node.exe")
     } else {
-        root.join("node-v24.12.0-darwin-arm64").join("bin").join("node")
+        root.join("node-v24.22.2-darwin-arm64").join("bin").join("node")
     }
 }
 

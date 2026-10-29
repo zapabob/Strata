@@ -208,9 +208,15 @@ class RecipeTests(unittest.TestCase):
         path.unlink()
         outside = self.root / "outside.json"
         outside.write_bytes(original)
-        path.symlink_to(outside)
-        with self.assertRaisesRegex(profiles.ProfileError, "regular file"):
-            recipes.load("local", "restart")
+        with self.subTest("symlink rejection"):
+            try:
+                path.symlink_to(outside)
+            except OSError as error:
+                if getattr(error, "winerror", None) == 1314:
+                    self.skipTest("Windows does not grant this session symlink creation")
+                raise
+            with self.assertRaisesRegex(profiles.ProfileError, "regular file"):
+                recipes.load("local", "restart")
 
     def test_init_rejects_conflicting_default_name_before_other_writes(self):
         recipes.create("local", "check", "runtime.restart")

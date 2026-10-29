@@ -66,6 +66,8 @@ async function startHost(t, { home, ws, harness = HARNESS } = {}) {
 
 async function setup(t, { harness = HARNESS, reuse } = {}) {
   const worker = reuse?.worker ?? await startScriptedWorker({ model: 'cloud-model' });
+  // Register before host startup: a startup failure must not leave the worker listening forever.
+  if (!reuse) t.after(() => worker.close());
   const home = reuse?.home ?? mkdtempSync(join(tmpdir(), 'strata-host-'));
   const ws = join(home, 'workspace'); mkdirSync(ws, { recursive: true });
   const host = await startHost(t, { home, ws, harness });
@@ -75,7 +77,7 @@ async function setup(t, { harness = HARNESS, reuse } = {}) {
     assert.equal(saved.status, 200, JSON.stringify(saved.body));
     connectionId = saved.body.connections[0].id;
   }
-  if (!reuse) t.after(async () => { await worker.close(); cleanup(home); });
+  if (!reuse) t.after(() => cleanup(home));
   const remoteModel = { connectionId, modelId: 'cloud-model' };
   const send = (host, sessionId, message, onFrame) => host.chat({ sessionId, message, remoteModel, workspaceId: null, history: [] }, onFrame);
   return { worker, home, ws, host, connectionId, remoteModel, send: (sessionId, message, onFrame) => send(host, sessionId, message, onFrame) };

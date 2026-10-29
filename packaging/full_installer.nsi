@@ -8,7 +8,7 @@ Unicode true
 !endif
 Name "Strata Windows Full Preview"
 OutFile "${OUTPUT_EXE}"
-InstallDir "$LOCALAPPDATA\Programs\Strata-0.3.2-preview.20261029.2"
+InstallDir "$LOCALAPPDATA\Programs\Strata-0.3.3-preview.20261030.1"
 RequestExecutionLevel user
 SetCompressor zlib
 SetCompress off
@@ -25,7 +25,7 @@ Icon "${OWNED_ICON}"
 VIProductVersion "0.3.2.0"
 VIAddVersionKey /LANG=1033 "ProductName" "Strata Full Preview"
 VIAddVersionKey /LANG=1033 "FileDescription" "Fresh-install GUI, engines and runtimes"
-VIAddVersionKey /LANG=1033 "FileVersion" "0.3.2-preview.20261029.2"
+VIAddVersionKey /LANG=1033 "FileVersion" "0.3.3-preview.20261030.1"
 
 Function .onInit
   ${IfNot} ${RunningX64}

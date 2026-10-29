@@ -1,0 +1,53 @@
+diff --git a/ggml/src/ggml-cuda/CMakeLists.txt b/ggml/src/ggml-cuda/CMakeLists.txt
+index ccad5609fd6ad030a6b41dd245994b323d9b0fa1..17150ffd2b83edabd5c9ab77b9bf668631fa2ea2 100644
+--- a/ggml/src/ggml-cuda/CMakeLists.txt
++++ b/ggml/src/ggml-cuda/CMakeLists.txt
+@@ -77,6 +77,13 @@ if (CUDAToolkit_FOUND)
+     # Notably the Blackwell FP4 tensor core instructions are not forwards compatible and therefore need 12Xa.
+     # But while 12X vs. 12Xa can be checked in device code there is (to my knowledge) no easy way to do the same check in host code.
+     # So for now just replace all instances of 12X with 12Xa, this should be fine until Rubin is released.
++    option(GGML_CUDA_STANDARD_SM120 "Preserve standard sm_120 and disable architecture-specific FP4 instructions" OFF)
++    if (GGML_CUDA_STANDARD_SM120)
++        if (NOT CMAKE_CUDA_ARCHITECTURES STREQUAL "120")
++            message(FATAL_ERROR "GGML_CUDA_STANDARD_SM120 requires CMAKE_CUDA_ARCHITECTURES=120")
++        endif()
++        add_compile_definitions(GGML_CUDA_STANDARD_SM120)
++    else()
+     foreach(ARCHS IN ITEMS CMAKE_CUDA_ARCHITECTURES CMAKE_CUDA_ARCHITECTURES_NATIVE)
+         set(FIXED_ARCHS "")
+         foreach(ARCH IN LISTS ${ARCHS})
+@@ -90,6 +97,7 @@ if (CUDAToolkit_FOUND)
+         endforeach()
+         set(${ARCHS} ${FIXED_ARCHS})
+     endforeach()
++    endif()
+ 
+     # If we try to compile a "native" build it will use the 12X architectures and fail.
+     # So we should instead use the native architectures as determined by CMake after replacing 12X with 12Xa.
+diff --git a/ggml/src/ggml-cuda/common.cuh b/ggml/src/ggml-cuda/common.cuh
+index 2e405da2076da725fb21564fece17b62a8c395f8..ad0e8572f52792bc560709ad1ed6ade24f012de5 100644
+--- a/ggml/src/ggml-cuda/common.cuh
++++ b/ggml/src/ggml-cuda/common.cuh
+@@ -283,7 +283,7 @@ static const char * cu_get_error_str(CUresult err) {
+ #define AMPERE_MMA_AVAILABLE
+ #endif // !defined(GGML_USE_HIP) && __CUDA_ARCH__ >= GGML_CUDA_CC_AMPERE
+ 
+-#if !defined(GGML_USE_HIP) && __CUDA_ARCH__ >= GGML_CUDA_CC_BLACKWELL && __CUDA_ARCH__ < GGML_CUDA_CC_RUBIN
++#if !defined(GGML_USE_HIP) && !defined(GGML_CUDA_STANDARD_SM120) && __CUDA_ARCH__ >= GGML_CUDA_CC_BLACKWELL && __CUDA_ARCH__ < GGML_CUDA_CC_RUBIN
+ #    define BLACKWELL_MMA_AVAILABLE
+ #endif // !defined(GGML_USE_HIP) && __CUDA_ARCH__ >= GGML_CUDA_CC_BLACKWELL
+ 
+@@ -358,8 +358,13 @@ static bool cp_async_available(const int cc) {
+ }
+ 
+ static bool blackwell_mma_available(const int cc) {
++#ifdef GGML_CUDA_STANDARD_SM120
++    GGML_UNUSED(cc);
++    return false;
++#else
+     return GGML_CUDA_CC_IS_NVIDIA(cc) && ggml_cuda_highest_compiled_arch(cc) >= GGML_CUDA_CC_BLACKWELL &&
+            ggml_cuda_highest_compiled_arch(cc) < GGML_CUDA_CC_RUBIN;
++#endif
+ }
+ 
+ // Checks whether the tensor's base data pointer and higher-dimensional strides are byte-aligned to `alignment` bytes.

@@ -3,7 +3,9 @@
   "productName": "Strata",
   "identifier": "ai.strata.desktop",
   "build": {
-    "frontendDist": "../../host/dist"
+    "frontendDist": "../../host/dist",
+    "beforeBuildCommand": "node ../host/scripts/build.mjs && node scripts/verify-release.mjs",
+    "beforeBundleCommand": "node scripts/verify-release.mjs"
   },
   "app": {
     "withGlobalTauri": false,
@@ -37,7 +39,9 @@
       "resources/node": "node",
       "resources/control": "control",
       "resources/harness": "harness",
-      "resources/engine-bundle": "engine-bundle"
+      "resources/engine-bundle": "engine-bundle",
+      "resources/local-backends": "local-backends",
+      "resources/notices": "notices"
     },
     "linux": {
       "appimage": {
@@ -52,11 +56,9 @@
     "windows": {
       "nsis": {
         "installMode": "currentUser",
-      "template": "nsis/installer.nsi",
-      "headerImage": "nsis/header.bmp",
-      "sidebarImage": "nsis/sidebar.bmp",
-      "installerIcon": "icons/icon.ico",
-        "compression": "lzma",
+        "template": "nsis/installer.nsi",
+        "installerIcon": "icons/icon.ico",
+        "compression": "zlib",
         "languages": [
           "English"
         ]
@@ -67,7 +69,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEI2QjA5OTk5MDU1MjFGNUUKUldSZUgxSUZtWm13dHNGRU40N2xOUjdZZGpvcGl0NTB2WGxnS3VTc2RlakpSbnBxUkxndHNFY0oK",
       "endpoints": [
-        "https://github.com/Niko1221/Strata/releases/latest/download/latest.json"
+        "https://github.com/zapabob/Strata/releases/latest/download/latest.json"
       ],
       "windows": {
         "installMode": "passive"

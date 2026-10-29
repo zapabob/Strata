@@ -19,6 +19,7 @@ import { componentsDirectory } from './control-runtime.mjs';
 import { which } from './util.mjs';
 import { buildSpin8Args, probeBackendCapabilities } from './spin8-backend.mjs';
 import { resolveKvSettings, explicitKvEnvironment } from './kv-settings.mjs';
+import {localBackendChoice,findLocalBackend,verifyLocalBackend,requireRuntimeKv} from './local-backends.mjs';
 
 const LOG_LIMIT = 400;
 
@@ -26,6 +27,8 @@ const state = {
   status: 'stopped', // stopped | starting | running | stopping | error
   binary: null,
   binarySource: null,
+  requestedBackend: 'Automatic',
+  runtimeVersion: null,
   pid: null,
   port: 8080,
   modelId: null,
@@ -60,7 +63,8 @@ export function init(hub) {
 
 /* ------------------------------------------------------------------ binary --- */
 
-export function findBinary({ platform = process.platform, env = process.env, modelsDir = MODELS_DIR, componentsDir = componentsDirectory({ env, platform }) } = {}) {
+export function findBinary({ platform = process.platform, env = process.env, modelsDir = MODELS_DIR, componentsDir = componentsDirectory({ env, platform }), backend='Automatic', installRoot } = {}) {
+  if(backend!=='Automatic')return findLocalBackend(backend,{componentsDir,platform,installRoot});
   const binaryNames = platform === 'win32' ? ['llama-server.exe', 'llama-server'] : ['llama-server'];
   const candidates = [];
 
@@ -113,8 +117,8 @@ export function findBinary({ platform = process.platform, env = process.env, mod
   return candidates.find((c) => existsSync(c.path)) ?? null;
 }
 
-export async function resolveBinary({ updateState = true } = {}) {
-  const found = findBinary();
+export async function resolveBinary({ updateState = true, backend='Automatic' } = {}) {
+  const found = findBinary({backend});
   if (found) {
     if (updateState) {
       state.binary = found.path;
@@ -122,6 +126,7 @@ export async function resolveBinary({ updateState = true } = {}) {
     }
     return found;
   }
+  if(backend!=='Automatic')return null;
   const onPath = await which(process.platform === 'win32' ? 'llama-server.exe' : 'llama-server');
   if (onPath) {
     if (updateState) {
@@ -206,8 +211,11 @@ export function buildArgs({ modelPath, config, hardware, port = state.port }) {
   return [...args, ...spin8Args];
 }
 
+function publicArgs() {
+  return state.args.map((value,index)=>state.args[index-1]==='--api-key'?'[redacted]':value);
+}
 export function describeCommand() {
-  return [state.binary, ...state.args].filter(Boolean).join(' ');
+  return [state.binary, ...publicArgs()].filter(Boolean).join(' ');
 }
 
 /* ---------------------------------------------------------------- lifecycle --- */
@@ -253,24 +261,30 @@ async function waitForHealth(port, timeoutMs = 90_000, proc, getSpawnError = () 
   throw new Error('Engine did not become healthy in time');
 }
 
+/** Validate a selected runtime before an already loaded model is stopped. */
+export async function preflight({config,modelPath}) {
+  const backend=localBackendChoice(config?.expert);
+  const binary=await resolveBinary({backend,updateState:false});
+  if(!binary)throw new Error(`No ${backend==='Automatic'?'llama-server':backend} runtime found. Install the matching local runtime first.`);
+  if(!existsSync(modelPath))throw new Error(`Model file missing: ${modelPath}`);
+  const kv=resolveKvSettings(config?.expert);
+  const runtime=backend==='Automatic'?null:await verifyLocalBackend(binary,backend);
+  if(runtime)requireRuntimeKv(runtime,kv);
+  else if([kv.k,kv.v].some(type=>type.startsWith('turbo')))throw new Error('Choose the verified TurboQuant llama-server backend before using a TurboQuant K/V cache.');
+  return {binary,backend,runtime};
+}
+
 export async function start({ modelId, modelPath, port = 8080, config, hardware, timeoutMs = 120_000 }) {
   const args = buildArgs({ modelPath, config, hardware, port });
-  if (state.status === 'running' && state.modelId === modelId && state.port === port) {
+  const {binary,backend,runtime}=await preflight({config,modelPath});
+  if (state.status === 'running' && state.modelId === modelId && state.port === port && state.binary===binary.path && state.requestedBackend===backend && JSON.stringify(state.args)===JSON.stringify(args)) {
     return status();
   }
   if (child) await stop();
-
-  const binary = await resolveBinary();
-  if (!binary) {
-    state.status = 'error';
-    state.error = 'No llama-server binary found. Download the engine from Settings → Engine.';
-    throw new Error(state.error);
-  }
-  if (!existsSync(modelPath)) {
-    state.status = 'error';
-    state.error = `Model file missing: ${modelPath}`;
-    throw new Error(state.error);
-  }
+  state.binary=binary.path;
+  state.binarySource=binary.source;
+  state.requestedBackend=backend;
+  state.runtimeVersion=runtime?`${backend} ${runtime.version} · ${runtime.source.commit.slice(0,8)}`:null;
 
   state.status = 'starting';
   state.port = port;
@@ -367,6 +381,7 @@ export async function stop() {
 
 export async function restart(opts) {
   buildArgs(opts);
+  await preflight(opts);
   await stop();
   await new Promise((r) => setTimeout(r, 400));
   return start(opts);
@@ -438,10 +453,11 @@ export async function pollMetrics() {
 /* ------------------------------------------------------------------- status --- */
 
 export function status() {
-  const binary = state.binary ? { path: state.binary, source: state.binarySource } : null;
+  const binary = state.binary ? { path: state.binary, source: state.binarySource, ...(state.runtimeVersion?{version:state.runtimeVersion}:{}) } : null;
   return {
     status: state.status,
     running: state.status === 'running',
+    requestedBackend: state.requestedBackend,
     binary,
     pid: state.pid,
     port: state.port,
@@ -449,7 +465,7 @@ export function status() {
     modelPath: state.modelPath,
     startedAt: state.startedAt,
     error: state.error,
-    args: state.args,
+    args: publicArgs(),
     command: state.command,
     metrics: state.metrics,
     logCount: state.logs.length,

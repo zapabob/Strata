@@ -24,6 +24,19 @@ NO_HIP = HERE == "linux-aarch64"      # the DGX Spark: CUDA only
 EXE = "strata.exe" if WINDOWS else "strata"
 
 
+class ComponentBuildVersion(unittest.TestCase):
+    def test_product_preview_never_becomes_a_component_abi_version(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            version = root / "VERSION"
+            version.write_text("0.3.3-preview.20261030.1\n", encoding="utf-8")
+            (root / "CMakeLists.txt").write_text("project(strata VERSION 0.3.3 LANGUAGES CXX)\n", encoding="utf-8")
+            with mock.patch.object(ec, "RUNTIME_VERSION_FILE", version):
+                self.assertEqual(ec.runtime_version(), "0.3.3")
+                version.write_text("0.3.4\n", encoding="utf-8")
+                self.assertEqual(ec.runtime_version(), "0.3.4")
+
+
 def make_package(root: Path, *, version="0.1.45", platform=None, backend="cuda", archs=(), min_runtime=None,
                  extra=None, entry=None) -> Path:
     """A fake engine package the way packaging/package_engine.py lays one out."""
@@ -94,6 +107,14 @@ class Resolution(unittest.TestCase):
         make_package(self.root, version="0.1.45.2")
         make_package(self.root, version="0.1.9")                 # 0.1.9 < 0.1.45 numerically, not as text
         self.assertEqual(ec.resolve(self.root, backend="cuda", runtime="1").version, "0.1.45.2")
+
+    def test_current_fork_engine_wins_with_previous_fork_versions_installed(self):
+        for version in ("0.1.47", "0.3.0", "0.3.2-preview.20261027.1", "0.3.3"):
+            make_package(self.root, version=version, archs=("sm_120",))
+        with mock.patch.object(ec, "cuda_archs_present", return_value=["sm_120"]):
+            chosen = ec.resolve(self.root, backend="cuda", runtime="0.3.3", full=True)
+        self.assertEqual(chosen.version, "0.3.3")
+        self.assertEqual(chosen.exe.parent.name, f"0.3.3-{HERE}-cuda")
 
     def test_nothing_installed_is_a_notice_that_says_nothing_is_fetched(self):
         with NoNetwork():

@@ -642,15 +642,27 @@ def stop(name: str, *, timeout: float = 330,
     lost = _stop_lost(name)
     if lost is not None:
         return lost
+    owner = _read_state(name)
+    host_pid = (owner or {}).get("host_pid")
+    host_token = procs.start_token(host_pid) if type(host_pid) is int else None
     result = _rpc(name, "stop", timeout=timeout, params=params)
     if not result["ok"]:
         return result
+    # The reply says the server stopped. The owner host still has to release
+    # its listener, leases and log handle, including when another CLI started
+    # it. On Windows a caller cannot remove that log until the host exits.
+    deadline = time.monotonic() + 5
     owned = _STARTED_HOSTS.pop(name, None)
     if owned is not None:
         try:
             owned.wait(timeout=5)
         except subprocess.TimeoutExpired:
             _STARTED_HOSTS[name] = owned
+    if host_token is not None:
+        while procs.start_token(host_pid) == host_token:
+            if time.monotonic() >= deadline:
+                return {**result, "ok": False, "error": "runtime_host_shutdown_pending", "exit_code": 8}
+            time.sleep(0.02)
     return result
 
 

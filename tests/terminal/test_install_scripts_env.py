@@ -13,10 +13,20 @@ SH = ROOT / "packaging" / "install.sh"
 
 class Text(unittest.TestCase):
     def test_the_readme_one_liner_cannot_succeed_on_a_failed_download(self):
-        for name in ("README.md", "README.de.md", "docs/INSTALL.md", "docs/TERMINAL_LAUNCH.md"):
+        for name in ("docs/INSTALL.md", "docs/TERMINAL_LAUNCH.md"):
             text = (ROOT / name).read_text(encoding="utf-8")
             self.assertNotIn("install.sh | sh", text, name)                    # `curl ... | sh` runs nothing and exits 0 when curl fails
             self.assertIn("install.sh -o install.sh && sh install.sh", text, name)
+
+    def test_fork_readmes_offer_the_matching_fork_installer(self):
+        version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+        readmes = sorted(ROOT.glob("README*.md"))
+        self.assertEqual(len(readmes), 8)
+        for path in readmes:
+            text = path.read_text(encoding="utf-8")
+            self.assertNotIn("install.sh | sh", text, path.name)
+            self.assertIn(f"zapabob/Strata/releases/download/v{version}/", text, path.name)
+            self.assertIn(f"Strata_{version}_x64-setup.exe", text, path.name)
 
     def setUp(self):
         self.ps1 = PS1.read_text(encoding="utf-8")

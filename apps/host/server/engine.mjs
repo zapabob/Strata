@@ -4,6 +4,7 @@ import { cachedHardware, detect } from './hardware.mjs';
 import { get as getStore, update } from './store.mjs';
 import * as supervisor from './supervisor.mjs';
 import { nowIso } from './util.mjs';
+import {localBackendChoice} from './local-backends.mjs';
 import { kvMemoryFactor, resolveKvSettings, requireModelKvCompatible } from './kv-settings.mjs';
 
 const engineState = {
@@ -45,7 +46,7 @@ export function params() {
   const overrides = getStore().expert ?? {};
   const catalog = expertParams(cachedHardware()?.cpu?.cores ?? null);
   const known = new Set(catalog.map(p => p.id));
-  const mapped = new Set(['gpu.layers','ctx.length','ctx.kvMode','ctx.kType','ctx.vType','mem.mmap','mem.lock','perf.batch','perf.threads','perf.flashAttn','server.port','server.parallel']);
+  const mapped = new Set(['runtime.backend','gpu.layers','ctx.length','ctx.kvMode','ctx.kType','ctx.vType','mem.mmap','mem.lock','perf.batch','perf.threads','perf.flashAttn','server.port','server.parallel']);
   return [...catalog.map((p) => ({
     ...p,
     applies: p.id.startsWith('sample.') ? 'Next request' : mapped.has(p.id) ? 'Next model load' : 'Preserved only · adapter does not apply this value',
@@ -90,14 +91,14 @@ export async function config() {
     expert: params(),
     predicted: predict(s.beginner, hw, v),
     footprint: v ? footprint(v, ctxTokens) : null,
-    dirty: sup.running && JSON.stringify(loadArgs(previewArgs)) !== JSON.stringify(loadArgs(sup.args)),
+    dirty: sup.running && (localBackendChoice(params())!==(sup.requestedBackend??'Automatic') || JSON.stringify(loadArgs(previewArgs)) !== JSON.stringify(loadArgs(sup.args))),
     appliedAt: sup.startedAt ?? undefined,
     engine: {
       running: sup.running,
       status: sup.status,
       pid: sup.pid ?? undefined,
       uptimeSec: sup.startedAt ? Math.round((Date.now() - new Date(sup.startedAt).getTime()) / 1000) : 0,
-      version: sup.binary ? `llama.cpp · ${sup.binary.source}` : engineState.version,
+      version: sup.binary ? (sup.binary.version ?? `llama.cpp · ${sup.binary.source}`) : engineState.version,
       backend: hw.accelerator.backend,
       startedAt: sup.startedAt ?? undefined,
       port: sup.port,

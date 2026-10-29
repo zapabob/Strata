@@ -71,11 +71,12 @@ export function expertParams(cores = null) {
   const threads = cores ? Math.max(4, cores - 2) : 8;
   return [
     // Context & memory
+    { id: 'runtime.backend', group: 'Context & memory', label: 'llama-server backend', effect: 'Select a bundled local inference runtime', type: 'select', options: ['Automatic', 'PrismML', 'TurboQuant'], value: 'Automatic', recommended: 'Automatic' },
     { id: 'gpu.layers', group: 'Context & memory', label: 'GPU / layer split', effect: 'Which GPUs hold the model', type: 'select', options: ['Automatic', 'All layers', 'Half', 'Quarter', 'CPU only'], value: 'Automatic', recommended: 'Automatic' },
     { id: 'ctx.length', group: 'Context & memory', label: 'Context length', effect: 'Maximum prompt length', type: 'text', value: '128K', recommended: '128K' },
     { id: 'ctx.kvMode', group: 'Context & memory', label: 'KV mode', effect: 'Context memory format', type: 'select', options: ['INT8', 'FP16', 'Q8_0', 'Q4_0'], value: 'INT8', recommended: 'INT8' },
     { id: 'ctx.kType', group: 'Context & memory', label: 'K cache precision', effect: 'Precision of cached attention keys', type: 'select', options: ['Inherit', 'FP16', 'BF16', 'Q8_0', 'Q4_0'], value: 'Inherit', recommended: 'Inherit' },
-    { id: 'ctx.vType', group: 'Context & memory', label: 'V cache precision', effect: 'Precision of cached attention values', type: 'select', options: ['Inherit', 'FP16', 'BF16', 'Q8_0', 'Q4_0'], value: 'Inherit', recommended: 'Inherit' },
+    { id: 'ctx.vType', group: 'Context & memory', label: 'V cache precision', effect: 'Precision of cached attention values', type: 'select', options: ['Inherit', 'FP16', 'BF16', 'Q8_0', 'Q4_0', 'TURBO2', 'TURBO3', 'TURBO4'], value: 'Inherit', recommended: 'Inherit' },
     { id: 'mem.mode', group: 'Context & memory', label: 'Expert cache / RAM mode', effect: 'RAM, VRAM, disk balance', type: 'select', options: ['Automatic', 'GPU first', 'Balanced', 'Memory saver'], value: 'Automatic', recommended: 'Automatic' },
     { id: 'mem.expertCache', group: 'Context & memory', label: 'Expert cache slots', effect: 'How many experts stay resident', type: 'number', value: 64, recommended: 64 },
     { id: 'mem.mmap', group: 'Context & memory', label: 'Memory-map model files', effect: 'Loads from disk on demand', type: 'toggle', value: true, recommended: true },

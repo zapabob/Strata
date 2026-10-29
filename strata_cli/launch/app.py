@@ -16,6 +16,7 @@ from typing import Any
 from rich.text import Text
 from textual.app import App
 from textual.binding import Binding
+from textual.message import Message
 
 from strata_cli.launch import access as acc
 from strata_cli.launch import params as P
@@ -27,6 +28,16 @@ from strata_cli.launch.screens import (AccessScreen, AdvancedScreen, CardsScreen
                                        ModelScreen, ParallelScreen, PicturesScreen, RunScreen, SaveScreen, SpeedScreen, StartScreen,
                                        TuningScreen, flow_for)
 from strata_cli.launch.widgets import CSS, Glyphs
+
+class RunOutcome(Message):
+    """The worker reports completion; only the UI thread updates screens."""
+
+    def __init__(self, *, result=None, error=None, cancelled=False):
+        super().__init__()
+        self.result = result
+        self.error = error
+        self.cancelled = cancelled
+
 
 SCREENS = {"model": ModelScreen, "cards": CardsScreen, "folder": FolderScreen, "context": ContextScreen, "pictures": PicturesScreen, "speed": SpeedScreen,
            "parallel": ParallelScreen, "tuning": TuningScreen, "advanced": AdvancedScreen, "access": AccessScreen, "save": SaveScreen}
@@ -335,11 +346,12 @@ class LaunchApp(App):
             self.push_screen(ConfirmScreen(title, text, options or [("go", "Download anyway"), ("no", "Not now")]), done)
 
         try:
-            self.call_from_thread(show)
+            if not self.call_later(show):
+                return False
         except Exception:                                    # noqa: BLE001 - the app is closing
             return False
         while not answered.wait(0.2):
-            if self.cancel.is_set():
+            if self.cancel.is_set() or not self.is_running:
                 return False
         return box["go"]
 
@@ -347,27 +359,36 @@ class LaunchApp(App):
         screen = self.run_screen
         if screen is not None:
             try:
-                self.call_from_thread(screen.handle_event, ev)
+                self.call_later(screen.handle_event, ev)
             except Exception:                                # noqa: BLE001 - the app is closing
                 pass
 
     def _work(self) -> None:
-        screen = self.run_screen
         try:
-            result = self.runner.run()               # type: ignore[union-attr]
+            outcome = RunOutcome(result=self.runner.run())  # type: ignore[union-attr]
         except Cancelled:
-            self.running = False
-            self.call_from_thread(self._after_cancel)
-            return
+            outcome = RunOutcome(cancelled=True)
         except LaunchError as e:
-            self.running = False
-            self.call_from_thread(screen.on_failure, f"{e.text} {e.next}".strip())
-            return
+            outcome = RunOutcome(error=f"{e.text} {e.next}".strip())
         except Exception as e:                           # noqa: BLE001
-            self.running = False
-            self.call_from_thread(screen.on_failure, f"Something unexpected went wrong: {type(e).__name__}: {e}")
-            return
+            outcome = RunOutcome(error=f"Something unexpected went wrong: {type(e).__name__}: {e}")
+        try:
+            self.post_message(outcome)
+        except RuntimeError as error:
+            # The UI can close between post_message checking its loop and
+            # scheduling the message. No coroutine is created on this path.
+            if str(error) != "Event loop is closed":
+                raise
+
+    def on_run_outcome(self, message: RunOutcome) -> None:
         self.running = False
+        if message.cancelled:
+            self._after_cancel()
+            return
+        if message.error is not None:
+            self.run_screen.on_failure(message.error)
+            return
+        result = message.result
         self._save_pending()                         # a runner that never asked (nothing was running) still saves what was chosen
         s = self.ctx.settings
         try:
@@ -377,8 +398,8 @@ class LaunchApp(App):
         except Exception:                                # noqa: BLE001
             pass
         self.result = result
-        self.call_from_thread(screen.on_finished)
-        self.call_from_thread(self.exit, result)
+        self.run_screen.on_finished()
+        self.exit(result)
 
     def _after_cancel(self) -> None:
         self.run_screen.on_failure("Stopped. Nothing was started.")     # type: ignore[union-attr]

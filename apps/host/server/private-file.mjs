@@ -18,8 +18,12 @@ export function currentUserSid() {
 
 export function makePrivate(path, { platform = process.platform } = {}) {
   if (platform !== 'win32') { chmodSync(path, 0o600); return; }
-  // Grant first, then drop every inherited entry, so the file is never left without an owner entry.
-  execFileSync(system32('icacls.exe'), [path, '/grant:r', `*${currentUserSid()}:F`, '/inheritance:r'],
+  // Replace the whole DACL. /grant:r only replaces this user's entry and can
+  // retain explicit grants for other users, including grants added by a rename.
+  const sid = currentUserSid();
+  const quoted = path.replaceAll("'", "''");
+  const script = `$ErrorActionPreference='Stop'; $acl=New-Object System.Security.AccessControl.FileSecurity; $acl.SetSecurityDescriptorSddlForm('D:PAI(A;;FA;;;${sid})',[System.Security.AccessControl.AccessControlSections]::Access); [System.IO.File]::SetAccessControl('${quoted}',$acl)`;
+  execFileSync(system32('WindowsPowerShell/v1.0/powershell.exe'), ['-NoProfile', '-NonInteractive', '-Command', script],
     { stdio: 'ignore', timeout: 15000, windowsHide: true });
   // The owner too, so a file an elevated run made is not left owned by Administrators (needs the right to; best effort).
   try { execFileSync(system32('icacls.exe'), [path, '/setowner', `*${currentUserSid()}`], { stdio: 'ignore', timeout: 15000, windowsHide: true }); } catch { /* the explicit entry above already opens it to the user */ }

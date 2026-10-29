@@ -158,6 +158,17 @@ export async function startScriptedWorker({ port = 0, chunkDelayMs = 40, model =
       send({ role: 'assistant', content: '', reasoning_content: 'Thinking about it for a long time and never getting to the answer.' });
       return finish('stop', 20);
     }
+    if (directive?.[1] === 'goalcreate') {
+      // Exercise creation and explicit completion; an open goal keeps the real
+      // Harness running, so a scripted final sentence alone cannot finish it.
+      if (!toolMessages.length) return toolCall('create_goal', {objective:'finish the notes'});
+      if (toolMessages.length === 1) return toolCall('get_goal', {});
+      if (toolMessages.length === 2 && last.role === 'tool') {
+        const result=text(last),id=/"id"\s*:\s*"([^"]+)"/.exec(result)?.[1],revision=Number(/"revision"\s*:\s*(\d+)/.exec(result)?.[1]??1);
+        if(id)return toolCall('update_goal',{goal_id:id,revision,action:'complete'});
+      }
+      return say(['The notes goal is complete.']);
+    }
     if (directive?.[1] === 'goalstep') {
       // A goal round: read the goal, mark it complete, then say so.
       if (!toolMessages.length) return toolCall('get_goal', {});

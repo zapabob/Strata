@@ -24,6 +24,9 @@ test('in a checkout the same file the shell is built from is read, so there is o
   try {
     await mkdir(join(dir, 'host', 'server'), { recursive: true });
     await mkdir(join(dir, 'desktop', 'src-tauri'), { recursive: true });
+    await mkdir(join(dir, 'control'));
+    await writeFile(join(dir, 'control', 'VERSION'), '0.1.47');
+    assert.equal(appVersionFrom({env:{STRATA_APP_VERSION:'0.3.3-preview.20261030.1'},here:join(dir,'host','server')}),'0.3.3-preview.20261030.1','stale Control cannot override the running shell');
     await writeFile(join(dir, 'desktop', 'src-tauri', 'Cargo.toml'), '[package]\nname = "x"\nversion = "9.8.7-rc.1"\n');
     assert.equal(appVersionFrom({ env: {}, here: join(dir, 'host', 'server') }), '9.8.7-rc.1');
   } finally { await rm(dir, { recursive: true, force: true }); }

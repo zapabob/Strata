@@ -33,7 +33,7 @@ STANDARD_DIALECTS = {
 # Prism / Bonsai / TurboQuant custom type mappings
 PRISM_DIALECTS = {
     142: QuantDialect(142, "PQ2_0", DialectType.PRISM, 128, 34),
-    143: QuantDialect(143, "PTQ1_0", DialectType.PRISM, 128, 18),
+    143: QuantDialect(143, "PTQ1_0", DialectType.PRISM, 128, 28),
     1001: QuantDialect(1001, "PQ2_0", DialectType.PRISM, 64, 18),
     1002: QuantDialect(1002, "PTQ1_0", DialectType.PRISM, 64, 10),
     2001: QuantDialect(2001, "TQ4_1S", DialectType.TURBOQUANT, 32, 20),

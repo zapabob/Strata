@@ -38,9 +38,6 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import _paths  # noqa: E402
 
-_paths.add_gguf_py()
-from gguf import GGUFReader, GGMLQuantizationType as QT  # noqa: E402
-from gguf.quants import dequantize, quantize  # noqa: E402
 from gguf_writer import dequantize_q2_0  # noqa: E402
 
 # what src/core/native_dense.cpp serves natively (eligible()), and the head
@@ -136,6 +133,11 @@ def main() -> int:
     ap.add_argument("out_dir", type=Path, help="folder for the converted shards and the others' links")
     ap.add_argument("--copy", action="store_true", help="copy the shards with nothing to convert instead of linking them")
     a = ap.parse_args()
+    # Import/help must work before optional GGUF conversion dependencies exist.
+    global GGUFReader, QT, dequantize, quantize
+    _paths.add_gguf_py()
+    from gguf import GGUFReader, GGMLQuantizationType as QT
+    from gguf.quants import dequantize, quantize
     out = a.out_dir.resolve()
     shards = shards_of(a.shard.resolve())
     if out == shards[0].parent:

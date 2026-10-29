@@ -25,8 +25,8 @@ def _sha(data: bytes) -> str:
 
 
 def _fixture(tmp_path: Path) -> tuple[dict, Path, Path]:
-    native = "0.3.2-preview.20261029.2-windows-x86_64-cuda-cuda13"
-    generic = "0.3.2-preview.20261029.2"
+    native = "0.3.3-preview.20261030.1-windows-x86_64-cuda-cuda13"
+    generic = "0.3.3-preview.20261030.1"
     component = {"id": "strata-engine", "entrypoint": "strata.exe", "files": [
         {"path": "strata.exe", "sha256": _sha(b"native PE"), "bytes": 9},
     ]}
@@ -59,7 +59,7 @@ def _fixture(tmp_path: Path) -> tuple[dict, Path, Path]:
         source.write_bytes(data)
         files.append({"path": name, "source": str(source), "sha256": _sha(data), "bytes": len(data)})
     spec = {"public": {"source_commit": "a" * 40, "native_folder": native, "generic_folder": generic,
-                       "programs_folder": "Strata-0.3.2-preview.20261029.2"}, "files": files}
+                       "programs_folder": "Strata-0.3.3-preview.20261030.1"}, "files": files}
     return spec, tmp_path / "stage", tmp_path / "package.zip"
 
 
@@ -72,7 +72,7 @@ def cheap_disk():
 
 @pytest.fixture
 def install_tmp(tmp_path: Path):
-    h_root = Path("H:/Strata/releases/0.3.2-preview.20261029.2/full-package/test-temp")
+    h_root = Path("H:/Strata/releases/0.3.3-preview.20261030.1/full-package/test-temp")
     if sys.platform != "win32" or not h_root.parent.is_dir():
         yield tmp_path
         return

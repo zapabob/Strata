@@ -16575,8 +16575,7 @@ int main(int argc, char** argv) {
                 if (o.exact_context_boundary) {
                     T = strata::program::serve_context_window(T, p, o.max_context, true);
                     if (T < 1) {
-                        std::fprintf(stderr, "strata serve: the request ran out of context before its output reservation completed
-");
+                        std::fprintf(stderr, "strata serve: the request ran out of context before its output reservation completed\n");
                         return 1;
                     }
                 }

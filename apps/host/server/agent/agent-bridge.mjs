@@ -156,6 +156,8 @@ export function createAgentBridge({ dataDir, componentsDir = null, bundledDir = 
   let generation = 0;
   let lastError = null;
   let starting = null;
+  let pendingRuntime = null;
+  let closed = false;
   const chats = new Map();         // chatId -> { turn, route, routeGeneration }
   const plans = new PlanStore(join(root, 'plans.json'));
   /** chatId -> messages the person typed while a goal ran: [{ id, text, at, deliverAt }]; delivered between steps or when the goal ends */
@@ -224,18 +226,30 @@ export function createAgentBridge({ dataDir, componentsDir = null, bundledDir = 
         for (const c of chats.values()) c.turn?.abortFromRuntime('The agent process stopped before this turn finished.');
       },
     });
-    const info = await hp.start({ timeoutMs: startTimeoutMs });
-    const gw = new GatewayClient({ baseUrl: info.baseUrl, token: info.token });
-    await gw.connect();
-    const next = { hp, gw, profile, clientId: null, generation: ++generation, events: null };
-    next.events = gw.openStream('$events', {}, {
-      onItem: value => onHostEvent(next, value),
-      onError: e => log(`agent · event stream: ${redact(e.message, Object.values(profile.env))}`),
-    });
-    rt = next;
-    lastError = null;
-    log(`agent · Harness ${h.version ?? ''} ready (pid ${hp.pid}, ${profile.routes.length} route(s))`);
-    return next;
+    pendingRuntime = {hp, gw:null};
+    try {
+      const info = await hp.start({ timeoutMs: startTimeoutMs });
+      if(closed)throw new AgentUnavailable('The coding assistant is closing.', 'bridge-closed');
+      const gw = new GatewayClient({ baseUrl: info.baseUrl, token: info.token });
+      pendingRuntime.gw=gw;
+      await gw.connect();
+      if(closed)throw new AgentUnavailable('The coding assistant is closing.', 'bridge-closed');
+      const next = { hp, gw, profile, clientId: null, generation: ++generation, events: null };
+      next.events = gw.openStream('$events', {}, {
+        onItem: value => onHostEvent(next, value),
+        onError: e => log(`agent · event stream: ${redact(e.message, Object.values(profile.env))}`),
+      });
+      rt = next;
+      lastError = null;
+      log(`agent · Harness ${h.version ?? ''} ready (pid ${hp.pid}, ${profile.routes.length} route(s))`);
+      return next;
+    } catch(error) {
+      pendingRuntime?.gw?.close();
+      if(!closed)await hp.stop();
+      throw error;
+    } finally {
+      if(pendingRuntime?.hp===hp)pendingRuntime=null;
+    }
   }
 
   /** The local engine's own speed for this turn's requests (null when it cannot be read: the stream's estimate stays). */
@@ -248,6 +262,7 @@ export function createAgentBridge({ dataDir, componentsDir = null, bundledDir = 
   /** Make sure a runtime exists that knows the route this turn needs. */
   async function ensureRuntime(choice, signal) {
     for (;;) {
+      if(closed)throw new AgentUnavailable('The coding assistant is closing.', 'bridge-closed');
       if (starting) { await starting.catch(() => {}); continue; }
       const profile = buildProfileNow();
       const route = routeFor(profile, choice);
@@ -1331,14 +1346,19 @@ export function createAgentBridge({ dataDir, componentsDir = null, bundledDir = 
   }
 
   async function close() {
-    const r = rt; rt = null;
-    if (r) { r.events?.close(); r.gw.close(); await r.hp.stop(); }
+    closed=true;
+    const boot=starting, pending=pendingRuntime, r=rt; rt=null;
+    r?.events?.close(); r?.gw.close(); pending?.gw?.close();
+    // Startup owns a process before it becomes rt. Closing during that window
+    // must stop it and wait for startup to settle, so it cannot revive later.
+    await Promise.all([...new Set([r?.hp,pending?.hp].filter(Boolean))].map(hp=>hp.stop()));
+    if(boot)await boot.catch(()=>{});
   }
 
   /** Let go of a chat's Harness session mapping (a task starts every run in a session of its own). */
   function forget(chatId) { if (chats.get(chatId)?.turn) return; delete sessionMap[chatId]; chats.delete(chatId); persist(); }
 
-  return { compactCommand, goalState, goalControl, harnessDir, status, runTurn, goalCommand, planCommand, researchCommand, llmTarget, setPlanBriefing, resetSession, reopenPlan, skipStep, planGoal, planControl, planState, queueMessage, cancelQueued, takeQueue, forget, approve, setMode, stop, pendingFor, pendingAll, close, sessionOf: chatId => sessionMap[chatId]?.sessionId ?? null, workingFolder: chatId => sessionMap[chatId]?.cwd ?? null, isRunning: chatId => !!chats.get(chatId)?.turn, _debug: () => ({ rt, sessionMap }) };
+  return { compactCommand, goalState, goalControl, harnessDir, status, runTurn, goalCommand, planCommand, researchCommand, llmTarget, setPlanBriefing, resetSession, reopenPlan, skipStep, planGoal, planControl, planState, queueMessage, cancelQueued, takeQueue, forget, approve, setMode, stop, pendingFor, pendingAll, close, sessionOf: chatId => sessionMap[chatId]?.sessionId ?? null, workingFolder: chatId => sessionMap[chatId]?.cwd ?? null, isRunning: chatId => !!chats.get(chatId)?.turn, _debug: () => ({ rt, sessionMap, startingPid:pendingRuntime?.hp.pid??null, closed }) };
 }
 
 /** A goal that stopped by itself, in words. */

@@ -112,6 +112,8 @@ PAYLOAD = (
 TOOLS_SUBSET = (
     "strata_tokenizer.py",
     "gguf_reader.py",
+    "hakua_hermes_memory_stack.py",
+    "strata_memory_mcp.py",
     "dflash2_pack.py",     # the DFlash2 drafter: strata_control/drafting_fetch.py packs the download with it (numpy only)
 )
 
@@ -134,7 +136,7 @@ INSTALLER_SCRIPTS = ("dsv41/pack_gguf", "dsv41/smoke", "dsv41/tune", "nvfp4_loca
 INSTALLER_DATA = "data"           # draft vocabularies, expert profiles: 2 MB
 
 #: packages the bundle must import after the install (the API server's and the CLI's).
-PROBE = "import jinja2, yaml, regex, psutil, requests, numpy, PIL, tqdm; print('deps ok')"
+PROBE = "import jinja2, yaml, regex, psutil, requests, numpy, PIL, tqdm; from hakua_memory.ebbinghaus.store import EbbinghausMemoryStore; print('deps ok')"
 
 
 def host_target() -> str:
@@ -205,9 +207,18 @@ def install_locked(py: Path, lock: Path, root: Path, wheelhouse: Path | None = N
     for name in ("PYTHONHOME", "PYTHONPATH", "PIP_REQUIRE_VIRTUALENV", "PIP_INDEX_URL", "PIP_EXTRA_INDEX_URL"):
         env.pop(name, None)
     source = ["--no-index", "--find-links", str(wheelhouse)] if wheelhouse else []
-    subprocess.run([str(py), "-m", "pip", "install", "--isolated", "--no-cache-dir", "--no-warn-script-location",
-                    "--require-hashes", "--no-deps", "--only-binary=:all:", *source, "-r", str(lock)],
-                   check=True, cwd=str(root), env=env)
+    # Select the reviewed repository wheel explicitly: PyPI may have another
+    # build of the same version. --find-links alone does not prefer local bytes.
+    vendor = ROOT / "packaging/vendor/hakua-memory/hakua_memory-0.3.5-py3-none-any.whl"
+    resolved = re.sub(r"^hakua-memory==0[.]3[.]5(?=\s)",
+                      lambda _match: f"hakua-memory @ {vendor.resolve().as_uri()}",
+                      lock.read_text(encoding="utf-8"), flags=re.M)
+    with tempfile.TemporaryDirectory(prefix="strata-runtime-lock-") as work:
+        build_lock = Path(work) / "runtime.txt"
+        build_lock.write_text(resolved, encoding="utf-8")
+        subprocess.run([str(py), "-m", "pip", "install", "--isolated", "--no-cache-dir", "--no-warn-script-location",
+                        "--require-hashes", "--no-deps", "--only-binary=:all:", *source, "-r", str(build_lock)],
+                       check=True, cwd=str(root), env=env)
     subprocess.run([str(py), "-m", "pip", "check"], check=True, cwd=str(root), env=env)
     listed = subprocess.run([str(py), "-m", "pip", "list", "--format=json", "--isolated"], check=True,
                             cwd=str(root), env=env, capture_output=True, text=True).stdout
@@ -224,6 +235,20 @@ def drop_build_path_launchers(root: Path, staging: Path, target: str) -> list[st
     """pip writes console-script launchers that name the build-time interpreter by absolute path: they break the
     moment the archive is extracted elsewhere. `python -m <module>` and the `strata` launchers replace them."""
     gone = []
+    # A local-wheel install writes an absolute developer path into PEP 610
+    # metadata. It has no runtime purpose and must not enter a public bundle.
+    import csv
+
+    for origin in (root / "python").rglob("*.dist-info/direct_url.json"):
+        record = origin.parent / "RECORD"
+        if record.is_file():
+            with record.open(encoding="utf-8", newline="") as stream:
+                rows = list(csv.reader(stream))
+            name = origin.relative_to(origin.parent.parent).as_posix()
+            with record.open("w", encoding="utf-8", newline="") as stream:
+                csv.writer(stream).writerows(row for row in rows if row and row[0] != name)
+        gone.append(origin.relative_to(root).as_posix())
+        origin.unlink()
     if target.startswith("windows"):
         scripts = root / "python" / "Scripts"
         if scripts.is_dir():

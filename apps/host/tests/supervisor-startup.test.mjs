@@ -20,7 +20,9 @@ test('a backend that exits before health reports its error promptly', async t =>
     if(previous.binary===undefined)delete process.env.STRATA_LLAMA_SERVER;else process.env.STRATA_LLAMA_SERVER=previous.binary;
     rmSync(home,{recursive:true,force:true});
   });
-  const started=Date.now();
-  await assert.rejects(supervisor.start({modelId:'fixture',modelPath:model,port,config:{beginner:{contextLength:'2k'},expert:[]},hardware:{cpu:{cores:4}},timeoutMs:10_000}),/Engine exited early with code \d+.*bad option: -m/);
+  const started=Date.now(), secret='private-startup-key-fixture';
+  await assert.rejects(supervisor.start({modelId:'fixture',modelPath:model,port,config:{beginner:{contextLength:'2k'},expert:[],serving:{apiKey:secret}},hardware:{cpu:{cores:4}},timeoutMs:10_000}),/Engine exited early with code \d+.*bad option: -m/);
   assert.ok(Date.now()-started<5_000,'did not wait for the health timeout');
+  assert.ok(!JSON.stringify(supervisor.status()).includes(secret),'public status must not expose the API key after startup failure');
+  assert.ok(!JSON.stringify(supervisor.logs()).includes(secret),'startup logs must not expose the API key');
 });

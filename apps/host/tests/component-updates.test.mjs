@@ -213,8 +213,8 @@ function fixture({ withApp = false, update, appInstall } = {}) {
     check: async () => ({ available: true, version: '0.2.0' }),
     install: appInstall ?? (async ({ onProgress }) => { calls.push(['app-install']); onProgress({ downloaded: 50, total: 100 }); return { state: 'done' }; }),
   } : null;
-  const native = createNativeControl({ control, appUpdater, directory: data, spawnProcess: (...args) => { if (!args[1]?.some(a => String(a).endsWith('strata_mcp.py'))) spawned.push(args); throw new Error('no process but the installer tool (Control strata_mcp.py, absent in this fixture) may be started by the host in packaged mode'); }, fetcher: async () => Response.json({}), requests: () => [] });
-  return { native, calls, spawned, data, control, cleanup: () => rmSync(root, { recursive: true, force: true }) };
+  const native = createNativeControl({ control, appUpdater, appDirectory: install, directory: data, spawnProcess: (...args) => { if (!args[1]?.some(a => String(a).endsWith('strata_mcp.py'))) spawned.push(args); throw new Error('no process but the installer tool (Control strata_mcp.py, absent in this fixture) may be started by the host in packaged mode'); }, fetcher: async () => Response.json({}), requests: () => [] });
+  return { native, calls, spawned, data, install, control, cleanup: () => rmSync(root, { recursive: true, force: true }) };
 }
 const finish = async (native, id) => { for (let i = 0; i < 400; i++) { const job = native.state().jobs.find(j => j.id === id); if (job.state !== 'running') return job; await new Promise(r => setTimeout(r, 10)); } throw new Error('job did not finish'); };
 
@@ -296,7 +296,7 @@ test('packaged: an app update that ends the app is recorded as finished by the n
     assert.equal(saved.appUpdateFrom, '0.2.2', 'the job was saved with the version it started from before the app was ended');
     // the app is gone; the installer starts the new one (0.2.3) on the same data
     process.env.STRATA_APP_VERSION = '0.2.3';
-    const again = createNativeControl({ control: f.control, directory: f.data, spawnProcess: () => { throw new Error('no process'); }, fetcher: async () => Response.json({}), requests: () => [] });
+    const again = createNativeControl({ control: f.control, appDirectory: f.install, directory: f.data, spawnProcess: () => { throw new Error('no process'); }, fetcher: async () => Response.json({}), requests: () => [] });
     const job = again.state().jobs.find(j => j.id === started.id);
     assert.equal(job.state, 'done');
     assert.equal(job.error, null);
@@ -313,24 +313,24 @@ test('packaged: an app update that ends the app is recorded as finished by the n
 });
 
 test('packaged: an update job an OLDER host left running is finished when the app program file is newer than the job', async () => {
-  const exe = new URL('../../strata-desktop.exe', import.meta.url);          // <install>/strata-desktop.exe as seen from <install>/host
   const f = fixture({ withApp: true });
+  const exe = join(f.install, isWin ? 'strata-desktop.exe' : 'strata-desktop');
   try {
-    const { fileURLToPath } = await import('node:url');
+    // Every timestamp fixture stays under this test's temporary install folder.
     const old = { id: 'old-1', kind: 'update-strata', state: 'running', startedAt: new Date(Date.now() - 60_000).toISOString(), summary: 'Starting…', result: null, error: null };
     writeFileSync(join(f.data, 'native-jobs.json'), JSON.stringify([old]));
-    const mk = () => createNativeControl({ control: f.control, directory: f.data, spawnProcess: () => { throw new Error('no process'); }, fetcher: async () => Response.json({}), requests: () => [] });
+    const mk = () => createNativeControl({ control: f.control, appDirectory: f.install, directory: f.data, spawnProcess: () => { throw new Error('no process'); }, fetcher: async () => Response.json({}), requests: () => [] });
     const before = mk();
     assert.equal(before.state().jobs[0].state, 'error', 'no new program file: still an interruption');
     await before.close();
     writeFileSync(join(f.data, 'native-jobs.json'), JSON.stringify([old]));
-    writeFileSync(fileURLToPath(exe), 'new program');
+    writeFileSync(exe, 'new program');
     try {
       const after = mk();
       assert.equal(after.state().jobs[0].state, 'done');
       assert.match(after.state().jobs[0].summary, /updated/i);
       await after.close();
-    } finally { rmSync(fileURLToPath(exe), { force: true }); }
+    } finally { rmSync(exe, { force: true }); }
   } finally { await f.native.close(); f.cleanup(); }
 });
 

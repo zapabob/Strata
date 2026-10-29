@@ -170,7 +170,8 @@ class Install(unittest.TestCase):
             self.cfg = cfg
             self.calls.append(("config", path.name))
 
-        patches = [mock.patch.object(setup, "download", lambda url, dst, what=None: self.calls.append(("get", url, dst))),
+        patches = [mock.patch("strata_control.dsv41_engine.install", return_value=None),  # no real feed/network in these fixtures
+                   mock.patch.object(setup, "download", lambda url, dst, what=None: self.calls.append(("get", url, dst))),
                    mock.patch.object(setup, "verify_sha256", lambda s, size, sha, own=False: self.calls.append(("sha", s.name, own))),
                    mock.patch.object(setup, "free_gb", lambda p: 900.0),
                    mock.patch.object(setup, "github_reachable", lambda timeout=10.0: self.github_up),

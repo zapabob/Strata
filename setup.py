@@ -878,12 +878,28 @@ def ask(question, choices, default, yes):
         say(f"  please answer one of: {', '.join(choices)}")
 
 
+class _PreserveHeadRedirect(urllib.request.HTTPRedirectHandler):
+    """A redirected size probe must remain HEAD, including on Python 3.12."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        redirected = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if redirected is not None and req.get_method() == "HEAD":
+            redirected.method = "HEAD"
+        return redirected
+
+
+def _network_open(req, timeout=None):
+    if isinstance(req, urllib.request.Request) and req.get_method() == "HEAD":
+        return urllib.request.build_opener(_PreserveHeadRedirect()).open(req, timeout=timeout)
+    return urllib.request.urlopen(req, timeout=timeout)
+
+
 def _urlopen(req, timeout=None):
     """Every network request of this file goes through here: starting and serving never reach the network
     (strata_control/acquisition.py), only an explicit setup, update or install does."""
     acquisition.require("a download")
     try:
-        return urllib.request.urlopen(req, timeout=timeout)
+        return _network_open(req, timeout=timeout)
     except urllib.error.URLError as e:
         if tls.is_certificate_error(e):               # not the raw urlopen text, and never a way to skip the check
             raise tls.CertificateProblem(tls.host_of(req.full_url if hasattr(req, "full_url") else str(req))) from None

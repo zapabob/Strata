@@ -428,8 +428,16 @@ def verify(component: EngineComponent, *, full: bool = False) -> None:
 
 
 def runtime_version() -> str | None:
+    """Numeric Control ABI version; a product preview is never a component version."""
     try:
-        return RUNTIME_VERSION_FILE.read_text(encoding="utf-8").strip() or None
+        value = RUNTIME_VERSION_FILE.read_text(encoding="utf-8").strip()
+        if re.fullmatch(r"[0-9]+(?:\.[0-9]+)+", value):
+            return value
+        # Source checkouts keep the product preview in VERSION; staged Control
+        # packages keep the numeric ABI there. Read the source ABI from CMake.
+        source = RUNTIME_VERSION_FILE.with_name("CMakeLists.txt").read_text(encoding="utf-8")
+        match = re.search(r"^\s*project\([^)]*?VERSION\s+([0-9]+(?:\.[0-9]+)+)", source, re.MULTILINE)
+        return match.group(1) if match else None
     except OSError:
         return None
 

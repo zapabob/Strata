@@ -131,7 +131,13 @@ async function rig(t) {
     });
     return frames;
   };
-  const call = (chatId, tool, args, options) => run(chatId, `SCRIPT:call ${tool} ${JSON.stringify(args)}`, options);
+  const call = async (chatId, tool, args, options) => {
+    const started=Date.now();
+    if(process.env.STRATA_TEST_TOOL_TIMING==='1')console.error('tool timing start',chatId,tool);
+    const frames=await run(chatId, `SCRIPT:call ${tool} ${JSON.stringify(args)}`, options);
+    if(process.env.STRATA_TEST_TOOL_TIMING==='1')console.error('tool timing finish',chatId,tool,Date.now()-started);
+    return frames;
+  };
   return { worker, bridge, dir, ws, run, call };
 }
 const cards = frames => frames.filter(f => f.type === 'agent-tool').map(f => f.tool);
@@ -158,8 +164,11 @@ test('a tool from each family runs and shows a card the page can render', { skip
   assert.equal(last(await r.call('fam-j', 'job_list', {})).state, 'done');
   // plan / list family
   assert.equal(last(await r.call('fam-t', 'todo_write', { todos: [{ content: 'check the build', status: 'pending' }] })).state, 'done');
-  const goal = last(await r.call('fam-goal', 'create_goal', { objective: 'finish the notes' }));
-  assert.equal(goal.state, 'done'); assert.equal(goal.effect, 'Sets a goal to work towards.');
+  const goalFrames=await r.run('fam-goal','SCRIPT:goalcreate');
+  const goal=cards(goalFrames).find(card=>card.name==='create_goal'&&card.state==='done');
+  assert.ok(goal,'goal creation produced its completed tool card');
+  assert.equal(goal.effect, 'Sets a goal to work towards.');
+  assert.ok(cards(goalFrames).some(card=>card.name==='update_goal'&&card.state==='done'),'the fixture completed its goal before ending');
   // write family (Bypass: no card asks)
   const wrote = await r.call('fam-fs', 'write', { file_path: fwd(join(r.ws, 'new.txt')), content: 'made\n' });
   assert.equal(last(wrote).state, 'done'); assert.equal(readFileSync(join(r.ws, 'new.txt'), 'utf8').trim(), 'made');

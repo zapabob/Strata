@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from rich.text import Text
+from rich.console import Console
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical, VerticalScroll
@@ -1595,8 +1596,14 @@ class SaveScreen(Base):
         s = self.ctx.settings
         lines = self.summary_lines()
         warnings = self.ctx.warnings()
-        body_h = self.query_one("#body").size.height
-        full_need = 2 + len(lines) + len(warnings) + 3 + 3
+        body = self.query_one("#body")
+        body_h = body.size.height
+        # Paths and warnings can occupy several terminal rows. Counting fields
+        # alone can hide a Save choice below the viewport at 80x24.
+        width = max(1, body.size.width - 4)
+        console = Console(width=width, color_system=None)
+        rows = lambda value: len(Text(value).wrap(console, width))
+        full_need = 2 + sum(rows(f"  {k:<10}{v}") for k, v in lines) + sum(rows(f"  ! {n}") for n in warnings) + 3 + 3
         compact = bool(body_h) and full_need > body_h
         name = self.query_one("#name", Input)
         name.set_class(compact, "slim")

@@ -696,6 +696,16 @@ class RunTests(StandardBase):
         self.assertIsNotNone(doc["concurrency_rounds"][0]["aggregate_tps"])
         self.assertEqual(bs.validate(doc), [])
 
+    def test_fast_local_responses_use_the_high_resolution_counter(self):
+        # The bundled Windows Python 3.12 monotonic clock ticks every 15.625 ms.
+        # A completed local round must not lose its throughput within one tick.
+        with mock.patch.object(bs.time, "monotonic_ns", return_value=0):
+            doc, _ = self.run_standard(optional_concurrency=True)
+        first = doc["concurrency_rounds"][0]
+        self.assertGreater(first["wall_s"], 0)
+        self.assertIsNotNone(first["aggregate_tps"])
+        self.assertEqual(bs.validate(doc), [])
+
     def test_the_plain_summary(self):
         doc, _ = self.run_standard()
         text = bs.format_plain(doc)

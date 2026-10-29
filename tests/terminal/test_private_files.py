@@ -9,6 +9,7 @@ import stat
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -120,6 +121,9 @@ class ElevatedRunLockoutTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
+        # The permission repair deliberately refuses unrelated folders. This
+        # scratch profile is owned by this test even when TEMP lives on H:.
+        self.enterContext(mock.patch.dict(os.environ, {"STRATA_HOME": str(self.root)}))
 
     @staticmethod
     def lock_out(path):
@@ -210,7 +214,7 @@ finally:
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_only_the_users_own_folders_are_ever_repaired(self):
-        self.assertFalse(pf.repair_access(os.environ.get("SystemRoot", "C:\Windows") + "\System32\drivers"))
+        self.assertFalse(pf.repair_access(Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32" / "drivers"))
 
     def test_a_profile_that_was_locked_loads(self):
         from strata_control import profiles

@@ -1,5 +1,6 @@
 /** Native Strata control plane. All user actions are explicit; opening the UI only reads state. */
 import {missingFilesError,missingNames} from './missing-files.mjs';
+import {configureDesktopMemory,privateMemoryArgs} from './hakua-desktop.mjs';
 import { spawn } from 'node:child_process';
 import {chooseParallel,applyParallel,withoutParallel,FALLBACK_NOTE} from './native-parallel.mjs';
 import { randomBytes, randomUUID, createHash } from 'node:crypto';
@@ -83,17 +84,18 @@ export function applyNativeApiKeys(cfg,env=process.env){
   return key;
 }
 
-export function createNativeControl({directory,requests=()=>[],changed=()=>{},spawnProcess=spawn,fetcher=fetch,modelsDirectory,nativeDataDirectory=value=>value,beforeLoad=async()=>{},hardwareProbe=()=>[],control=null,ready=null,appUpdater=null,defaultRepo=process.env.STRATA_NATIVE_REPO??resolve(ROOT,'../../Strata')}={}){
+export function createNativeControl({directory,requests=()=>[],changed=()=>{},spawnProcess=spawn,fetcher=fetch,modelsDirectory,nativeDataDirectory=value=>value,beforeLoad=async()=>{},hardwareProbe=()=>[],control=null,ready=null,appUpdater=null,appDirectory=dirname(ROOT),defaultRepo=process.env.STRATA_NATIVE_REPO??resolve(ROOT,'../../Strata')}={}){
  mkdirSync(directory,{recursive:true});
  const settingsPath=join(directory,'native-host.json');
  let preferences=readJson(settingsPath,{repo:defaultRepo});
  let child=null,seq=0,buffer='',pending=new Map(),definitions=[],refreshing=null,lastRead=0,connecting=null;
  let snapshot={available:false,repo:preferences.repo,summary:'Connect a local Strata installation.',catalog:null,installed:null,hardware:null,error:null};
  const instances=new Map(),processes=new Map(),jobs=new Map(),logs=[];
+ const desktopMemoryAccess=new Map();
  const savedJobs=readJson(join(directory,'native-jobs.json'),[]);/* An app update ends the app on purpose: the installer replaces it and starts it again. The job that asked for it was saved as running together with the app version it started from (appUpdateFrom); a start that finds a different version knows the update finished, instead of calling it an interrupted operation. */
  const thisAppVersion=()=>process.env.STRATA_APP_VERSION||null;
  /* A record an OLDER host wrote (no appUpdateFrom): the app's own program file was replaced after the job began, so the installer finished. <install>/host/server is ROOT's parent chain: ROOT = <install>/host. */
- const appProgramNewerThan=started=>{try{const t=Date.parse(started);if(!Number.isFinite(t))return false;const dir=dirname(ROOT),exe=join(dir,process.platform==='win32'?'strata-desktop.exe':'strata-desktop'),times=[];for(const f of [exe,join(dir,'uninstall.exe')])if(existsSync(f)){const st=statSync(f);times.push(st.mtimeMs,st.ctimeMs);}/* the installer keeps the build time as the program's modified time but writes uninstall.exe and changes the program file's metadata when it installs */return times.some(x=>x>t);}catch{return false;}};
+ const appProgramNewerThan=started=>{try{const t=Date.parse(started);if(!Number.isFinite(t))return false;const dir=appDirectory,exe=join(dir,process.platform==='win32'?'strata-desktop.exe':'strata-desktop'),times=[];for(const f of [exe,join(dir,'uninstall.exe')])if(existsSync(f)){const st=statSync(f);times.push(st.mtimeMs,st.ctimeMs);}/* the installer keeps the build time as the program's modified time but writes uninstall.exe and changes the program file's metadata when it installs */return times.some(x=>x>t);}catch{return false;}};
  const settledByAppUpdate=j=>j.state==='running'&&j.kind==='update-strata'&&((typeof j.appUpdateFrom==='string'&&!!thisAppVersion()&&thisAppVersion()!==j.appUpdateFrom)||(typeof j.appUpdateFrom!=='string'&&appProgramNewerThan(j.startedAt)));
  const neverFinishedAppUpdate=j=>j.state==='running'&&j.kind==='update-strata'&&typeof j.appUpdateFrom==='string'&&!!thisAppVersion()&&thisAppVersion()===j.appUpdateFrom;
  for(const j of (Array.isArray(savedJobs)?savedJobs:[]).slice(-12))jobs.set(j.id,{...j,...(settledByAppUpdate(j)?{state:'done',error:null,summary:`Strata is updated to ${thisAppVersion()}.`,finishedAt:new Date().toISOString()}:neverFinishedAppUpdate(j)?{state:'error',error:`The update to ${j.appUpdateTo??'the new version'} did not finish: the app closed for the installer, but the old version ${j.appUpdateFrom} started again. Try Update again, or download the installer from the Strata release page (https://github.com/Niko1221/Strata/releases/latest).`,summary:'The app update did not finish',finishedAt:new Date().toISOString()}:j.state==='running'?{state:'error',error:'The host restarted before completion. Check diagnostics, then retry; completed files are kept.',summary:'Interrupted operation'}:{})});
@@ -266,7 +268,7 @@ export function createNativeControl({directory,requests=()=>[],changed=()=>{},sp
  }
  function terminate(proc,signal='SIGTERM'){if(!proc)return;if(process.platform!=='win32'&&proc.pid){try{process.kill(-proc.pid,signal);return;}catch{}}proc.kill(signal);}
  async function stopProcess(proc){if(!proc||proc.exitCode!=null)return;await new Promise(resolve=>{const timeout=setTimeout(()=>{terminate(proc,'SIGKILL');resolve();},8000);proc.once('exit',()=>{clearTimeout(timeout);resolve();});terminate(proc);});}
- async function unload(id,force=false){const instance=instances.get(id);if(!instance)throw new Error('This model is no longer loaded.');if(!force&&[...jobs.values()].some(j=>j.kind==='benchmark'&&j.state==='running'&&j.instanceId===id))throw new Error('Stop the benchmark before unloading this model.');if(!force&&busy(requests().filter(r=>r.instanceId===id)))throw new Error('Finish or cancel this model’s requests first.');instance.status='unloading';if(instance.profile){try{await control.stop(instance.profile);}catch(error){if(!force){instance.status='error';instance.error=error.message;emit();throw error;}}}else await stopProcess(processes.get(id));processes.delete(id);instances.delete(id);try{unlinkSync(instance.configPath);}catch{}if(defaultId===id)defaultId=instances.keys().next().value??null;emit();return state();}
+ async function unload(id,force=false){const instance=instances.get(id);if(!instance)throw new Error('This model is no longer loaded.');if(!force&&[...jobs.values()].some(j=>j.kind==='benchmark'&&j.state==='running'&&j.instanceId===id))throw new Error('Stop the benchmark before unloading this model.');if(!force&&busy(requests().filter(r=>r.instanceId===id)))throw new Error('Finish or cancel this model’s requests first.');instance.status='unloading';if(instance.profile){try{await control.stop(instance.profile);}catch(error){if(!force){instance.status='error';instance.error=error.message;emit();throw error;}}}else await stopProcess(processes.get(id));processes.delete(id);instances.delete(id);desktopMemoryAccess.delete(id);try{unlinkSync(instance.configPath);}catch{}if(defaultId===id)defaultId=instances.keys().next().value??null;emit();return state();}
  /* Delete a downloaded model: stop it first, then the installer removes the model's own files and its run config and keeps
     whatever another installed model still uses (shared MTP draft, shared PLE shard). */
  async function removeModel(job,args){if(!safeId(args.model))throw new Error('Choose an installed model.');
@@ -318,6 +320,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   /* DeepSeek's Speed choice: the engine decides by itself (--experts auto: 5 when the cards total 16 GB or less, else 6), so nothing is passed unless the person chose 5 or 6. */
   if(ownEngine(config)){const list=[];const old=Array.isArray(cfg.args)?cfg.args:[];for(let i=0;i<old.length;i++){if(old[i]==='--experts'){i++;continue;}list.push(old[i]);}if(dsExpertsSupported(config)&&(cfg.ds_experts==='5'||cfg.ds_experts==='6'))list.push('--experts',cfg.ds_experts);else if(!dsExpertsSupported(config)&&old.includes('--experts'))list.splice(0,list.length,...old);cfg.args=list;delete cfg.ds_experts;}
   else delete cfg.ds_experts;
+  if(packaged&&hakuaChatbotEnabled()&&!ownEngine(cfg)&&cfg.hakua_harness===undefined)privateMemoryArgs(cfg);
   return {cfg,resources,visionPreferences,parallelChoice,parallelNote};
  }
  /* The DFlash2 drafter, before a load that uses it: Control says whether the choice needs it (and the file is not here), downloads it pinned and checked, and packs it, with plain progress in the job.
@@ -346,6 +349,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   const {cfg,resources,visionPreferences,parallelChoice,parallelNote:chosenNote}=buildConfig(args,config);
   let parallelNote=chosenNote;
   await prepareDrafter(job,args,cfg,configFile);if(job.state!=='running')return;
+  const memoryAccess=configureDesktopMemory(cfg,{enabled:packaged&&hakuaChatbotEnabled()&&!ownEngine(cfg),directory});
   const fingerprint=createHash('sha256').update(JSON.stringify({...cfg,api_key:undefined,port:undefined})).digest('hex');
   const placement=Array.isArray(cfg.gpu)?cfg.gpu:cfg.gpu===undefined?[]:[cfg.gpu];const matching=[...instances.values()].find(i=>i.model===args.model&&JSON.stringify(i.gpus)===JSON.stringify(placement));
   if(matching?.status==='ready'&&matching.fingerprint===fingerprint&&(args.multiple||instances.size===1))return {summary:`${matching.label} is already ready.`,instanceId:matching.id};
@@ -360,6 +364,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   if(!args.multiple){if(busy(requests().filter(r=>instances.has(r.instanceId))))throw new Error('Finish or cancel native requests before switching models.');for(const existingId of [...instances.keys()]){const existing=instances.get(existingId);/* Force-clear error/loading leftovers from a prior cancel; a blocked stop must not fail the next load (server_stop_deadline_expired). */await unload(existingId,!existing||existing.status!=='ready');}}else if(matching)await unload(matching.id,matching.status!=='ready');
   if(job.state!=='running')return;
   writeFileSync(configPath,JSON.stringify(cfg,null,2),{mode:0o600});
+  if(memoryAccess)desktopMemoryAccess.set(id,memoryAccess);
   const instance={id,apiModelId,fingerprint,context:entry.context??0,aliases:cfg.aliases??[],vision:!!cfg.vision,resourceProfile:cfg.ui_resource_profile??null,model:args.model,label:friendlyModelName(snapshot.catalog,args.model)??entry.model_name??args.model,port:cfg.port,gpus:Array.isArray(cfg.gpu)?cfg.gpu:cfg.gpu===undefined?[]:[cfg.gpu],status:'loading',phase:'loading',parallel:cfg.parallel??1,mcpServers:cfg.mcp_servers??cfg.mcpServers??{},key,configPath,ownerJob:job.id,loadedAt:new Date().toISOString(),metrics:null,error:null};
   /* Another model on the same graphics card: the engine takes the card's free memory, so a second one usually finds none. Loading goes on (recommend, never force); if it fails, the reason is said. */
   const sharedWith=instance.gpus.length?[...instances.values()].find(i=>i.id!==id&&i.status!=='error'&&i.model!==args.model&&i.gpus.some(g=>instance.gpus.includes(g))):null;
@@ -610,7 +615,8 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   const port=Number(instance.port);
   if(!Number.isInteger(port)||port<1024||port>65535)throw new Error('This model has no valid local port.');
   // Keys stay out of the URL and command line; the person authenticates in the memory-chat page.
-  return opener(`http://127.0.0.1:${port}/`);
+  const opened=opener(`http://127.0.0.1:${port}/`);
+  return {...opened,...(desktopMemoryAccess.get(instance.id)??{})};
  }
  return {state:publicState,tuneStatus,tuneEffective,tuneOff,tunePresets:{list:()=>autotuner.list(),action:(kind,id,extra)=>autotuner.action(kind,id,extra),undoFor:async args=>autotuner.undoFor(tuneConfig(args).path)},refresh,localPreview,openHakuaChat,configure,setDownloadDirectory,planModelsFolder,startModelsFolder,interruptedMove,finishInterruptedMove,leaveInterruptedMove,plan,settings,save,settingsFile,openSettingsFile,operation,cancel,unload,resolveInstance,poll,logs:()=>logs.slice(),benchmarkReport:()=>readJson(join(directory,'native-benchmark.json'),null),setDefault(id){defaultId=resolveInstance(id).id;emit();return publicState();},hasLive:()=>[...instances.values()].some(i=>i.status==='ready'),readyInstances:()=>[...instances.values()].filter(i=>i.status==='ready'),defaultInstanceId:()=>defaultId,close};
 }

@@ -35,7 +35,7 @@ MAX_CONFIGS = 128
 MAX_IMPORT_SHARDS = 128
 SHARD = re.compile(r"(.+)-(\d{5})-of-(\d{5})\.gguf\Z", re.I)
 SUPPORTED_ARCHITECTURES = frozenset({
-    "qwen4exp", "qwen35", "qwen2", "qwen", "llama", "deepseek2", "deepseek", "dsv41", "deepseek41", "qwen35moe", "mistral", "phi"
+    "qwen4exp", "qwen35", "qwen2", "qwen", "deepseek2", "deepseek", "dsv41", "deepseek41", "qwen35moe"
 })
 SUPPORTED_SELECTIONS = frozenset({"qwen/Q2_0", "qwen/IQ2_XS", "qwen/IQ3_XXS", "qwen/IQ3_S",
                                    "swift/IQ2_XS", "swift/IQ3_XXS", "swift/IQ3_S", "coder/IQ1_M",
@@ -838,7 +838,12 @@ def plan_import(raw_path: str) -> dict:
     candidate = _candidate_selection(shards)
     if candidate is None and metadata is not None and not issues:
         candidate = _candidate_by_header(shards, observed_tensor_count, observed_payload, observed_experts)
-    # Fork proprietary architecture descriptors (DeepSeek / Qwen / Prism) before upstream layout fallback.
+    if candidate is None:
+        candidate = _candidate_by_layout(shards, observed_tensor_count, observed_payload, observed_experts)
+        if candidate is not None:
+            messages.append(f"These files are not exactly a build Strata has tested; they have the layout of {candidate['family']} "
+                            f"{candidate['model']}, so Strata uses them as that model. Check a few answers before you rely on them.")
+    # A known layout is stronger evidence than a generic architecture descriptor.
     if candidate is None and metadata is not None and not issues:
         arch = metadata.get("architecture")
         if arch in ("dsv41", "deepseek", "deepseek2", "deepseek41"):
@@ -859,7 +864,7 @@ def plan_import(raw_path: str) -> dict:
                 "expected_tensor_count": observed_tensor_count,
                 "setup_args_hint": ["--family", "qwen36", "--model", "UD-Q4_K_XL", "--gguf-dir", str(shards[0].parent)],
             }
-        elif arch == "qwen4exp" or (arch in ("qwen2", "qwen", "qwen35") and any("flash" in p.name.lower() or "swift" in p.name.lower() for p in shards)):
+        elif arch in ("qwen2", "qwen", "qwen35") and any("flash" in p.name.lower() or "swift" in p.name.lower() for p in shards):
             is_swift = any("swift" in p.name.lower() for p in shards)
             fam = "swift" if is_swift else "qwen"
             mod = "IQ2_XS"
@@ -884,11 +889,6 @@ def plan_import(raw_path: str) -> dict:
                 "expected_tensor_count": observed_tensor_count,
                 "setup_args_hint": ["--family", "qwen", "--model", "Q2_0", "--gguf-dir", str(shards[0].parent)],
             }
-    if candidate is None:
-        candidate = _candidate_by_layout(shards, observed_tensor_count, observed_payload, observed_experts)
-        if candidate is not None:
-            messages.append(f"These files are not exactly a build Strata has tested; they have the layout of {candidate['family']} "
-                            f"{candidate['model']}, so Strata uses them as that model. Check a few answers before you rely on them.")
     if "multiple_model_groups" in issues:
         candidate = None                                  # nothing is chosen for the person
     if candidate is None and not {"multiple_model_groups", "incomplete_or_invalid_shard_set"} & set(issues):

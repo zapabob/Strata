@@ -7121,8 +7121,7 @@ bool Prefill::run(const int64_t* tokens, int64_t n, int64_t pos0, std::string& e
                 noted = true;
                 std::fprintf(stderr, "strata prefill: layer-major prefill is on for this layer split (each layer's experts are read once per "
                                      "super-chunk of up to %lld tokens, not once per chunk; STRATA_PREFILL_LAYER_MAJOR=0 or STRATA_DEFAULTS=026 "
-                                     "turns it off)
-", (long long) kLmDefaultOnTokens);
+                                     "turns it off)\n", (long long) kLmDefaultOnTokens);
             }
         }
         if (lm_prepare_chain(n, why) > 0) {
@@ -7139,8 +7138,7 @@ bool Prefill::run(const int64_t* tokens, int64_t n, int64_t pos0, std::string& e
         static std::string said;
         if (why != said && !(by_default && why == "a short prompt")) {
             said = why;
-            std::fprintf(stderr, "strata prefill: layer-major off for this prompt: %s
-", why.c_str());
+            std::fprintf(stderr, "strata prefill: layer-major off for this prompt: %s\n", why.c_str());
         }
     }
     const bool body_ok = run_impl(tokens, n, pos0, err);

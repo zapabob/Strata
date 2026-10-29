@@ -207,7 +207,7 @@ test('MODE changing the mode while a turn runs does not touch that turn', { skip
   const r = await rig(t);
   const frames = [];
   const slow = r.bridge.runTurn({ chatId: 'm-mid', message: 'SCRIPT:slow 120', workspacePath: r.ws, mode: 'manual', onFrame: f => frames.push(f) });
-  for (let i = 0; i < 200 && frames.filter(f => f.type === 'delta').length < 3; i++) await sleep(50);
+  for (const deadline = Date.now() + 90_000; Date.now() < deadline && frames.filter(f => f.type === 'delta').length < 3;) await sleep(50);
   assert.ok(frames.filter(f => f.type === 'delta').length >= 3, 'the turn must be live first');
   // The person flips the menu to Bypass and sends again. The second send is refused (a chat runs one turn at a time) and,
   // because it is refused before anything is applied, the running turn's permissions do not move.

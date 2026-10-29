@@ -39,8 +39,11 @@ const run = (cmd, argv, cwd, extra = {}) => {
 const keepIgnore = existsSync(join(out, '.gitignore')) ? readFileSync(join(out, '.gitignore')) : null;
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
-const pnpm = platform === 'win32' ? ['corepack.cmd', ['pnpm']] : ['corepack', ['pnpm']];
-run(pnpm[0], [...pnpm[1], 'deploy', '--legacy', '--prod', '--filter', '@deepseek-ai/dsh', out], src, { shell: platform === 'win32' });
+// A pinned local pnpm entry supports Node installations that no longer carry Corepack.
+const pnpm = process.env.STRATA_PNPM_JS
+  ? [process.execPath, [resolve(process.env.STRATA_PNPM_JS)]]
+  : platform === 'win32' ? ['corepack.cmd', ['pnpm']] : ['corepack', ['pnpm']];
+run(pnpm[0], [...pnpm[1], 'deploy', '--legacy', '--prod', '--filter', '@deepseek-ai/dsh', out], src, { shell: !process.env.STRATA_PNPM_JS && platform === 'win32' });
 
 // --- peers -------------------------------------------------------------------------------------------------------------
 // `pnpm deploy --prod` leaves out peer dependencies, but the Harness loads some of them by name at run time (for example the
@@ -172,7 +175,7 @@ const lost = missingHarnessImports(out);
 if (lost.length) { console.error(['staged Harness is missing imported packages:', ...lost.map(l => `  ${l.from} -> ${l.missing}`)].join(String.fromCharCode(10))); process.exit(1); }
 console.log('import check: every @deepseek-ai package the Harness imports is staged');
 
-// --- proof 2: the staged copy answers --version and boots the web profile once ----------------------------------------
+// --- proof 2: the staged copy answers --version (web-profile behaviour is tested separately) ----------------------------------------
 const bin = join(out, 'apps', 'cli', 'lib', 'bin.js');
 const entry = existsSync(bin) ? bin : join(out, 'lib', 'bin.js');
 const v = spawnSync(process.execPath, [entry, '--version'], { encoding: 'utf8' });

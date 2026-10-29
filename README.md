@@ -1,249 +1,59 @@
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="apps/host/public/brand/strata-lockup-dark.svg">
-    <img src="apps/host/public/brand/strata-lockup-light.svg" alt="Strata" width="340">
-  </picture>
-</p>
+# Hakua / Strata
 
-<h3 align="center">Run powerful AI on your own computer.</h3>
-<p align="center">Chat, code and work with images, locally.</p>
+Hakua chatbot, built on Strata. [zapabob/Strata](https://github.com/zapabob/Strata) · [Niko1221/Strata](https://github.com/Niko1221/Strata)
 
-<p align="center">
-  <a href="#models">Models</a> · <a href="#install"><b>Install</b></a> ·
-  <a href="#hardware">Hardware</a> · <a href="#tools">Tools</a> ·
-  <a href="#fork-notes">Fork notes</a> · <a href="#help">Help</a> · <a href="#support-strata">Support</a>
-</p>
+[English](README.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [Deutsch](README.de.md) · [Français](README.fr.md) · [Español](README.es.md) · [Português](README.pt-BR.md) · [Polski](README.pl.md)
 
-<p align="center">
-  <a href="https://github.com/zapabob/Strata/releases/latest"><img src="https://img.shields.io/github/v/release/zapabob/Strata?label=fork%20release&color=0ab887" alt="Download this fork"></a>
-  <a href="https://github.com/Niko1221/Strata/releases/latest"><img src="https://img.shields.io/github/v/release/Niko1221/Strata?label=upstream&color=555" alt="Upstream Strata"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/Niko1221/Strata" alt="MIT license"></a>
-  <a href="https://buymeacoffee.com/strataengine"><img src="https://img.shields.io/badge/Buy_me_a_coffee-FFDD00?logo=buymeacoffee&logoColor=000" alt="Support Strata on Buy Me a Coffee"></a>
-</p>
+## TLDR · installation steps in 30 seconds
 
-<p align="center"><sub><b>English</b> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ja.md">日本語</a> · <a href="README.de.md">Deutsch</a> · <a href="README.fr.md">Français</a> · <a href="README.es.md">Español</a> · <a href="README.pt-BR.md">Português</a> · <a href="README.pl.md">Polski</a></sub></p>
+Download this fork's Windows installer, run it, then select and load a compatible model. Open Hakua memory in the sidebar. The steps take about 30 seconds; downloading, installing and loading the app and model take longer.
 
-**Free, open source, and yours to run.**
+[Windows EXE](https://github.com/zapabob/Strata/releases/download/v0.3.3-preview.20261030.1/Strata_0.3.3-preview.20261030.1_x64-setup.exe) · [7z](https://github.com/zapabob/Strata/releases/download/v0.3.3-preview.20261030.1/Hakua-Strata-0.3.3-preview.20261030.1-windows-x64-sm120.7z) · [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.3.3-preview.20261030.1/SHA256SUMS.txt)
 
-This is **[zapabob/Strata](https://github.com/zapabob/Strata)** — a Hakua fork of [Niko1221/Strata](https://github.com/Niko1221/Strata). It keeps Hakua consented memory chat (Sidebar **Hakua**), ships `host/hakua-chatbot.enabled` in the Windows package so Hakua stays on after install, and wires Hermes-agent `SOUL.md` / `MEMORY.md` into the Hakua memory stack (Ebbinghaus, RAG + semantic graph, Obsidian, and `hakua sleep`). It also keeps Spin(8)/Triality, Query-v3, TurboQuant, Bonsai, Hermes hooks and Windows `-hakua` packaging, and tracks upstream features, security fixes and bugfixes.
+The 7z contains the same installer. Extract it, then run the setup EXE.
 
-| Version kind | Value |
+## Fork features
+
+Hakua reads remembered context and saves a summary only with your consent for that request. Read and save are independent and reset after each request. Memory chat needs an enabled `hakua_harness` profile and its own profile key; a normal chat key is separate. Follow the [memory setup guide](serve/MEMORY_HARNESS.md).
+
+Hermes tools support approved SOUL.md / MEMORY.md synchronisation, Ebbinghaus memory, semantic graph, Obsidian export and sleep consolidation. These operator tools are separate from the chat page. Optional RAG and embedding packages are not part of the base installer.
+
+For a local PQ2_0 GGUF, choose `PrismML` under the model’s llama-server backend setting. For standard GGUF models, choose `TurboQuant`, set K cache precision to `FP16` and V to `TURBO2`, `TURBO3` or `TURBO4`. TurboQuant K modes are unavailable in this candidate because real-model tests found corrupted replies. Reload the model after changing the backend. Each backend has its own bundled executable and libraries; PQ2_0 and TurboQuant are separate paths. See [backend setup and limits](docs/LOCAL_LLAMA_BACKENDS.md).
+
+Spin(8)/Triality, Query-v3 and Bonsai experiments require compatible, explicitly selected settings. No general speed or quality improvement is claimed.
+
+Private Node and Python, pinned Hakua-memory 0.3.5 and a fork-built CUDA engine are bundled. Starting a model does not install Python packages or compile code.
+
+## Compatibility and updates
+
+This Windows package targets NVIDIA RTX 50-series, CUDA sm_120. Other GPUs, Linux and macOS need their own compatible packages. An upstream installer does not include this fork's changes. Model weights are separate and may need tens or hundreds of GB. Prefer compatible ISTA-DASLab packs, then Unsloth, then Gyro.
+
+Keep models and personal memory outside the app folder; no personal memories, profile keys or weights are distributed. Close the app before upgrading. To roll back, retain a data backup and install an earlier fork release.
+
+[Models](docs/MODELS.md) · [Install](docs/INSTALL.md) · [Hermes tools](tools/hakua_hermes_memory_stack.py)
+
+## Versions and validation
+
+| | |
 | --- | --- |
-| **Product** (app / installer / `VERSION`) | **`0.3.2-preview.20261029.2`** |
-| **Engine** (native CUDA/HIP/SYCL; Metal separate) | **0.1.53** (Metal **0.1.52-metal**) |
-| Upstream tracked for models & hardware guides | **v0.2.7.1** (`46c152a1`, synced 2026-10-28) |
+| GUI / Product | `0.3.3-preview.20261030.1` |
+| Engine | `0.3.3` (CUDA sm_120) |
+| Hakua-memory | `0.3.5` |
+| Upstream | `46c152a1` · 2026-10-28 |
 
-The product number is what the installer and About box show. The engine number is the C++ inference binary the app downloads for your graphics card. They move on different schedules — do not treat them as the same string.
+<!-- App version in this preview tree: `0.3.3-preview.20261030.1` -->
 
-Site: [zapabob.github.io/Strata](https://zapabob.github.io/Strata/) · Fork detail: [Fork notes](#fork-notes)
+This preview is unsigned. Compare the download against SHA256SUMS.txt before installing. [Release qualification](docs/HAKUA_RELEASE.md) records actual test results and limitations; a successful build alone does not prove inference works. This unsigned preview uses manual installer updates; automatic signed updates are not yet qualified.
 
-## Models
-
-We recommend **ISTA-DASLab first**, then **Unsloth** and other providers, where a compatible model fits.
-
-<details>
-<summary><img src="docs/media/models/qwen.svg" width="22" alt="" align="middle"> &nbsp;<b>Qwen3.8-Flash-Next</b></summary>
-
-| Provider | Choices |
-| --- | --- |
-| **ISTA-DASLab · recommended** | Q2\_0, IQ2\_XS, IQ3\_XXS, IQ3\_S. [Coder: IQ1\_M](docs/MODELS.md#coder) for coding. |
-| **Unsloth** | UD-IQ4\_XS, UD-Q4\_K\_XL, UD-Q5\_K\_XL, UD-Q6\_K\_XL, Q8\_0 |
-| **Gyro · agentionai** | [Gyro-S, Gyro-M](https://huggingface.co/agentionai/Qwen3.8-Flash-Next-Gyro-GGUF). Lower memory use but slower. |
-| **Other options** | [Swift 1.5](docs/MODELS.md#swift-15), [NVFP4](docs/NVFP4.md), [OrcaRouter](docs/ORCA.md) |
-
-[Compare sizes, memory needs and compatibility](docs/MODELS.md).
-
-</details>
-
-<details>
-<summary><img src="docs/media/models/qwen.svg" width="22" alt="" align="middle"> &nbsp;<b>Qwen3.6-35B-A3B</b></summary>
-
-**Unsloth:** UD-Q4_K_XL, UD-Q6_K_XL, Q8_0. These are the currently documented packs for this model.
-
-[Model guide and compatibility](docs/QWEN36.md).
-
-</details>
-
-<details>
-<summary><img src="docs/media/models/deepseek.svg" width="22" alt="" align="middle"> &nbsp;<b>DeepSeekV4.1-Flash-1017</b></summary>
-
-In the **desktop app** and the **Terminal**. What does not fit in memory is read from your SSD, so it needs a lot of free
-disk space.
-
-| Set (IST-DAS) | Download | Free disk needed |
-| --- | ---: | ---: |
-| 1.75 bpw | 239 GB | about 245 GB |
-| 2.00 bpw | 257 GB | about 265 GB |
-| 2.25 bpw | 274 GB | about 280 GB |
-
-Runs on NVIDIA RTX 30, 40 and 50 series (Windows and Linux), AMD Radeon AI PRO R9700 (Linux), AMD Ryzen AI Max — Strix Halo
-(Windows), and Apple Silicon Macs with 64 GB or more, text only ([Mac](docs/DEEPSEEK_MAC.md)). Setup downloads the files and the DeepSeek engine, then starts the model.
+## Development and support
 
 ```sh
-strata launch --family deepseek41 --model ist-das-2.00bpw --plan
+python -m pytest tests/terminal tests/test_hakua_hermes_memory_stack.py
+python -m unittest discover -s serve -p 'test_*.py'
+npm --prefix apps/host test
+npm --prefix apps/host run typecheck
 ```
 
-Measured with the 2.00 bpw set on Strata 0.2.5 (Strix Halo: 0.2.7). Output is the speed of the answer, prompt is how fast Strata reads your input.
+[Build](packaging/README.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Issues](https://github.com/zapabob/Strata/issues)
 
-| Hardware | Output | Prompt |
-| --- | ---: | ---: |
-| RTX 5070 12 GB, 64 GB RAM | 4 to 6 tokens/s | about 110 tokens/s (4K) |
-| RTX 3060 12 GB, 46 GB RAM | 9 to 11 tokens/s | about 155 tokens/s (4K) |
-| 1x Radeon AI PRO R9700, 251 GB RAM | 21 to 25 tokens/s | 320 to 360 tokens/s (8K) |
-| 4x Radeon AI PRO R9700 | 74 to 77 tokens/s | 400 to 450 tokens/s (8K) |
-| Ryzen AI Max+ 395 (Strix Halo), 128 GB unified | 19 to 21 tokens/s (code), 11 (chat) | 87 tokens/s (4K), 125 tokens/s (8K) |
-
-[Memory, disk and details](docs/DEEPSEEK41.md) · [Release notes](https://github.com/Niko1221/Strata/releases)
-
-</details>
-
-<a id="the-other-sizes"></a>
-
-Not sure what fits? [Choose a model for your computer](docs/MODELS.md#pick-by-memory).
-
-## Install
-
-<a id="option-a-the-strata-app"></a>
-
-### Desktop app (this fork)
-
-**[Windows NSIS (unsigned preview) →](https://github.com/zapabob/Strata/releases/download/v0.3.2-preview.20261029.2/Strata_0.3.2-preview.20261029.2_x64-setup.exe)**  
-Tag: [v0.3.2-preview.20261029.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2) · Earlier source sync: [v0.3.2-preview.20261028.1](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1) · [All fork releases](https://github.com/zapabob/Strata/releases) · [Upstream releases](https://github.com/Niko1221/Strata/releases/latest)
-
-Released Windows installer file:
-
-`Strata_0.3.2-preview.20261029.2_x64-setup.exe`
-
-SHA-256 is listed on the [release notes](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2). If the download 404s, check [Releases](https://github.com/zapabob/Strata/releases) for the newest uploaded setup.
-
-Install or overwrite the Windows app (`/S` silent overwrite is fine), choose a model, and start chatting. Default install path: `%LOCALAPPDATA%\Programs\Strata`. On first start the app downloads the **engine** for your graphics card (engine **0.1.53** line). Keep your models folder when upgrading. The package includes `host/hakua-chatbot.enabled` (Hakua sidebar on). This preview build is **unsigned** (no signed updater feed). [Installer help](docs/INSTALL.md#the-app).
-
-<sub>Optional 7z sidecar when published. Upstream also ships Linux/macOS installers under Niko1221/Strata.</sub>
-
-<p align="center">
-  <img src="docs/media/app-chat.png" width="900" alt="Strata desktop app with a chat and live code preview side by side">
-  <br><sub>Chat, files and a live preview in one window.</sub>
-</p>
-
-<a id="option-b-the-terminal-one-line"></a>
-
-### Terminal app
-
-Prefer the terminal? Install Strata, then run **`strata launch`**.
-
-<details open>
-<summary><b>Install commands</b></summary>
-
-**Linux / Mac**
-
-```sh
-curl -fsSL https://github.com/Niko1221/Strata/releases/latest/download/install.sh -o install.sh && sh install.sh
-```
-
-**Windows PowerShell**
-
-```powershell
-irm https://github.com/Niko1221/Strata/releases/latest/download/install.ps1 | iex
-```
-
-On Windows, open a new terminal afterwards. Then:
-
-```sh
-strata launch
-```
-
-Follow the prompts to download and start a model. [Terminal guide](docs/TERMINAL_LAUNCH.md).
-
-</details>
-
-<p align="center">
-  <img src="docs/media/terminal-monitor.png" width="900" alt="Strata terminal app showing model activity, speed, memory and recent requests">
-  <br><sub>Watch your model and hardware while it runs.</sub>
-</p>
-
-<a id="build-from-source"></a>
-
-[Build from source](docs/SOURCE_INSTALL.md) · [Docker](docs/DOCKER.md) · [Full install guide](docs/INSTALL.md)
-
-<a id="what-you-need"></a>
-
-## Hardware
-
-| Supported hardware | Guide |
-| --- | --- |
-| **NVIDIA GeForce RTX 20 / 30 / 40 / 50 series** | [NVIDIA setup](docs/INSTALL.md#what-you-need) |
-| **AMD Radeon RX 7700 / 7800 / 7900, RX 9060 / 9070, AI PRO R9700** | [AMD setup](docs/AMD_HIP.md) |
-| **AMD Radeon RX 6800 / 6900 · experimental** | [RX 6000 setup](docs/AMD_HIP.md#rdna2-gfx1030) |
-| **Intel Arc · Linux** | [Intel setup](docs/INTEL_ARC.md) |
-| **Apple Silicon · M1 or newer** | [Mac setup](docs/MAC.md) |
-| **AMD Ryzen AI Max · Strix Halo** | [Strix Halo setup](docs/STRIX_HALO.md) |
-| **NVIDIA DGX Spark · Linux** | [DGX Spark setup](docs/DGX_SPARK_LINUX.md) |
-
-<a id="using-it"></a>
-
-## Tools
-
-**Claude Code · Codex CLI · OpenCode · oh-my-pi · pi.dev · Hermes Agent · OpenClaw**, and more through the OpenAI- and Anthropic-compatible APIs.
-
-Run **`strata connect`** to see setup instructions for your tool. [Connection guide](docs/TERMINAL_LAUNCH.md#connect-your-apps-strata-connect).
-
-<a id="guides"></a>
-<a id="how-fast-is-it"></a>
-<a id="how-does-it-work"></a>
-<a id="something-went-wrong"></a>
-
-## Help
-
-[All guides](docs) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [Report a bug on this fork](https://github.com/zapabob/Strata/issues/new/choose) ·
-[Benchmarks](docs/COMMUNITY_BENCHMARKS.md) · [How it works](docs/HOW_IT_WORKS.md) · [Contribute](CONTRIBUTING.md)
-
-
-
-<a id="fork-notes"></a>
-
-## Fork notes
-
-| Item | Value |
-| --- | --- |
-| Repository | [zapabob/Strata](https://github.com/zapabob/Strata) |
-| Upstream tracked | [Niko1221/Strata](https://github.com/Niko1221/Strata) **v0.2.7.1** (`46c152a1`) |
-| Product version | `0.3.2-preview.20261029.2` |
-| Engine version | `0.1.53` (Metal `0.1.52-metal`) |
-| Landing page | https://zapabob.github.io/Strata/ |
-| Windows installer (released tag) | [v0.3.2-preview.20261029.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2) → `Strata_0.3.2-preview.20261029.2_x64-setup.exe` (unsigned NSIS) |
-| Upstream sync tag | [v0.3.2-preview.20261028.1](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1) |
-| Memory pip pin | `hakua-memory==0.3.5` (`requirements.txt`; optional `[obsidian,rag]`) |
-
-**Kept on purpose:** Hakua consented memory chat; packaged enable marker `programs/host/hakua-chatbot.enabled` (also under the install tree as `host/hakua-chatbot.enabled`); `hakua_harness` / run-config keys; load-cancel ownership (`stopCancelledLoad`); F01–F11 (Spin8 / Query-v3 / TurboQuant / guards / GGUF router); Hermes hooks; Windows packaging labelled `-hakua`. Product SemVer is unified via root `VERSION` and `tools/bump_hakua_product_version.py`.
-
-### Hakua memory stack (this fork)
-
-Consented long-term memory for Hakua / Hermes operators. Memory read/write stays opt-in (`strata_memory` + principal keys). No secrets in the repo.
-
-| Piece | What it does |
-| --- | --- |
-| Hermes `SOUL.md` / `MEMORY.md` | Plain-copied into a Hakua principal profile (`~/.hakua-memory/profiles/hermes/`) for `hakua_harness` `persona_sha256` (no symlinks). |
-| Ebbinghaus | Spaced retention / sleep rehearsal via `hakua_memory.ebbinghaus` under the profile root. |
-| RAG + semantic graph | Document chunks (`rag.db`) and typed graph nodes/edges (`semantic.db`) through `CompositeMemory`. |
-| Obsidian | Export/import under `OBSIDIAN_VAULT_PATH` (or the open vault) → `Hakua/` notes. |
-| Sleep / consolidate | `py -3 tools/hakua_hermes_memory_stack.py sleep` (also `strata_memory_mcp.py --cli sleep`) reindexes, runs Ebbinghaus sleep, flushes Obsidian. |
-| Sidebar enable | Packaged `host/hakua-chatbot.enabled` keeps the **Hakua** sidebar available after install. |
-| Python package | `pip install hakua-memory==0.3.5` (operators may add extras: `pip install "hakua-memory[obsidian,rag]==0.3.5"`). |
-
-Operator template: `serve/examples/hakua_hermes_harness.example.json`. Stack CLI: `tools/hakua_hermes_memory_stack.py`. Host/MCP bridge: `tools/strata_memory_mcp.py`. Detail log: `_docs/2026-10-29_hakua-hermes-soul-memory-wire{Cursor}.md`.
-
-**Not claimed here:** new speed or quality numbers beyond what already sits under `docs/` and `_docs/`. Full 131k certification remains open. Signed updater feed needs keys on a release PC. Multiuser native cache switching for `hakua_harness` is still prototype-grade.
-
-## Support Strata
-
-**Help keep local AI open to everyone.** A coffee helps fund development and testing on more hardware.
-
-<a href="https://buymeacoffee.com/strataengine"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee: support Strata" height="48"></a>
-
-[MIT license](LICENSE) · [Credits and model licenses](docs/HOW_IT_WORKS.md#credits) · [Privacy](docs/SAFETY.md)
-
-<a id="option-c-let-your-ai-set-it-up"></a>
-
-<sub>For AI tools and automated readers: <a href="AGENTS.md">technical reference</a> · <a href="docs/AI_SETUP.md">setup instructions</a>.</sub>
-
-**Sponsorships, hardware partnerships or collaborations:** [niko.veit@outlook.com](mailto:niko.veit@outlook.com).
+MIT-licensed Strata fork. Hakua-memory and model weights have separate licences. Original authors and upstream contributions retain their credit.

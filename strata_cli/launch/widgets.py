@@ -122,8 +122,16 @@ class Menu(Static):
         self.index = 0
         self.top = 0
         self.window = window            # 0 = show all rows
+        self._explicit_glyphs = glyphs is not None
         self.g = glyphs or Glyphs()
         self.show_header = bool(self.columns and any(t for t, _ in self.columns))
+
+    def on_mount(self) -> None:
+        # All setup menus use the same glyph selection as their screen frame.
+        context = getattr(self.app, "ctx", None)
+        if not self._explicit_glyphs and context is not None:
+            self.g = context.glyphs
+            self._refresh()
 
     def set_items(self, items: list[Item], index: int | None = None) -> None:
         self.items = items

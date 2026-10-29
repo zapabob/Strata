@@ -57,6 +57,34 @@ async function rig(t, { connections = [], dataDir } = {}) {
 
 const states = (frames, id) => frames.filter(f => f.type === 'agent-tool' && (!id || f.tool.id === id)).map(f => f.tool.state);
 const text = frames => frames.filter(f => f.type === 'delta').map(f => f.text).join('');
+// The real runtime has a 90-second cold-start budget. Wait for the actual turn
+// state within that same bound; ending early is a failure, not a successful wait.
+async function waitForTurn(turn, predicate, label) {
+  const deadline=Date.now()+90_000;
+  let ended=false, failure;
+  void turn.promise.then(()=>{ended=true;},error=>{ended=true;failure=error;});
+  while(!predicate(turn.frames)) {
+    assert.ok(!ended, `${label}: turn ended early: ${failure?.message??JSON.stringify(turn.frames.filter(f=>f.type==='error'))}`);
+    assert.ok(Date.now()<deadline, `${label}: runtime cold-start budget exceeded`);
+    await new Promise(resolve=>setTimeout(resolve,50));
+  }
+}
+
+test('closing during cold startup ends the owned process and cannot revive the bridge', {skip}, async t=>{
+  const r=await rig(t);
+  const work=r.run('closing-start','SCRIPT:slow 100');
+  const settled=work.promise.then(result=>({result}),error=>({error}));
+  const deadline=Date.now()+5000;
+  while(!r.bridge._debug().startingPid&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,10));
+  const pid=r.bridge._debug().startingPid;
+  assert.ok(pid>0,'the process exists before startup publishes a ready runtime');
+  await r.bridge.close();
+  await settled;
+  assert.equal(r.bridge._debug().rt,null);
+  assert.equal(r.bridge._debug().closed,true);
+  assert.throws(()=>process.kill(pid,0),error=>error.code==='ESRCH','the owned startup process exited');
+  await assert.rejects(r.bridge.runTurn({chatId:'after-close',message:'SCRIPT:hello',workspacePath:r.ws,onFrame:()=>{}}),/closing/);
+});
 
 test('A01/A02 a turn streams reasoning and text, then finishes with usage', { skip }, async t => {
   const r = await rig(t);
@@ -110,7 +138,7 @@ test('A05 Stop cancels exactly that chat, waits for the turn to end, and leaves 
   const slowA = r.run('chat-a05-a', 'SCRIPT:slow 400');
   const slowB = r.run('chat-a05-b', 'SCRIPT:slow 60');
   // wait until A is demonstrably live
-  for (let i = 0; i < 200 && slowA.frames.filter(f => f.type === 'delta').length < 3; i++) await new Promise(x => setTimeout(x, 50));
+  await waitForTurn(slowA, frames=>frames.filter(f=>f.type==='delta').length>=3, 'stream live before Stop');
   assert.ok(slowA.frames.filter(f => f.type === 'delta').length >= 3, 'the turn must be live before Stop, or the test proves nothing');
   const stopped = await r.bridge.stop('chat-a05-a');
   assert.equal(stopped.stopped, true); assert.equal(stopped.ended, 'aborted');
@@ -131,7 +159,7 @@ test('A05 Stop cancels exactly that chat, waits for the turn to end, and leaves 
 test('A05b Stop while an approval is pending denies it and ends the turn', { skip }, async t => {
   const r = await rig(t);
   const { frames, promise } = r.run('chat-a05b', 'SCRIPT:tool never.txt x');
-  for (let i = 0; i < 200 && !states(frames).includes('proposed'); i++) await new Promise(x => setTimeout(x, 50));
+  await waitForTurn({frames,promise}, frames=>states(frames).includes('proposed'), 'approval pending before Stop');
   assert.ok(states(frames).includes('proposed'));
   const stopped = await r.bridge.stop('chat-a05b');
   assert.equal(stopped.stopped, true);
@@ -169,7 +197,7 @@ test('A06 reopening a chat resumes its Harness session without replaying a tool'
 test('A08 two chats run independently, each with its own session and approval', { skip }, async t => {
   const r = await rig(t);
   const a = r.run('chat-a08-a', 'SCRIPT:tool a.txt A');        // will wait on approval
-  for (let i = 0; i < 200 && !states(a.frames).includes('proposed'); i++) await new Promise(x => setTimeout(x, 50));
+  await waitForTurn(a, frames=>states(frames).includes('proposed'), 'first chat waiting for approval');
   assert.ok(states(a.frames).includes('proposed'));
   const b = r.run('chat-a08-b', 'SCRIPT:hello');
   await b.promise;                                             // B finishes while A is parked on an approval
@@ -191,7 +219,7 @@ test('A08 two chats run independently, each with its own session and approval', 
 test('a second send to a chat that is mid-turn is refused', { skip }, async t => {
   const r = await rig(t);
   const first = r.run('chat-busy', 'SCRIPT:slow 80');
-  for (let i = 0; i < 100 && !first.frames.some(f => f.type === 'delta'); i++) await new Promise(x => setTimeout(x, 50));
+  await waitForTurn(first, frames=>frames.some(f=>f.type==='delta'), 'first send live');
   await assert.rejects(r.run('chat-busy', 'SCRIPT:hello').promise, /still working/);
   await first.promise;
 });

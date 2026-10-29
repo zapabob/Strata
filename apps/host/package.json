@@ -1,14 +1,14 @@
 {
   "name": "strata",
   "private": true,
-  "version": "0.3.2-preview.20261029.2",
+  "version": "0.3.3-preview.20261030.1",
   "type": "module",
   "description": "Strata \u2014 local AI, tuned to one model. Web shell + engine host.",
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "dev:web": "vite",
     "dev:host": "node server/index.mjs",
-    "build": "vite build",
+    "build": "node scripts/build.mjs",
     "serve": "node server/index.mjs --dist dist",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
@@ -45,7 +45,7 @@
     "vite": "^6.0.7"
   },
   "engines": {
-    "node": ">=24.12.0"
+    "node": ">=24.22.2"
   },
   "allowScripts": {
     "esbuild@0.25.12": true

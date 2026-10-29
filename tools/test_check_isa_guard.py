@@ -34,6 +34,14 @@ class Policy(unittest.TestCase):
         self.assertIsNone(G.judge("strata::kernels::cpu::(anonymous namespace)::gu_rows<18, 1>(int)", None, "", False,
                                   False, True))
 
+    def test_msvc_map_object_names_keep_the_same_cpu_dispatch_policy(self):
+        kernel = "??$gu_rows@$0BA@$00@?A0xa1d599f5@cpu@kernels@strata@@YAXXZ"
+        for obj in ("strata_kernels_cpu:iq_avx512.obj", "iq_avx512.cpp.obj"):
+            self.assertIsNone(G.judge(kernel, obj, "", False, False, False))
+            self.assertIsNotNone(G.judge("?cpu_features@cpu@kernels@strata@@YAXXZ", obj, "", False, False, False))
+            self.assertIsNotNone(G.judge(kernel, obj, "", False, True, False))
+        self.assertIsNotNone(G.judge(kernel, "unsafe_iq_avx512.obj", "", False, False, False))
+
     def test_trellis_rows_entry_point_is_fine(self):
         """#3358: tq_avx512.cpp's rows function is behind cpu_avx512_ok() like the other wide kernels."""
         name = "strata::kernels::cpu::tq_detail::tq_rows_avx512(int, unsigned char const*, unsigned long, int)"

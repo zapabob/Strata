@@ -102,7 +102,9 @@ class Server:
             self.gets.append((start, end) if rng and self.ranges else (0, size - 1))
             key = (start, end)
             self.nth[key] = n = self.nth.get(key, 0) + 1
-            self.active += 1
+            # Count data transfers, excluding the one-byte capability probe.
+            transfer = rng != "bytes=0-0"
+            self.active += int(transfer)
             self.max_active = max(self.max_active, self.active)
         try:
             fault = self.faults(path, start, end, n) if self.faults else None
@@ -125,14 +127,23 @@ class Server:
                     if cut is not None and i >= cut:
                         h.connection.shutdown(2)           # the connection drops in the middle of the body
                         return
-                    h.wfile.write(body[i:i + 16384])
-                    if self.delay:
-                        time.sleep(self.delay)
+                    piece = body[i:i + 16384]
+                    if i + len(piece) == len(body):
+                        # Finish the count atomically with publishing the last bytes.
+                        # A client can start its next piece before this handler returns.
+                        with self.lock:
+                            h.wfile.write(piece)
+                            self.active -= int(transfer)
+                            transfer = False
+                    else:
+                        h.wfile.write(piece)
+                        if self.delay:
+                            time.sleep(self.delay)
             except OSError:
                 pass
         finally:
             with self.lock:
-                self.active -= 1
+                self.active -= int(transfer)
 
 
 def pin_of(data):
@@ -147,6 +158,9 @@ def small_pieces(**extra):
     with contextlib.ExitStack() as st:
         for k, v in consts.items():
             st.enter_context(mock.patch.object(setup, k, v))
+        # Keep the local HTTP server\'s deliberate latency and concurrency real.
+        # Replacing the shared time module\'s sleep also removes its delay.
+        st.enter_context(mock.patch.object(setup, "time", mock.Mock(wraps=time)))
         st.enter_context(mock.patch.object(setup.time, "sleep", lambda s: None))
         env = {k: v for k, v in os.environ.items() if k not in ("STRATA_DL_CONNECTIONS", "STRATA_ALLOW_UNPINNED")}
         env["STRATA_SOURCE"] = "huggingface"
@@ -185,9 +199,10 @@ class ParallelDownload(unittest.TestCase):
             self.assertEqual((Path(d) / NAME).read_bytes(), DATA)
             self.assertEqual(files(d), [NAME, NAME + ".done"])             # no .part, no piece list left behind
             self.assertIn("sha256 " + hashlib.sha256(DATA).hexdigest(), (Path(d) / (NAME + ".done")).read_text())
+            self.assertEqual(srv.heads, 1)  # The redirected probe must not download the file.
             self.assertGreater(srv.max_active, 1)
             self.assertLessEqual(srv.max_active, 4)
-            self.assertEqual(sorted(asked(srv)), list(range(41)))           # every piece once, none twice
+            self.assertEqual(sorted(asked(srv)), list(range(41)), (srv.gets, out))  # every piece once, none twice
             self.assertEqual(srv.redirects, 2)                              # HEAD and the one probe: the pieces use the CDN address
 
     def test_the_redirect_is_resolved_once(self):

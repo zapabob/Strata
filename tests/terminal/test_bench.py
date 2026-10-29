@@ -159,10 +159,16 @@ class BenchTests(unittest.TestCase):
             wrong.mkdir(mode=0o700)
             with self.assertRaisesRegex(ProfileError, "exact benchmark run is not active"):
                 benchmarking.request_cancel("local", wrong)
-            linked = self.root / "linked-run"
-            linked.symlink_to(output, target_is_directory=True)
-            with self.assertRaisesRegex(ProfileError, "owner-only"):
-                benchmarking.request_cancel("local", linked)
+            with self.subTest("linked benchmark run is rejected"):
+                linked = self.root / "linked-run"
+                try:
+                    linked.symlink_to(output, target_is_directory=True)
+                except OSError as exc:
+                    if os.name == "nt" and getattr(exc, "winerror", None) == 1314:
+                        raise unittest.SkipTest("Windows symlink privilege unavailable") from exc
+                    raise
+                with self.assertRaisesRegex(ProfileError, "owner-only"):
+                    benchmarking.request_cancel("local", linked)
             with mock.patch("strata_control.profiles.load", return_value=({"id": "local"}, "a" * 16)):
                 request = management.dispatch({"schema_version": 1, "action": "bench.cancel",
                                                "profile": "local",

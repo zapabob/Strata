@@ -8,7 +8,7 @@
 # below refuses anything older: silently building for a pre-Ampere arch would produce a binary that runs
 # and is wrong about its own performance, which is the worst of both outcomes.
 cmake_minimum_required(VERSION 3.24)
-project(strata VERSION 0.1.53 LANGUAGES CXX)
+project(strata VERSION 0.3.3 LANGUAGES CXX)
 # EXPERIMENTAL: the Intel Arc engine, the SYCL port in sycl/ (PR #423; icpx + oneMKL, docs/INTEL_ARC.md). It is its
 # own project that takes the unported sources from src/; with this on, nothing below is configured.
 option(STRATA_ENABLE_SYCL "EXPERIMENTAL: build the Intel Arc (SYCL) engine from sycl/ - docs/INTEL_ARC.md" OFF)
@@ -1547,9 +1547,10 @@ if(STRATA_ENABLE_CUDA OR STRATA_ENABLE_HIP)
   add_executable(ple_parity src/kernels/ple_parity.cpp)
   target_include_directories(ple_parity PRIVATE ${_strata_gpu_include_directories})
   target_link_libraries(ple_parity PRIVATE strata_kernels ${_strata_gpu_runtime_target})
+  set(STRATA_PLE_PACK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/pack/full" CACHE PATH "Legacy PLE diagnostic dense pack")
   set(STRATA_PLE_FIXTURE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/bench/micro" CACHE PATH
       "Directory containing required ple_in.bin and ple_out.bin parity fixtures")
-  add_test(NAME ple_parity COMMAND ple_parity --selftest
+  add_test(NAME ple_parity COMMAND ple_parity --selftest --pack "${STRATA_PLE_PACK_DIR}"
     --in "${STRATA_PLE_FIXTURE_DIR}/ple_in.bin" --out "${STRATA_PLE_FIXTURE_DIR}/ple_out.bin"
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
   # STRATA_PLE_COMPACT: the raw IQ4_NL rows dequantized on the device against the host decode, bit for bit (synthetic, no model)
@@ -2689,9 +2690,23 @@ if(STRATA_ENABLE_CUDA AND STRATA_BUILD_TESTS AND NOT STRATA_ENABLE_HIP AND NOT S
         list(APPEND _strata_spill_libs $<TARGET_FILE:${_t}>)
       endif()
     endforeach()
+    set(STRATA_CUDA_SPILL_BASELINE "" CACHE FILEPATH "Opt-in reviewed source/compiler-bound CUDA resource baseline")
+    set(_strata_spill_extra)
+    if(STRATA_CUDA_SPILL_BASELINE)
+      if(NOT STRATA_GGML_DIR)
+        message(FATAL_ERROR "An explicit spill baseline requires STRATA_GGML_DIR for dependency identity")
+      endif()
+      string(SHA256 _strata_spill_key "${CMAKE_CUDA_COMPILER_VERSION}|${CMAKE_CXX_COMPILER_VERSION}|${CMAKE_CUDA_ARCHITECTURES}|${STRATA_PORTABLE}|${CMAKE_CUDA_FLAGS}|${CMAKE_CUDA_FLAGS_RELEASE}|${CMAKE_CXX_FLAGS}|${CMAKE_CXX_FLAGS_RELEASE}|${STRATA_ENABLE_SPIN8}|${STRATA_ENABLE_NATIVE_CACHE}|${STRATA_NATIVE_EXPERTS}")
+      file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/cuda-spill-build-key.txt" "${_strata_spill_key}\n")
+      list(APPEND _strata_spill_extra --baseline "${STRATA_CUDA_SPILL_BASELINE}"
+        --source-root "${CMAKE_CURRENT_SOURCE_DIR}" --ggml-source "${STRATA_GGML_DIR}"
+        --compiler-key-file "${CMAKE_CURRENT_BINARY_DIR}/cuda-spill-build-key.txt")
+    endif()
     add_test(NAME cuda_spill_guard COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_cuda_spills.py
-             --cuobjdump ${CUDAToolkit_BIN_DIR}/cuobjdump${CMAKE_EXECUTABLE_SUFFIX} ${_strata_spill_libs})
+             --cuobjdump ${CUDAToolkit_BIN_DIR}/cuobjdump${CMAKE_EXECUTABLE_SUFFIX} ${_strata_spill_extra} ${_strata_spill_libs})
     set_tests_properties(cuda_spill_guard PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 600)
+    add_test(NAME cuda_spill_baseline_unit COMMAND ${Python3_EXECUTABLE} -B -m unittest tools.test_cuda_spill_baseline
+             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
     if(NOT WIN32)   # its stand-in demanglers are sh scripts
       add_test(NAME check_cuda_spills_unit COMMAND ${Python3_EXECUTABLE} -m unittest tools.test_check_cuda_spills
                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})

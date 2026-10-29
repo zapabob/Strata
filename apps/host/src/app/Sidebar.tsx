@@ -39,6 +39,7 @@ export function Sidebar({ containerRef }: {
     const activeWorkspace = useStore(s => s.activeWorkspace);
     const activeSession = useStore(s => s.activeSession);
     const [query, setQuery] = useState('');
+    const [hakuaAccess, setHakuaAccess] = useState<{profileKey: string; profileRoot?: string} | null>(null);
     const [searchOpen, setSearchOpen] = useState(false);
     const searchInput = useRef<HTMLInputElement>(null);
     const searchTrigger = useRef<HTMLButtonElement>(null);
@@ -104,7 +105,7 @@ export function Sidebar({ containerRef }: {
       </div>
       <div className="nav__foot">
         <button className="enginechip" data-state={status === 'Ready' ? 'ready' : ['Reading prompt', 'Thinking', 'Generating', 'Loading'].includes(status) ? 'busy' : 'off'} onClick={() => go('models')} title={tr("{0} \u00B7 {1} \u00B7 {2}", [modelName, modelQuant, tr(status)])} aria-label={tr("{0} \u00B7 {1}", [modelName, modelQuant])}><span className="enginechip__family"><Icon name={modelFamilyIcon(current?.family)} size={20}/><span className="enginechip__dot"/></span><span className="enginechip__text nav__rail-hide"><span className="enginechip__title">{modelName}</span><span className="enginechip__sub">{modelQuant}</span></span></button>
-        {tr(native?.capabilities?.hakuaChatbot ? <button type="button" className="st-btn nav-hakua" disabled={!nativeCurrent || nativeCurrent.status !== 'ready'} title={tr(!nativeCurrent || nativeCurrent.status !== 'ready' ? 'Load a native model first. Hakua memory chat opens its local web page.' : 'Open Hakua memory chat for the loaded model (local browser; enter your memory key there).')} aria-label={tr("Hakua memory chat")} onClick={() => { void api.post('/api/native/hakua-chat', { instanceId: nativeCurrent?.id }).then(() => pushToast('info', 'Hakua memory chat', 'Opened the local memory page. Enter your own memory key there; the Host key is not used.'), error => pushToast('warn', 'Could not open Hakua chat', error instanceof Error ? error.message : String(error))); }}><Icon name="chat" size={18}/><span className="nav__rail-hide">{tr("Hakua memory")}</span></button> : null)}
+        {tr(native?.capabilities?.hakuaChatbot ? <button type="button" className="st-btn nav-hakua" disabled={!nativeCurrent || nativeCurrent.status !== 'ready'} title={tr(!nativeCurrent || nativeCurrent.status !== 'ready' ? 'Load a native model first. Hakua memory chat opens its local web page.' : 'Open Hakua memory chat for the loaded model (local browser; enter your memory key there).')} aria-label={tr("Hakua memory chat")} onClick={() => { void api.post<{profileKey?: string; profileRoot?: string}>('/api/native/hakua-chat', { instanceId: nativeCurrent?.id }).then(access => { if(access.profileKey) setHakuaAccess({profileKey:access.profileKey,profileRoot:access.profileRoot}); else pushToast('info', 'Hakua memory chat', 'Opened the local memory page. Enter your own memory key there; the Host key is not used.'); },  error => pushToast('warn', 'Could not open Hakua chat', error instanceof Error ? error.message : String(error))); }}><Icon name="chat" size={18}/><span className="nav__rail-hide">{tr("Hakua memory")}</span></button> : null)}
         <NavLink route="skills" label={tr("Skills")} icon="skills" current={location.route}/>
         <NavLink route="monitor" label={tr("Monitor")} icon="activity" current={location.route}/>
         <NavLink route="models" label={tr("Models")} icon="models" current={location.route === 'tuning' ? 'models' : location.route}/>
@@ -116,6 +117,12 @@ export function Sidebar({ containerRef }: {
       <button role="menuitem" className="menu__item" onClick={() => { togglePin(menuId); closeMenu(); }}><Icon name="pin"/>{tr(menuSession.pinned ? 'Unpin' : 'Pin')}</button>
       <button role="menuitem" className="menu__item menu__item--danger" onClick={() => { setNavOpen(false); setDeleteId(menuId); setMenuId(null); }}><Icon name="trash"/>{tr("Delete chat")}</button>
     </FloatingMenu> : null)}
+    <Dialog open={!!hakuaAccess} compact title={tr("Hakua memory chat")} onClose={() => setHakuaAccess(null)}
+      actions={<><Btn onClick={() => setHakuaAccess(null)}>{tr("Close")}</Btn><Btn variant="primary" onClick={() => { if(hakuaAccess) void navigator.clipboard.writeText(hakuaAccess.profileKey).then(() => pushToast('info', tr("Copied"), ''), () => pushToast('warn', tr("Copy"), tr("Select the key and copy it manually."))); }}>{tr("Copy")}</Btn></>}>
+      <p>{tr("Select a memory checkbox on the local page first, then paste this profile key into About → Settings. Confirm consent again before sending.")}</p>
+      <label className="input-field"><span>{tr("API key")}</span><input className="st-input" readOnly autoComplete="off" value={hakuaAccess?.profileKey ?? ''} onFocus={event => event.currentTarget.select()}/></label>
+      <p className="small muted">{hakuaAccess?.profileRoot}</p>
+    </Dialog>
     <Dialog open={!!renameId} compact title={tr("Rename chat")} onClose={() => setRenameId(null)} actions={<><Btn onClick={() => setRenameId(null)}>{tr("Cancel")}</Btn><Btn variant="primary" disabled={!name.trim()} onClick={() => {
                 if (renameId)
                     renameSession(renameId, name.trim());

@@ -4,6 +4,7 @@ Connect that says what is vendor history and what is this server's live result, 
 from __future__ import annotations
 
 import asyncio
+import os
 import re
 import unittest
 from unittest import mock
@@ -253,6 +254,10 @@ def contrast(a: str, b: str) -> float:
 
 
 class LightTheme(unittest.TestCase):
+    def setUp(self):
+        self.enterContext(mock.patch("strata_cli.consoleinfo.legacy_console", return_value=False))
+        self.enterContext(mock.patch.dict(os.environ, {key: value for key, value in os.environ.items() if key != "NO_COLOR"}, clear=True))
+
     def test_the_light_palette_is_readable_on_white_and_on_its_selection(self):
         for name in ("fg", "mute", "accent", "warn", "bad"):
             self.assertGreaterEqual(contrast(getattr(LIGHT, name), LIGHT.panel), 4.5, name)

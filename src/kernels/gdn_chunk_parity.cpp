@@ -183,8 +183,13 @@ void run_case(int64_t T, uint64_t seed) {
         y_fast(y_ref.size()), st_fast(st0.size()), y_fma(y_ref.size()), st_fma(st0.size());
     auto run = [&](const char* chunk, const char* warp, std::vector<float>& y, std::vector<float>& st,
                    std::vector<float>* y16f = nullptr) {
+#ifdef _WIN32
+        _putenv_s("STRATA_GDN_CHUNK", chunk);
+        _putenv_s("STRATA_GDN_REC_WARP", warp);
+#else
         setenv("STRATA_GDN_CHUNK", chunk, 1);
         setenv("STRATA_GDN_REC_WARP", warp, 1);
+#endif
         check(cudaMemcpy(d_st, d_st0, st0.size() * 4, cudaMemcpyDeviceToDevice), "D2D");
         strata::prefill::gdn_recurrence(d_st, d_h, d_g, d_b, d_z, d_ga, eps, d_y, d_y16, T, nullptr);
         check(cudaDeviceSynchronize(), "sync");

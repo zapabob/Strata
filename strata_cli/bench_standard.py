@@ -187,7 +187,9 @@ def stream_chat(target: Target, spec: dict, model: str | None, *, timeout_s: flo
                  "timed_out": False, "interrupted": False}
     if gate is not None:
         gate.wait()
-    raw["t0"] = start = time.monotonic_ns()
+    # Python 3.12 on Windows uses coarse GetTickCount64 for monotonic_ns.
+    # Measure stream/round throughput with the high-resolution monotonic QPC clock.
+    raw["t0"] = start = time.perf_counter_ns()
     conn = target.connection(timeout_s)
 
     def expire():
@@ -207,7 +209,7 @@ def stream_chat(target: Target, spec: dict, model: str | None, *, timeout_s: flo
     timer.start()
 
     def offset() -> float:
-        return round((time.monotonic_ns() - start) / 1e9, 6)
+        return round((time.perf_counter_ns() - start) / 1e9, 6)
 
     def mark(kind: str) -> None:
         raw["events"].append([offset(), kind])
@@ -287,7 +289,9 @@ def stream_chat(target: Target, spec: dict, model: str | None, *, timeout_s: flo
         raw["interrupted"] = True
         raw["error"] = {"kind": "cancelled", "message": "cancelled by the operator"}
     except (OSError, http.client.HTTPException, ValueError) as exc:
-        if raw["timed_out"]:
+        # The socket deadline may fire just before the watchdog thread marks it.
+        if raw["timed_out"] or isinstance(exc, TimeoutError):
+            raw["timed_out"] = True
             raw["error"] = {"kind": "timeout", "message": f"no complete answer within {timeout_s:g} seconds"}
         else:
             raw["error"] = {"kind": "connection_" + type(exc).__name__, "message": str(exc)[:200] or type(exc).__name__}
@@ -299,7 +303,7 @@ def stream_chat(target: Target, spec: dict, model: str | None, *, timeout_s: flo
             pass
     if raw["timed_out"] and raw["error"] is None:
         raw["error"] = {"kind": "timeout", "message": f"no complete answer within {timeout_s:g} seconds"}
-    raw["t_end"] = time.monotonic_ns()
+    raw["t_end"] = time.perf_counter_ns()
     return raw
 
 

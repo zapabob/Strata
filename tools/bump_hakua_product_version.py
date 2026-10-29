@@ -27,7 +27,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PRODUCT_RE = re.compile(
     r"^0\.\d+\.\d+(?:-preview\.\d{8}\.\d+)?$"
 )
-PREVIEW_RE = re.compile(r"^0\.3\.2-preview\.(\d{8})\.(\d+)$")
+PREVIEW_RE = re.compile(r"^0\.\d+\.\d+-preview\.(\d{8})\.(\d+)$")
 
 
 def read_version() -> str:
@@ -43,7 +43,7 @@ def write_version(version: str) -> None:
     (ROOT / "VERSION").write_text(version + "\n", encoding="utf-8", newline="\n")
 
 
-def next_today(base: str = "0.3.2") -> str:
+def next_today(base: str = "0.3.3") -> str:
     today = date.today().strftime("%Y%m%d")
     n = 1
     try:
@@ -166,7 +166,7 @@ def sync(version: str) -> None:
     )
     set_cargo_lock_package(ROOT / "apps/desktop/src-tauri/Cargo.lock", "strata-desktop", version)
     patch_product_constant(ROOT / "strata_cli" / "__init__.py", version)
-    for name in ("README.md", "README.ja.md", "README.zh-CN.md"):
+    for name in sorted(path.name for path in ROOT.glob("README*.md")):
         patch_fork_readme(ROOT / name, version)
     patch_agents(ROOT / "AGENTS.md", version, cmake_engine(), metal_engine())
     folder = f"Strata-{version}"

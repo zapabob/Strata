@@ -220,7 +220,8 @@ class MonitorBundleTests(unittest.TestCase):
                 self.assertEqual(target.stat().st_mode & 0o077, 0)
                 self.assertEqual((target / bundle.name).stat().st_mode & 0o077, 0)
             portable = subprocess.run([sys.executable, "-I", str(target / bundle.name), "logs", "--help"],
-                                      cwd=directory, capture_output=True, text=True, check=True)
+                                      cwd=directory, capture_output=True, text=True)
+            self.assertEqual(portable.returncode, 0, portable.stderr)
             self.assertIn("--follow", portable.stdout)
             extra = target / "user-notes.txt"
             extra.write_text("keep me")
@@ -263,9 +264,15 @@ class MonitorBundleTests(unittest.TestCase):
             bundle = root / "monitor.pyz"
             build(bundle)
             linked = root / "linked.pyz"
-            linked.symlink_to(bundle)
-            with self.assertRaisesRegex(ValueError, "bounded regular"):
-                verify(linked)
+            with self.subTest("symlink rejection"):
+                try:
+                    linked.symlink_to(bundle)
+                except OSError as error:
+                    if getattr(error, "winerror", None) == 1314:
+                        self.skipTest("Windows does not grant this session symlink creation")
+                    raise
+                with self.assertRaisesRegex(ValueError, "bounded regular"):
+                    verify(linked)
             with bundle.open("ab") as stream:
                 stream.write(b"x" * (1024 * 1024))
             with self.assertRaisesRegex(ValueError, "bounded regular"):

@@ -30,7 +30,7 @@ import sys
 # Public functions of the wide-ISA files that are wide on purpose: every caller tests the CPU first
 # (cpu_avx512_ok / cpu_avxvnni_ok), or reaches them only after cpu_require_expert_support().
 WIDE_PUBLIC = {
-    "nvfp4_512_gu_rows", "nvfp4_512_rows",   # NVFP4 (native_expert.cpp: both behind cpu_avx512_ok())
+    "nvfp4_512_gu_rows", "nvfp4_512_rows",   # NVFP4 (native_expert.cpp: both behind cpu_avx512_ok())
     "act_quant_q8_1", "q2_0_gguf_rows_multi", "s2_expert_vnni", "s2_expert_vnni_q", "s2_expert_gu_rows",
     "s2_expert_down_rows", "s2_expert_gu_rows_multi", "s2_expert_down_rows_multi", "s2_expert_vnni_multi",
     "s2_expert_scalar", "iq512_gu_rows", "iq512_rows", "iq256_gu_rows", "iq256_rows", "iq256_gu_rows_v",
@@ -57,6 +57,15 @@ def is_wide(raw0, mnemonic, ops):
     return raw0 == 0x62 or WIDE_MNEMONIC.match(mnemonic) is not None or WIDE_OPERAND.search(ops) is not None
 
 
+def is_wide_object(obj):
+    # Ninja/Make retain .cpp in object names; Visual Studio emits iq_avx512.obj.
+    # Admit only the exact MSVC basename alias, preserving the existing ELF policy.
+    if any(source in obj for source in WIDE_OBJECTS):
+        return True
+    leaf = re.split(r"[/\\:]", obj)[-1].lower()
+    return any(leaf == source.removesuffix(".cpp") + ".obj" for source in WIDE_OBJECTS)
+
+
 def judge(name, obj, wide_text, guarded, weak, is_elf):
     """Returns None if this wide function is allowed, else the reason."""
     if guarded:
@@ -69,7 +78,7 @@ def judge(name, obj, wide_text, guarded, weak, is_elf):
     anon = ("(anonymous namespace)" in name) or ("?A0x" in name)
     if weak:
         return "weak / COMDAT symbol: the linker may pick this wide copy for every caller (ODR)"
-    if obj is not None and not any(obj.endswith(o + ".obj") or obj.endswith(o + ".o") or o in obj for o in WIDE_OBJECTS):
+    if obj is not None and not is_wide_object(obj):
         return "wide-ISA code outside the wide-ISA translation units (object %s)" % obj
     if anon or base in WIDE_PUBLIC:
         return None
@@ -187,7 +196,7 @@ def run_pe(path, mapf):
     for (b, sym, obj), (n, first, guarded) in sorted(wide.items()):
         why = judge(sym, obj.split(":")[-1], "", guarded, False, False)
         # an inline function defined in a header comes out of the map as `f i`; the wide-ISA files must have none
-        in_wide_obj = any(o in obj for o in WIDE_OBJECTS)
+        in_wide_obj = is_wide_object(obj)
         if why is None and in_wide_obj and not guarded and re.search(r"std@@|\?\$", sym) and not ("?A0x" in sym):
             why = "template / std:: instantiation inside a wide-ISA object (COMDAT: the linker may share it)"
         if why:

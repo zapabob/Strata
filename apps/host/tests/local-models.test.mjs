@@ -14,6 +14,17 @@ import { ggufFixture } from './helpers/local-gguf.mjs';
 const cwd=fileURLToPath(new URL('..',import.meta.url)),pause=ms=>new Promise(r=>setTimeout(r,ms));
 function fixture(t){const root=mkdtempSync(join(tmpdir(),'strata-local-model-'));t.after(()=>rmSync(root,{recursive:true,force:true}));return root;}
 
+test('Prism PQ2_0 uses its group-128 layout and refuses truncated weights',t=>{
+ const root=fixture(t),file=join(root,'Prism-PQ2_0.gguf');
+ ggufFixture(file,{fileType:141,tensorType:142,tensorElements:128,tensorBytes:34});
+ assert.equal(inspectLocalModel(file).variant.quant,'PQ2_0');
+ assert.equal(readGGUF(file).parameters,128);
+ ggufFixture(file,{fileType:142,tensorType:142,tensorElements:128,tensorBytes:34,truncate:1});
+ assert.throws(()=>readGGUF(file),/incomplete/);
+ ggufFixture(file,{fileType:143,tensorType:143,tensorElements:128,tensorBytes:28});
+ assert.equal(inspectLocalModel(file).variant.quant,'PTQ1_0');
+});
+
 test('bounded reader gets real metadata and rejects fake extensions, partial tensors, unsupported versions and duplicate metadata',t=>{
  const root=fixture(t),file=join(root,'huihui.gguf');ggufFixture(file,{version:2});const info=readGGUF(file);assert.equal(info.metadata['general.architecture'],'qwen3next');assert.equal(info.metadata['tokenizer.ggml.tokens'].count,1);assert.equal(info.parameters,16);
  const preview=inspectLocalModel(file);assert.equal(preview.variant.quant,'Q4_K_M');assert.equal(preview.variant.contextMax,32768);assert.equal(preview.variant.layerCount,48);assert.equal(preview.variant.experts,128);assert.equal(preview.variant.kvKbPerToken,12);assert.equal(preview.variant.family,'Local models');

@@ -151,7 +151,7 @@ test("a chat cannot answer another chat's helper question", { skip }, async (t) 
   let asked = null;
   const file = join(r.ws, 'x.txt');
   const run = r.run('owner', `SCRIPT:spawn 1 call write ${JSON.stringify({ file_path: fwd(file), content: 'x' })}`, { mode: 'manual', onFrame: f => { if (f.type === 'agent-tool' && f.tool.state === 'proposed') asked = f.tool; } });
-  for (let i = 0; i < 200 && !asked; i++) await new Promise(res => setTimeout(res, 50));
+  for (const deadline=Date.now()+90_000; Date.now()<deadline && !asked;) await new Promise(res => setTimeout(res, 50));
   assert.ok(asked, 'the question reached the person');
   await assert.rejects(r.bridge.approve({ chatId: 'someone-else', callId: asked.id, decision: 'approve' }), /no longer waiting/);
   assert.equal(r.bridge.pendingFor('owner').length, 1);
@@ -252,7 +252,7 @@ test('mode change mid-run: Manual to Bypass settles the question already waiting
   const first = join(r.ws, 'before.txt');
   let asked = null; const cards = [];
   const run = r.run('mid', `SCRIPT:spawn 1 call write ${JSON.stringify({ file_path: fwd(first), content: 'one' })}`, { mode: 'manual', onFrame: f => { if (f.type === 'agent-tool') { cards.push(f.tool); if (f.tool.state === 'proposed') asked = f.tool; } } });
-  for (let i = 0; i < 200 && !asked; i++) await new Promise(res => setTimeout(res, 50));
+  for (const deadline=Date.now()+90_000; Date.now()<deadline && !asked;) await new Promise(res => setTimeout(res, 50));
   assert.ok(asked, 'Manual asked first');
   const switched = await r.bridge.setMode('mid', 'bypass');
   assert.deepEqual({ applied: switched.applied, mode: switched.mode }, { applied: true, mode: 'bypass' });

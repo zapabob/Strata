@@ -21,6 +21,8 @@ CYGPATH = shutil.which("cygpath")
 def sh_path(p) -> str:
     """The path as the shell reads it. Git bash on Windows wants /c/Users/..., not C:\\Users\\... (tar even takes `C:` for a host)."""
     if CYGPATH is None:
+        if p.drive.endswith(":"):
+            return "/" + p.drive[0].lower() + p.as_posix()[2:]
         return str(p)
     return subprocess.run([CYGPATH, "-u", str(p)], capture_output=True, text=True, check=True).stdout.strip()
 

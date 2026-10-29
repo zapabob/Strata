@@ -15,7 +15,7 @@ class StatusLogsDiscoveryTests(unittest.TestCase):
 
     def _run(self, *argv):
         info = {"running": True, "url": "http://127.0.0.1:8080", "key": "k-launch"}
-        env = {k: v for k, v in os.environ.items() if k not in ("STRATA_URL", "STRATA_CONNECTION")}
+        env = {k: v for k, v in os.environ.items() if k not in ("STRATA_URL", "STRATA_CONNECTION", "STRATA_API_KEY", "STRATA_TELEMETRY_KEY")}
         out = io.StringIO()
         with mock.patch.dict(os.environ, env, clear=True), \
              mock.patch("strata_cli.launch.cmd.launch_info", return_value=info), \

@@ -32,6 +32,11 @@ import re
 import shutil
 import subprocess
 import sys
+import hashlib
+try:
+    from . import cuda_spill_baseline as measured
+except ImportError:
+    import cuda_spill_baseline as measured
 
 # 0.2.7 (f-027-gh-eng): re-measured on f-027-int with CUDA 13.0 for sm_120 (Windows, MSVC) and sm_86 (Linux, cuobjdump 12.9
 # reading the CUDA 13.0 objects); an allowance is only ever raised here, never lowered, and the entries that now read 0 with
@@ -284,7 +289,7 @@ def demangle(demangler, names):
     return dict(zip(names, out))
 
 
-def check(path, rows, names):
+def check(path, rows, names, baseline=None):
     archs = sorted({sm for _, sm, _, _ in rows})
     gated = [(obj, sm, func, cols) for obj, sm, func, cols in rows if not vendored(kernel_key(names[func]))]
     held, bad = 0, []
@@ -293,7 +298,8 @@ def check(path, rows, names):
         if stack == 0 and local == 0:
             continue
         held += 1
-        allow = ALLOWED.get(kernel_key(names[func]), {}).get(sm)
+        allow = (baseline.get(measured.entry_key(path, obj, sm, func), (0, 0)) if baseline is not None
+                 else ALLOWED.get(kernel_key(names[func]), {}).get(sm))
         if allow is None:
             why = "not in ALLOWED"
         elif stack > allow[0] or local > allow[1]:
@@ -314,7 +320,25 @@ def main():
     ap.add_argument("library", nargs="+", help="a static library, object, shared library or executable with SASS")
     ap.add_argument("--list", action="store_true", help="print every kernel on every sm_ as CSV, judge nothing")
     ap.add_argument("--cuobjdump", help="the toolkit's cuobjdump (default: on PATH)")
+    ap.add_argument('--baseline', help='reviewed source/compiler-bound per-entry resource budget')
+    ap.add_argument('--capture-baseline', help='write a NEW measurement file; not a test verdict')
+    ap.add_argument('--source-root')
+    ap.add_argument('--compiler-key-file')
+    ap.add_argument('--ggml-source')
     a = ap.parse_args()
+    expected = None
+    baseline = None
+    captured, provenance = {}, []
+    if a.baseline or a.capture_baseline:
+        if not all([a.source_root, a.compiler_key_file, a.ggml_source]) or a.list or (a.baseline and a.capture_baseline):
+            ap.error('baseline measurement/check needs source-root, compiler-key-file and ggml-source, without --list')
+        try:
+            expected = measured.bindings(a.source_root, a.compiler_key_file, a.ggml_source)
+            if a.baseline:
+                baseline = measured.load(a.baseline, expected)
+        except (OSError, ValueError, subprocess.SubprocessError) as error:
+            print('check_cuda_spills: ' + str(error))
+            return 1
     cuobjdump, demangler = find_tools(a.cuobjdump)
     if cuobjdump is None:
         print("check_cuda_spills: cuobjdump not found (put the CUDA toolkit's bin/ on PATH, or pass --cuobjdump)")
@@ -345,13 +369,27 @@ def main():
         names = demangle(demangler, sorted({f for _, _, f, _ in rows}))
         if names is None:
             return 77
-        if out:
+        if a.capture_baseline:
+            with open(lib, 'rb') as stream:
+                provenance.append({'library': os.path.basename(lib), 'sha256': hashlib.file_digest(stream, 'sha256').hexdigest()})
+            for obj, sm, func, cols in rows:
+                if vendored(kernel_key(names[func])):
+                    continue
+                stack, local = cols.get('STACK', 0), cols.get('LOCAL', 0)
+                if stack or local:
+                    key = measured.entry_key(lib, obj, sm, func)
+                    previous = captured.get(key, (0, 0))
+                    captured[key] = (max(previous[0], stack), max(previous[1], local))
+        elif out:
             for obj, sm, func, cols in rows:
                 out.writerow([os.path.basename(lib), obj, sm, cols.get("REG", 0), cols.get("STACK", 0),
                               cols.get("LOCAL", 0), cols.get("SHARED", 0), names[func], func,
                               0 if vendored(kernel_key(names[func])) else 1])
         else:
-            rc = max(rc, check(lib, rows, names))
+            rc = max(rc, check(lib, rows, names, baseline))
+    if a.capture_baseline:
+        measured.save(a.capture_baseline, expected, captured, provenance)
+        print('check_cuda_spills: wrote measurements only; review the baseline before treating a check as passed')
     return rc
 
 

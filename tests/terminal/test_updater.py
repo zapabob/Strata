@@ -588,6 +588,7 @@ class OtherComponents(UpdaterCase):
         self.assertEqual([r for r in self.server.requests if r[1].startswith("/app/")], [])
 
     def test_control_is_staged_run_once_and_pointed_at(self):
+        self.enterContext(mock.patch.object(ec, "runtime_version", return_value="0.1.45"))
         bundle = self.root / "control-bundle"
         (bundle / "strata_control").mkdir(parents=True)
         (bundle / "strata.py").write_text("print('strata 0.1.46 (python stub)')\n")
@@ -605,6 +606,7 @@ class OtherComponents(UpdaterCase):
         self.assertEqual(again["results"][0]["status"], "current")
 
     def test_a_control_that_cannot_run_is_not_switched_to(self):
+        self.enterContext(mock.patch.object(ec, "runtime_version", return_value="0.1.45"))
         bundle = self.root / "control-bad"
         bundle.mkdir()
         (bundle / "strata.py").write_text("import sys; sys.exit(9)\n")

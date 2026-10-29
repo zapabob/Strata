@@ -29,6 +29,14 @@ def test_prism_pq2_0_resolution():
     assert d_pq2.dialect == DialectType.PRISM
 
 
+def test_prism_ptq1_0_uses_the_pinned_native_layout():
+    # Prism ggml-common.h: half + two high trits + 24 packed five-trit bytes.
+    descriptor = resolve_dialect_type(143, explicit_dialect="prism")
+    assert descriptor.block_size == 128
+    assert descriptor.type_size == 28
+    assert compute_tensor_bytes([256, 3], descriptor.block_size, descriptor.type_size) == 168
+
+
 def test_compute_tensor_bytes_checked():
     # 4096 elements with F32 (block 1, type 4) -> 16384 bytes
     assert compute_tensor_bytes([4096], 1, 4) == 16384

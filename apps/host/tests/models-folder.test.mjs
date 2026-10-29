@@ -75,7 +75,8 @@ test('a whole drive is planned as <drive>\\Strata, shown as <drive>\\Strata\\Mod
   assert.equal(plan.wholeDrive, true);
   assert.equal(plan.folder, join(root, 'Strata'));
   assert.equal(plan.shown, join(root, 'Strata', 'Models'));
-  rmSync(join(root, 'Strata'), { recursive: true, force: true });
+  // Planning is read-only. Never remove a drive's existing Strata data folder.
+  assert.deepEqual(f.calls[0], ['plan', f.oldFolder, join(root, 'Strata')]);
 });
 
 test('the card is blocked while a model runs or a job runs: a running model must be stopped on purpose', async t => {

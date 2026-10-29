@@ -8,7 +8,7 @@
 #   ... -File fetch-node.ps1 -Check                  # verify what is already installed
 #   ... -File fetch-node.ps1 -FromFile node.zip      # verify and install a zip you already have (offline)
 #
-# The Node version must satisfy the App Host's own engines.node (>= 24.12.0).
+# The Node version must satisfy the App Host's own engines.node (>= 24.22.2).
 [CmdletBinding()]
 param(
     [switch]$Check,
@@ -17,10 +17,11 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 
-$NodeVersion = if ($env:STRATA_NODE_VERSION) { $env:STRATA_NODE_VERSION } else { '24.12.0' }
+$NodeVersion = if ($env:STRATA_NODE_VERSION) { $env:STRATA_NODE_VERSION } else { '24.22.2' }
+if ($NodeVersion -ne '24.22.2') { throw 'Node version has no recorded checksum; update both fetch scripts before installing it.' }
 $Target = 'win-x64'
-# SHA-256 of node-v24.12.0-win-x64.zip from nodejs.org's SHASUMS256.txt; keep equal to fetch-node.sh.
-$Expected = '9c125f61ae947b52e779095830f9cac267846a043ef7192183c84016aaad2812'
+# SHA-256 of node-v24.22.2-win-x64.zip from nodejs.org's SHASUMS256.txt; keep equal to fetch-node.sh.
+$Expected = 'ca1bff5d8ead13c9f2ea404a176db46bd430704d5b5113734049fa365e7799e2'
 if (-not $Dest) { $Dest = Join-Path $PSScriptRoot '..\src-tauri\resources\node' }
 $Installed = Join-Path $Dest 'node.exe'
 
@@ -28,6 +29,7 @@ function Fail([string]$Message) { [Console]::Error.WriteLine("fetch-node: $Messa
 
 if ($Check) {
     if (-not (Test-Path -LiteralPath $Installed)) { Fail "not installed at $Installed" }
+    if (-not (Test-Path -LiteralPath (Join-Path $Dest 'LICENSE'))) { Fail 'the official Node licence is missing' }
     $got = (& $Installed --version).Trim()
     Write-Output "fetch-node: $Installed is $got"
     if ($got -ne "v$NodeVersion") { Fail "expected v$NodeVersion" }
@@ -48,12 +50,11 @@ try {
         $ProgressPreference = 'SilentlyContinue'
         Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $Zip
     }
-    $Actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $Zip).Hash.ToLowerInvariant()
-    if ($NodeVersion -ne '24.12.0') {
-        # another version has no recorded digest: say so rather than implying a verification
-        [Console]::Error.WriteLine("fetch-node: WARNING - no recorded digest for v$NodeVersion; this download is NOT authenticated.")
-        [Console]::Error.WriteLine("fetch-node: computed sha256 $Actual - record it in this script and fetch-node.sh.")
-    } elseif ($Actual -ne $Expected) {
+    $hash = [Security.Cryptography.SHA256]::Create()
+    $stream = [IO.File]::OpenRead($Zip)
+    try { $Actual = [BitConverter]::ToString($hash.ComputeHash($stream)).Replace('-', '').ToLowerInvariant() }
+    finally { $stream.Dispose(); $hash.Dispose() }
+    if ($Actual -ne $Expected) {
         Fail "REFUSING - $Archive hashes $Actual, expected $Expected"
     } else {
         Write-Output 'fetch-node: sha256 verified against the recorded digest'
@@ -62,9 +63,11 @@ try {
     $zipFile = [IO.Compression.ZipFile]::OpenRead($Zip)
     try {
         $entry = $zipFile.GetEntry("node-v$NodeVersion-$Target/node.exe")
-        if (-not $entry) { Fail "node.exe is not inside $Archive" }
+        $license = $zipFile.GetEntry("node-v$NodeVersion-$Target/LICENSE")
+        if (-not $entry -or -not $license) { Fail "node.exe or LICENSE is not inside $Archive" }
         New-Item -ItemType Directory -Force -Path $Dest | Out-Null
         [IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $Installed, $true)
+        [IO.Compression.ZipFileExtensions]::ExtractToFile($license, (Join-Path $Dest 'LICENSE'), $true)
     } finally { $zipFile.Dispose() }
     Write-Output "fetch-node: installed at $Installed"
 } finally {

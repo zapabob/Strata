@@ -28,18 +28,22 @@ test('chat metrics ignore another session and all-request totals',()=>{
  assert.equal(chatMetrics({...session,statsAvailable:false},null).total,null);
  assert.equal(chatMetrics(null,null).pct,null);
 });
-test('native file actions use explicit argument arrays and reject traversal and symlinks',async()=>{
+test('native file actions use explicit argument arrays and reject traversal and symlinks',async t=>{
  const root=await mkdtemp(join(tmpdir(),'strata-artifact-test-'));
  try {
   const examplesDir=join(root,'examples'),previewsDir=join(root,'copies');await mkdir(examplesDir);
-  await writeFile(join(examplesDir,'a file.md'),'Example');await writeFile(join(root,'private.md'),'Outside');await symlink(join(root,'private.md'),join(examplesDir,'outside.md'));
+  await writeFile(join(examplesDir,'a file.md'),'Example');await writeFile(join(root,'private.md'),'Outside');
   const calls=[];const deps={examplesDir,previewsDir,platform:'darwin',launch:async(...args)=>calls.push(args)};
   await openArtifact({action:'reveal',path:'/examples/a file.md'},deps);
   assert.deepEqual(calls[0],['open',['-R',await realpath(join(examplesDir,'a file.md'))]]);
   await openArtifact({action:'open',name:'../notes.md',content:'Exported preview'},deps);
   assert.equal(await readFile(calls[1][1][0],'utf8'),'Exported preview');
   await assert.rejects(openArtifact({action:'open',path:'/examples/../private.md'},deps));
-  await assert.rejects(openArtifact({action:'open',path:'/examples/outside.md'},deps));
+  await t.test('outside file symlinks are rejected',async st=>{
+    try {await symlink(join(root,'private.md'),join(examplesDir,'outside.md'));}
+    catch(error){if(process.platform==='win32'&&error.code==='EPERM'){st.skip('Windows symlink privilege unavailable');return;}throw error;}
+    await assert.rejects(openArtifact({action:'open',path:'/examples/outside.md'},deps));
+  });
   await assert.rejects(openArtifact({action:'open',path:'/etc/passwd'},deps));
   await assert.rejects(openArtifact({action:'open',name:'bad.app',content:'No'},deps));
   assert.equal(calls.length,2);

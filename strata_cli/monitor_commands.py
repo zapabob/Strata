@@ -245,4 +245,12 @@ def run(a: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    if os.name == "nt":
+        # Redirected Japanese Windows consoles can use cp932, which cannot
+        # encode every punctuation mark in argparse help. Preserve the chosen
+        # encoding and replace unsupported glyphs instead of failing startup.
+        for stream in (sys.stdout, sys.stderr):
+            configure = getattr(stream, "reconfigure", None)
+            if configure is not None:
+                configure(errors="replace")
     return run(parser().parse_args(argv))

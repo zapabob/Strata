@@ -31,9 +31,6 @@ import numpy as np
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _paths import add_gguf_py  # noqa: E402
-add_gguf_py()
-import gguf  # noqa: E402  (the pinned llama.cpp gguf-py, which knows Q2_0 = type 42)
 
 EXPERT_TENSORS = ("mtp.layers.0.mlp.experts.gate_up_proj", "mtp.layers.0.mlp.experts.down_proj")
 
@@ -126,9 +123,9 @@ def dequant(kind: str, blob: np.ndarray, n: int) -> np.ndarray:
     return (b[:, 2:].view(np.int8).astype(np.float32) * d).reshape(-1)[:n]
 
 
-QUANT = {"q2_0": (q2_0, gguf.GGMLQuantizationType.Q2_0, 64, 18),
-         "q4_0": (q4_0, gguf.GGMLQuantizationType.Q4_0, 32, 18),
-         "q8_0": (q8_0, gguf.GGMLQuantizationType.Q8_0, 32, 34)}
+QUANT = {"q2_0": (q2_0, 'Q2_0', 64, 18),
+         "q4_0": (q4_0, 'Q4_0', 32, 18),
+         "q8_0": (q8_0, 'Q8_0', 32, 34)}
 
 
 def main() -> int:
@@ -138,9 +135,16 @@ def main() -> int:
     ap.add_argument("--out", required=True)
     ap.add_argument("--check-experts", type=int, default=8, help="experts per tensor used for the error report")
     a = ap.parse_args()
+    # Importing installer tools or asking for help must not require the optional packer.
+    from _paths import add_gguf_py
+
+    add_gguf_py()
+    import gguf
+
     src = Path(a.src)
     manifest = json.loads((src / "mtp-manifest.json").read_text())
-    fn, qtype, block, block_bytes = QUANT[a.experts]
+    fn, qtype_name, block, block_bytes = QUANT[a.experts]
+    qtype = getattr(gguf.GGMLQuantizationType, qtype_name)
     w = gguf.GGUFWriter(a.out, "qwen4exp-mtp")
     w.add_string("strata.mtp.source", "Qwen/Qwen3.8-Flash-Next BF16 checkpoint, mtp.* tensors")
     w.add_string("strata.mtp.source_sha256", hashlib.sha256(

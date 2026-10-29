@@ -50,3 +50,7 @@ typing-extensions==4.16.0 \
     --hash=sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8
 urllib3==2.8.0 \
     --hash=sha256:0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3
+
+# Vendored universal Hakua base wheel; PyYAML is locked above.
+hakua-memory==0.3.5 \
+    --hash=sha256:ff583d7f867cac1d9bca8e11b43cbd82705f7f6b06852722eae3f4e2f7de0cfa

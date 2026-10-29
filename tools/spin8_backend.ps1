@@ -8,7 +8,7 @@ either pinned revision; no flag-only integration is represented as support.
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet('prism', 'zapabob')][string]$Backend = 'prism',
+    [ValidateSet('prism', 'zapabob', 'turboquant')][string]$Backend = 'prism',
     [string]$StorageRoot = 'H:\Strata',
     [ValidateSet('cpu', 'cuda')][string]$Device = 'cuda',
     [ValidateSet('120')][string]$CudaArchitecture = '120',
@@ -22,12 +22,13 @@ $ErrorActionPreference = 'Stop'
 $pins = @{
     prism = @{ repository = 'https://github.com/PrismML-Eng/llama.cpp.git'; commit = '73bfe6cc485554822f80c473a3c0c4f25e80f41b' }
     zapabob = @{ repository = 'https://github.com/zapabob/llama.cpp.git'; commit = '2c8e9655cdc6ea31051d4437a71492e717d046a4' }
+    turboquant = @{ repository = 'https://github.com/TheTom/llama-cpp-turboquant.git'; commit = '643956891dfdf51aecdbd05ca508dd21e21e8195' }
 }
 $pin = $pins[$Backend]
 $storage = [IO.Path]::GetFullPath($StorageRoot)
 $source = Join-Path $storage "deps\$Backend-$($pin.commit.Substring(0,8))"
 $buildName = "$Backend-$($pin.commit.Substring(0,8))-$Device"
-if ($Device -eq 'cuda' -and -not $AcquireOnly) { $buildName += '-sm120' }
+if ($Device -eq 'cuda' -and -not $AcquireOnly) { $buildName += '-sm120'; if ($Backend -eq 'turboquant') { $buildName += '-standard' } }
 $build = Join-Path $storage "build\$buildName"
 $commands = [Collections.Generic.List[object]]::new()
 function Invoke-Checked([string]$Exe, [string[]]$Arguments) {
@@ -54,7 +55,7 @@ $manifest = [ordered]@{
     source = @{ repository = $remote; commit = $revision; dirty = $false; path = $source; patches = @() }
     build = @{ status = 'not-built'; device = $Device; cudaArchitecture = $CudaArchitecture; directory = $build }
     spin8 = @{ available = $false; modes = @('off'); attentionHook = $false; profiling = $false }
-    modelFormats = $(if ($Backend -eq 'prism') { @('PQ2_0', 'PTQ1_0', 'Q2_0') } else { @('Q2_0') })
+    modelFormats = $(if ($Backend -eq 'prism') { @('PQ2_0', 'PTQ1_0', 'Q2_0') } elseif ($Backend -eq 'turboquant') { @('standard-gguf') } else { @('Q2_0') })
     modelLoadTested = $false
     commands = $commands; files = @(); binary = $null
     createdAt = [DateTime]::UtcNow.ToString('o')
@@ -66,10 +67,10 @@ if ($AcquireOnly) {
     return
 }
 try {
-    if ($Device -eq 'cuda') {
-        if ($Backend -ne 'prism') { throw 'Only the pinned Prism standard-sm120 CUDA patch is validated. Use -AcquireOnly for zapabob.' }
+    if ($Device -eq 'cuda' -and $Backend -eq 'zapabob') { throw 'The zapabob CUDA runtime has not been qualified. Use -AcquireOnly.' }
+    if ($Device -eq 'cuda' -and $Backend -in @('prism', 'turboquant')) {
         $buildSource = "$source-sm120"
-        $patch = Join-Path $PSScriptRoot 'spin8_backend_sm120.patch'
+        $patch = Join-Path $PSScriptRoot $(if ($Backend -eq 'prism') { 'spin8_backend_sm120.patch' } else { 'turboquant_backend_sm120.patch' })
         $patchHash = (Get-FileHash -LiteralPath $patch -Algorithm SHA256).Hash.ToLowerInvariant()
         if (-not (Test-Path -LiteralPath $buildSource)) {
             Invoke-Checked git @('-C', $source, 'worktree', 'add', '--detach', $buildSource, $pin.commit)
@@ -81,7 +82,7 @@ try {
         $manifest.source.path = $buildSource
         $manifest.source.basePath = $source
         $manifest.source.dirty = $true
-        $manifest.source.patches = @(@{ id = 'prism-standard-sm120-v1'; sha256 = $patchHash })
+        $manifest.source.patches = @(@{ id = "$Backend-standard-sm120-v1"; sha256 = $patchHash })
         $manifest.source.verification = @{ comparedAgainst = 'HEAD'; includesStagedChanges = $true; untrackedRejected = $true }
     }
     $generator = @()

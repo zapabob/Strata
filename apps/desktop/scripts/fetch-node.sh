@@ -15,24 +15,25 @@
 #   apps/desktop/scripts/fetch-node.sh --target linux-x64
 #   apps/desktop/scripts/fetch-node.sh --check         # verify what is already installed
 #
-# The Node version must satisfy the App Host's own `engines.node` (>= 24.12.0).
+# The Node version must satisfy the App Host's own `engines.node` (>= 24.22.2).
 set -euo pipefail
 
-NODE_VERSION="${STRATA_NODE_VERSION:-24.12.0}"
+NODE_VERSION="${STRATA_NODE_VERSION:-24.22.2}"
+if [ "$NODE_VERSION" != "24.22.2" ]; then echo "fetch-node: no recorded checksum for v$NODE_VERSION; update both fetch scripts first" >&2; exit 1; fi
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEST="$HERE/../src-tauri/resources/node"
 
 # Published SHA-256 of each official nodejs.org archive, recorded so a tampered or truncated
 # download is refused rather than shipped. Add a row when bumping the version.
-# Taken from nodejs.org's own SHASUMS256.txt for v24.12.0, which is published over HTTPS beside
+# Taken from nodejs.org's own SHASUMS256.txt for v24.22.2, which is published over HTTPS beside
 # the archives. Recorded here so the fetch is verified against a value that does not come from the
 # same response as the payload.
 digest_for() {
   case "$1" in
-    darwin-arm64) echo "319f221adc5e44ff0ed57e8a441b2284f02b8dc6fc87b8eb92a6a93643fd8080" ;;
-    linux-x64)    echo "6159227e0af7d7c3c6bb2fa900452b04a6cb8841a702a79acc613209d70b04d0" ;;
-    linux-arm64)  echo "9b2a2eeb98a8eb37361224e2a1d060300ad2dd143af58dfdb16de785df0f1228" ;;
-    win-x64)      echo "9c125f61ae947b52e779095830f9cac267846a043ef7192183c84016aaad2812" ;;
+    darwin-arm64) echo "aa9549349e47dffaa42dcf95d6e06ade8c4bdafc980979883b88767670df385a" ;;
+    linux-x64)    echo "361718c444e49af2ca5a110c83ba6a8901143f23ab285ebbef0341f391f482a9" ;;
+    linux-arm64)  echo "95c264150aceb7f3437a29fd6984924f5f8d1511ea3cbd6c508b83f6c555dae2" ;;
+    win-x64)      echo "ca1bff5d8ead13c9f2ea404a176db46bd430704d5b5113734049fa365e7799e2" ;;
     *)            echo "" ;;
   esac
 }
@@ -55,6 +56,7 @@ INSTALLED="$DEST/$EXE"
 
 if [ "${1:-}" = "--check" ]; then
   if [ ! -x "$INSTALLED" ]; then echo "fetch-node: not installed at $INSTALLED" >&2; exit 1; fi
+  if [ ! -f "$DEST/LICENSE" ]; then echo "fetch-node: the official Node licence is missing" >&2; exit 1; fi
   got="$("$INSTALLED" --version)"
   echo "fetch-node: $INSTALLED is $got"
   case "$got" in "v$NODE_VERSION") exit 0 ;; *) echo "fetch-node: expected v$NODE_VERSION" >&2; exit 1 ;; esac
@@ -86,17 +88,16 @@ if [ -n "$EXPECTED" ]; then
   fi
   echo "fetch-node: sha256 verified against the recorded digest"
 else
-  # Without a recorded digest the download cannot be authenticated. Say so loudly and keep the
-  # computed value so it can be recorded, rather than implying a verification that did not happen.
-  echo "fetch-node: WARNING — no recorded digest for $TARGET; this download is NOT authenticated." >&2
-  echo "fetch-node: computed sha256 $ACTUAL — record it in $(basename "${BASH_SOURCE[0]}") to enable verification." >&2
+  echo "fetch-node: REFUSING — no recorded digest for $TARGET" >&2
+  exit 1
 fi
 
 mkdir -p "$DEST"
 case "$ARCHIVE" in
-  *.zip) unzip -q -j "$WORK/$ARCHIVE" "node-v$NODE_VERSION-win-x64/node.exe" -d "$DEST" ;;
+  *.zip) unzip -q -o -j "$WORK/$ARCHIVE" "node-v$NODE_VERSION-win-x64/node.exe" "node-v$NODE_VERSION-win-x64/LICENSE" -d "$DEST" ;;
   *)     tar xzf "$WORK/$ARCHIVE" -C "$WORK"
-         cp "$WORK/node-v$NODE_VERSION-$TARGET/bin/node" "$DEST/node" ;;
+         cp "$WORK/node-v$NODE_VERSION-$TARGET/bin/node" "$DEST/node"
+         cp "$WORK/node-v$NODE_VERSION-$TARGET/LICENSE" "$DEST/LICENSE" ;;
 esac
 chmod +x "$DEST/$EXE"
 

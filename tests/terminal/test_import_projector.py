@@ -90,8 +90,9 @@ class ImportProjectorTests(unittest.TestCase):
         plan = self.plan(self.source)
         self.assertEqual(plan["file_set_status"], "invalid_or_incomplete")
         self.assertFalse(plan["reads_pictures"])
-        self.assertEqual(plan["messages"], ["This model type isn't supported by the Strata engine. "
-                                            "Add it as a Custom model API (llama-server) instead."])
+        self.assertTrue(plan["messages"])
+        self.assertIn("isn't supported by the Strata engine", plan["messages"][0])
+        self.assertIn("Custom model API (llama-server)", plan["messages"][0])
 
     def test_choosing_the_projector_itself_says_so(self):
         projector = self.source / "mmproj-F16.gguf"

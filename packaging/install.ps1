@@ -58,7 +58,12 @@ try {
     $zip = Join-Path $work 'terminal.zip'
     try { Invoke-WebRequest -UseBasicParsing -Uri "$feed/$rel" -OutFile $zip }
     catch { Die "the download failed ($($_.Exception.Message)). Check your internet connection and run this again; nothing was installed." }
-    $got = (Get-FileHash -Algorithm SHA256 $zip).Hash.ToLower()
+    # Use the runtime directly: a PowerShell 5.1 child can inherit a 7.x-only
+    # PSModulePath, where Get-FileHash's module cannot be imported.
+    $hashStream = [IO.File]::OpenRead($zip)
+    $hashAlgorithm = [Security.Cryptography.SHA256]::Create()
+    try { $got = ([BitConverter]::ToString($hashAlgorithm.ComputeHash($hashStream))).Replace('-', '').ToLowerInvariant() }
+    finally { $hashAlgorithm.Dispose(); $hashStream.Dispose() }
     if ($got -ne $want) { Die "the download does not match the release's checksum (got $got, wanted $want). It was not installed; try again." }
     Write-Host '  Checksum ok.'
 
