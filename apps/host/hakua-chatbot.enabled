@@ -1,0 +1,3 @@
+# Hakua fork marker. Presence enables capabilities.hakuaChatbot (Sidebar Hakua).
+# Override with STRATA_HAKUA_CHATBOT=1/true/yes/on, or delete this file to hide Hakua.
+1

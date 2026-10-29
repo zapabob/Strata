@@ -405,7 +405,11 @@ def _manifest(spec: dict) -> dict:
     required = {
         "programs/strata-desktop.exe", "programs/host/server/index.mjs", "programs/host/dist/index.html",
         "programs/README.md",
-        "programs/host/package.json", "programs/node/node.exe", "programs/control/BUNDLE.json",
+        "programs/host/package.json",
+        # Hakua fork: ship the enable marker next to package.json so ROOT/hakua-chatbot.enabled
+        # is present after NSIS/full install (capabilities.hakuaChatbot default-on for this fork).
+        "programs/host/hakua-chatbot.enabled",
+        "programs/node/node.exe", "programs/control/BUNDLE.json",
         "programs/control/python/python.exe", "programs/control/strata.py", "programs/harness/BUNDLE.json",
         "programs/harness/lib/bin.js",
         WEBVIEW2,

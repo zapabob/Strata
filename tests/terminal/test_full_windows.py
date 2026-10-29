@@ -35,6 +35,7 @@ def _fixture(tmp_path: Path) -> tuple[dict, Path, Path]:
         "programs/host/server/index.mjs": b"server",
         "programs/host/dist/index.html": b"<html></html>",
         "programs/host/package.json": b"{}",
+        "programs/host/hakua-chatbot.enabled": b"1\n",
         "programs/node/node.exe": b"node PE",
         "programs/control/BUNDLE.json": b"{}",
         "programs/control/python/python.exe": b"python PE",
