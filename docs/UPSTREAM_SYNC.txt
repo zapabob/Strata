@@ -1,7 +1,8 @@
-﻿Pages refresh: 2026-10-29T02:22+09:00 (Cursor)
-main tip: see origin/main
-Windows NSIS with assets: v0.3.2-preview.20261028.2
-  setup.exe SHA-256: F0CDD5D84F3FADA7E084E4AEC0F65B558793834F58E2FEAF9F89456D5A0604FD
-  7z SHA-256: DE23C3DAC6EEAFA86D7A3A51581ABD7700E08832ADF47DD023A1DBF953411351
+﻿Pages refresh prepared: 2026-10-29T17:45+09:00 (Cursor)
+Product VERSION: 0.3.2-preview.20261029.2
+Engine: 0.1.53 (Metal 0.1.52-metal)
+Planned Windows NSIS: v0.3.2-preview.20261029.2 / Strata_0.3.2-preview.20261029.2_x64-setup.exe
+  setup.exe SHA-256: pending (fill after NSIS publish)
 Upstream sync note tag (no installer): v0.3.2-preview.20261028.1 (official v0.2.7.1)
-Actions workflow_dispatch may still be blocked (HTTP 422); gh-pages is the live legacy source.
+Hakua-memory: Hermes SOUL.md/MEMORY.md wire; pip hakua-memory==0.3.5; host/hakua-chatbot.enabled
+Actions workflow_dispatch may still be blocked (HTTP 422); publish via tools/publish_gh_pages.ps1 onto gh-pages.

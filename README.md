@@ -25,7 +25,15 @@
 
 **Free, open source, and yours to run.**
 
-This is **[zapabob/Strata](https://github.com/zapabob/Strata)** — a fork of [Niko1221/Strata](https://github.com/Niko1221/Strata). It keeps Hakua consented memory chat (Sidebar **Hakua**), ships `host/hakua-chatbot.enabled` in the Windows package so Hakua stays on after install, and keeps Spin(8)/Triality, Query-v3, TurboQuant, Bonsai, Hermes hooks and Windows `-hakua` packaging. This preview also wires Hermes-agent `SOUL.md` / `MEMORY.md` through the Hakua memory stack (Ebbinghaus, RAG + semantic graph, Obsidian sync, and `hakua sleep`). It tracks upstream features, security fixes and bugfixes. Model and hardware guidance below matches upstream **v0.2.7.1** (`46c152a1`, synced 2026-10-28). The app tree version is **`0.3.2-preview.20261029.2`**.
+This is **[zapabob/Strata](https://github.com/zapabob/Strata)** — a Hakua fork of [Niko1221/Strata](https://github.com/Niko1221/Strata). It keeps Hakua consented memory chat (Sidebar **Hakua**), ships `host/hakua-chatbot.enabled` in the Windows package so Hakua stays on after install, and wires Hermes-agent `SOUL.md` / `MEMORY.md` into the Hakua memory stack (Ebbinghaus, RAG + semantic graph, Obsidian, and `hakua sleep`). It also keeps Spin(8)/Triality, Query-v3, TurboQuant, Bonsai, Hermes hooks and Windows `-hakua` packaging, and tracks upstream features, security fixes and bugfixes.
+
+| Version kind | Value |
+| --- | --- |
+| **Product** (app / installer / `VERSION`) | **`0.3.2-preview.20261029.2`** |
+| **Engine** (native CUDA/HIP/SYCL; Metal separate) | **0.1.53** (Metal **0.1.52-metal**) |
+| Upstream tracked for models & hardware guides | **v0.2.7.1** (`46c152a1`, synced 2026-10-28) |
+
+The product number is what the installer and About box show. The engine number is the C++ inference binary the app downloads for your graphics card. They move on different schedules — do not treat them as the same string.
 
 Site: [zapabob.github.io/Strata](https://zapabob.github.io/Strata/) · Fork detail: [Fork notes](#fork-notes)
 
@@ -100,11 +108,17 @@ Not sure what fits? [Choose a model for your computer](docs/MODELS.md#pick-by-me
 ### Desktop app (this fork)
 
 **[Windows NSIS (unsigned preview) →](https://github.com/zapabob/Strata/releases/download/v0.3.2-preview.20261029.2/Strata_0.3.2-preview.20261029.2_x64-setup.exe)**  
-Release notes: [v0.3.2-preview.20261029.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2) · Source sync: [v0.3.2-preview.20261028.1](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1) · [All fork releases](https://github.com/zapabob/Strata/releases) · [Upstream releases](https://github.com/Niko1221/Strata/releases/latest)
+Tag: [v0.3.2-preview.20261029.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2) · Earlier source sync: [v0.3.2-preview.20261028.1](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1) · [All fork releases](https://github.com/zapabob/Strata/releases) · [Upstream releases](https://github.com/Niko1221/Strata/releases/latest)
 
-Install or overwrite the Windows app (`/S` silent overwrite is fine), choose a model, and start chatting. Default install path: `%LOCALAPPDATA%\Programs\Strata`. On first start the app downloads the engine for your graphics card. Keep your models folder when upgrading. The package includes `host/hakua-chatbot.enabled` (Hakua sidebar on). This preview build is **unsigned** (no signed updater feed). SHA-256 is on the [release notes](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2). [Installer help](docs/INSTALL.md#the-app).
+Planned Windows file name (once the tag has assets):
 
-<sub>Fork Windows file: `Strata_0.3.2-preview.20261029.2_x64-setup.exe` (SHA-256 on the release page). Optional 7z sidecar when published. Upstream also ships Linux/macOS installers under Niko1221/Strata.</sub>
+`Strata_0.3.2-preview.20261029.2_x64-setup.exe`
+
+If that download 404s, the NSIS build or GitHub release is not up yet — use [Releases](https://github.com/zapabob/Strata/releases) for the newest uploaded setup, or wait for the parent release job. SHA-256 is listed on the release notes when the file is published.
+
+Install or overwrite the Windows app (`/S` silent overwrite is fine), choose a model, and start chatting. Default install path: `%LOCALAPPDATA%\Programs\Strata`. On first start the app downloads the **engine** for your graphics card (engine **0.1.53** line). Keep your models folder when upgrading. The package includes `host/hakua-chatbot.enabled` (Hakua sidebar on). This preview build is **unsigned** (no signed updater feed). [Installer help](docs/INSTALL.md#the-app).
+
+<sub>Optional 7z sidecar when published. Upstream also ships Linux/macOS installers under Niko1221/Strata.</sub>
 
 <p align="center">
   <img src="docs/media/app-chat.png" width="900" alt="Strata desktop app with a chat and live code preview side by side">
@@ -193,24 +207,30 @@ Run **`strata connect`** to see setup instructions for your tool. [Connection gu
 | --- | --- |
 | Repository | [zapabob/Strata](https://github.com/zapabob/Strata) |
 | Upstream tracked | [Niko1221/Strata](https://github.com/Niko1221/Strata) **v0.2.7.1** (`46c152a1`) |
-| App version in this preview tree | `0.3.2-preview.20261029.2` |
+| Product version | `0.3.2-preview.20261029.2` |
+| Engine version | `0.1.53` (Metal `0.1.52-metal`) |
 | Landing page | https://zapabob.github.io/Strata/ |
-| Windows installer with assets | [v0.3.2-preview.20261029.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2) (unsigned NSIS) |
+| Windows installer (planned tag) | [v0.3.2-preview.20261029.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2) → `Strata_0.3.2-preview.20261029.2_x64-setup.exe` (unsigned NSIS) |
 | Upstream sync tag | [v0.3.2-preview.20261028.1](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1) |
+| Memory pip pin | `hakua-memory==0.3.5` (`requirements.txt`; optional `[obsidian,rag]`) |
 
 **Kept on purpose:** Hakua consented memory chat; packaged enable marker `programs/host/hakua-chatbot.enabled` (also under the install tree as `host/hakua-chatbot.enabled`); `hakua_harness` / run-config keys; load-cancel ownership (`stopCancelledLoad`); F01–F11 (Spin8 / Query-v3 / TurboQuant / guards / GGUF router); Hermes hooks; Windows packaging labelled `-hakua`. Product SemVer is unified via root `VERSION` and `tools/bump_hakua_product_version.py`.
 
 ### Hakua memory stack (this fork)
 
+Consented long-term memory for Hakua / Hermes operators. Memory read/write stays opt-in (`strata_memory` + principal keys). No secrets in the repo.
+
 | Piece | What it does |
 | --- | --- |
-| Hermes `SOUL.md` / `MEMORY.md` | Synced into a Hakua principal profile (`~/.hakua-memory/profiles/hermes/`) for `hakua_harness` `persona_sha256` (plain copies; no symlinks). |
+| Hermes `SOUL.md` / `MEMORY.md` | Plain-copied into a Hakua principal profile (`~/.hakua-memory/profiles/hermes/`) for `hakua_harness` `persona_sha256` (no symlinks). |
 | Ebbinghaus | Spaced retention / sleep rehearsal via `hakua_memory.ebbinghaus` under the profile root. |
 | RAG + semantic graph | Document chunks (`rag.db`) and typed graph nodes/edges (`semantic.db`) through `CompositeMemory`. |
 | Obsidian | Export/import under `OBSIDIAN_VAULT_PATH` (or the open vault) → `Hakua/` notes. |
-| Sleep | `py -3 tools/hakua_hermes_memory_stack.py sleep` (also `strata_memory_mcp.py --cli sleep`) reindexes, runs Ebbinghaus sleep, flushes Obsidian. |
+| Sleep / consolidate | `py -3 tools/hakua_hermes_memory_stack.py sleep` (also `strata_memory_mcp.py --cli sleep`) reindexes, runs Ebbinghaus sleep, flushes Obsidian. |
+| Sidebar enable | Packaged `host/hakua-chatbot.enabled` keeps the **Hakua** sidebar available after install. |
+| Python package | `pip install hakua-memory==0.3.5` (operators may add extras: `pip install "hakua-memory[obsidian,rag]==0.3.5"`). |
 
-Operator template: `serve/examples/hakua_hermes_harness.example.json`. Detail log: `_docs/2026-10-29_hakua-hermes-soul-memory-wire{Cursor}.md`. Dependency pin: `hakua-memory==0.3.5` in `requirements.txt` (optional extras `[obsidian,rag]` for operator envs). Memory consent stays opt-in (`strata_memory` + principal keys); no secrets in repo.
+Operator template: `serve/examples/hakua_hermes_harness.example.json`. Stack CLI: `tools/hakua_hermes_memory_stack.py`. Host/MCP bridge: `tools/strata_memory_mcp.py`. Detail log: `_docs/2026-10-29_hakua-hermes-soul-memory-wire{Cursor}.md`.
 
 **Not claimed here:** new speed or quality numbers beyond what already sits under `docs/` and `_docs/`. Full 131k certification remains open. Signed updater feed needs keys on a release PC. Multiuser native cache switching for `hakua_harness` is still prototype-grade.
 
@@ -227,4 +247,3 @@ Operator template: `serve/examples/hakua_hermes_harness.example.json`. Detail lo
 <sub>For AI tools and automated readers: <a href="AGENTS.md">technical reference</a> · <a href="docs/AI_SETUP.md">setup instructions</a>.</sub>
 
 **Sponsorships, hardware partnerships or collaborations:** [niko.veit@outlook.com](mailto:niko.veit@outlook.com).
-

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Strata Landing & Documentation i18n Application Logic
  * Supports English (en), Japanese (ja), Simplified Chinese (zh)
  */
@@ -12,10 +12,10 @@ const translations = {
     nav_arch: "Architecture",
     nav_github: "GitHub",
 
-    hero_pill: "Windows fork preview: 28 October 2026",
+    hero_pill: "Windows fork preview: 29 October 2026",
     hero_title: "Local inference, with measured limits",
     hero_desc: "Desktop and Terminal interfaces for native inference and compatible GGUF models. Actual 4K and 32K generation is documented; full 131k certification remains open.",
-    hero_download: "Download Windows NSIS (0.3.2-preview.20261028.2)",
+    hero_download: "Download Windows NSIS (0.3.2-preview.20261029.2)",
     hero_github: "View on GitHub",
     copied_toast: "Command copied to clipboard!",
 
@@ -38,9 +38,9 @@ const translations = {
     f3_desc: "Join completed prefetch threads so their I/O scratch is released. CPU failure-injection tests and the CUDA build have separate evidence.",
     f3_tag: "Measured startup fix",
 
-    f4_title: "Optional memory harness",
-    f4_desc: "Disabled by default. Per-user isolation, approved persona files and explicit per-turn consent are required. Runtime resource qualification remains open.",
-    f4_tag: "Opt-in; qualification open",
+    f4_title: "Hakua memory + Hermes SOUL",
+    f4_desc: "Sidebar Hakua stays on via host/hakua-chatbot.enabled. Hermes SOUL.md/MEMORY.md sync into hakua-memory (Ebbinghaus, RAG + graph, Obsidian, sleep). Harness consent stays opt-in; pip pin hakua-memory==0.3.5.",
+    f4_tag: "Consented; pin 0.3.5",
 
     f5_title: "Long local requests",
     f5_desc: "The quiet local inference allowance is 30 minutes. Remote and tool limits remain separate. Cancellation and subsequent recovery passed real Harness tests.",
@@ -92,9 +92,9 @@ const translations = {
     dl_desc: "Preview archives have SHA-256 checksums and dependency manifests. Read their scope and installation instructions before applying an overlay.",
 
     d1_badge: "Windows NSIS installer",
-    d1_title: "Strata 0.3.2-preview.20261028.2 (unsigned NSIS)",
-    d1_desc: "Overwrite-capable Windows x64 setup. Unsigned preview; signed feed/Tauri updater is not included. Keep your models folder when upgrading.",
-    d1_btn: "Download NSIS (~111 MiB)",
+    d1_title: "Strata 0.3.2-preview.20261029.2 (unsigned NSIS)",
+    d1_desc: "Overwrite-capable Windows x64 setup for product 0.3.2-preview.20261029.2 (engine 0.1.53). Unsigned preview; signed feed/Tauri updater is not included. Keep your models folder when upgrading. Link 404s until the release asset is uploaded.",
+    d1_btn: "Download NSIS (when published)",
 
     d2_badge: "Upstream sync notes",
     d2_title: "v0.3.2-preview.20261028.1 (source sync)",
@@ -122,10 +122,10 @@ const translations = {
     nav_arch: "アーキテクチャ",
     nav_github: "GitHub",
 
-    hero_pill: "Windows フォークプレビュー: 2026年10月28日",
+    hero_pill: "Windows フォークプレビュー: 2026年10月29日",
     hero_title: "Local inference, with measured limits",
     hero_desc: "Desktop and Terminal interfaces for native inference and compatible GGUF models. Actual 4K and 32K generation is documented; full 131k certification remains open.",
-    hero_download: "Windows NSIS をダウンロード (0.3.2-preview.20261028.2)",
+    hero_download: "Windows NSIS をダウンロード (0.3.2-preview.20261029.2)",
     hero_github: "GitHubリポジトリを表示",
     copied_toast: "コマンドをクリップボードにコピーしました！",
 
@@ -148,9 +148,9 @@ const translations = {
     f3_desc: "Join completed prefetch threads so their I/O scratch is released. CPU failure-injection tests and the CUDA build have separate evidence.",
     f3_tag: "Measured startup fix",
 
-    f4_title: "Optional memory harness",
-    f4_desc: "Disabled by default. Per-user isolation, approved persona files and explicit per-turn consent are required. Runtime resource qualification remains open.",
-    f4_tag: "Opt-in; qualification open",
+    f4_title: "Hakua memory + Hermes SOUL",
+    f4_desc: "Sidebar Hakua stays on via host/hakua-chatbot.enabled. Hermes SOUL.md/MEMORY.md sync into hakua-memory (Ebbinghaus, RAG + graph, Obsidian, sleep). Harness consent stays opt-in; pip pin hakua-memory==0.3.5.",
+    f4_tag: "Consented; pin 0.3.5",
 
     f5_title: "Long local requests",
     f5_desc: "The quiet local inference allowance is 30 minutes. Remote and tool limits remain separate. Cancellation and subsequent recovery passed real Harness tests.",
@@ -202,9 +202,9 @@ const translations = {
     dl_desc: "Preview archives have SHA-256 checksums and dependency manifests. Read their scope and installation instructions before applying an overlay.",
 
     d1_badge: "Windows NSIS インストーラ",
-    d1_title: "Strata 0.3.2-preview.20261028.2（署名なし NSIS）",
-    d1_desc: "上書きインストール可能な Windows x64 セットアップ。署名付き feed / Tauri updater は含みません。モデルフォルダは残してください。",
-    d1_btn: "NSIS をダウンロード（約 111 MiB）",
+    d1_title: "Strata 0.3.2-preview.20261029.2（署名なし NSIS）",
+    d1_desc: "製品 0.3.2-preview.20261029.2（エンジン 0.1.53）向けの上書き可能な Windows x64 セットアップ。署名付き feed / Tauri updater は含みません。資産アップロード前はリンクが 404 になります。",
+    d1_btn: "NSIS をダウンロード（公開後）",
 
     d2_badge: "上流同期メモ",
     d2_title: "v0.3.2-preview.20261028.1（ソース同期）",
@@ -232,10 +232,10 @@ const translations = {
     nav_arch: "系统架构",
     nav_github: "GitHub",
 
-    hero_pill: "Windows 分叉预览：2026 年 10 月 28 日",
+    hero_pill: "Windows 分叉预览：2026 年 10 月 29 日",
     hero_title: "Local inference, with measured limits",
     hero_desc: "Desktop and Terminal interfaces for native inference and compatible GGUF models. Actual 4K and 32K generation is documented; full 131k certification remains open.",
-    hero_download: "下载 Windows NSIS (0.3.2-preview.20261028.2)",
+    hero_download: "下载 Windows NSIS (0.3.2-preview.20261029.2)",
     hero_github: "查看 GitHub 仓库",
     copied_toast: "安装命令已复制到剪贴板！",
 
@@ -258,9 +258,9 @@ const translations = {
     f3_desc: "Join completed prefetch threads so their I/O scratch is released. CPU failure-injection tests and the CUDA build have separate evidence.",
     f3_tag: "Measured startup fix",
 
-    f4_title: "Optional memory harness",
-    f4_desc: "Disabled by default. Per-user isolation, approved persona files and explicit per-turn consent are required. Runtime resource qualification remains open.",
-    f4_tag: "Opt-in; qualification open",
+    f4_title: "Hakua memory + Hermes SOUL",
+    f4_desc: "Sidebar Hakua stays on via host/hakua-chatbot.enabled. Hermes SOUL.md/MEMORY.md sync into hakua-memory (Ebbinghaus, RAG + graph, Obsidian, sleep). Harness consent stays opt-in; pip pin hakua-memory==0.3.5.",
+    f4_tag: "Consented; pin 0.3.5",
 
     f5_title: "Long local requests",
     f5_desc: "The quiet local inference allowance is 30 minutes. Remote and tool limits remain separate. Cancellation and subsequent recovery passed real Harness tests.",
@@ -312,9 +312,9 @@ const translations = {
     dl_desc: "Preview archives have SHA-256 checksums and dependency manifests. Read their scope and installation instructions before applying an overlay.",
 
     d1_badge: "Windows NSIS 安装包",
-    d1_title: "Strata 0.3.2-preview.20261028.2（未签名 NSIS）",
-    d1_desc: "可覆盖安装的 Windows x64 安装程序。不含签名 feed / Tauri 更新器。升级时请保留模型文件夹。",
-    d1_btn: "下载 NSIS（约 111 MiB）",
+    d1_title: "Strata 0.3.2-preview.20261029.2（未签名 NSIS）",
+    d1_desc: "面向产品 0.3.2-preview.20261029.2（引擎 0.1.53）的可覆盖 Windows x64 安装程序。不含签名 feed / Tauri 更新器。资产上传前链接会 404。",
+    d1_btn: "下载 NSIS（发布后）",
 
     d2_badge: "上游同步说明",
     d2_title: "v0.3.2-preview.20261028.1（源码同步）",
@@ -361,8 +361,8 @@ function initTerminalTabs() {
   const tabs = document.querySelectorAll(".term-tab");
   const cmd = document.getElementById("terminal-cmd");
   const cmds = {
-    pwsh: "Start-Process https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.2",
-    bash: "if command -v open >/dev/null 2>&1; then open https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.2; else xdg-open https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.2; fi"
+    pwsh: "Start-Process https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2",
+    bash: "if command -v open >/dev/null 2>&1; then open https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2; else xdg-open https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2; fi"
   };
 
   tabs.forEach((tab) => {

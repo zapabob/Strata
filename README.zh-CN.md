@@ -25,7 +25,15 @@
 
 **免费、开源。**
 
-这是 **[zapabob/Strata](https://github.com/zapabob/Strata)** — [Niko1221/Strata](https://github.com/Niko1221/Strata) 的分支。保留 Hakua 同意式记忆聊天（侧栏 **Hakua**），并在 Windows 包中附带 `host/hakua-chatbot.enabled`，安装后仍默认开启 Hakua。本预览还将 Hermes Agent 的 `SOUL.md` / `MEMORY.md` 接入 Hakua 记忆栈（Ebbinghaus、RAG + 语义图、Obsidian 同步、`hakua sleep`）。同时保留 Spin(8)/Triality、Query-v3、TurboQuant、Bonsai、Hermes 与 Windows `-hakua` 打包，并跟进上游功能、安全与缺陷修复。下方模型/硬件说明对应上游 **v0.2.7.1**（`46c152a1`，2026-10-28 同步）。应用树版本为 **`0.3.2-preview.20261029.2`**。
+这是 **[zapabob/Strata](https://github.com/zapabob/Strata)** — [Niko1221/Strata](https://github.com/Niko1221/Strata) 的 Hakua 分支。保留 Hakua 同意式记忆聊天（侧栏 **Hakua**），并在 Windows 包中附带 `host/hakua-chatbot.enabled`，安装后仍默认开启 Hakua。还将 Hermes Agent 的 `SOUL.md` / `MEMORY.md` 接入 Hakua 记忆栈（Ebbinghaus、RAG + 语义图、Obsidian、`hakua sleep`）。同时保留 Spin(8)/Triality、Query-v3、TurboQuant、Bonsai、Hermes 与 Windows `-hakua` 打包，并跟进上游功能、安全与缺陷修复。
+
+| 版本种类 | 值 |
+| --- | --- |
+| **产品**（应用 / 安装包 / `VERSION`） | **`0.3.2-preview.20261029.2`** |
+| **引擎**（CUDA/HIP/SYCL；Metal 另计） | **0.1.53**（Metal **0.1.52-metal**） |
+| 模型/硬件说明所跟踪的上游 | **v0.2.7.1**（`46c152a1`，2026-10-28 同步） |
+
+产品版是安装程序与 About 显示的编号。引擎版是应用为显卡下载的 C++ 推理二进制编号。二者按不同节奏更新，请勿混为一谈。
 
 站点: [zapabob.github.io/Strata](https://zapabob.github.io/Strata/) · 详情: [分支说明](#分支说明)
 
@@ -98,11 +106,17 @@ strata launch --family deepseek41 --model ist-das-2.00bpw --plan
 ### 桌面应用（本分支）
 
 **[Windows NSIS（未签名预览）→](https://github.com/zapabob/Strata/releases/download/v0.3.2-preview.20261029.2/Strata_0.3.2-preview.20261029.2_x64-setup.exe)**  
-发行说明: [v0.3.2-preview.20261029.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2) · 源码同步: [v0.3.2-preview.20261028.1](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1) · [本分支全部发行](https://github.com/zapabob/Strata/releases) · [上游发行](https://github.com/Niko1221/Strata/releases/latest)
+标签: [v0.3.2-preview.20261029.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2) · 更早源码同步: [v0.3.2-preview.20261028.1](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1) · [本分支全部发行](https://github.com/zapabob/Strata/releases) · [上游发行](https://github.com/Niko1221/Strata/releases/latest)
 
-安装或覆盖安装（可用 `/S` 静默覆盖），选择模型后即可聊天。默认路径：`%LOCALAPPDATA%\Programs\Strata`。首次启动会下载对应显卡引擎。升级时请保留模型文件夹。包内含 `host/hakua-chatbot.enabled`。本预览为**未签名**构建。SHA-256 见[发行说明](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2)。[安装程序帮助](docs/INSTALL.md#the-app)。
+标签上传资产后的计划文件名：
 
-<sub>本分支 Windows 文件: `Strata_0.3.2-preview.20261029.2_x64-setup.exe`（SHA-256 见发行页；如有 7z 一并提供）。Linux / macOS 也可看上游 Niko1221/Strata。</sub>
+`Strata_0.3.2-preview.20261029.2_x64-setup.exe`
+
+若下载返回 404，说明 NSIS 构建或 GitHub Release 尚未就绪——请到 [Releases](https://github.com/zapabob/Strata/releases) 取最新已上传的 setup，或等待父任务完成。SHA-256 会在文件发布后写在发行说明中。
+
+安装或覆盖安装（可用 `/S` 静默覆盖），选择模型后即可聊天。默认路径：`%LOCALAPPDATA%\Programs\Strata`。首次启动会下载对应显卡的**引擎**（**0.1.53** 线）。升级时请保留模型文件夹。包内含 `host/hakua-chatbot.enabled`。本预览为**未签名**构建。[安装程序帮助](docs/INSTALL.md#the-app)。
+
+<sub>如有 7z 一并提供。Linux / macOS 也可看上游 Niko1221/Strata。</sub>
 
 <p align="center">
   <img src="docs/media/app-chat.png" width="900" alt="Strata 桌面应用，聊天和实时代码预览并排显示">
@@ -177,7 +191,7 @@ strata launch
 
 ## 帮助
 
-[全部指南](docs) · [故障排查](docs/TROUBLESHOOTING.md) · [报告问题](https://github.com/Niko1221/Strata/issues/new/choose) ·
+[全部指南](docs) · [故障排查](docs/TROUBLESHOOTING.md) · [向本分支报告问题](https://github.com/zapabob/Strata/issues/new/choose) ·
 [基准测试](docs/COMMUNITY_BENCHMARKS.md) · [工作原理](docs/HOW_IT_WORKS.md) · [参与贡献](CONTRIBUTING.md)
 
 ## 支持 Strata
@@ -203,14 +217,18 @@ strata launch
 | --- | --- |
 | 仓库 | [zapabob/Strata](https://github.com/zapabob/Strata) |
 | 跟踪上游 | [Niko1221/Strata](https://github.com/Niko1221/Strata) **v0.2.7.1**（`46c152a1`） |
-| App version in this preview tree | `0.3.2-preview.20261029.2` |
+| 产品版 | `0.3.2-preview.20261029.2` |
+| 引擎版 | `0.1.53`（Metal `0.1.52-metal`） |
 | 落地页 | https://zapabob.github.io/Strata/ |
-| 带资产的 Windows 安装包 | [v0.3.2-preview.20261029.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2)（未签名 NSIS） |
+| Windows 安装包（计划标签） | [v0.3.2-preview.20261029.2](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261029.2) → `Strata_0.3.2-preview.20261029.2_x64-setup.exe`（未签名 NSIS） |
 | 上游同步标签 | [v0.3.2-preview.20261028.1](https://github.com/zapabob/Strata/releases/tag/v0.3.2-preview.20261028.1) |
+| 记忆 pip pin | `hakua-memory==0.3.5`（`requirements.txt`；可选 `[obsidian,rag]`） |
 
 **刻意保留：** Hakua 同意式记忆聊天、同梱标记 `host/hakua-chatbot.enabled`、`hakua_harness` / run-config 密钥、加载取消所有权（`stopCancelledLoad`）、F01–F11（Spin8 / Query-v3 / TurboQuant 等）、Hermes、`-hakua` 打包。产品 SemVer 由根目录 `VERSION` 与 `tools/bump_hakua_product_version.py` 统一。
 
 ### Hakua 记忆栈（本分支）
+
+面向 Hakua / Hermes 操作者的同意式长期记忆。读写保持 opt-in（`strata_memory` + principal 密钥）。仓库内不含密钥。
 
 | 部件 | 作用 |
 | --- | --- |
@@ -218,9 +236,10 @@ strata launch
 | Ebbinghaus | 遗忘曲线与 sleep 强化（`hakua_memory.ebbinghaus`）。 |
 | RAG + 语义图 | `rag.db` / `semantic.db`（`CompositeMemory`）。 |
 | Obsidian | 导出/导入到 `OBSIDIAN_VAULT_PATH`（或当前打开库）下的 `Hakua/`。 |
-| Sleep | `py -3 tools/hakua_hermes_memory_stack.py sleep`（或 `strata_memory_mcp.py --cli sleep`）。 |
+| Sleep / consolidate | `py -3 tools/hakua_hermes_memory_stack.py sleep`（或 `strata_memory_mcp.py --cli sleep`）。 |
+| 侧栏启用 | 包内 `host/hakua-chatbot.enabled` 使安装后仍可使用 **Hakua**。 |
+| Python 包 | `pip install hakua-memory==0.3.5`（可选 extras：`pip install "hakua-memory[obsidian,rag]==0.3.5"`）。 |
 
-模板：`serve/examples/hakua_hermes_harness.example.json`。详情：`_docs/2026-10-29_hakua-hermes-soul-memory-wire{Cursor}.md`。依赖 pin：`requirements.txt` 中的 `hakua-memory==0.3.5`。记忆读写需同意（`strata_memory`）与 principal 密钥。
+模板：`serve/examples/hakua_hermes_harness.example.json`。CLI：`tools/hakua_hermes_memory_stack.py`。MCP/Host：`tools/strata_memory_mcp.py`。详情：`_docs/2026-10-29_hakua-hermes-soul-memory-wire{Cursor}.md`。
 
 **此处不声称：** `docs/` 与 `_docs/` 之外的新速度或质量数字。完整 131k 认证仍开放。签名更新 feed 需要 release 机器上的密钥。`hakua_harness` 的多用户 native cache 切换仍为原型级。
-
