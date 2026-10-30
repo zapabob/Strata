@@ -30,7 +30,7 @@ Spin(8)/Triality、Query-v3、Bonsaiの実験機能は、対応する設定を�
 
 モデルと個人の記憶はアプリのフォルダー外で保持します。個人の記憶、プロファイルキー、モデル重みは配布物に含めません。更新前にアプリを終了してください。戻す場合はデータのバックアップを保持し、以前のフォーク版をインストールします。
 
-[Models](docs/MODELS.md) · [Install](docs/INSTALL.md) · [Hermes tools](tools/hakua_hermes_memory_stack.py)
+[Models](docs/MODELS.md) · [Install](docs/HAKUA_INSTALL.md) · [Hermes tools](tools/hakua_hermes_memory_stack.py)
 
 ## 版番号と検証
 

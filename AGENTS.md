@@ -11,6 +11,12 @@ compatible pack that fits the selected model and hardware. ISTA-DASLab is the de
 memory-saving fallback and is currently slower. Honor an explicit user choice. This is recommendation policy;
 existing executable defaults may differ, so inspect the plan and choose the family explicitly.
 
+## Installing this Hakua fork
+
+For a Hakua Windows request, use [docs/HAKUA_INSTALL.md](docs/HAKUA_INSTALL.md) and the [fork release](https://github.com/zapabob/Strata/releases/tag/v0.3.3-preview.20261030.1): `Strata_0.3.3-preview.20261030.1_x64-setup.exe`, or its matching 7z. The fork bundles native engine/Control 0.3.3 and Hakua-memory 0.3.5. Do not substitute a Niko1221 installer or upstream Terminal installation shim for a Hakua install. Honor an explicit request for upstream instead. Consult [docs/HAKUA_RELEASE.md](docs/HAKUA_RELEASE.md) for actual publication/qualification status.
+
+The OS-wide installation recipes below are upstream reference. They are not this fork's Windows packaging recipe.
+
 Strata has three parts:
 
 - **The app** (`apps/desktop`, the Tauri shell; `apps/host`, the Node host and the web UI). It is for people who do

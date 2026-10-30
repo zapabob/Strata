@@ -30,7 +30,7 @@ Dieses Windows-Paket ist für NVIDIA RTX 50, CUDA sm_120. Andere GPUs, Linux und
 
 Modelle und persönliche Erinnerungen bleiben außerhalb des Programmordners. Erinnerungen, Schlüssel und Gewichte werden nicht mitgeliefert. Beende die App vor Updates. Für ein Rollback sichere deine Daten und installiere eine frühere Fork-Version.
 
-[Models](docs/MODELS.md) · [Install](docs/INSTALL.md) · [Hermes tools](tools/hakua_hermes_memory_stack.py)
+[Models](docs/MODELS.md) · [Install](docs/HAKUA_INSTALL.md) · [Hermes tools](tools/hakua_hermes_memory_stack.py)
 
 ## Versionen und Prüfung
 

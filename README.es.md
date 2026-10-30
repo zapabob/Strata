@@ -30,7 +30,7 @@ Este paquete Windows es para NVIDIA RTX serie 50, CUDA sm_120. Otras GPU, Linux 
 
 Guarda modelos y recuerdos fuera de la carpeta del programa. No se distribuyen recuerdos personales, claves ni pesos. Cierra la aplicación antes de actualizar. Para volver atrás, conserva una copia de tus datos e instala una versión anterior del fork.
 
-[Models](docs/MODELS.md) · [Install](docs/INSTALL.md) · [Hermes tools](tools/hakua_hermes_memory_stack.py)
+[Models](docs/MODELS.md) · [Install](docs/HAKUA_INSTALL.md) · [Hermes tools](tools/hakua_hermes_memory_stack.py)
 
 ## Versiones y verificación
 

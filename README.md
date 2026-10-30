@@ -30,7 +30,7 @@ This Windows package targets NVIDIA RTX 50-series, CUDA sm_120. Other GPUs, Linu
 
 Keep models and personal memory outside the app folder; no personal memories, profile keys or weights are distributed. Close the app before upgrading. To roll back, retain a data backup and install an earlier fork release.
 
-[Models](docs/MODELS.md) · [Install](docs/INSTALL.md) · [Hermes tools](tools/hakua_hermes_memory_stack.py)
+[Models](docs/MODELS.md) · [Install](docs/HAKUA_INSTALL.md) · [Hermes tools](tools/hakua_hermes_memory_stack.py)
 
 ## Versions and validation
 

@@ -30,7 +30,7 @@ Spin(8)/Triality、Query-v3 与 Bonsai 实验功能需要明确选择兼容配�
 
 模型与个人记忆保存在应用目录之外。安装包不含个人记忆、密钥或模型权重。更新前关闭应用；回退时保留数据备份并安装较早的本分支版本。
 
-[Models](docs/MODELS.md) · [Install](docs/INSTALL.md) · [Hermes tools](tools/hakua_hermes_memory_stack.py)
+[Models](docs/MODELS.md) · [Install](docs/HAKUA_INSTALL.md) · [Hermes tools](tools/hakua_hermes_memory_stack.py)
 
 ## 版本与验证
 

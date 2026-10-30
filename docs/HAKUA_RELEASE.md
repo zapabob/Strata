@@ -1,60 +1,74 @@
 # Hakua Windows release qualification
 
-Candidate: GUI/Product `0.3.3-preview.20261030.1`, native engine/Control `0.3.3`, Hakua-memory `0.3.5`.
+GUI/Product: **0.3.3-preview.20261030.1**. Native engine/Control: **0.3.3**. Hakua-memory: **0.3.5**.
 
-This candidate is not yet qualified or published. Pending README download links are proposed asset names, not proof that a release exists.
+This Windows preview integrates upstream 0.2.8 at `870aedd9e1ebe1c91f94da93b59af17729f6c5c0`, the release's fixed upstream source cut. Implementation commit: `767b92fdc24aaacda58812aef2fe87869109a308`; native source was merged in `6b1139108b62e08174286357bacb57d7525b564f`. Local package qualification is complete. Publication and downloaded-release verification are pending. [Installation instructions](HAKUA_INSTALL.md).
 
-## Corrected packaging
+## What changed
 
-The old staged Control did not match current source, and GUI identity could be overridden by Control's number or a fixed fallback. The engine bundle was incomplete. Product identity now prefers the GUI product version, while Control/native components use numeric engine versions. The new native and Control version sorts after the previously installed fork components.
+The previous published installer had GUI 0.3.2-preview.20261029.2 and Control 0.3.1. Its engine-bundle contained two placeholder files without an engine executable. Build and bundle hooks now reject stale GUI assets, stale Control source, missing Hakua tools, changed native source/build identity, wrong component versions and changed DLL payloads. They also check the Harness revision, official Node executable and licence, approved public artwork, and third-party notices. The installer carries the newly built CUDA engine and separate PrismML and TurboQuant runtimes.
 
-The GUI build records hashes of its source and output assets. Before Tauri packaging, the verifier checks current Host/Control source trees, product and engine numbers, required memory tools, real Hakua imports, Harness revision/budget patch, both local-backend packages, native source/build identity and executable versions. Missing, changed or stale payloads stop packaging.
+Managed readiness now selects an accepted operator credential instead of a restricted memory principal. The restricted principal still cannot read shared telemetry. Windows stale-runtime recovery now retries only sharing/lock violations for at most one second; other permission errors still propagate. Qwen4exp Swift discovery accepts supported IQ quantization names when no layout metadata is available, while unsupported variants remain blocked.
 
-The Windows runtime is pinned to official Node 24.22.2. Its executable SHA-256 is `1c331340fa6cac5e4294725959070a143fa0507195a78ad77eed7943f719aac9`. Node 24.12.0 reproduced an uncatchable failure while deleting a Cyrillic test path; the unchanged test passes with 24.22.2. Both fetch scripts pin official archive hashes and reject unrecorded version overrides. See [Node's tracked defect](https://github.com/nodejs/node/issues/56049).
+## Current source tests
 
-Hakua's universal wheel is selected by its exact local file URI and SHA-256. A same-version index build cannot replace it. No package installation or compilation runs at app startup. Windows credential files receive an exact protected owner-only DACL; explicit group grants left by the previous ACL implementation are removed.
-
-## Real inference and memory evidence
-
-| Scenario | Result |
+| Suite | Recorded result |
 | --- | --- |
-| Current native executable | Reports Strata 0.3.3; package and native source hashes reverified. |
-| PrismML PQ2_0 | Two actual cold-start/chat/stream/stop/restart rounds passed with Hikari-LoRA-fixed-scale-PQ2_0.gguf. |
-| PrismML DLL origin | CUDA, cuBLAS and OpenMP libraries loaded from its own package with System32-only PATH. |
-| Native ordinary chat | Actual Qwen3.8-Flash-Next Q2_0 answered 2+2. |
-| Native Hakua memory | Saved fictional cerulean preference, completely stopped Python/native engine, started fresh processes and recalled the preference. |
-| Read-only memory | Records remained unchanged; both server rounds exited with code 0. |
-| TurboQuant | Standard-sm_120 build passed. K=FP16 with V=turbo2/turbo3/turbo4 each passed two strict arithmetic/greeting/stream/stop/restart rounds; K=q8_0,V=turbo3 also passed. Turbo K modes failed and are excluded from the candidate K capabilities. |
-| Extracted GUI | Installer r2 extracts successfully. Its packaged self-test passes all 13 checks on System32-only PATH. Normal window responds and its API reports the current product version. Visual interaction and final rebuilt Control qualification remain open. |
+| Host r13, real staged Harness enabled | 1,297 passed; zero failed; 30 conditional skips; 1,327 tests. |
+| Python full r20: Terminal, Hakua, models and setup | 2,994 passed; zero failed; 76 conditional skips; 716 passing subtests; 2,483.50 s. |
+| Focused stale-state recovery and model discovery | 49 passed; zero failed. |
+| Server r3 | 1,265 passed; zero failed; 28 skips; 1,293 registered tests. |
+| Rust unit tests, unchanged Rust implementation | 25 passed; zero failed. Final packaged self-test: 13 of 13 passed. |
+| Native CTest r5 | 219 passed; zero failed; eight conditional skips; 227 registered tests. |
+| Public packaging/data/native integrity cases | 13 passed; zero failed. |
+| Fault injection r12 | Eight mutations detected after successful baselines. |
+| Public UI r6, TypeScript r3, release guard r8 | Passed. |
 
-The memory probe used a dedicated temporary profile and fixture keys. It used the real locked Hakua writer and real native engine. An earlier QA reader accidentally created SQLite WAL/SHM sidecars; the production harness correctly omitted that database. The probe was fixed to use immutable read-only inspection, and the complete fresh scenario then passed. No production privacy check was relaxed.
+The native skips are qsa_slots_parity, iq_parity_fixtures, iq_parity, prefill_fused_iq_test_ws, expert_multi_test, native_hadamard_test, tq_cpu_parity and tq_cpu_parity_avx2. These require their optional fixtures or dependencies and are not counted as passes. The Windows ISA gate passed in the complete r5 run, checking all 121 wide functions.
 
-These results do not qualify general summary quality, multiple principals, other model families or all hardware. On this 32 GiB PC, the large native model used mmap/file-backed experts and has substantial loading/prefill delay. No general throughput improvement is claimed. The separate PrismML/TurboQuant inference routes currently do not share the native memory sidebar.
+Independent CPU GGML/F32 PLE captures passed the unchanged CUDA tolerances, with worst relative stage error 1.713e-3. The source/compiler/ggml-bound resource budget passed: all 432 nonzero stack/local entries matched the earlier measured values, with no added, removed or increased entries. The general allowance table is unchanged.
 
-## Tests and remaining gates
+Python r18 found a Windows sharing-lock failure and a Swift-name discovery failure. Both were corrected before the focused green run and r20. Native r4 was invoked without the required PLE fixture path; the targeted rerun and complete r5 passed with the explicit verified fixture. Failed diagnostics and interrupted runs remain in the implementation record and are not counted as successful qualifications.
 
-The complete Host r10 run passed: 1,295 tests, 1,266 passed, zero failed and 29 conditional skips, with the real pinned Harness. This includes chat, approval/denial, stop, restart and permission modes. Six additional current public-asset/build-integrity cases passed after that run. Earlier diagnostic runs with failures or a skipped Harness are not substituted for this result.
+## Real inference and memory
 
-Python full r12 recorded 2,862 passed, eight failed, 75 skipped and 704 passing subtests. Its failures led to a long-path Save-screen layout fix, a Python 3.12 HEAD-redirect fix, accurate HTTP test-server transfer counting, blocked default network acquisition in setup fixtures and a corrected missing-Hakua dependency expectation. Targeted r14 passed 294 cases with one remaining server-counting failure; the corrected download file then passed all 29 cases in r15. Full r16 and the current server suite are running; these results are not yet a full-green claim. A coarse-clock regression also verifies that throughput timing uses the high-resolution performance counter.
+The Windows test machine has an RTX 5060 Ti, driver 621.01, Ryzen 5 4500 and 32 GiB RAM. Native memory tests use Qwen3.8-Flash-Next Q2_0, a 4,096-token context, one request slot, file-backed experts and a fictional temporary profile.
 
-Native CTest r3 completed 225 registered tests: 216 passed, zero failed and nine conditional skips. Independently generated GGML/F32 PLE captures passed unchanged CUDA parity tolerances (worst relative stage error 1.713e-3). A reviewed source/compiler/ggml-bound per-entry CUDA resource budget passed; new or increased nonzero-stack entries and changed inputs fail the guard. The original general allowance table is unchanged. One skipped Windows ISA gate was subsequently run with isolated test dependencies: an MSVC object-name regression was fixed and strict inspection passed all 121 wide functions. Eight other conditional gates remain untested.
+The current native executable reports 0.3.3; SHA-256: `a1bf844ce33ae68990d606fe31c2a9faa9da2dc0f3a24b10627f32eefea44403`. Current Host/Control/native r4 passed two loads, exact arithmetic response 4, memory-page consent controls, restricted telemetry HTTP403, a real SQLite memory write, full unload, a fresh-process recall of Cerulean and unchanged DB bytes for the read-only request. The monitor confirmed the first engine was absent before the second was created, and all 95 recorded owned process identities were absent after cleanup. Both cuBLAS 13 DLLs came from the engine's own package under System32-only PATH.
 
-Eight targeted mutations were detected by temporary-copy checks, including removal of source membership, source hash and engine payload verification. Recheck the final fault model after source freeze. An import/syntax failure does not count as detection.
+During concurrent build/test load, readiness took 596,809 ms and 515,688 ms, and the recall request took approximately 230 seconds. These are successful but slow runs, not a claim of interactive-speed startup. The earlier r3 diagnostic's second load exceeded its six-minute driver limit. R4 changed only that diagnostic limit to fifteen minutes and tracked loading instances for cleanup; source, payload and assertions were unchanged. The earlier pre-0.2.8 binary is not used as evidence for this result.
 
-The public UI uses pinned approved Lucide assets, an owned MIT icon and system fonts. The package excludes the supplied proprietary font and unqualified installer artwork. Its build receipt binds asset membership, hashes and Node version. The package also carries Node's official license and 93 inventoried third-party notice files for its bundled GUI, Python, GGML, CUDA and Microsoft components. The build and bundle hooks require these checks.
+PrismML PQ2_0 passed two fresh-process load, arithmetic, streaming, stop and restart rounds using Hikari-LoRA-fixed-scale-PQ2_0.gguf. TurboQuant K=FP16 with V=turbo2, turbo3 and turbo4 each passed two strict arithmetic, named-greeting, stream, stop and restart rounds using Qwen3-0.6B-Q8_0. K=q8_0 with V=turbo3 also passed. These runtime payloads are unchanged by the upstream integration.
+
+TurboQuant K modes produced corrupted responses and are excluded from the packaged capabilities. The earlier symmetric TURBO4 diagnostic accepted a numeral inside a degraded response and is superseded by strict checks. PrismML PQ2_0 and TurboQuant are separate executables; PQ2_0 with TurboQuant cache quantization in one process is not offered. Their chat paths do not share the native Hakua memory sidebar. [Backend details](LOCAL_LLAMA_BACKENDS.md).
+
+These checks do not establish general model quality, a speed improvement, multiuser isolation, long-context performance or every optional engine feature. Loading and prefill can take minutes on this PC.
+
+## Package integrity
+
+The package uses official Node 24.22.2, SHA-256 `1c331340fa6cac5e4294725959070a143fa0507195a78ad77eed7943f719aac9`. The reviewed Hakua wheel is selected by exact URI and hash, with hashed dependency installation at build time. App startup does not install Python packages or compile code. Windows credential files use a protected owner-only DACL. The public UI uses approved pinned Lucide assets, an owned MIT icon and system fonts.
+
+There are 94 inventoried third-party notice files. The unchanged upstream 483,520-byte control vector is included, off by default, with its full Qwen Community License 1.0. [Provenance](../data/experimental-speed-projection/PROVENANCE.json) pins its source and licence bytes. Vector SHA-256: `ef0724c5b79297e481017be85769832bc26eb220c984ecba2b0e1b0c8426312b`. The guard permits exactly this declared GGUF and rejects other GGUFs or live profile data in Control. Complete inference model weight packs, personal memories and user keys are not distributed.
+
+## Installer and publication
+
+R6 completed a fresh full Tauri compilation. Its first bundle guard stopped on a transient Prism execution/source probe failure; the unchanged executable and unchanged probe then passed. R7 repeated the complete bundle guard and produced NSIS from that fresh shell. R8 qualification passed extracted-source/payload comparison of 29,324 application files and all 13 packaged self-tests under System32-only PATH. An independent normal-window extraction had a responsive Strata window; its PE product version and API both reported 0.3.3-preview.20261030.1, and Control reported engine 0.3.3. All 15 recorded owned window/child process identities were absent after cleanup. The build-wait helper's earlier 30-minute orchestration limit and the successful repeat are retained in the implementation record.
+
+The outer 7z passed its integrity test and actual re-extraction. It contains exactly the installer, INSTALL.md and an inner installer checksum. The re-extracted installer bytes match the standalone EXE.
+
+| Asset | Bytes | SHA-256 |
+| --- | ---: | --- |
+| Strata_0.3.3-preview.20261030.1_x64-setup.exe | 799,979,767 | `478743a7cbbe633d09101102f2df4be7d4d254bf4119a251ab19c7f1fd4a3533` |
+| Hakua-Strata-0.3.3-preview.20261030.1-windows-x64-sm120.7z | 793,967,757 | `0958e9d748a0772cfaaa70b64dfcb9470524dea8c36f18f309827e8c80588373` |
+
+Earlier R5 installer/7z artifacts used the superseded native binary and are excluded from publication.
+
+The deliverables are `Strata_0.3.3-preview.20261030.1_x64-setup.exe`, `Hakua-Strata-0.3.3-preview.20261030.1-windows-x64-sm120.7z` and `SHA256SUMS.txt`. The 7z contains the same installer and instructions; it is not a portable app.
+
+The current normal window and API passed the observations above. CUA could not start its native app-server, and its in-app browser provider was unavailable. Visual interaction and clicks are not recorded as passed. Upgrade through the user's real uninstall registration has not been run. The existing installed copy has not been replaced during scratch tests.
+
+This is an unsigned manual-update preview. An owned signed automatic-update feed/key is not qualified. Windows x64/CUDA sm_120 on the stated hardware is the runtime qualification scope. HIP, SYCL, Linux, other GPUs and Metal require separate evidence; Metal's source version is not a tested Metal artifact.
 
 ## Test cleanup incident
 
-A preexisting whole-drive planning test recursively removed the real drive's Strata directory after a read-only plan. Running it on this PC partially removed dependency sources and build outputs before an access error stopped it. The cleanup is removed. Tests now use a dedicated scratch tree and reject recursive cleanup outside it, including parent-junction escapes. Timestamp fixtures also stay in their temporary install directory.
-
-Known pinned sources were fetched again. Both preexisting Strata worktrees report no tracked deletions. Current native/Prism packages were rehashed successfully. The old experimental Prism work and earlier build outputs are not proven fully recovered. The incident and recovery limits remain recorded in the implementation record; they must not be hidden by a release success claim.
-
-## Publication requirements
-
-Finish current suites and resolve their failures. The initial symmetric turbo4 probe only found a numeral inside a degraded response and does not qualify usable inference; its result is superseded by strict arithmetic-response and named-greeting checks for supported asymmetric K/V settings. Build the installer from verified current inputs, then exercise actual installed/extracted startup, memory, restart, shutdown and an isolated upgrade from the previous installer.
-
-Create the 7z from that candidate, extract it into a new directory, and verify every payload hash and the final downloaded release hashes. Exclude model weights, memories, keys, developer caches and absolute build-path metadata. Record the final source commit, binary identities and SHA256SUMS.txt before pushing main, tagging and publishing.
-
-This preview is unsigned and uses manual installer updates. The fork update URL is configured, but an owned signed automatic-update feed/key has not been qualified. Older releases remain available for rollback.
-
-Only Windows x64/CUDA sm_120 on the tested RTX 5060 Ti is in this qualification scope. Other CUDA architectures, HIP, SYCL, Linux and Metal need separate build/runtime evidence. Updating Metal's source version does not establish a tested Metal artifact.
+A preexisting planning test recursively removed part of the real H-drive Strata build/dependency area. That cleanup was removed. Node tests now use a dedicated scratch tree with recursive-cleanup guards, including parent-junction escapes. Known pinned sources and the reviewed experimental Prism patch were reconstructed; both preexisting worktrees had no tracked deletions. Current release inputs were rebuilt or rehashed independently. Complete recovery of every old untracked byte or build output is not established. The correction and limits remain in the [implementation record](../_docs/2026-10-30_hakua-release-integrity_Codex.md).

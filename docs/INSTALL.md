@@ -1,6 +1,8 @@
 # Install Strata
 
-This page is for anyone installing or updating Strata (version 0.2.5). Use the **desktop app** for a graphical
+For this checkout's Hakua Windows package, follow **[Install Hakua / Strata](HAKUA_INSTALL.md)** and use the zapabob fork release. It bundles the native engine, Control and Hakua-memory. The platform recipes below describe the upstream Niko1221 distribution and its separate packages; they do not install the Hakua fork.
+
+This upstream reference is for anyone installing or updating Strata (version 0.2.8). Use the **desktop app** for a graphical
 interface, or the **Terminal** for `strata launch` and coding tools. Both use released engine packages. A normal
 install does not need a source checkout or a startup `.bat` file.
 

@@ -1,6 +1,6 @@
 # Local llama-server backends
 
-This document describes the 0.3.3 release candidate. Packaging and real inference qualification are still in progress. Check [the release qualification record](HAKUA_RELEASE.md) before treating a candidate as a published, verified release.
+This document describes the 0.3.3 Windows preview. Check [the release qualification record](HAKUA_RELEASE.md) for publication status, measured inference results and package limits.
 
 ## Choose a runtime
 
