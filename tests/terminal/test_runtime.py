@@ -1456,5 +1456,55 @@ class StartWaitLimit(unittest.TestCase):
                         jn._validate_direct_intent(kind, dict(intent))
 
 
+class RecoveryUnlinkTests(unittest.TestCase):
+    @unittest.skipUnless(WINDOWS, "Windows file sharing semantics")
+    def test_waits_for_a_reader_to_release_the_owned_ready_file(self):
+        with tempfile.TemporaryDirectory(prefix="strata-recovery-share-") as folder:
+            path = Path(folder) / "owned.ready.json"
+            path.write_text("{}", encoding="utf-8")
+            opened, release = threading.Event(), threading.Event()
+
+            def reader():
+                with path.open("rb"):
+                    opened.set()
+                    release.wait(3)
+
+            thread = threading.Thread(target=reader)
+            thread.start()
+            timer = threading.Timer(0.15, release.set)
+            try:
+                self.assertTrue(opened.wait(2))
+                timer.start()
+                runtime._unlink_recovered_file(path)
+                self.assertFalse(path.exists())
+            finally:
+                release.set()
+                timer.cancel()
+                thread.join(3)
+
+    def test_access_denial_is_not_retried_or_ignored(self):
+        error = PermissionError("access denied")
+        error.winerror = 5
+        with mock.patch.object(runtime, "WINDOWS", True), \
+                mock.patch.object(Path, "unlink", side_effect=error), \
+                mock.patch.object(runtime.time, "sleep") as sleep:
+            with self.assertRaises(PermissionError) as caught:
+                runtime._unlink_recovered_file(Path("owned.ready.json"))
+            self.assertIs(caught.exception, error)
+            sleep.assert_not_called()
+
+    def test_sharing_retry_has_a_deadline(self):
+        error = PermissionError("sharing violation")
+        error.winerror = 32
+        with mock.patch.object(runtime, "WINDOWS", True), \
+                mock.patch.object(Path, "unlink", side_effect=error) as unlink, \
+                mock.patch.object(runtime.time, "monotonic", side_effect=[0, 0, 1.1]), \
+                mock.patch.object(runtime.time, "sleep") as sleep:
+            with self.assertRaises(PermissionError):
+                runtime._unlink_recovered_file(Path("owned.ready.json"))
+            self.assertEqual(unlink.call_count, 2)
+            sleep.assert_called_once_with(0.05)
+
+
 if __name__ == "__main__":
     unittest.main()

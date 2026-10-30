@@ -1,6 +1,6 @@
 # Hakua / Strata
 
-Strataを基盤とするHakuaチャットボット. [zapabob/Strata](https://github.com/zapabob/Strata) · [Niko1221/Strata](https://github.com/Niko1221/Strata)
+Strataを基盤とするHakuaチャットボット。 [zapabob/Strata](https://github.com/zapabob/Strata) · [Niko1221/Strata](https://github.com/Niko1221/Strata)
 
 [English](README.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [Deutsch](README.de.md) · [Français](README.fr.md) · [Español](README.es.md) · [Português](README.pt-BR.md) · [Polski](README.pl.md)
 
@@ -14,7 +14,7 @@ Strataを基盤とするHakuaチャットボット. [zapabob/Strata](https://git
 
 ## このフォークの独自機能
 
-Hakuaは、そのリクエストで同意した場合だけ記憶を参照し、会話要約を保存します。参照と保存の同意は独立しており、リクエストごとに解除されます。記憶チャットには有効な`hakua_harness`プロファイルと専用キーが必要です。通常チャットのキーとは異なります。[記憶設定ガイド](serve/MEMORY_HARNESS.md)に沿って設定してください。
+Hakuaは、そのリクエストで同意した場合だけ記憶を参照し、会話要約を保存します。参照と保存の同意は独立しており、リクエストごとに解除されます。対応するネイティブモデルを読み込むと、アプリがローカルの記憶プロファイルを自動で作成します。Hakua memoryを開き、ダイアログの専用キーをコピーし、記憶ページで記憶のチェック欄を選択してから、About → Settingsに貼り付けてください。ソース版の設定を含む詳しい手順は[記憶ガイド](serve/MEMORY_HARNESS.md)にあります。
 
 Hermesの運用ツールは、承認済みSOUL.md / MEMORY.mdの同期、Ebbinghaus記憶、意味グラフ、Obsidian書き出し、sleepによる整理に対応します。これらはチャット画面とは別の機能です。追加のRAG・埋め込み依存は基本インストーラーに含みません。
 
@@ -39,7 +39,7 @@ Spin(8)/Triality、Query-v3、Bonsaiの実験機能は、対応する設定を�
 | GUI / Product | `0.3.3-preview.20261030.1` |
 | Engine | `0.3.3` (CUDA sm_120) |
 | Hakua-memory | `0.3.5` |
-| Upstream | `46c152a1` · 2026-10-28 |
+| Upstream | `870aedd9` · 0.2.8 |
 
 <!-- App version in this preview tree: `0.3.3-preview.20261030.1` -->
 

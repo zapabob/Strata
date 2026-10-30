@@ -147,13 +147,13 @@ test('the resource preference no longer writes Qwen-engine options into a DeepSe
   } finally { await f.native.close(); f.cleanup(); }
 });
 
-test('a Qwen model with pictures off still loses its stand-alone --vision (nothing else changed)', async () => {
+for (const memory of [false, true]) test('a Qwen model with pictures off drops --vision and ' + (memory ? 'keeps Hakua caches private' : 'preserves an explicit memory opt-out'), async () => {
   const root = mkdtempSync(join(tmpdir(), 'strata-ds-args-q-'));
   const install = join(root, 'install');
   mkdirSync(install, { recursive: true });
   process.env.STRATA_INSTALL_DIR = install;
   const path = join(install, 'strata-q2_0.json');
-  writeFileSync(path, JSON.stringify({ exe: 'component:strata-engine', tokenizer: join(install, 'tok'), args: ['--pack', '/p', '--max-context', '4096', '--vision', '--kv', 'int8'], model_name: 'Qwen', port: 8080 }));
+  writeFileSync(path, JSON.stringify({ exe: 'component:strata-engine', tokenizer: join(install, 'tok'), args: ['--pack', '/p', '--max-context', '4096', '--vision', '--kv', 'int8'], model_name: 'Qwen', port: 8080, ...(memory ? {} : { hakua_harness: { enabled: false } }) }));
   const saved = [];
   const control = {
     control: { dir: join(root, 'control') }, version: '0.2.7',
@@ -168,6 +168,11 @@ test('a Qwen model with pictures off still loses its stand-alone --vision (nothi
     await native.refresh(true);
     const job = await finish(native, native.operation('load', { model: 'q2_0', vision: 'no' }).id);
     assert.equal(job.state, 'done', job.error);
-    assert.deepEqual(saved[0].args, ['--pack', '/p', '--max-context', '4096', '--kv', 'int8']);
+    assert.equal(native.state().capabilities.hakuaChatbot, true, 'the fixture is in the Hakua fork');
+    assert.deepEqual(saved[0].args, ['--pack', '/p', '--max-context', '4096', '--kv', 'int8', ...(memory ? ['--prompt-cache', '0', '--conversation-cache-mib', '0'] : [])]);
+    assert.equal(saved[0].hakua_harness.enabled, memory);
+    if (memory) assert.equal(saved[0].hakua_harness.users[0].principal, 'local');
+    const original = JSON.parse(readFileSync(path, 'utf8'));
+    assert.equal(original.hakua_harness?.enabled, memory ? undefined : false, 'the source model config is not rewritten');
   } finally { await native.close(); rmSync(root, { recursive: true, force: true }); }
 });

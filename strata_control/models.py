@@ -298,6 +298,16 @@ def _candidate_by_header(shards: list[Path], tensors: int, payload: int, experts
     return None
 
 
+def _swift_quant_hint(shards: list[Path]) -> str | None:
+    """Only explicit, supported Swift quant names are selection hints."""
+    if not any(re.search(r"(?:^|[-_.])swift(?:[-_.]|$)", p.name, re.I) for p in shards):
+        return None
+    return next((q for q in ("IQ2_XS", "IQ3_XXS", "IQ3_S")
+                 if f"swift/{q}" in SUPPORTED_SELECTIONS and
+                 any(re.search(r"(?:^|[-_.])" + re.escape(q) + r"(?:[-_.]|$)", p.name, re.I)
+                     for p in shards)), None)
+
+
 def _candidate_by_layout(shards: list[Path], tensors: int, payload: int, experts: set[str]) -> dict | None:
     """A qwen4exp file set that is no build Strata has tested (a fine-tune, a K-quant mix from another maker) but has the layout of one
     (#3651 #3777): the closest row by expert formats, then by size. Strata uses the files as that model and says so; it never refuses a
@@ -854,6 +864,14 @@ def plan_import(raw_path: str) -> dict:
                 "expected_expert_types": list(observed_experts),
                 "expected_tensor_count": observed_tensor_count,
                 "setup_args_hint": ["--family", "deepseek41", "--model", "IST-DAS-2.00bpw", "--gguf-dir", str(shards[0].parent)],
+            }
+        elif arch == "qwen4exp" and (quant := _swift_quant_hint(shards)) is not None:
+            # A name supplies a preview hint, never a compatibility verdict.
+            candidate = {
+                "family": "swift", "model": quant, "basis": "qwen4exp_descriptor",
+                "expected_expert_types": list(observed_experts),
+                "expected_tensor_count": observed_tensor_count,
+                "setup_args_hint": ["--family", "swift", "--model", quant, "--gguf-dir", str(shards[0].parent)],
             }
         elif arch in ("qwen35moe",):
             candidate = {

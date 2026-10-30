@@ -1,8 +1,12 @@
-"""pytest: setup.py's data-folder migration (#198) saves the data folder it settled on in the user's settings file
+r"""pytest: setup.py's data-folder migration (#198) saves the data folder it settled on in the user's settings file
 (%APPDATA%\Strata\settings.json, ~/.config/strata/settings.json) and can MOVE model files from a folder it finds there.
 A test that reaches it must never touch the real file, so the whole session gets its own config home."""
 import os
 import tempfile
+
+# A caller's live local-server key must not authenticate synthetic test servers.
+# Authentication cases supply their own fixture keys explicitly.
+os.environ.pop("STRATA_API_KEY", None)
 
 _home = tempfile.mkdtemp(prefix="strata-pytest-config-")
 os.environ["APPDATA"] = _home

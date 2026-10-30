@@ -14,7 +14,7 @@ O arquivo 7z contém o mesmo instalador. Extraia-o e execute o EXE de instalaç�
 
 ## Recursos deste fork
 
-Hakua só lê lembranças e salva um resumo com seu consentimento para aquela solicitação. As duas opções são independentes e redefinidas depois. É necessário um perfil `hakua_harness` ativado e sua própria chave, separada da chave comum. Consulte o [guia de memória](serve/MEMORY_HARNESS.md).
+Hakua só lê lembranças e salva um resumo com seu consentimento para aquela solicitação. As duas opções são independentes e redefinidas depois. Ao carregar um modelo nativo compatível, o aplicativo cria automaticamente um perfil de memória local. Abra Hakua memory, copie a chave do perfil na caixa de diálogo e marque uma opção de memória na página local e depois cole a chave em About → Settings. O [guia de memória](serve/MEMORY_HARNESS.md) também explica a configuração de um servidor a partir do código-fonte.
 
 As ferramentas Hermes sincronizam SOUL.md / MEMORY.md aprovados e oferecem memória Ebbinghaus, grafo semântico, exportação Obsidian e consolidação sleep. São separadas do chat; dependências opcionais de RAG e embeddings não vêm no instalador básico.
 
@@ -39,7 +39,7 @@ Mantenha modelos e lembranças fora da pasta do programa. Lembranças pessoais, 
 | GUI / Product | `0.3.3-preview.20261030.1` |
 | Engine | `0.3.3` (CUDA sm_120) |
 | Hakua-memory | `0.3.5` |
-| Upstream | `46c152a1` · 2026-10-28 |
+| Upstream | `870aedd9` · 0.2.8 |
 
 <!-- App version in this preview tree: `0.3.3-preview.20261030.1` -->
 

@@ -294,6 +294,19 @@ def _host_lease_active(name: str) -> bool:
         os.close(descriptor)
 
 
+def _unlink_recovered_file(path: Path) -> None:
+    """Remove caller-verified state, allowing brief Windows reader locks only."""
+    deadline = time.monotonic() + 1.0
+    while True:
+        try:
+            path.unlink(missing_ok=True)
+            return
+        except PermissionError as exc:
+            if not WINDOWS or getattr(exc, "winerror", None) not in (32, 33) or time.monotonic() >= deadline:
+                raise
+            time.sleep(0.05)
+
+
 def _recover_stale(name: str, *, wait: float) -> bool:
     """Reclaim private state only after the host lease and owned child are gone."""
     state = _read_state(name)
@@ -343,7 +356,7 @@ def _recover_stale(name: str, *, wait: float) -> bool:
                 details = ready.lstat()
                 if not stat.S_ISREG(details.st_mode) or not _is_private(details, ready):
                     raise ProfileError("lost host ready file is invalid; inspect before recovery", 6)
-                ready.unlink()
+                _unlink_recovered_file(ready)
             except FileNotFoundError:
                 pass
         if not owner_transport.WINDOWS:
@@ -379,13 +392,13 @@ def _recover_stale(name: str, *, wait: float) -> bool:
             details = snapshot.lstat()
             if not stat.S_ISREG(details.st_mode) or not _is_private(details, snapshot):
                 raise ProfileError("lost-host config snapshot is not private; inspect before recovery", 6)
-            snapshot.unlink()
-        marker.unlink()
+            _unlink_recovered_file(snapshot)
+        _unlink_recovered_file(marker)
         if WINDOWS:                    # an open file cannot be deleted on Windows: release the lease first
             _unlock_file(descriptor)
             os.close(descriptor)
             descriptor = -1
-        state_path.unlink()
+        _unlink_recovered_file(state_path)
         return True
     finally:
         if descriptor >= 0:

@@ -14,7 +14,7 @@ Archiwum 7z zawiera ten sam instalator. Rozpakuj je, a następnie uruchom plik E
 
 ## Funkcje tego forka
 
-Hakua odczytuje wspomnienia i zapisuje podsumowanie wyłącznie po zgodzie na dane żądanie. Obie zgody są niezależne i potem resetowane. Potrzebny jest włączony profil `hakua_harness` z własnym kluczem, innym niż w zwykłym czacie. Zobacz [przewodnik pamięci](serve/MEMORY_HARNESS.md).
+Hakua odczytuje wspomnienia i zapisuje podsumowanie wyłącznie po zgodzie na dane żądanie. Obie zgody są niezależne i potem resetowane. Po załadowaniu obsługiwanego modelu natywnego aplikacja automatycznie tworzy lokalny profil pamięci. Otwórz Hakua memory, skopiuj klucz profilu z okna dialogowego i zaznacz opcję pamięci na stronie lokalnej, a następnie wklej klucz w About → Settings. [Przewodnik pamięci](serve/MEMORY_HARNESS.md) opisuje także konfigurację serwera uruchamianego ze źródeł.
 
 Narzędzia Hermes synchronizują zatwierdzone SOUL.md / MEMORY.md i zapewniają pamięć Ebbinghausa, graf semantyczny, eksport Obsidian i konsolidację sleep. Działają osobno od czatu; opcjonalne zależności RAG i embeddingów nie są w instalatorze podstawowym.
 
@@ -39,7 +39,7 @@ Modele i wspomnienia przechowuj poza folderem aplikacji. Osobiste wspomnienia, k
 | GUI / Product | `0.3.3-preview.20261030.1` |
 | Engine | `0.3.3` (CUDA sm_120) |
 | Hakua-memory | `0.3.5` |
-| Upstream | `46c152a1` · 2026-10-28 |
+| Upstream | `870aedd9` · 0.2.8 |
 
 <!-- App version in this preview tree: `0.3.3-preview.20261030.1` -->
 

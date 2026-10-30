@@ -2,7 +2,7 @@
   "bindings": {
     "compilerKey": "efa9e6e978e814414ad654d62500d35fdd424956a065e79ed63192b2c117bbef",
     "ggmlCommit": "3cf03257f219afbe7334045ff7c6a06ac68c627d",
-    "sourceDigest": "81d0692e4fe70cea9458fa2c88be08faa235aa27d9b77c1969a999eb40e4d11d"
+    "sourceDigest": "6b75f2ab2a54ad57013c72b0ed2c0cdf3815d2bd75b982b9dc1c35e5c88979e2"
   },
   "entries": {
     "strata_kernels.lib|dequant_bf16.obj|sm_120|_ZN6strata7kernels48_GLOBAL__N__d9afac2b_15_dequant_bf16_cu_b8976c8914dequant_kernelILi11ENS1_3H16ELb0EEEvPKhxxxxxPT0_": [
@@ -1737,35 +1737,35 @@
   "measuredLibraries": [
     {
       "library": "strata_kernels.lib",
-      "sha256": "6f36aed3b69399d85129aa4e0123cd0f5254c2454b3eda4541d0939be255fa33"
+      "sha256": "9b3c61c5e2bea53d2da6dc29538981dec069c4d24bd059eea34fa6a4fa92b743"
     },
     {
       "library": "strata_core.lib",
-      "sha256": "2914f89e9d92e91c10d1b6ef06fd894e5009e433a271bd519ed5dcc2d07846e4"
+      "sha256": "88fd9c6335a6a95521f38c4923c141592c3c9cfffe741f939a9dd8c59c4569a6"
     },
     {
       "library": "strata_engine.lib",
-      "sha256": "2a462e9d8b0dfe61d72e84c0d841c61c67f0d13009920a589bb1aaf930d0b803"
+      "sha256": "fd65229f3fcf5f9bf65ed11c1813daf77919c731602265da832f5583ea718d31"
     },
     {
       "library": "strata_prefill.lib",
-      "sha256": "d813c80f8602da916e23997eb50b8dd8f36cd3ca1301bc0841968b2b15291898"
+      "sha256": "08025f4236a2b2cfd4ae7470652a86b86d760a2863e4c7eb56fb4bf6e4528f0e"
     },
     {
       "library": "strata_qwen35.lib",
-      "sha256": "99d85dd35c3194800962b7547ec1395ce5335bbda6cd383da53d696623e64c85"
+      "sha256": "7d77d133ef161d15ba6abb596d6f5f42616f3684b41b438e8da8f4e073722e00"
     },
     {
       "library": "strata_mmq.lib",
-      "sha256": "fc03db4fe257a76da2565fdef02b3d5e0e43db3353719b3cb33abd1d37167b6d"
+      "sha256": "db33881e0131e45a831959945200636722f08c72200d35e8029f95345e089b1f"
     },
     {
       "library": "strata_mmq_w4a4.lib",
-      "sha256": "2745a4d4e4cb4e5e8fae3d26ebfe03acfbbaabdd4dbd862032cc9a94efd80dbc"
+      "sha256": "2ea541d0d4140f8f4f32f3606a160effaa72c3fab48a73ca7f1b0af605761a82"
     },
     {
       "library": "strata_kq.dll",
-      "sha256": "466040d632b39165db6d7c2f1bec87b05c80d76acd70c96d4a5a1cc056e13842"
+      "sha256": "a25237277cc99b041ba74b7f242661df6772b79ba5c90d48ecdbc03c586de03e"
     }
   ],
   "schema": 1,

@@ -14,7 +14,7 @@
 
 ## 本分支的独有功能
 
-Hakua 只有获得本次请求的同意后才读取记忆或保存对话摘要。两项权限相互独立，每次请求后重置。记忆聊天需要启用的 `hakua_harness` 配置及独立密钥，与普通聊天密钥不同。请先阅读[记忆设置指南](serve/MEMORY_HARNESS.md)。
+Hakua 只有获得本次请求的同意后才读取记忆或保存对话摘要。两项权限相互独立，每次请求后重置。加载受支持的原生模型后，桌面应用会自动创建本地记忆配置。打开 Hakua memory，复制对话框中的专用密钥，在本地页面勾选记忆选项，然后将密钥粘贴到 About → Settings。源码服务器的配置方法也见[记忆指南](serve/MEMORY_HARNESS.md)。
 
 Hermes 工具支持同步已批准的 SOUL.md / MEMORY.md、Ebbinghaus 记忆、语义图、Obsidian 导出及 sleep 整理。这些管理工具独立于聊天页面；基础安装包不含可选 RAG 和嵌入依赖。
 
@@ -39,7 +39,7 @@ Spin(8)/Triality、Query-v3 与 Bonsai 实验功能需要明确选择兼容配�
 | GUI / Product | `0.3.3-preview.20261030.1` |
 | Engine | `0.3.3` (CUDA sm_120) |
 | Hakua-memory | `0.3.5` |
-| Upstream | `46c152a1` · 2026-10-28 |
+| Upstream | `870aedd9` · 0.2.8 |
 
 <!-- App version in this preview tree: `0.3.3-preview.20261030.1` -->
 

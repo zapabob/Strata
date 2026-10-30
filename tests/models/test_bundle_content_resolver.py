@@ -101,6 +101,23 @@ def test_candidate_fallback_qwen4exp_custom_name(tmp_path: Path):
     assert plan["candidate_selection"] is not None
     assert plan["candidate_selection"]["family"] == "swift"
     assert plan["candidate_selection"]["model"] == "IQ2_XS"
+    assert plan["execution_compatibility"] == "unverified"
+
+
+@pytest.mark.parametrize("name", ["Swift-custom-Q2_0.gguf", "Swift-custom.gguf", "Flash-custom-TQ1_0.gguf"])
+def test_qwen4exp_name_does_not_invent_an_unsupported_swift_variant(tmp_path: Path, name: str):
+    builder = MinimalGgufBuilder(version=3)
+    builder.add_string("general.architecture", "qwen4exp")
+    builder.add_string("tokenizer.ggml.model", "gpt2")
+    builder.add_array_string("tokenizer.ggml.tokens", ["hello", "world"])
+    builder.add_array_string("tokenizer.ggml.merges", ["h ello"])
+    builder.add_tensor("blk.0.attn_q.weight", [8, 1], 0, 0, b"\x00" * 32)
+    path = tmp_path / name
+    path.write_bytes(builder.build())
+    plan = plan_import(str(path))
+    assert plan["candidate_selection"] is None
+    assert "unrecognized_or_unsupported_model_variant" in plan["issues"]
+    assert plan["would_write"] is False
 
 
 def test_candidate_fallback_deepseek41(tmp_path: Path):

@@ -14,7 +14,7 @@ The 7z contains the same installer. Extract it, then run the setup EXE.
 
 ## Fork features
 
-Hakua reads remembered context and saves a summary only with your consent for that request. Read and save are independent and reset after each request. Memory chat needs an enabled `hakua_harness` profile and its own profile key; a normal chat key is separate. Follow the [memory setup guide](serve/MEMORY_HARNESS.md).
+Hakua reads remembered context and saves a summary only with your consent for that request. Read and save are independent and reset after each request. When you load a supported native model, the desktop app creates a local memory profile automatically. Open Hakua memory, copy the profile key from its dialog and select a memory checkbox on the local page, then paste the key into About → Settings. See the [memory guide](serve/MEMORY_HARNESS.md), including explicit source-server configuration.
 
 Hermes tools support approved SOUL.md / MEMORY.md synchronisation, Ebbinghaus memory, semantic graph, Obsidian export and sleep consolidation. These operator tools are separate from the chat page. Optional RAG and embedding packages are not part of the base installer.
 
@@ -39,7 +39,7 @@ Keep models and personal memory outside the app folder; no personal memories, pr
 | GUI / Product | `0.3.3-preview.20261030.1` |
 | Engine | `0.3.3` (CUDA sm_120) |
 | Hakua-memory | `0.3.5` |
-| Upstream | `46c152a1` · 2026-10-28 |
+| Upstream | `870aedd9` · 0.2.8 |
 
 <!-- App version in this preview tree: `0.3.3-preview.20261030.1` -->
 
