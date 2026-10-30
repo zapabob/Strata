@@ -2,7 +2,7 @@
 
 GUI/Product: **0.3.3-preview.20261030.1**. Native engine/Control: **0.3.3**. Hakua-memory: **0.3.5**.
 
-This Windows preview integrates upstream 0.2.8 at `870aedd9e1ebe1c91f94da93b59af17729f6c5c0`, the release's fixed upstream source cut. Implementation commit: `767b92fdc24aaacda58812aef2fe87869109a308`; native source was merged in `6b1139108b62e08174286357bacb57d7525b564f`. Local package qualification is complete. Publication and downloaded-release verification are pending. [Installation instructions](HAKUA_INSTALL.md).
+This Windows preview integrates upstream 0.2.8 at `870aedd9e1ebe1c91f94da93b59af17729f6c5c0`, the release's fixed upstream source cut. Implementation commit: `767b92fdc24aaacda58812aef2fe87869109a308`; native source was merged in `6b1139108b62e08174286357bacb57d7525b564f`. Local package qualification and downloaded-release verification are complete. [Published release](https://github.com/zapabob/Strata/releases/tag/v0.3.3-preview.20261030.1), source tag `336f074b772197ce9ec249b9586c0dab9269c369`, published 2026-10-30 02:12:17 UTC. The release is the fork's latest release; its title and these instructions identify it as an unsigned preview. [Installation instructions](HAKUA_INSTALL.md).
 
 ## What changed
 
@@ -23,6 +23,7 @@ Managed readiness now selects an accepted operator credential instead of a restr
 | Public packaging/data/native integrity cases | 13 passed; zero failed. |
 | Fault injection r12 | Eight mutations detected after successful baselines. |
 | Public UI r6, TypeScript r3, release guard r8 | Passed. |
+| Remote GitHub CI | Not run. Workflow dispatch returned HTTP 422: Actions is disabled for this repository. |
 
 The native skips are qsa_slots_parity, iq_parity_fixtures, iq_parity, prefill_fused_iq_test_ws, expert_multi_test, native_hadamard_test, tq_cpu_parity and tq_cpu_parity_avx2. These require their optional fixtures or dependencies and are not counted as passes. The Windows ISA gate passed in the complete r5 run, checking all 121 wide functions.
 
@@ -61,7 +62,9 @@ The outer 7z passed its integrity test and actual re-extraction. It contains exa
 | Strata_0.3.3-preview.20261030.1_x64-setup.exe | 799,979,767 | `478743a7cbbe633d09101102f2df4be7d4d254bf4119a251ab19c7f1fd4a3533` |
 | Hakua-Strata-0.3.3-preview.20261030.1-windows-x64-sm120.7z | 793,967,757 | `0958e9d748a0772cfaaa70b64dfcb9470524dea8c36f18f309827e8c80588373` |
 
-Earlier R5 installer/7z artifacts used the superseded native binary and are excluded from publication.
+All three uploaded assets were downloaded again into a fresh directory. Their bytes match the local EXE/7z/checksum files and GitHub's SHA-256 digests. Publishing preserved the same asset IDs and digests. Release ID: `428581199`; EXE asset `690609303`; 7z asset `690609304`; checksum asset `690609312`. SHA256SUMS.txt is 239 bytes, SHA-256 `c52aaeba06c54bd811ca8e26077aa54ed4136e3fd250eeadf1c700f3fa204df9`.
+
+The release source tag is fixed at the documentation/qualification commit above. Its production runtime is implementation `767b92fd`; later commits containing only publication receipts do not change that runtime. Remote CI is unrun because the repository rejects dispatch with Actions disabled; the suite results in this document are local results. The repository policy was not changed. Earlier R5 diagnostic installer/7z artifacts are excluded from publication.
 
 The deliverables are `Strata_0.3.3-preview.20261030.1_x64-setup.exe`, `Hakua-Strata-0.3.3-preview.20261030.1-windows-x64-sm120.7z` and `SHA256SUMS.txt`. The 7z contains the same installer and instructions; it is not a portable app.
 
