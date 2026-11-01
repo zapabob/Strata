@@ -607,6 +607,8 @@ class CudaVision(unittest.TestCase):
                     (bdir / "bin" / setup.VEXE).write_bytes(b"vision")
 
                 with mock.patch.object(setup, "ROOT", root), mock.patch.object(setup, "cmake_build", cmake_build), \
+                        mock.patch.object(setup, "gpus", return_value=[{"arch": "86"}]), \
+                        mock.patch.object(setup, "cpu_info", return_value=("test CPU", True)), \
                         mock.patch.object(setup, "source_hash", lambda p: "V" if p == setup.VISION_SOURCES else "S"), \
                         mock.patch.object(setup, "install_build_tools", lambda gpu, yes: (str(root / "nvcc"), None)), \
                         mock.patch.object(setup, "source_version", lambda: "test"):
