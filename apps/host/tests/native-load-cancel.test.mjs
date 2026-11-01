@@ -10,9 +10,13 @@ import { join, basename } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createNativeControl } from '../server/native-control.mjs';
 
-function cancelRaceFixture() {
+function cancelRaceFixture({ persistedJobs } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'strata-load-cancel-'));
   const install = join(root, 'install'), data = join(root, 'data');
+  if (persistedJobs) {
+    mkdirSync(data, { recursive: true });
+    writeFileSync(join(data, 'native-jobs.json'), JSON.stringify(persistedJobs));
+  }
   mkdirSync(install, { recursive: true });
   const earlier = process.env.STRATA_INSTALL_DIR;
   process.env.STRATA_INSTALL_DIR = install;
@@ -107,6 +111,21 @@ async function finish(native, id) {
   }
   throw new Error('job did not finish');
 }
+
+test('a cancellation interrupted by a host restart cannot block the next model load', async () => {
+  const old = { id: 'old-cancel', kind: 'load', state: 'cancelling', startedAt: '2026-10-27T14:39:51.239Z', summary: 'Stopping…', model: 'iq2_xs' };
+  const completed = { id: 'completed', kind: 'load', state: 'done', startedAt: '2026-10-27T14:35:24.126Z', summary: 'Loaded', model: 'iq3_s' };
+  const f = cancelRaceFixture({ persistedJobs: [completed, old] });
+  try {
+    assert.equal(f.native.state().jobs.find(job => job.id === old.id).state, 'cancelled');
+    assert.deepEqual(f.native.state().jobs.find(job => job.id === completed.id), completed);
+    assert.equal(f.calls.filter(call => call[0] === 'stop').length, 0, 'recovery must not stop any existing runtime');
+    await f.native.refresh(true);
+    f.allowImmediateStarts();
+    const next = f.native.operation('load', { model: 'iq2_xs', gpus: [0] });
+    assert.equal((await finish(f.native, next.id)).state, 'done');
+  } finally { await f.cleanup(); }
+});
 
 test('F03: cancelled load whose start resolves late must not unload the newer ready instance', async () => {
   const f = cancelRaceFixture();
