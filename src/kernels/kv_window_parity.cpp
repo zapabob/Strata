@@ -188,6 +188,9 @@ bool run(int fmt, bool graphs) {
     float* scratch2 = dalloc<float>(scr);
     float* out_rref = dalloc<float>(NH * D);
     float* out_rng = dalloc<float>(NH * D);
+    // dalloc queues zeroing on the default stream. Complete it before the independent
+    // nonblocking stream uploads step data or captures and launches the window.
+    ck(cudaDeviceSynchronize(), "buffer initialization");
     const k::KvHostPools* hp = &host.p;
     const k::KvHostPools* rhp = &ring_host.p;
 
