@@ -17,6 +17,9 @@ data/quant_quality/** -text
 # the license text is shipped and checked as LF text on every checkout
 LICENSE text eol=lf
 
+# The model-data notice is pinned by its original byte digest in PROVENANCE.json.
+data/experimental-speed-projection/LICENSE -text
+
 # container scripts run in Linux: always LF
 docker/*.sh text eol=lf
 Dockerfile text eol=lf
