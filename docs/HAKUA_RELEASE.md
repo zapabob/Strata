@@ -2,7 +2,9 @@
 
 The source tree now targets GUI/Product **0.4.0-preview.20261101.1** and native engine/Control **0.4.0**. This follow-up is still in qualification: no 0.4.0 installer, archive, tag or release is published. Its changes add startup recovery/version checks and consented memory on owned PrismML/PQ2_0 and TurboQuant servers. The 0.3.3 evidence below describes that earlier published package, not the new source candidate. Current implementation and test evidence are recorded in [_docs/2026-10-31_hakua-gui-and-llama-memory_Codex.md](../_docs/2026-10-31_hakua-gui-and-llama-memory_Codex.md).
 
-For the0.4.0 Windows CUDA13.3/sm_120 build, select `tools/cuda_spill_budgets/cuda13.3-sm120-portable-v0.4.0.json` with `STRATA_CUDA_SPILL_BASELINE`. Its432 per-entry STACK/LOCAL budgets were freshly measured and are identical to the0.3.3 budgets; the source binding now identifies the0.4.0 CMake version. The older baseline remains for reproducing0.3.3. A resource measurement or a guard pass alone does not replace native tests and final-package startup/inference checks.
+The current candidate integrates upstream 0.2.9 at `c62d5e3a15b40ea51c96aae9e8d36928965f53ab`. Its source and remaining qualification gates are recorded in [_docs/2026-11-01_hakua-upstream-c62_Codex.md](../_docs/2026-11-01_hakua-upstream-c62_Codex.md).
+
+Before that upstream intake, the0.4.0 CMake-version-only build measured432 per-entry STACK/LOCAL budgets identical to0.3.3 and recorded them in `tools/cuda_spill_budgets/cuda13.3-sm120-portable-v0.4.0.json`. That source-bound measurement does not qualify the newer integrated native source. The fresh CUDA13.3/sm_120 build must receive its own reviewed capture and guard pass before packaging. The earlier baselines remain reproducible records. A resource measurement alone does not replace native tests and final-package startup/inference checks.
 
 GUI/Product: **0.3.3-preview.20261030.1**. Native engine/Control: **0.3.3**. Hakua-memory: **0.3.5**.
 
