@@ -32,6 +32,8 @@ Inclui Node e Python privados, Hakua-memory 0.3.5 e um motor CUDA compilado dest
 
 Este pacote Windows atende NVIDIA RTX série 50, CUDA sm_120. Outras GPUs, Linux e macOS exigem pacotes próprios. O instalador original não contém estas alterações. Os pesos são separados e podem ocupar dezenas ou centenas de GB. Prefira pacotes compatíveis ISTA-DASLab, depois Unsloth e Gyro.
 
+O motor nativo incluído atende ao chat de texto. Esta prévia não inclui a entrada nativa de imagens nem o motor nativo separado do DeepSeek.
+
 Mantenha modelos e lembranças fora da pasta do programa. Lembranças pessoais, chaves e pesos não são distribuídos. Feche o aplicativo antes de atualizar. Para voltar, preserve o backup e instale uma versão anterior deste fork.
 
 [Models](docs/MODELS.md) · [Install](docs/HAKUA_INSTALL.md) · [Hermes tools](tools/hakua_hermes_memory_stack.py)

@@ -32,6 +32,8 @@ Privates Node und Python, Hakua-memory 0.3.5 und eine aus diesem Fork gebaute CU
 
 Dieses Windows-Paket ist für NVIDIA RTX 50, CUDA sm_120. Andere GPUs, Linux und macOS benötigen eigene kompatible Pakete. Upstream-Installer enthalten diese Änderungen nicht. Gewichte sind separat und können viele GB benötigen. Bevorzuge passende Pakete von ISTA-DASLab, danach Unsloth und Gyro.
 
+Die mitgelieferte native Engine dient dem Textchat. Native Bildeingabe und die separate native DeepSeek-Engine sind in dieser Vorschau nicht enthalten.
+
 Modelle und persönliche Erinnerungen bleiben außerhalb des Programmordners. Erinnerungen, Schlüssel und Gewichte werden nicht mitgeliefert. Beende die App vor Updates. Für ein Rollback sichere deine Daten und installiere eine frühere Fork-Version.
 
 [Models](docs/MODELS.md) · [Install](docs/HAKUA_INSTALL.md) · [Hermes tools](tools/hakua_hermes_memory_stack.py)

@@ -32,6 +32,8 @@ Spin(8)/Triality、Query-v3、Bonsaiの実験機能は、対応する設定を�
 
 このWindows配布物はNVIDIA RTX 50シリーズ向けのCUDA sm_120版です。他のGPU、Linux、macOSには個別の対応パッケージが必要です。上流版インストーラーには本フォークの変更は含まれません。モデル重みは別途必要で、数十〜数百GBになる場合があります。対応するモデルが収まる場合、ISTA-DASLab、Unsloth、Gyroの順で選定します。
 
+同梱するネイティブエンジンはテキストチャット用です。このプレビューには、ネイティブの画像入力機能とDeepSeek専用のネイティブエンジンは含まれません。
+
 モデルと個人の記憶はアプリのフォルダー外で保持します。個人の記憶、プロファイルキー、モデル重みは配布物に含めません。更新前にアプリを終了してください。戻す場合はデータのバックアップを保持し、以前のフォーク版をインストールします。
 
 [Models](docs/MODELS.md) · [Install](docs/HAKUA_INSTALL.md) · [Hermes tools](tools/hakua_hermes_memory_stack.py)

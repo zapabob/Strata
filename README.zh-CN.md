@@ -32,6 +32,8 @@ Spin(8)/Triality、Query-v3 与 Bonsai 实验功能需要明确选择兼容配�
 
 此 Windows 包面向 NVIDIA RTX 50 系列，CUDA sm_120。其他显卡、Linux 和 macOS 需要各自兼容的包。上游安装程序不包含本分支修改。模型权重单独下载，可能需要数十至数百 GB。优先选择兼容且能容纳的 ISTA-DASLab，其次 Unsloth，再次 Gyro。
 
+捆绑的原生引擎用于文本聊天。此预览版不包含原生图像输入功能及独立的 DeepSeek 原生引擎。
+
 模型与个人记忆保存在应用目录之外。安装包不含个人记忆、密钥或模型权重。更新前关闭应用；回退时保留数据备份并安装较早的本分支版本。
 
 [Models](docs/MODELS.md) · [Install](docs/HAKUA_INSTALL.md) · [Hermes tools](tools/hakua_hermes_memory_stack.py)
