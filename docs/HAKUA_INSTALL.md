@@ -12,6 +12,8 @@ Download the [setup EXE](https://github.com/zapabob/Strata/releases/download/v0.
 
 Close the running app and unload models before updating. Back up the app's data directory first. Run the installer for your Windows account. Keep enough free disk space for extraction and model files; when C: is short of space, save the download and choose an installation directory on a drive with room.
 
+With tray storage enabled, × only hides the window. Right-click the Strata tray icon and choose Quit Strata before updating.
+
 Open Strata, select a compatible model and its storage folder, then load it. Node, Python, Hakua-memory and the Windows native engine are included. Full inference model weight packs are separate downloads and can be tens or hundreds of GB. Downloading, installing and loading take longer than the 30-second sequence of setup actions.
 
 For native memory chat, open **Hakua memory** in the sidebar after loading a supported native model. Copy the profile key shown in its dialog. Select a memory checkbox on the local page, then paste the key into **About → Settings**. Choose read and/or save consent for each message. The app creates the local profile automatically and keeps ordinary chat credentials separate. See [the memory guide](../serve/MEMORY_HARNESS.md).
@@ -41,6 +43,8 @@ Start-Process -FilePath (Join-Path $PWD 'Strata_0.4.0-preview.20261101.1_x64-set
 上のEXEを取得して実行してください。7zを選んだ場合は、先に展開してから同梱EXEを実行します。両方を取得する必要はありません。未署名のプレビューですので、SHA256SUMS.txtとの照合をお願いします。
 
 更新前にモデルをアンロードし、アプリを終了してデータをバックアップします。アプリと一時展開には数GBの空き容量が必要で、モデル重みの容量は別途必要です。C:の空き容量が少ない場合は、保存先・インストール先に加えて一時ファイルの置き場所にも余裕が必要です。上のPowerShell例では、H:上の一時フォルダーを使ってEXEを起動します。H:は実際に存在し、空き容量のあるドライブへ置き換えてください。設定はそのPowerShellと、そこから起動するインストーラーに適用されます。
+
+トレイ収納が有効な場合、×は画面を隠します。更新前はトレイのStrataアイコンを右クリックして、Strata を終了を選んでください。
 
 起動後は対応モデルを選んで読み込み、サイドバーのHakua memoryを開きます。表示された専用キーをコピーし、記憶ページのチェック欄を選択してからAbout → Settingsへ貼り付けます。記憶の参照・保存への同意は、送信ごとに選び直してください。
 
