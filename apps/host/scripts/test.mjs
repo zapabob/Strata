@@ -19,6 +19,9 @@ const env={...process.env,STRATA_TEST_SCRATCH:scratch,TEMP:testTemp,TMP:testTemp
 // and share state between otherwise independent fixture homes.
 delete env.STRATA_CONTROL_DIR;
 delete env.STRATA_SETTINGS_FILE;
+// Acquisition policy is selected by each fixture; a packaged caller would mask mocked downloads.
+delete env.STRATA_NO_ACQUIRE;
+delete env.STRATA_PACKAGED;
 const requested=process.env.STRATA_TEST_CONCURRENCY;
 const concurrency=requested===undefined?null:Number(requested);
 if(concurrency!==null&&(!Number.isSafeInteger(concurrency)||concurrency<1||concurrency>16))throw new Error('STRATA_TEST_CONCURRENCY must be an integer from 1 to 16');
