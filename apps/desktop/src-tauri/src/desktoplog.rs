@@ -413,6 +413,8 @@ pub fn plain_reason(detail: &str) -> String {
          Update or repair \"Microsoft Edge WebView2 Runtime\" (Settings > Apps > Installed apps), or install it from \
          https://go.microsoft.com/fwlink/p/?LinkId=2124703, then start Strata again."
             .into()
+    } else if lower.contains("app host") && lower.split_once("exit code:").and_then(|(_, tail)| tail.split_whitespace().next()) == Some("9") {
+        "Strata's background runtime rejected a startup option. Open the full run log named below to see which settings conflict.".into()
     } else if lower.contains("app host") || lower.contains("node runtime") || lower.contains("could not start the app host") {
         "Strata's background program did not start. Security software may have blocked a file in the Strata folder. \
          Allow the Strata folder in it (or reinstall Strata) and start Strata again."
@@ -588,6 +590,14 @@ mod tests {
             assert!(text.contains(needle), "{needle}");
         }
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn rejected_node_options_do_not_suggest_allowlisting_security_software() {
+        let reason = plain_reason("the Strata App Host stopped before it became healthy: exit status exit code: 9");
+        assert!(reason.contains("startup option") && reason.contains("run log"));
+        assert!(!reason.contains("Security software") && !reason.contains("Allow the Strata folder"));
+        assert!(!plain_reason("the Strata App Host stopped: exit code: 90").contains("startup option"));
     }
 
     #[cfg(windows)]

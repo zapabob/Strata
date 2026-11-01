@@ -39,6 +39,7 @@ use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 
 mod updater;
 mod desktoplog;
+mod nodeenv;
 mod shell;
 #[cfg(target_os = "linux")]
 mod supervisor;
@@ -229,6 +230,7 @@ fn control_dir(res: &Path) -> Option<PathBuf> {
 
 /// What every host start gets, packaged or self-test: acquiring is forbidden, Control is where the bundle put it.
 fn apply_runtime_policy(cmd: &mut Command, res: &Path) {
+    nodeenv::configure(cmd);
     cmd.env("STRATA_NO_ACQUIRE", "1");
     if let Some(dir) = control_dir(res) {
         cmd.env("STRATA_CONTROL_DIR", dir);
@@ -707,6 +709,7 @@ fn run_self_test(report_path: &str) -> i32 {
         Ok(n) => {
             let mut probe = Command::new(&n);
             probe.arg("--version");
+            nodeenv::configure(&mut probe);
             hide_console(&mut probe);
             let version_ok = probe
                 .output()
