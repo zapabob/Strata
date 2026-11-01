@@ -39,7 +39,8 @@ target_compile_definitions(mtl_rt PRIVATE
 target_link_libraries(mtl_rt PUBLIC "-framework Metal" "-framework Foundation")
 
 file(GLOB STRATA_METAL_TESTS CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tests/*.cpp)
-list(REMOVE_ITEM STRATA_METAL_TESTS ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_hello.cpp)
+list(REMOVE_ITEM STRATA_METAL_TESTS ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_hello.cpp
+                 ${CMAKE_CURRENT_SOURCE_DIR}/tests/dsu_ref_vs_ggml.cpp)   # (needs ggml: below)
 foreach(src ${STRATA_METAL_TESTS})
   get_filename_component(t ${src} NAME_WE)
   add_executable(${t} ${src})
@@ -86,6 +87,10 @@ set(GGML_BACKEND_DL OFF CACHE BOOL "" FORCE)
 set(GGML_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GGML_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(${STRATA_GGML_DIR}/ggml ${CMAKE_BINARY_DIR}/ggml EXCLUDE_FROM_ALL)
+# ref_quant's IQ1_S / IQ1_M / Q6_K dequantizers against ggml's own (the Unsloth sets' kernels are checked against ref_quant: dsu_parity)
+add_executable(dsu_ref_vs_ggml tests/dsu_ref_vs_ggml.cpp)
+target_include_directories(dsu_ref_vs_ggml PRIVATE ${STRATA_GGML_DIR}/ggml/include)
+target_link_libraries(dsu_ref_vs_ggml PRIVATE mtl_rt ggml-base ggml-cpu)
 
 set(S ${STRATA_ROOT}/src)
 set(STRATA_METAL_HOST_SOURCES
@@ -176,7 +181,7 @@ if(NOT STRATA_BUILD_ID)
   set(STRATA_BUILD_ID unknown)
 endif()
 set_source_files_properties(${DS4}/ds4_main.cpp PROPERTIES COMPILE_DEFINITIONS "DS4_BUILD_ID=\"${STRATA_BUILD_ID}\"")
-# -DSTRATA_DS4_VERSION=0.1.54-metal: the version this DeepSeek engine reports, when its package is released apart from the Qwen engine's
+# -DSTRATA_DS4_VERSION=0.1.55-metal: the version this DeepSeek engine reports, when its package is released apart from the Qwen engine's
 if(STRATA_DS4_VERSION)
   set_source_files_properties(${DS4}/ds4_main.cpp PROPERTIES COMPILE_OPTIONS "-USTRATA_VERSION;-DSTRATA_VERSION=\"${STRATA_DS4_VERSION}\"")
 endif()

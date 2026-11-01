@@ -43,7 +43,7 @@ Modelle und persönliche Erinnerungen bleiben außerhalb des Programmordners. Er
 | GUI / Product | `0.4.0-preview.20261101.1` |
 | Engine | `0.4.0` (CUDA sm_120) |
 | Hakua-memory | `0.3.5` |
-| Upstream | `870aedd9` · 0.2.8 |
+| Upstream | `c62d5e3a` · 0.2.9 |
 
 <!-- App version in this preview tree: `0.4.0-preview.20261101.1` -->
 
