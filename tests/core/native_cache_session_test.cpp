@@ -26,7 +26,9 @@ int main() {
     CHECK(cudaStreamSynchronize(stream)==cudaSuccess);CHECK(native_session_observe(s,true,error));
     bool copied=false;try{SessionState clone=s;}catch(const std::logic_error&){copied=true;}CHECK(copied);
     SessionState legacy;SessionState legacy_copy=legacy;
-    int failure=1;CHECK(cudaMemcpy(s.qsa_states[1].native->owner().query_status_device(),&failure,4,cudaMemcpyHostToDevice)==cudaSuccess);
+    // A pageable H2D cudaMemcpy can return before the device write completes.
+    // Order the injected fault before status staging on the bound nonblocking stream.
+    int failure=1;CHECK(cudaMemcpyAsync(s.qsa_states[1].native->owner().query_status_device(),&failure,sizeof(failure),cudaMemcpyHostToDevice,stream)==cudaSuccess);
     CHECK(s.qsa_states[1].native->stage_status(error));CHECK(cudaStreamSynchronize(stream)==cudaSuccess);
     CHECK(!native_session_observe(s,true,error));CHECK(!native_session_ready(s,error));
     CHECK(!s.qsa_states[0].native->owner().host_usable());
