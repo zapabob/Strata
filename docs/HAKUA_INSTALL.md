@@ -14,13 +14,15 @@ Close the running app and unload models before updating. Back up the app's data 
 
 With tray storage enabled, × only hides the window. Right-click the Strata tray icon and choose Quit Strata before updating.
 
-Open Strata, select a compatible model and its storage folder, then load it. Node, Python, Hakua-memory and the Windows native engine are included. Full inference model weight packs are separate downloads and can be tens or hundreds of GB. Downloading, installing and loading take longer than the 30-second sequence of setup actions.
+Open Strata and install the compatible engine offered on its first-run preparation screen. The app downloads the separate signed Hakua engine component and checks its signature and file hashes before activation. If you have already downloaded its `.tar.gz` file from this fork's release, use the engine file-import option instead. Then select a compatible model and its storage folder and load it.
+
+The installer follows the official app architecture: it carries private Node, Python/Control and Hakua-memory, while GPU runtimes are separate. The Hakua Windows CUDA component contains the native engine and separate PrismML and TurboQuant runtimes. You do not need to install system Node, Python, pip or a compiler. Full inference model weights are another separate download and can be tens or hundreds of GB. Downloads, installation and loading take longer than the 30-second sequence of setup actions.
 
 For native memory chat, open **Hakua memory** in the sidebar after loading a supported native model. Copy the profile key shown in its dialog. Select a memory checkbox on the local page, then paste the key into **About → Settings**. Choose read and/or save consent for each message. The app creates the local profile automatically and keeps ordinary chat credentials separate. See [the memory guide](../serve/MEMORY_HARNESS.md).
 
 For local PQ2_0 GGUF files, choose **PrismML** in the model's advanced llama-server backend settings. For TurboQuant, choose **TurboQuant**, K=`FP16` and V=`TURBO2`, `TURBO3` or `TURBO4`, then reload. Open **Hakua memory** in the same sidebar. For these additional runtimes, the app supplies the local profile key automatically; select read and/or save consent separately for each message. Opening memory chat first restarts the owned server with authentication and shared prompt caches disabled, so finish active requests first. Native and additional runtimes share the local memory profile. [Backend details and limits](LOCAL_LLAMA_BACKENDS.md).
 
-The bundled native engine supports text chat. Native image input and the separate DeepSeek native engine are not included in this preview. Full model weights remain separate downloads.
+The separate native engine supports text chat. Native image input and the separate DeepSeek native engine are not included in this preview. Full model weights remain separate downloads.
 
 This preview uses the fork's installer for updates. Source setup wrappers and upstream Terminal installation commands describe different distribution paths. The upstream Niko1221 installer does not contain Hakua's fork changes. [Build from source](SOURCE_INSTALL.md) is for developers.
 
@@ -48,4 +50,6 @@ Start-Process -FilePath (Join-Path $PWD 'Strata_0.4.0-preview.20261101.1_x64-set
 
 起動後は対応モデルを選んで読み込み、サイドバーのHakua memoryを開きます。表示された専用キーをコピーし、記憶ページのチェック欄を選択してからAbout → Settingsへ貼り付けます。記憶の参照・保存への同意は、送信ごとに選び直してください。
 
-PQ2_0はPrismML、TurboQuantはKをFP16・VをTURBO2／TURBO3／TURBO4にして使用します。モデルを読み込んでサイドバーのHakua memoryを開くと、追加経路では本人用キーをアプリが自動で使います。参照・保存は送信ごとに別々のチェック欄で選び、ネイティブと同じローカル記憶を利用できます。初回は認証付き・共有キャッシュ無効で起動し直すため、処理中のリクエストを終えてから開いてください。同梱ネイティブエンジンはテキスト用で、ネイティブ画像入力とDeepSeek専用エンジンは含みません。検証条件と未確認事項は[リリース検証記録](HAKUA_RELEASE.md)に記載します。
+初回は、モデルを選ぶ前に準備画面から対応エンジンのインストールを選んでください。公式アプリと同じく専用Node・Pythonはアプリに同梱し、GPUエンジンは別配布にしています。アプリは署名付きHakuaエンジンコンポーネントを取得し、署名と全ファイルのハッシュを確認してから有効化します。取得済みのコンポーネントファイルから導入することもできます。このコンポーネントにネイティブCUDA・PrismML・TurboQuantの実行環境が入ります。モデル重みは別途必要です。システム側のNode・Python、pip、コンパイラーのインストールは不要です。
+
+PQ2_0はPrismML、TurboQuantはKをFP16・VをTURBO2／TURBO3／TURBO4にして使用します。モデルを読み込んでサイドバーのHakua memoryを開くと、追加経路では本人用キーをアプリが自動で使います。参照・保存は送信ごとに別々のチェック欄で選び、ネイティブと同じローカル記憶を利用できます。初回は認証付き・共有キャッシュ無効で起動し直すため、処理中のリクエストを終えてから開いてください。別配布のネイティブエンジンはテキスト用で、ネイティブ画像入力とDeepSeek専用エンジンは含みません。検証条件と未確認事項は[リリース検証記録](HAKUA_RELEASE.md)に記載します。

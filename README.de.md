@@ -6,7 +6,7 @@ Hakua-Chatbot auf Basis von Strata. [zapabob/Strata](https://github.com/zapabob/
 
 ## TLDR · Installationsschritte in 30 Sekunden
 
-Lade den Windows-Installer dieses Forks herunter, führe ihn aus und lade ein kompatibles Modell. Hakua memory in der Seitenleiste öffnet den Gedächtnis-Chat. Die Schritte dauern etwa 30 Sekunden; Download, Installation und Modellstart benötigen zusätzliche Zeit.
+Lade den Windows-Installer dieses Forks herunter und führe ihn aus. Installiere beim ersten Start die angebotene kompatible Engine, wähle dann ein Modell und lade es. Hakua memory in der Seitenleiste öffnet den Gedächtnis-Chat. Die Schritte dauern etwa 30 Sekunden; Downloads, Installation und Laden dauern länger.
 
 Quellcode-Kandidat 0.4.0: Prüfung und Veröffentlichung sind noch nicht abgeschlossen.
 
@@ -26,13 +26,13 @@ Für eine lokale PQ2_0-GGUF wählen Sie in den erweiterten Modelleinstellungen d
 
 Experimente mit Spin(8)/Triality, Query-v3 und Bonsai erfordern ausdrücklich gewählte, kompatible Einstellungen. Es gibt keine allgemeine Zusage zu Geschwindigkeit oder Qualität.
 
-Privates Node und Python, Hakua-memory 0.3.5 und eine aus diesem Fork gebaute CUDA-Engine sind enthalten. Beim Modellstart werden keine Python-Pakete installiert und kein Code kompiliert.
+Wie die offizielle App enthält der Installer privates Node und Python sowie Hakua-memory 0.3.5. GPU-Engines werden separat verteilt: Nach deiner Auswahl lädt die App eine signierte Hakua-Engine-Komponente herunter oder importiert eine bereits heruntergeladene Datei. Diese Komponente enthält native CUDA-, PrismML- und TurboQuant-Laufzeiten. Modellgewichte werden separat geladen. Für die veröffentlichte App brauchst du weder systemweit installiertes Node oder Python noch pip oder einen Compiler.
 
 ## Kompatibilität und Updates
 
 Dieses Windows-Paket ist für NVIDIA RTX 50, CUDA sm_120. Andere GPUs, Linux und macOS benötigen eigene kompatible Pakete. Upstream-Installer enthalten diese Änderungen nicht. Gewichte sind separat und können viele GB benötigen. Bevorzuge passende Pakete von ISTA-DASLab, danach Unsloth und Gyro.
 
-Die mitgelieferte native Engine dient dem Textchat. Native Bildeingabe und die separate native DeepSeek-Engine sind in dieser Vorschau nicht enthalten.
+Die separat verteilte native Engine dient dem Textchat. Native Bildeingabe und die separate native DeepSeek-Engine sind in dieser Vorschau nicht enthalten.
 
 Modelle und persönliche Erinnerungen bleiben außerhalb des Programmordners. Erinnerungen, Schlüssel und Gewichte werden nicht mitgeliefert. Beende die App vor Updates. Für ein Rollback sichere deine Daten und installiere eine frühere Fork-Version.
 
@@ -51,7 +51,7 @@ Bei aktivierter Ablage im Infobereich blendet × das Fenster aus. Klicke vor ein
 
 <!-- App version in this preview tree: `0.4.0-preview.20261101.1` -->
 
-Diese Vorschau ist unsigniert. Prüfe SHA256SUMS.txt vor der Installation. Das [Prüfprotokoll](docs/HAKUA_RELEASE.md) nennt tatsächliche Ergebnisse und Grenzen. Ein erfolgreicher Build beweist keine funktionierende Inferenz. Diese unsignierte Vorschau wird manuell über das Installationsprogramm aktualisiert; signierte automatische Updates sind noch nicht geprüft.
+Der Windows-Installer hat keine Windows-Codesignatur. Prüfe SHA256SUMS.txt vor der Installation. Die separate Engine-Komponente und ihr Update-Feed sind signiert und werden von der App geprüft. App-Updates erfolgen manuell mit dem Installer; signierte automatische App-Updates sind noch nicht qualifiziert. Das [Prüfprotokoll](docs/HAKUA_RELEASE.md) nennt Ergebnisse und Grenzen einschließlich der Gedächtnistests mit realen Modellen.
 
 ## Entwicklung und Hilfe
 

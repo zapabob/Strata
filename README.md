@@ -6,7 +6,7 @@ Hakua chatbot, built on Strata. [zapabob/Strata](https://github.com/zapabob/Stra
 
 ## TLDR · installation steps in 30 seconds
 
-Download this fork's Windows installer, run it, then select and load a compatible model. Open Hakua memory in the sidebar. The steps take about 30 seconds; downloading, installing and loading the app and model take longer.
+Download and run this fork's Windows installer. On first start, install the compatible engine offered by the app, then choose and load a model. Open Hakua memory in the sidebar. The setup actions take about 30 seconds; app, engine and model downloads, installation and loading take longer.
 
 Source candidate 0.4.0: release qualification and publication are still in progress.
 
@@ -22,17 +22,17 @@ For PrismML/PQ2_0 and TurboQuant, load the model and open Hakua memory in the si
 
 Hermes tools support approved SOUL.md / MEMORY.md synchronisation, Ebbinghaus memory, semantic graph, Obsidian export and sleep consolidation. These operator tools are separate from the chat page. Optional RAG and embedding packages are not part of the base installer.
 
-For a local PQ2_0 GGUF, choose `PrismML` under the model’s llama-server backend setting. For standard GGUF models, choose `TurboQuant`, set K cache precision to `FP16` and V to `TURBO2`, `TURBO3` or `TURBO4`. TurboQuant K modes are unavailable in this candidate because real-model tests found corrupted replies. Reload the model after changing the backend. Each backend has its own bundled executable and libraries; PQ2_0 and TurboQuant are separate paths. See [backend setup and limits](docs/LOCAL_LLAMA_BACKENDS.md).
+For a local PQ2_0 GGUF, choose `PrismML` under the model’s llama-server backend setting. For standard GGUF models, choose `TurboQuant`, set K cache precision to `FP16` and V to `TURBO2`, `TURBO3` or `TURBO4`. TurboQuant K modes are unavailable in this candidate because real-model tests found corrupted replies. Reload the model after changing the backend. Each backend has its own executable and libraries in the separate engine component; PQ2_0 and TurboQuant are separate paths. See [backend setup and limits](docs/LOCAL_LLAMA_BACKENDS.md).
 
 Spin(8)/Triality, Query-v3 and Bonsai experiments require compatible, explicitly selected settings. No general speed or quality improvement is claimed.
 
-Private Node and Python, pinned Hakua-memory 0.3.5 and a fork-built CUDA engine are bundled. Starting a model does not install Python packages or compile code.
+The installer includes private Node and Python and pinned Hakua-memory 0.3.5, following the official app architecture. GPU engines are separate: the app downloads a signed Hakua engine component when you choose to install it, or imports a downloaded component file. This component contains native CUDA, PrismML and TurboQuant runtimes. Model weights are another separate download. No system Node/Python installation, pip or compiler is needed to run the released app.
 
 ## Compatibility and updates
 
 This Windows package targets NVIDIA RTX 50-series, CUDA sm_120. Other GPUs, Linux and macOS need their own compatible packages. An upstream installer does not include this fork's changes. Model weights are separate and may need tens or hundreds of GB. Prefer compatible ISTA-DASLab packs, then Unsloth, then Gyro.
 
-The bundled native engine is for text chat. Native image input and the separate native DeepSeek engine are not included in this preview.
+The separate native engine supports text chat. Native image input and the separate native DeepSeek engine are not included in this preview.
 
 Keep models and personal memory outside the app folder; no personal memories, profile keys or weights are distributed. Close the app before upgrading. To roll back, retain a data backup and install an earlier fork release.
 
@@ -51,7 +51,7 @@ With tray storage enabled, × hides the window. To exit fully before an update, 
 
 <!-- App version in this preview tree: `0.4.0-preview.20261101.1` -->
 
-This preview is unsigned. Compare the download against SHA256SUMS.txt before installing. [Release qualification](docs/HAKUA_RELEASE.md) records actual test results and limitations; a successful build alone does not prove inference works. This unsigned preview uses manual installer updates; automatic signed updates are not yet qualified.
+The Windows installer has no Windows code signature. Compare SHA256SUMS.txt before installing. The separate engine component and its update feed are signed and verified by the app. App updates use the manual installer; automatic signed app updates are not yet qualified. [Release qualification](docs/HAKUA_RELEASE.md) records actual results and limits, including the real-model memory checks.
 
 ## Development and support
 

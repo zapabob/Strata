@@ -6,7 +6,7 @@ Chatbot Hakua baseado no Strata. [zapabob/Strata](https://github.com/zapabob/Str
 
 ## TLDR · passos de instalação em 30 segundos
 
-Baixe e execute o instalador Windows deste fork, escolha um modelo compatível e carregue-o. Hakua memory na barra lateral abre o chat com memória. Os passos levam cerca de 30 segundos; download, instalação e carregamento exigem tempo adicional.
+Baixe e execute o instalador Windows deste fork. Na primeira abertura, instale o motor compatível oferecido e depois escolha e carregue um modelo. Hakua memory na barra lateral abre o chat com memória. Os passos levam cerca de 30 segundos; downloads, instalação e carregamento exigem tempo adicional.
 
 A versão fonte 0.4.0 ainda está em validação; a publicação não foi concluída.
 
@@ -22,17 +22,17 @@ PrismML/PQ2_0 e TurboQuant também podem usar Hakua-memory. Carregue o modelo e 
 
 As ferramentas Hermes sincronizam SOUL.md / MEMORY.md aprovados e oferecem memória Ebbinghaus, grafo semântico, exportação Obsidian e consolidação sleep. São separadas do chat; dependências opcionais de RAG e embeddings não vêm no instalador básico.
 
-Para um GGUF local PQ2_0, escolha `PrismML` como backend llama-server nas configurações avançadas do modelo. Para um GGUF padrão com TurboQuant, escolha `TurboQuant` e configure K como `FP16` e V como `TURBO2`, `TURBO3` ou `TURBO4`. Os formatos TurboQuant para K estão desativados nesta versão porque os testes reais produziram respostas corrompidas. Recarregue o modelo após trocar o backend. Cada backend usa seus próprios executáveis e bibliotecas incluídos; PQ2_0 e TurboQuant seguem caminhos distintos. Consulte [a configuração e os limites](docs/LOCAL_LLAMA_BACKENDS.md).
+Para um GGUF local PQ2_0, escolha `PrismML` como backend llama-server nas configurações avançadas do modelo. Para um GGUF padrão com TurboQuant, escolha `TurboQuant` e configure K como `FP16` e V como `TURBO2`, `TURBO3` ou `TURBO4`. Os formatos TurboQuant para K estão desativados nesta versão porque os testes reais produziram respostas corrompidas. Recarregue o modelo após trocar o backend. Cada backend usa seus próprios executáveis e bibliotecas no componente de motor separado; PQ2_0 e TurboQuant seguem caminhos distintos. Consulte [a configuração e os limites](docs/LOCAL_LLAMA_BACKENDS.md).
 
 Os experimentos Spin(8)/Triality, Query-v3 e Bonsai exigem configurações compatíveis e explícitas, sem promessa geral de ganho de velocidade ou qualidade.
 
-Inclui Node e Python privados, Hakua-memory 0.3.5 e um motor CUDA compilado deste fork. Iniciar um modelo não instala pacotes Python nem compila código.
+Como no aplicativo oficial, o instalador inclui Node e Python privados e Hakua-memory 0.3.5. Os motores GPU são distribuídos separadamente: após sua escolha, o aplicativo baixa um componente Hakua assinado ou importa um arquivo já baixado. Esse componente contém os ambientes CUDA nativo, PrismML e TurboQuant. Os pesos dos modelos são outro download separado. O aplicativo publicado não exige Node ou Python do sistema, pip ou compilador.
 
 ## Compatibilidade e atualizações
 
 Este pacote Windows atende NVIDIA RTX série 50, CUDA sm_120. Outras GPUs, Linux e macOS exigem pacotes próprios. O instalador original não contém estas alterações. Os pesos são separados e podem ocupar dezenas ou centenas de GB. Prefira pacotes compatíveis ISTA-DASLab, depois Unsloth e Gyro.
 
-O motor nativo incluído atende ao chat de texto. Esta prévia não inclui a entrada nativa de imagens nem o motor nativo separado do DeepSeek.
+O motor nativo distribuído separadamente atende ao chat de texto. Esta prévia não inclui a entrada nativa de imagens nem o motor nativo separado do DeepSeek.
 
 Mantenha modelos e lembranças fora da pasta do programa. Lembranças pessoais, chaves e pesos não são distribuídos. Feche o aplicativo antes de atualizar. Para voltar, preserve o backup e instale uma versão anterior deste fork.
 
@@ -51,7 +51,7 @@ Com a opção de recolher à bandeja ativada, × oculta a janela. Antes de atual
 
 <!-- App version in this preview tree: `0.4.0-preview.20261101.1` -->
 
-Esta prévia não é assinada. Confira SHA256SUMS.txt antes de instalar. O [relatório de validação](docs/HAKUA_RELEASE.md) indica resultados reais e limitações. Compilar não comprova inferência correta. Esta prévia sem assinatura usa atualização manual pelo instalador; atualizações automáticas assinadas ainda não foram verificadas.
+O instalador não tem assinatura de código Windows. Confira SHA256SUMS.txt antes de instalar. O componente de motor separado e seu feed de atualização são assinados e verificados pelo aplicativo. O aplicativo é atualizado manualmente pelo instalador; suas atualizações automáticas assinadas ainda não foram verificadas. O [relatório de validação](docs/HAKUA_RELEASE.md) registra resultados e limites, incluindo testes de memória com modelos reais.
 
 ## Desenvolvimento e suporte
 
