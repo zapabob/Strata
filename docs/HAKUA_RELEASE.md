@@ -10,6 +10,10 @@ The integrated build passed its source/compiler-bound guard with the reviewed433
 
 The current compiled GUI/Host/Control stage passed real save/restart/recall with PrismML Hikari PQ2_0 (Q8_0 K/V, Quarter GPU layers) and TurboQuant Qwen3-1.7B-Q8_0 (FP16 K/Turbo3 V), at4,096 tokens. Both checked independent per-turn consent, authentication, unchanged read-only memory DB, zero pageerrors and owned-process cleanup. Ordinary TurboQuant GUI chat also passed at8,192 tokens: correct answers, generation stop in117ms, successful resend, four captured viewport sizes, zero pageerrors and model/PID/port cleanup. These checks do not establish final EXE qualification. Setup tests passed975 with2 skips and359 subtests; Terminal passed2113 with73 skips and367 subtests; Host passed1314 with31 skips and no failures; server completed1349 tests with30 skips. The current stage includes95 inventoried notices.
 
+## Published 0.3.3 reference
+
+The following sections preserve the earlier package's evidence. Their installer hashes, test counts and GUI observations apply to0.3.3 only.
+
 GUI/Product: **0.3.3-preview.20261030.1**. Native engine/Control: **0.3.3**. Hakua-memory: **0.3.5**.
 
 This Windows preview integrates upstream 0.2.8 at `870aedd9e1ebe1c91f94da93b59af17729f6c5c0`, the release's fixed upstream source cut. Implementation commit: `767b92fdc24aaacda58812aef2fe87869109a308`; native source was merged in `6b1139108b62e08174286357bacb57d7525b564f`. Local package qualification and downloaded-release verification are complete. [Published release](https://github.com/zapabob/Strata/releases/tag/v0.3.3-preview.20261030.1), source tag `336f074b772197ce9ec249b9586c0dab9269c369`, published 2026-10-30 02:12:17 UTC. The release is the fork's latest release; its title and these instructions identify it as an unsigned preview. [Installation instructions](HAKUA_INSTALL.md).
