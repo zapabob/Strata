@@ -10,6 +10,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from strata_control import dsv41_fit
 from strata_cli.launch import settings as S
 from strata_cli.launch.catalog import Catalog
 from strata_cli.launch.runner import LaunchError, Runner
@@ -22,6 +23,10 @@ HW_4X32 = {**HW_12, "ram_gb": 251.0, "disk_free_gb": 900.0, "engine_vendor": "am
 
 class LaunchDeepSeek(unittest.TestCase):
     def setUp(self):
+        # The measured four-card placement is Linux; Windows deliberately uses one AMD card.
+        p = mock.patch.object(dsv41_fit, "_on_windows", return_value=False)
+        p.start()
+        self.addCleanup(p.stop)
         self.home = Home().__enter__()
         self.addCleanup(self.home.__exit__, None, None, None)
         self.hw = dict(HW_4X32)

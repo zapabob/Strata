@@ -39,11 +39,13 @@ async function startHost(t, { home, ws, harness = HARNESS } = {}) {
   };
   t.after(stop);
   const base = `http://127.0.0.1:${port}`;
+  let ready = false;
   for (let i = 0; i < 100; i++) {
-    try { if ((await fetch(`${base}/api/agent/status`)).ok) break; } catch { /* not up yet */ }
+    try { if ((await fetch(`${base}/api/agent/status`)).ok) { ready = true; break; } } catch { /* not up yet */ }
     if (child.exitCode !== null) throw new Error(`the host exited: ${log.slice(-500)}`);
     await sleep(200);
   }
+  assert.ok(ready, `the host did not become ready on port ${port}: ${log.slice(-2000)}`);
   const post = async (path, body) => { const res = await fetch(`${base}${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); return { status: res.status, body: await res.json().catch(() => null) }; };
   /** Stream one chat turn; `onFrame` may react while it runs. Resolves with every frame. */
   const chat = async (body, onFrame = () => {}) => {

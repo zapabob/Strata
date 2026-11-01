@@ -107,7 +107,8 @@ class FolderScreen(Base):
             await press(pilot, *("enter",) * 7, "n", "enter")
             t = flat(app)
             self.assertIn("Storage", t)
-            self.assertIn(str(ctx.default_folder()), t)
+            # A long isolated Windows test path wraps inside a terminal row.
+            self.assertIn("".join(str(ctx.default_folder()).split()), "".join(t.split()))
         self.run_app(case)
 
     def test_the_save_summary_shows_a_typed_folder(self):
@@ -118,7 +119,7 @@ class FolderScreen(Base):
             await typed(pilot, str(self.home.base / "mine"))
             await press(pilot, *("enter",) * 5, "n", "enter")
             self.assertIn("Step 9 of 9", flat(app))
-            self.assertIn("mine", flat(app))
+            self.assertIn("".join(str(self.home.base / "mine").split()), "".join(flat(app).split()))
         self.run_app(case)
 
 
