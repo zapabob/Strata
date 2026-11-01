@@ -1,0 +1,25 @@
+{
+  "performance_qualified": false,
+  "reason": "Shared GPU, unfixed clocks, synthetic inputs and cache reuse; no E2E or DRAM counters",
+  "environment": "All inherited STRATA_* variables removed in children; no settings or external processes changed",
+  "utc": "2026-11-01T19:55:08.0649862Z",
+  "scope": "Current GDN parity/benchmark and verify/fused objects; other kernels resolved from recorded existing library. Synthetic; not an engine build or E2E qualification.",
+  "inputs": [
+    {
+      "path": "H:\\Strata\\releases\\hakua040-native-upstream-r1\\Release\\strata_kernels.lib",
+      "sha256": "6885F56CDE14918DB898172B860B5A4EAE9B5ACE48C55D7E85BC7A0AEC5AED06"
+    },
+    {
+      "path": "C:\\Users\\downl\\Documents\\ChatGPT\\Strata\\src\\kernels\\gdn_parity.cpp",
+      "sha256": "CD460674625643E641F356DEFD94597E41EE66DE306D410001ED6C27C5F4A8DD"
+    },
+    {
+      "path": "C:\\Users\\downl\\Documents\\ChatGPT\\Strata\\bench\\gdn_multi_resource_bench.cpp",
+      "sha256": "83DC041C87F28474A5EB213DDF91DDFA2EE6E042F4C28FE6469213B06E46B17D"
+    },
+    {
+      "path": "C:\\Users\\downl\\Documents\\ChatGPT\\Strata\\tools\\benchmark_gdn_resources.ps1",
+      "sha256": "61972BC0F595BF45F3D33FC7B9F3EC2489B4D8924573C438AF6430454FA53B02"
+    }
+  ]
+}

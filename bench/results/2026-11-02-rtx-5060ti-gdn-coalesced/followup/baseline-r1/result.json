@@ -1,0 +1,36 @@
+{
+  "status": "RESOURCE_PRESSURE",
+  "exit_code": 125,
+  "native_exit_code": null,
+  "native_exit_code_observation": "NOT_OBSERVED",
+  "contained_before_resume": true,
+  "termination_confirmed": true,
+  "job_active_after": 0,
+  "owned_root_pid": 29824,
+  "root_creation_filetime": 134380336954471903,
+  "written_bytes": 5258,
+  "observed_dropped_bytes": 0,
+  "unread_output_bytes": null,
+  "peak_job_commit_bytes": 8504217600,
+  "resource_samples": 6516,
+  "configured_job_commit_bytes": 12884901888,
+  "memory_diagnostics": {
+    "scope": "owned_root_process_sampled_not_job_peak",
+    "status": "AVAILABLE",
+    "samples": 6516,
+    "failed_samples": 0,
+    "last_error_code": null,
+    "max_private_bytes": 8502968320,
+    "max_working_set_bytes": 11286794240,
+    "min_available_ram": 2142339072,
+    "min_commit_headroom": 17236287488,
+    "min_H_free": 195737812992
+  },
+  "last_resources": {
+    "available_ram": 2142339072,
+    "commit_headroom": 18040459264,
+    "H_free": 195741097984
+  },
+  "job_total_processes": 2,
+  "commit_budget_exceeded": false
+}

@@ -21,6 +21,7 @@ import { mcpSkippedNotices } from './agent/profile.mjs';
 import { createAgentTools } from './agent/tools-settings.mjs';
 import { withPlainStatus } from './agent/status.mjs';
 import { findBrowser, findPlaywrightMcp } from './agent/browser-probe.mjs';
+import { agentSkipReason, mergeAgentLocalInstances, supervisorIsReady, supervisorLocalInstance } from './agent-local.mjs';
 /**
  * Strata engine host.
  *
@@ -194,6 +195,28 @@ async function pictureRefusal(connection, model) {
   const fix = `open Settings → Models, edit "${connection.name}" and turn on "Read pictures with this model"`;
   return `"${model.name}" is set not to read pictures (or its server says it cannot: a llama-server started without --mmproj, or a text-only model). If that is wrong, ${fix}. Otherwise choose a model that reads pictures.`;
 }
+/** Prism/TurboQuant (Hikari) llama-server row for the agent — without this, web_search never reaches local GGUFs. */
+function supervisorAgentRow() {
+  const engine = supervisor.status();
+  if (!supervisorIsReady(engine)) return null;
+  const v = variant(engine.modelId);
+  return supervisorLocalInstance(engine, {
+    authenticationKey: () => supervisor.authenticationKey() || store.get().serving?.apiKey || null,
+    label: v?.label ?? v?.name ?? engine.modelId,
+    context: v?.contextMax ?? undefined,
+    vision: false,
+  });
+}
+function agentLocalRows() {
+  const nativeRows = native.readyInstances().map(i => ({
+    id: i.id, label: i.label, baseUrl: `http://127.0.0.1:${i.port}/v1`, modelId: i.apiModelId,
+    context: i.metrics?.engine?.max_context ?? i.context ?? undefined, key: i.key, vision: i.vision,
+    slots: i.metrics?.live?.slots?.length || i.parallel || 1,
+    mcpServers: i.mcpServers,
+    source: 'native',
+  }));
+  return mergeAgentLocalInstances(nativeRows, supervisorAgentRow());
+}
 const agent = createAgentBridge({
   tools: () => agentTools.profileView(),
   skillsDir: () => AGENT_SKILLS,
@@ -202,22 +225,25 @@ const agent = createAgentBridge({
   proxyBase: `http://127.0.0.1:${PORT}/api/internal/agent-llm`,
   expertSampling: () => samplingFromExpert(store.get().expert),
   // How far a local engine has got (the 2 s /metrics poll), for the agent's stall watchdog: it moves while a long prompt is read.
-  engineProgress: instanceId => engineProgressMark(native.readyInstances().find(i => i.id === instanceId)),
+  engineProgress: instanceId => {
+    const nativeHit = native.readyInstances().find(i => i.id === instanceId);
+    if (nativeHit) return engineProgressMark(nativeHit);
+    // Hikari / PrismML via supervisor: keep the agent stall watchdog moving while prompt is read.
+    const row = supervisorAgentRow();
+    if (row && row.id === instanceId) {
+      const live = supervisor.status()?.metrics?.live;
+      if (live) return engineProgressMark({ metrics: { live } });
+    }
+    return null;
+  },
   onPlan: (chatId, event, plan) => hub.send('plan', { chatId, event, plan }),
   onQueue: (chatId, queue) => hub.send('queue', { chatId, queue }),
   dataDir: store.DATA_DIR,
   componentsDir: componentsDirectory(),
   // The installer ships the Harness next to the host (<install>/host/server -> <install>/harness).
   bundledDir: resolve(HERE, '..', '..', 'harness'),
-  defaultLocalId: () => native.defaultInstanceId(),
-  localInstances: () => native.readyInstances().map(i => ({
-    id: i.id, label: i.label, baseUrl: `http://127.0.0.1:${i.port}/v1`, modelId: i.apiModelId,
-    context: i.metrics?.engine?.max_context ?? i.context ?? undefined, key: i.key, vision: i.vision,
-    // The engine's request slots: helper agents never outnumber them.
-    slots: i.metrics?.live?.slots?.length || i.parallel || 1,
-    // The tool servers set up for this model (Settings, Tools): the agent connects to the same ones.
-    mcpServers: i.mcpServers,
-  })),
+  defaultLocalId: () => native.defaultInstanceId() ?? supervisorAgentRow()?.id ?? null,
+  localInstances: () => agentLocalRows(),
   connections: () => modelProviders.withSecrets().map(c => ({ ...c, models: c.models.map(m => ({ ...m, vision: readsPicturesByDefault(m, visionProbe.known(c, m.id)), reasoning: m.reasoning ?? visionProbe.knownThinks(c, m.id) ?? null })) })),
   log: line => console.log(line),
 });
@@ -629,7 +655,11 @@ async function runAgentTurn({ res, controller, chatId, body, message, workspaceI
   }
   else {
     try { instance = native.resolveInstance(body.nativeModelId ?? native.state().defaultId); }
-    catch (e) { write({ type: 'error', message: plainNoModel(e.message) }); return; }
+    catch {
+      const row = supervisorAgentRow();
+      if (!row) { write({ type: 'error', message: plainNoModel('No local model is ready for the agent.') }); return; }
+      instance = row;
+    }
     choice = { instanceId: instance.id };
   }
   const started = Date.now();
@@ -2046,11 +2076,14 @@ async function api(req, res, path, method, url) {
     /* Agent turn, when the component is there and this request can use it. A client that disappears
        detaches from the turn (it keeps running in the Harness); Stop is its own request. */
     const chatId = typeof body.sessionId === 'string' && body.sessionId ? body.sessionId : null;
-    const agentSkip = process.env.STRATA_AGENT === 'off' ? 'The agent is turned off (STRATA_AGENT=off).'
-      : body.agent === false || body.tools === false ? 'This chat runs without the agent.'
-      : !chatId ? 'This request did not name a chat.'
-      : !(body.remoteModel || native.hasLive()) ? 'The agent needs a loaded Strata model or an API model.'
-      : null;
+    const agentSkip = agentSkipReason({
+      agentOff: process.env.STRATA_AGENT === 'off',
+      plainChat: body.agent === false || body.tools === false,
+      chatId,
+      remoteModel: !!body.remoteModel,
+      nativeLive: native.hasLive(),
+      supervisorLive: supervisorIsReady(supervisor.status()),
+    });
     if (chatId && !agentSkip) {
       const capability = agent.status();
       if (capability.state !== 'unavailable') {

@@ -1,0 +1,6 @@
+{"test":"device","name":"NVIDIA GeForce RTX 5060 Ti","cc":"12.0","sm_count":36,"l2_bytes":33554432,"persisting_l2_max_bytes":20971520,"runtime":13050,"driver":13050}
+{"test":"correctness","hk":1,"hv":1,"steps":4,"seed":19,"bitwise":true,"graph":true,"invalid_inputs":true,"fp64_steps":4,"max_state_abs":1.75928142e-08,"max_output_abs":1.18436657e-09}
+{"test":"correctness","hk":2,"hv":6,"steps":4,"seed":27,"bitwise":true,"graph":true,"invalid_inputs":true,"fp64_steps":4,"max_state_abs":7.97651197e-08,"max_output_abs":1.2652367e-08}
+{"test":"correctness","hk":16,"hv":48,"steps":8,"seed":42,"bitwise":true,"graph":true,"invalid_inputs":true,"fp64_steps":8,"max_state_abs":1.16377466e-07,"max_output_abs":1.63454427e-08}
+{"test":"correctness","hk":17,"hv":51,"steps":4,"seed":53,"bitwise":true,"graph":true,"invalid_inputs":true,"fp64_steps":4,"max_state_abs":9.17814496e-08,"max_output_abs":1.26597288e-08}
+{"test":"result","pass":true}

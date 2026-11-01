@@ -9,7 +9,7 @@ import { nativeCatalogModels, catalogVersionLabel } from '../lib/native-catalog'
 import { sizeGb } from '../lib/format';
 import { NativeProgress } from './NativeModels';
 
-interface Preview { path: string; preview: { model_dir?: string; plain_issues?: string[]; already_set_up?: { data_dir?: string | null; pack?: string | null } | null; file_count: number; total_bytes: number; file_set_status: string; issues: string[]; messages?: string[]; projectors?: { name: string; status: string; pinned: boolean; plain: string }[]; reads_pictures?: boolean; candidate_selection: { family: string; model: string } | null } }
+interface Preview { path: string; preview: { model_dir?: string; plain_issues?: string[]; already_set_up?: { data_dir?: string | null; pack?: string | null } | null; file_count: number; total_bytes: number; file_set_status: string; issues: string[]; messages?: string[]; projectors?: { name: string; status: string; pinned: boolean; plain: string }[]; reads_pictures?: boolean; candidate_selection: { family: string; model: string } | null; local_runtime?: 'PrismML' | 'TurboQuant' | string | null } }
 
 /** The words for why a folder of GGUF files cannot be used: a sentence and what to do, the checker's own codes under Details. */
 function problem(issues: string[]): { message: string; next: string } {
@@ -29,7 +29,7 @@ function problem(issues: string[]): { message: string; next: string } {
 
 /** "Use a local GGUF": choose the folder of a model you already have, Strata checks it, and prepares and loads it without copying
  *  or downloading the model files. The same page layout and cards as the optimized models page. */
-export function NativeLocalModel({ onBack, onAlternative }: { onBack: () => void; onAlternative: (path: string) => void }) {
+export function NativeLocalModel({ onBack, onAlternative }: { onBack: () => void; onAlternative: (path: string, backend?: string) => void }) {
     const native = useNative();
     const [typed, setTyped] = useState(''), [checked, setChecked] = useState<Preview | null>(null), [pending, setPending] = useState(false), [error, setError] = useState(''), [jobId, setJobId] = useState('');
     const job = native?.jobs.find(j => j.id === jobId);
@@ -70,7 +70,10 @@ export function NativeLocalModel({ onBack, onAlternative }: { onBack: () => void
         finally { setPending(false); }
     }
     const found = checked ? problem(checked.preview.issues) : null;
-    const alternative = !!checked && !usable && checked.preview.issues.some(i => /unsupported_architecture|unsupported_or_missing_architecture|unrecognized_or_unsupported_model_variant|expert_quantization/.test(i));
+    const strataEngine = checked?.preview.local_runtime === 'PrismML' || checked?.preview.local_runtime === 'TurboQuant'
+      ? checked.preview.local_runtime
+      : null;
+    const alternative = !!checked && !usable && !strataEngine && checked.preview.issues.some(i => /unsupported_architecture|unsupported_or_missing_architecture|unrecognized_or_unsupported_model_variant|expert_quantization/.test(i));
     return <Screen plainHeader title={tr("Model")} actions={<Btn onClick={onBack}>{tr("Back")}</Btn>}>
   <div className="native-model-layout">
    <div className="stack stack--lg">
@@ -85,6 +88,12 @@ export function NativeLocalModel({ onBack, onAlternative }: { onBack: () => void
       <p className="small muted">{tr("{0} files · {1}", [checked.preview.file_count, sizeGb(checked.preview.total_bytes / 1024 ** 3)])}</p>
       {tr(checked.preview.messages?.map(m => <p className="small muted" key={m}>{tr(m)}</p>))}
       <div className="native-model-actions"><Btn variant="primary" icon="models" disabled={pending || !!active} onClick={() => void prepare()}>{tr(pending ? 'Checking…' : 'Prepare and load')}</Btn></div>
+     </> : strataEngine ? <>
+      <h2 className="h3">{tr("Ready for Strata")}</h2>
+      <p className="small muted">{tr("These files use {0}. Strata starts them with its bundled {0} engine — same Models screen, same chat, tools and web search. No separate pack preparation.", [strataEngine])}</p>
+      <p className="small muted">{tr("{0} files · {1}", [checked.preview.file_count, sizeGb(checked.preview.total_bytes / 1024 ** 3)])}</p>
+      {tr(checked.preview.messages?.map(m => <p className="small muted" key={m}>{tr(m)}</p>))}
+      <div className="native-model-actions"><Btn variant="primary" icon="models" disabled={pending || !!active} onClick={() => onAlternative(checked!.path, strataEngine)}>{tr("Load with Strata")}</Btn></div>
      </> : <>
       <h2 className="h3">{tr(found!.message)}</h2>
       <p className="small muted">{tr(found!.next)}</p>

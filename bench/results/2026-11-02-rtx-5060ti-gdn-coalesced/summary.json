@@ -1,0 +1,512 @@
+{
+  "math": {
+    "pass": true,
+    "gdn_orthogonality_error_beta_half": 0.75,
+    "reflection_requires_beta_times_norm_squared": 2,
+    "rotation_preserved_distinct_block_norms": [
+      1.0,
+      2.0
+    ],
+    "different_rotation_dot_original": 1.0,
+    "different_rotation_dot_after": 0.9323273456060345,
+    "gdn_cross_8_block_entry": -0.25,
+    "fp4_fixed_scale_counterexample_abs_error": 0.19999999999999996,
+    "fp32_32_elements_bits": 1024,
+    "mxfp4_32_elements_plus_scale_bits": 136,
+    "arbitrary_64_fp32_bits": 2048,
+    "28_fp32_coordinates_bits": 896,
+    "state_bytes_per_layer_hv48": 3145728,
+    "state_bytes_36_layers": 113246208,
+    "state_bytes_48_layers": 150994944
+  },
+  "runs": [
+    {
+      "source": "build\\gdn-coalesced-experiment\\full-r2.jsonl",
+      "device": {
+        "test": "device",
+        "name": "NVIDIA GeForce RTX 5060 Ti",
+        "cc": "12.0",
+        "sm_count": 36,
+        "l2_bytes": 33554432,
+        "persisting_l2_max_bytes": 20971520,
+        "runtime": 13050,
+        "driver": 13050
+      },
+      "correctness": [
+        {
+          "test": "correctness",
+          "hk": 1,
+          "hv": 1,
+          "steps": 32,
+          "seed": 19,
+          "bitwise": true,
+          "graph": true,
+          "invalid_inputs": true,
+          "fp64_steps": 16,
+          "max_state_abs": 1.75928142e-08,
+          "max_output_abs": 1.33066888e-09
+        },
+        {
+          "test": "correctness",
+          "hk": 2,
+          "hv": 6,
+          "steps": 32,
+          "seed": 27,
+          "bitwise": true,
+          "graph": true,
+          "invalid_inputs": true,
+          "fp64_steps": 16,
+          "max_state_abs": 7.97651197e-08,
+          "max_output_abs": 1.2652367e-08
+        },
+        {
+          "test": "correctness",
+          "hk": 16,
+          "hv": 48,
+          "steps": 256,
+          "seed": 42,
+          "bitwise": true,
+          "graph": true,
+          "invalid_inputs": true,
+          "fp64_steps": 16,
+          "max_state_abs": 1.16377466e-07,
+          "max_output_abs": 1.63454427e-08
+        },
+        {
+          "test": "correctness",
+          "hk": 17,
+          "hv": 51,
+          "steps": 32,
+          "seed": 53,
+          "bitwise": true,
+          "graph": true,
+          "invalid_inputs": true,
+          "fp64_steps": 16,
+          "max_state_abs": 9.17814496e-08,
+          "max_output_abs": 1.26597288e-08
+        }
+      ],
+      "distributions": [
+        {
+          "layers": 1,
+          "mode": "coalesced_recurrence",
+          "n": 15,
+          "median_us": 8.44999962,
+          "min_us": 8.32649972,
+          "max_us": 80.3349987,
+          "p10_us": 8.38350039,
+          "p90_us": 42.8280011
+        },
+        {
+          "layers": 1,
+          "mode": "coalesced_separate_norm",
+          "n": 15,
+          "median_us": 9.34099965,
+          "min_us": 9.28100012,
+          "max_us": 20.8410006,
+          "p10_us": 9.30649973,
+          "p90_us": 9.73550044
+        },
+        {
+          "layers": 1,
+          "mode": "existing_fused_norm",
+          "n": 15,
+          "median_us": 6.65650005,
+          "min_us": 6.52300008,
+          "max_us": 6.68849982,
+          "p10_us": 6.62299991,
+          "p90_us": 6.68400014
+        },
+        {
+          "layers": 1,
+          "mode": "original_recurrence",
+          "n": 15,
+          "median_us": 60.9565005,
+          "min_us": 30.7219997,
+          "max_us": 103.6015,
+          "p10_us": 30.7825003,
+          "p90_us": 66.1130026
+        },
+        {
+          "layers": 1,
+          "mode": "original_separate_norm",
+          "n": 15,
+          "median_us": 66.6679963,
+          "min_us": 34.7069986,
+          "max_us": 137.461007,
+          "p10_us": 34.7874984,
+          "p90_us": 107.171498
+        },
+        {
+          "layers": 48,
+          "mode": "coalesced_recurrence",
+          "n": 15,
+          "median_us": 32.0120007,
+          "min_us": 20.8321661,
+          "max_us": 64.1826689,
+          "p10_us": 21.0488339,
+          "p90_us": 50.9373347
+        },
+        {
+          "layers": 48,
+          "mode": "coalesced_separate_norm",
+          "n": 15,
+          "median_us": 27.0378341,
+          "min_us": 21.1620008,
+          "max_us": 67.4493313,
+          "p10_us": 21.9224989,
+          "p90_us": 48.8536656
+        },
+        {
+          "layers": 48,
+          "mode": "existing_fused_norm",
+          "n": 15,
+          "median_us": 17.0478337,
+          "min_us": 15.4178329,
+          "max_us": 41.530999,
+          "p10_us": 15.4665001,
+          "p90_us": 24.7593323
+        },
+        {
+          "layers": 48,
+          "mode": "original_recurrence",
+          "n": 15,
+          "median_us": 116.830329,
+          "min_us": 68.8518335,
+          "max_us": 151.460995,
+          "p10_us": 74.3604998,
+          "p90_us": 136.894335
+        },
+        {
+          "layers": 48,
+          "mode": "original_separate_norm",
+          "n": 15,
+          "median_us": 102.749834,
+          "min_us": 74.0548323,
+          "max_us": 162.194004,
+          "p10_us": 74.3088325,
+          "p90_us": 151.827166
+        }
+      ],
+      "comparisons": [
+        {
+          "layers": 1,
+          "baseline": "original_recurrence",
+          "candidate": "coalesced_recurrence",
+          "median_paired_speed_ratio": 7.030394459640546,
+          "median_speed_ratio_bootstrap_95pct": [
+            3.635954569683358,
+            7.822635361350377
+          ],
+          "candidate_faster_rounds": 12,
+          "rounds": 15
+        },
+        {
+          "layers": 1,
+          "baseline": "original_separate_norm",
+          "candidate": "coalesced_separate_norm",
+          "median_paired_speed_ratio": 6.809457985897755,
+          "median_speed_ratio_bootstrap_95pct": [
+            3.826406755000765,
+            11.088044477515238
+          ],
+          "candidate_faster_rounds": 15,
+          "rounds": 15
+        },
+        {
+          "layers": 1,
+          "baseline": "existing_fused_norm",
+          "candidate": "coalesced_separate_norm",
+          "median_paired_speed_ratio": 0.7120223069487001,
+          "median_speed_ratio_bootstrap_95pct": [
+            0.683940194038962,
+            0.7169485857091014
+          ],
+          "candidate_faster_rounds": 0,
+          "rounds": 15
+        },
+        {
+          "layers": 48,
+          "baseline": "original_recurrence",
+          "candidate": "coalesced_recurrence",
+          "median_paired_speed_ratio": 3.1443338668838696,
+          "median_speed_ratio_bootstrap_95pct": [
+            2.766098417410255,
+            3.3050731819961823
+          ],
+          "candidate_faster_rounds": 15,
+          "rounds": 15
+        },
+        {
+          "layers": 48,
+          "baseline": "original_separate_norm",
+          "candidate": "coalesced_separate_norm",
+          "median_paired_speed_ratio": 3.322806547972275,
+          "median_speed_ratio_bootstrap_95pct": [
+            3.1776939169944294,
+            3.7662848031193046
+          ],
+          "candidate_faster_rounds": 15,
+          "rounds": 15
+        },
+        {
+          "layers": 48,
+          "baseline": "existing_fused_norm",
+          "candidate": "coalesced_separate_norm",
+          "median_paired_speed_ratio": 0.6315606870014737,
+          "median_speed_ratio_bootstrap_95pct": [
+            0.5624062538672807,
+            0.7039469203979067
+          ],
+          "candidate_faster_rounds": 0,
+          "rounds": 15
+        }
+      ],
+      "caveat": "Concurrent GPU workload; these are kernel timings, not model throughput."
+    },
+    {
+      "source": "build\\gdn-coalesced-experiment\\full-r3.jsonl",
+      "device": {
+        "test": "device",
+        "name": "NVIDIA GeForce RTX 5060 Ti",
+        "cc": "12.0",
+        "sm_count": 36,
+        "l2_bytes": 33554432,
+        "persisting_l2_max_bytes": 20971520,
+        "runtime": 13050,
+        "driver": 13050
+      },
+      "correctness": [
+        {
+          "test": "correctness",
+          "hk": 1,
+          "hv": 1,
+          "steps": 32,
+          "seed": 19,
+          "bitwise": true,
+          "graph": true,
+          "invalid_inputs": true,
+          "fp64_steps": 16,
+          "max_state_abs": 1.75928142e-08,
+          "max_output_abs": 1.33066888e-09
+        },
+        {
+          "test": "correctness",
+          "hk": 2,
+          "hv": 6,
+          "steps": 32,
+          "seed": 27,
+          "bitwise": true,
+          "graph": true,
+          "invalid_inputs": true,
+          "fp64_steps": 16,
+          "max_state_abs": 7.97651197e-08,
+          "max_output_abs": 1.2652367e-08
+        },
+        {
+          "test": "correctness",
+          "hk": 16,
+          "hv": 48,
+          "steps": 256,
+          "seed": 42,
+          "bitwise": true,
+          "graph": true,
+          "invalid_inputs": true,
+          "fp64_steps": 16,
+          "max_state_abs": 1.16377466e-07,
+          "max_output_abs": 1.63454427e-08
+        },
+        {
+          "test": "correctness",
+          "hk": 17,
+          "hv": 51,
+          "steps": 32,
+          "seed": 53,
+          "bitwise": true,
+          "graph": true,
+          "invalid_inputs": true,
+          "fp64_steps": 16,
+          "max_state_abs": 9.17814496e-08,
+          "max_output_abs": 1.26597288e-08
+        }
+      ],
+      "distributions": [
+        {
+          "layers": 1,
+          "mode": "coalesced_recurrence",
+          "n": 15,
+          "median_us": 8.4429998,
+          "min_us": 8.28699954,
+          "max_us": 9.32649989,
+          "p10_us": 8.2949996,
+          "p90_us": 9.11150035
+        },
+        {
+          "layers": 1,
+          "mode": "coalesced_separate_norm",
+          "n": 15,
+          "median_us": 9.35150031,
+          "min_us": 9.15849954,
+          "max_us": 10.6060002,
+          "p10_us": 9.18249972,
+          "p90_us": 9.66800004
+        },
+        {
+          "layers": 1,
+          "mode": "existing_fused_norm",
+          "n": 15,
+          "median_us": 6.62049977,
+          "min_us": 6.49699988,
+          "max_us": 13.7940003,
+          "p10_us": 6.50099991,
+          "p90_us": 8.68950039
+        },
+        {
+          "layers": 1,
+          "mode": "original_recurrence",
+          "n": 15,
+          "median_us": 34.4640017,
+          "min_us": 30.3095002,
+          "max_us": 66.6920021,
+          "p10_us": 30.3620007,
+          "p90_us": 41.2284993
+        },
+        {
+          "layers": 1,
+          "mode": "original_separate_norm",
+          "n": 15,
+          "median_us": 36.4880003,
+          "min_us": 31.2729999,
+          "max_us": 45.4925001,
+          "p10_us": 32.0754983,
+          "p90_us": 44.0795012
+        },
+        {
+          "layers": 48,
+          "mode": "coalesced_recurrence",
+          "n": 15,
+          "median_us": 24.2668341,
+          "min_us": 20.2018333,
+          "max_us": 48.3811647,
+          "p10_us": 21.0128327,
+          "p90_us": 42.1176652
+        },
+        {
+          "layers": 48,
+          "mode": "coalesced_separate_norm",
+          "n": 15,
+          "median_us": 33.2971662,
+          "min_us": 21.0640008,
+          "max_us": 48.8986671,
+          "p10_us": 21.9016671,
+          "p90_us": 46.506832
+        },
+        {
+          "layers": 48,
+          "mode": "existing_fused_norm",
+          "n": 15,
+          "median_us": 16.8651665,
+          "min_us": 15.2996667,
+          "max_us": 41.8306688,
+          "p10_us": 15.4964998,
+          "p90_us": 23.0414992
+        },
+        {
+          "layers": 48,
+          "mode": "original_recurrence",
+          "n": 15,
+          "median_us": 119.913002,
+          "min_us": 70.6401666,
+          "max_us": 150.471995,
+          "p10_us": 73.227331,
+          "p90_us": 140.178998
+        },
+        {
+          "layers": 48,
+          "mode": "original_separate_norm",
+          "n": 15,
+          "median_us": 83.1259986,
+          "min_us": 69.8696673,
+          "max_us": 150.106668,
+          "p10_us": 70.9148347,
+          "p90_us": 143.281331
+        }
+      ],
+      "comparisons": [
+        {
+          "layers": 1,
+          "baseline": "original_recurrence",
+          "candidate": "coalesced_recurrence",
+          "median_paired_speed_ratio": 3.9715332834714654,
+          "median_speed_ratio_bootstrap_95pct": [
+            3.653328033682941,
+            4.282807266940756
+          ],
+          "candidate_faster_rounds": 15,
+          "rounds": 15
+        },
+        {
+          "layers": 1,
+          "baseline": "original_separate_norm",
+          "candidate": "coalesced_separate_norm",
+          "median_paired_speed_ratio": 3.8382377425986096,
+          "median_speed_ratio_bootstrap_95pct": [
+            3.6708248875547063,
+            4.021152238224442
+          ],
+          "candidate_faster_rounds": 15,
+          "rounds": 15
+        },
+        {
+          "layers": 1,
+          "baseline": "existing_fused_norm",
+          "candidate": "coalesced_separate_norm",
+          "median_paired_speed_ratio": 0.7105376887199711,
+          "median_speed_ratio_bootstrap_95pct": [
+            0.7061866142625016,
+            0.7423412683285439
+          ],
+          "candidate_faster_rounds": 1,
+          "rounds": 15
+        },
+        {
+          "layers": 48,
+          "baseline": "original_recurrence",
+          "candidate": "coalesced_recurrence",
+          "median_paired_speed_ratio": 3.8490609837794776,
+          "median_speed_ratio_bootstrap_95pct": [
+            3.3664773440722993,
+            4.244755897740696
+          ],
+          "candidate_faster_rounds": 15,
+          "rounds": 15
+        },
+        {
+          "layers": 48,
+          "baseline": "original_separate_norm",
+          "candidate": "coalesced_separate_norm",
+          "median_paired_speed_ratio": 3.378535124992018,
+          "median_speed_ratio_bootstrap_95pct": [
+            2.6317877593145047,
+            3.832469363005443
+          ],
+          "candidate_faster_rounds": 15,
+          "rounds": 15
+        },
+        {
+          "layers": 48,
+          "baseline": "existing_fused_norm",
+          "candidate": "coalesced_separate_norm",
+          "median_paired_speed_ratio": 0.5901275522401247,
+          "median_speed_ratio_bootstrap_95pct": [
+            0.46389991106257417,
+            0.7051639228561377
+          ],
+          "candidate_faster_rounds": 1,
+          "rounds": 15
+        }
+      ],
+      "caveat": "Concurrent GPU workload; these are kernel timings, not model throughput."
+    }
+  ]
+}

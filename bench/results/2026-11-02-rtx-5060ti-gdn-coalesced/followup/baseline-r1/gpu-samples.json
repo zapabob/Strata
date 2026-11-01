@@ -1,0 +1,818 @@
+[
+  {
+    "monotonic_s": 41855.234,
+    "memory.free": 14628,
+    "memory.used": 1423,
+    "utilization.gpu": 2,
+    "clocks.sm": 847,
+    "clocks.mem": 405
+  },
+  {
+    "monotonic_s": 41857.437,
+    "memory.free": 14374,
+    "memory.used": 1677,
+    "utilization.gpu": 1,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 41859.546,
+    "memory.free": 13002,
+    "memory.used": 3049,
+    "utilization.gpu": 7,
+    "clocks.sm": 2745,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 41861.64,
+    "memory.free": 13053,
+    "memory.used": 2998,
+    "utilization.gpu": 5,
+    "clocks.sm": 2677,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 41863.75,
+    "memory.free": 12826,
+    "memory.used": 3225,
+    "utilization.gpu": 5,
+    "clocks.sm": 1372,
+    "clocks.mem": 7001
+  },
+  {
+    "monotonic_s": 41865.843,
+    "memory.free": 12353,
+    "memory.used": 3698,
+    "utilization.gpu": 15,
+    "clocks.sm": 1102,
+    "clocks.mem": 810
+  },
+  {
+    "monotonic_s": 41867.968,
+    "memory.free": 11853,
+    "memory.used": 4198,
+    "utilization.gpu": 9,
+    "clocks.sm": 1747,
+    "clocks.mem": 7001
+  },
+  {
+    "monotonic_s": 41870.125,
+    "memory.free": 11481,
+    "memory.used": 4570,
+    "utilization.gpu": 9,
+    "clocks.sm": 1732,
+    "clocks.mem": 7001
+  },
+  {
+    "monotonic_s": 41872.39,
+    "memory.free": 10914,
+    "memory.used": 5137,
+    "utilization.gpu": 4,
+    "clocks.sm": 1102,
+    "clocks.mem": 810
+  },
+  {
+    "monotonic_s": 41874.515,
+    "memory.free": 10238,
+    "memory.used": 5813,
+    "utilization.gpu": 4,
+    "clocks.sm": 1447,
+    "clocks.mem": 7001
+  },
+  {
+    "monotonic_s": 41876.609,
+    "memory.free": 10222,
+    "memory.used": 5829,
+    "utilization.gpu": 2,
+    "clocks.sm": 1072,
+    "clocks.mem": 810
+  },
+  {
+    "monotonic_s": 41878.718,
+    "memory.free": 10152,
+    "memory.used": 5899,
+    "utilization.gpu": 2,
+    "clocks.sm": 982,
+    "clocks.mem": 405
+  },
+  {
+    "monotonic_s": 41880.796,
+    "memory.free": 10160,
+    "memory.used": 5891,
+    "utilization.gpu": 3,
+    "clocks.sm": 1140,
+    "clocks.mem": 405
+  },
+  {
+    "monotonic_s": 41882.89,
+    "memory.free": 10176,
+    "memory.used": 5875,
+    "utilization.gpu": 10,
+    "clocks.sm": 982,
+    "clocks.mem": 405
+  },
+  {
+    "monotonic_s": 41884.984,
+    "memory.free": 10198,
+    "memory.used": 5853,
+    "utilization.gpu": 4,
+    "clocks.sm": 832,
+    "clocks.mem": 405
+  },
+  {
+    "monotonic_s": 41887.062,
+    "memory.free": 10199,
+    "memory.used": 5852,
+    "utilization.gpu": 23,
+    "clocks.sm": 1185,
+    "clocks.mem": 405
+  },
+  {
+    "monotonic_s": 41889.171,
+    "memory.free": 10344,
+    "memory.used": 5707,
+    "utilization.gpu": 2,
+    "clocks.sm": 1042,
+    "clocks.mem": 810
+  },
+  {
+    "monotonic_s": 41891.281,
+    "memory.free": 10307,
+    "memory.used": 5744,
+    "utilization.gpu": 4,
+    "clocks.sm": 2752,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 41893.375,
+    "memory.free": 10305,
+    "memory.used": 5746,
+    "utilization.gpu": 2,
+    "clocks.sm": 1140,
+    "clocks.mem": 7001
+  },
+  {
+    "monotonic_s": 41895.437,
+    "memory.free": 10305,
+    "memory.used": 5746,
+    "utilization.gpu": 2,
+    "clocks.sm": 907,
+    "clocks.mem": 7001
+  },
+  {
+    "monotonic_s": 41897.593,
+    "memory.free": 10256,
+    "memory.used": 5795,
+    "utilization.gpu": 6,
+    "clocks.sm": 607,
+    "clocks.mem": 810
+  },
+  {
+    "monotonic_s": 41899.75,
+    "memory.free": 10227,
+    "memory.used": 5824,
+    "utilization.gpu": 11,
+    "clocks.sm": 967,
+    "clocks.mem": 810
+  },
+  {
+    "monotonic_s": 41901.843,
+    "memory.free": 10196,
+    "memory.used": 5855,
+    "utilization.gpu": 0,
+    "clocks.sm": 615,
+    "clocks.mem": 810
+  },
+  {
+    "monotonic_s": 41903.921,
+    "memory.free": 10244,
+    "memory.used": 5807,
+    "utilization.gpu": 6,
+    "clocks.sm": 585,
+    "clocks.mem": 810
+  },
+  {
+    "monotonic_s": 41906.031,
+    "memory.free": 10212,
+    "memory.used": 5839,
+    "utilization.gpu": 12,
+    "clocks.sm": 742,
+    "clocks.mem": 810
+  },
+  {
+    "monotonic_s": 41908.125,
+    "memory.free": 10237,
+    "memory.used": 5814,
+    "utilization.gpu": 7,
+    "clocks.sm": 915,
+    "clocks.mem": 810
+  },
+  {
+    "monotonic_s": 41910.203,
+    "memory.free": 10258,
+    "memory.used": 5793,
+    "utilization.gpu": 2,
+    "clocks.sm": 750,
+    "clocks.mem": 810
+  },
+  {
+    "monotonic_s": 41912.265,
+    "memory.free": 10255,
+    "memory.used": 5796,
+    "utilization.gpu": 0,
+    "clocks.sm": 2617,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 41914.359,
+    "memory.free": 10257,
+    "memory.used": 5794,
+    "utilization.gpu": 1,
+    "clocks.sm": 2640,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 41916.453,
+    "memory.free": 10265,
+    "memory.used": 5786,
+    "utilization.gpu": 1,
+    "clocks.sm": 1050,
+    "clocks.mem": 810
+  },
+  {
+    "monotonic_s": 41918.562,
+    "memory.free": 10242,
+    "memory.used": 5809,
+    "utilization.gpu": 1,
+    "clocks.sm": 525,
+    "clocks.mem": 810
+  },
+  {
+    "monotonic_s": 41920.64,
+    "memory.free": 10233,
+    "memory.used": 5818,
+    "utilization.gpu": 2,
+    "clocks.sm": 645,
+    "clocks.mem": 810
+  },
+  {
+    "monotonic_s": 41922.734,
+    "memory.free": 10238,
+    "memory.used": 5813,
+    "utilization.gpu": 1,
+    "clocks.sm": 517,
+    "clocks.mem": 810
+  },
+  {
+    "monotonic_s": 41924.812,
+    "memory.free": 10138,
+    "memory.used": 5913,
+    "utilization.gpu": 2,
+    "clocks.sm": 2677,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 41926.89,
+    "memory.free": 10146,
+    "memory.used": 5905,
+    "utilization.gpu": 1,
+    "clocks.sm": 667,
+    "clocks.mem": 7001
+  },
+  {
+    "monotonic_s": 41928.984,
+    "memory.free": 10135,
+    "memory.used": 5916,
+    "utilization.gpu": 2,
+    "clocks.sm": 502,
+    "clocks.mem": 810
+  },
+  {
+    "monotonic_s": 41931.078,
+    "memory.free": 10125,
+    "memory.used": 5926,
+    "utilization.gpu": 1,
+    "clocks.sm": 622,
+    "clocks.mem": 405
+  },
+  {
+    "monotonic_s": 41933.25,
+    "memory.free": 10097,
+    "memory.used": 5954,
+    "utilization.gpu": 1,
+    "clocks.sm": 585,
+    "clocks.mem": 405
+  },
+  {
+    "monotonic_s": 41935.375,
+    "memory.free": 9995,
+    "memory.used": 6056,
+    "utilization.gpu": 7,
+    "clocks.sm": 795,
+    "clocks.mem": 405
+  },
+  {
+    "monotonic_s": 41937.468,
+    "memory.free": 10011,
+    "memory.used": 6040,
+    "utilization.gpu": 0,
+    "clocks.sm": 2685,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 41939.578,
+    "memory.free": 9967,
+    "memory.used": 6084,
+    "utilization.gpu": 4,
+    "clocks.sm": 3030,
+    "clocks.mem": 7001
+  },
+  {
+    "monotonic_s": 41941.671,
+    "memory.free": 9884,
+    "memory.used": 6167,
+    "utilization.gpu": 3,
+    "clocks.sm": 2595,
+    "clocks.mem": 7001
+  },
+  {
+    "monotonic_s": 41943.765,
+    "memory.free": 9803,
+    "memory.used": 6248,
+    "utilization.gpu": 5,
+    "clocks.sm": 2130,
+    "clocks.mem": 7001
+  },
+  {
+    "monotonic_s": 41945.921,
+    "memory.free": 9689,
+    "memory.used": 6362,
+    "utilization.gpu": 3,
+    "clocks.sm": 1890,
+    "clocks.mem": 7001
+  },
+  {
+    "monotonic_s": 41947.984,
+    "memory.free": 9599,
+    "memory.used": 6452,
+    "utilization.gpu": 5,
+    "clocks.sm": 2415,
+    "clocks.mem": 7001
+  },
+  {
+    "monotonic_s": 41950.093,
+    "memory.free": 9309,
+    "memory.used": 6742,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 41952.203,
+    "memory.free": 9317,
+    "memory.used": 6734,
+    "utilization.gpu": 100,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 41954.296,
+    "memory.free": 9324,
+    "memory.used": 6727,
+    "utilization.gpu": 100,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 41956.421,
+    "memory.free": 9327,
+    "memory.used": 6724,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 41958.531,
+    "memory.free": 9314,
+    "memory.used": 6737,
+    "utilization.gpu": 100,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 41960.64,
+    "memory.free": 9307,
+    "memory.used": 6744,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 41962.921,
+    "memory.free": 9277,
+    "memory.used": 6774,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 41965.031,
+    "memory.free": 9277,
+    "memory.used": 6774,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 41967.125,
+    "memory.free": 9282,
+    "memory.used": 6769,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 41969.203,
+    "memory.free": 9268,
+    "memory.used": 6783,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 41971.328,
+    "memory.free": 9256,
+    "memory.used": 6795,
+    "utilization.gpu": 96,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 41973.406,
+    "memory.free": 9255,
+    "memory.used": 6796,
+    "utilization.gpu": 100,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 41975.515,
+    "memory.free": 9276,
+    "memory.used": 6775,
+    "utilization.gpu": 98,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 41977.593,
+    "memory.free": 9280,
+    "memory.used": 6771,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 41979.687,
+    "memory.free": 9280,
+    "memory.used": 6771,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 41981.812,
+    "memory.free": 9290,
+    "memory.used": 6761,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 41983.906,
+    "memory.free": 9334,
+    "memory.used": 6717,
+    "utilization.gpu": 100,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 41986.0,
+    "memory.free": 9323,
+    "memory.used": 6728,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 41988.093,
+    "memory.free": 9315,
+    "memory.used": 6736,
+    "utilization.gpu": 100,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 41990.203,
+    "memory.free": 9316,
+    "memory.used": 6735,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 41992.312,
+    "memory.free": 9287,
+    "memory.used": 6764,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 41994.421,
+    "memory.free": 9270,
+    "memory.used": 6781,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 41996.859,
+    "memory.free": 9163,
+    "memory.used": 6888,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 41999.0,
+    "memory.free": 9095,
+    "memory.used": 6956,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 42001.125,
+    "memory.free": 9013,
+    "memory.used": 7038,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 42003.218,
+    "memory.free": 9134,
+    "memory.used": 6917,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 42005.328,
+    "memory.free": 9030,
+    "memory.used": 7021,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 42007.406,
+    "memory.free": 9077,
+    "memory.used": 6974,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 42009.484,
+    "memory.free": 9090,
+    "memory.used": 6961,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 42011.593,
+    "memory.free": 9266,
+    "memory.used": 6785,
+    "utilization.gpu": 100,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 42013.671,
+    "memory.free": 9272,
+    "memory.used": 6779,
+    "utilization.gpu": 100,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 42015.75,
+    "memory.free": 9265,
+    "memory.used": 6786,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 42017.843,
+    "memory.free": 9265,
+    "memory.used": 6786,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 42019.937,
+    "memory.free": 9212,
+    "memory.used": 6839,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 42022.046,
+    "memory.free": 9237,
+    "memory.used": 6814,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 42024.125,
+    "memory.free": 9277,
+    "memory.used": 6774,
+    "utilization.gpu": 100,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 42026.234,
+    "memory.free": 9206,
+    "memory.used": 6845,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 42028.359,
+    "memory.free": 9225,
+    "memory.used": 6826,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 42030.468,
+    "memory.free": 9466,
+    "memory.used": 6585,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 42032.562,
+    "memory.free": 9477,
+    "memory.used": 6574,
+    "utilization.gpu": 100,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 42034.671,
+    "memory.free": 9443,
+    "memory.used": 6608,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 42036.734,
+    "memory.free": 9347,
+    "memory.used": 6704,
+    "utilization.gpu": 100,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 42038.828,
+    "memory.free": 9486,
+    "memory.used": 6565,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 42040.937,
+    "memory.free": 9529,
+    "memory.used": 6522,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 42043.0,
+    "memory.free": 9538,
+    "memory.used": 6513,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 42045.093,
+    "memory.free": 9528,
+    "memory.used": 6523,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 42047.203,
+    "memory.free": 9529,
+    "memory.used": 6522,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 42049.312,
+    "memory.free": 9532,
+    "memory.used": 6519,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 42051.453,
+    "memory.free": 9531,
+    "memory.used": 6520,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 42053.593,
+    "memory.free": 9536,
+    "memory.used": 6515,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 42055.718,
+    "memory.free": 9524,
+    "memory.used": 6527,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 42057.843,
+    "memory.free": 9523,
+    "memory.used": 6528,
+    "utilization.gpu": 80,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 42059.953,
+    "memory.free": 9530,
+    "memory.used": 6521,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 42062.328,
+    "memory.free": 9528,
+    "memory.used": 6523,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 42064.468,
+    "memory.free": 9533,
+    "memory.used": 6518,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 42066.609,
+    "memory.free": 9516,
+    "memory.used": 6535,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  },
+  {
+    "monotonic_s": 42068.718,
+    "memory.free": 9536,
+    "memory.used": 6515,
+    "utilization.gpu": 99,
+    "clocks.sm": 3195,
+    "clocks.mem": 14867
+  }
+]

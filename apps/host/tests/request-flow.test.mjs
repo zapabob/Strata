@@ -39,6 +39,17 @@ test('skill instructions require both enabled state and a matching workspace', (
   assert.match(skillInstructions(selectSkills(skills, 'review this', 'a')), /Check project rules/);
 });
 
+test('skills with empty triggers are always-on; skill name also counts as a trigger', () => {
+  const skills = [
+    { id: 'always', name: 'House style', enabled: true, triggers: [], body: 'Write plainly.' },
+    { id: 'named', name: 'Brand voice', enabled: true, triggers: ['brand'], body: 'Be friendly.' },
+    { id: 'off', name: 'Off', enabled: false, triggers: [], body: 'Nope.' },
+  ];
+  assert.deepEqual(selectSkills(skills, 'hello', null).map(s => s.id), ['always']);
+  assert.deepEqual(selectSkills(skills, 'use Brand voice please', null).map(s => s.id).sort(), ['always', 'named']);
+  assert.deepEqual(selectSkills(skills, 'brand check', null).map(s => s.id).sort(), ['always', 'named']);
+});
+
 test('stream usage comes from the server, includes reasoning latency and preserves instructions', async () => {
   const home = await mkdtemp(join(tmpdir(), 'strata-stream-test-'));
   process.env.STRATA_HOME = home;

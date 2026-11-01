@@ -1,0 +1,4 @@
+{
+  "note": "Identical compiler artifacts copied by hash; runtime rebuilt after adding an explicit initialization barrier on the nonblocking benchmark stream and formatting the benchmark. No production-kernel change.",
+  "source_directory": "C:\\Users\\downl\\Documents\\ChatGPT\\Strata\\build\\gdn-resource-qualified"
+}

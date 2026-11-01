@@ -83,7 +83,9 @@ export function LocalModelImport({ open, directory, initialPath, onClose, onChoo
    <dl className="local-model-facts"><div><dt>{tr("Architecture")}</dt><dd>{tr(preview.variant.local!.architecture)}</dd></div><div><dt>{tr("Quantization")}</dt><dd>{tr(preview.variant.quant)}</dd></div><div><dt>{tr("Size")}</dt><dd>{tr(fileSize(preview.variant.local!.files.reduce((n, f) => n + f.bytes, 0)))}</dd></div><div><dt>{tr("Context limit")}</dt><dd>{tr(Math.floor(preview.variant.local!.contextLength / 1024).toLocaleString(localeTag()))}{tr("K tokens")}</dd></div></dl>
    <label className="local-model-name">{tr("Display name")}<input className="st-input" value={name} maxLength={160} onChange={e => setName(e.target.value)} disabled={pending}/></label>
    <details className="local-model-files"><summary>{tr(preview.variant.local!.shards === 1 ? 'File location' : 'Model files')}</summary><code>{preview.variant.local!.path}</code>{tr(preview.files.length > 1 ? <ul>{tr(preview.files.map(file => <li key={file}>{tr(file)}</li>))}</ul> : null)}</details>
-   <p className="small muted">{tr("Strata uses these files in place. You can load the model after adding it.")}</p>
+   <p className="small muted">{tr(preview.variant.quant === 'PQ2_0' || preview.variant.quant === 'PTQ1_0'
+     ? 'Strata uses these files in place with its bundled PrismML / TurboQuant engine (Load with Strata). No native Q2_0 pack preparation.'
+     : 'Strata uses these files in place. You can load the model after adding it.')}</p>
    <p className="local-model-compatibility small"><Icon name="info" size={16}/><span>{tr("Custom model \u00B7 engine compatibility is checked when loading. Memory estimates use the file\u2019s metadata.")}</span></p>
    {tr(preview.warnings.map(warning => <p className="small muted" key={warning}>{tr(warning)}</p>))}
   </div> : <div className="local-model-browser">

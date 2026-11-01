@@ -1,0 +1,44 @@
+{
+  "baseline": "be0960a0707ab2e7fc1a90d5a7888ffd149c9858",
+  "date_jst": "2026-11-02",
+  "compiler": "CUDA 13.3.73",
+  "architecture": "sm_120",
+  "native_fast_math": true,
+  "fused_fast_math": false,
+  "sources": [
+    {
+      "sha256": "5D1E2FCA9F19596A164701553EB81C0625E38BF80A236F79D3CF0476DAAF4A41",
+      "path": "include/strata/kernels/native_gdn.hpp"
+    },
+    {
+      "sha256": "82A034EC172B647748401798C513699B6D4EF73977FA98B0449C2A23E332D5B7",
+      "path": "src/kernels/cuda/native_gdn.cu"
+    },
+    {
+      "sha256": "D1702461866ADCA30EA99A7A7F60753AE279B67D717FC629741FADF89722E1C3",
+      "path": "bench/native_gdn_coalesced_bench.cpp"
+    },
+    {
+      "sha256": "777EF41543EB724ABB97970B52B46DB0F8860FEDD4F340CDB68BC6B260E872D3",
+      "path": "tools/benchmark_native_gdn_coalesced.ps1"
+    },
+    {
+      "sha256": "C0DBA2CDAECD45DB6BEB378F3C01098CDD526603C7BFD2D4084409A4F67DBBBE",
+      "path": "tools/analyze_gdn_experiment.py"
+    }
+  ],
+  "final_executable_sha256": "5DF59DD1AFE66EF41CF595CE2A93308BCE4E29BBC1D4EB669BBA5E4E9F53D9F6",
+  "performance_runs": [
+    "full-r2.jsonl",
+    "full-r3.jsonl"
+  ],
+  "harness_change_after_performance": "clang-format only; final rebuild and environment smoke checks",
+  "exclusive_gpu": false,
+  "default_promoted": false,
+  "host": {
+    "cpu": "AMD Ryzen 5 4500 6-Core Processor              ",
+    "os": "Microsoft Windows 11 Pro",
+    "os_version": "10.0.26300",
+    "physical_memory_bytes": 34224869376
+  }
+}

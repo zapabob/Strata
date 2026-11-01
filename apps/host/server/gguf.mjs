@@ -16,7 +16,13 @@ export function readGGUF(file) {
   function string(keep=true,limit=8*1024**2){const n=u64();if(n>limit)throw new Error('GGUF metadata contains an oversized string.');bounded(n);if(!keep){p+=n;return null;}return bytes(n).toString('utf8');}
   function value(type,keep,depth=0){
    if(type===8)return string(keep);
-   if(type===9){if(depth>4)throw new Error('GGUF metadata arrays are too deeply nested.');const element=u32(),count=u64();if(count>MAX_COUNT)throw new Error('GGUF metadata array is too large.');if(widths[element]){bounded(count*widths[element]);p+=count*widths[element];}else for(let i=0;i<count;i++)value(element,false,depth+1);return {count};}
+   if(type===9){if(depth>4)throw new Error('GGUF metadata arrays are too deeply nested.');const element=u32(),count=u64();if(count>MAX_COUNT)throw new Error('GGUF metadata array is too large.');
+    // Integer arrays kept for hybrid layer maps (attention.recurrent_layers); other arrays stay count-only.
+    if(keep&&widths[element]&&[0,1,2,3,4,5,10,11].includes(element)){
+     const values=[];for(let i=0;i<count;i++)values.push(value(element,true,depth+1));
+     return {count,values};
+    }
+    if(widths[element]){bounded(count*widths[element]);p+=count*widths[element];}else for(let i=0;i<count;i++)value(element,false,depth+1);return {count};}
    const w=widths[type];if(!w)throw new Error('GGUF metadata uses an unsupported value type.');const b=bytes(w);if(!keep)return null;
    if(type===0||type===7)return b.readUInt8();if(type===1)return b.readInt8();if(type===2)return b.readUInt16LE();if(type===3)return b.readInt16LE();if(type===4)return b.readUInt32LE();if(type===5)return b.readInt32LE();if(type===6)return b.readFloatLE();if(type===10){const n=b.readBigUInt64LE();if(n>BigInt(Number.MAX_SAFE_INTEGER))throw new Error('GGUF integer is too large.');return Number(n);}if(type===11){const n=b.readBigInt64LE();if(n>BigInt(Number.MAX_SAFE_INTEGER)||n<BigInt(Number.MIN_SAFE_INTEGER))throw new Error('GGUF integer is too large.');return Number(n);}return b.readDoubleLE();
   }
@@ -26,7 +32,10 @@ export function readGGUF(file) {
   const metadata=Object.create(null),keys=new Set();
   for(let i=0;i<count;i++){
    const key=string(true,65535);if(keys.has(key))throw new Error('GGUF metadata contains a duplicate key.');keys.add(key);
-   const keep=/^(general\.(architecture|name|type|file_type|alignment|size_label)|split\.(no|count|tensors.count)|tokenizer\.(ggml.model|ggml.tokens|chat_template))$/.test(key)||/\.(context_length|block_count|embedding_length|expert_count|attention\.(head_count|head_count_kv|key_length|value_length))$/.test(key);
+   // Hybrid Qwen3.5/Hikari: keep full_attention_interval and optional recurrent/SSM layout keys
+   // so architecture-aware KV estimates do not fall back to counting every layer.
+   const keep=/^(general\.(architecture|name|type|file_type|alignment|size_label)|split\.(no|count|tensors.count)|tokenizer\.(ggml.model|ggml.tokens|chat_template))$/.test(key)
+    ||/\.(context_length|block_count|embedding_length|expert_count|full_attention_interval|attention\.(head_count|head_count_kv|key_length|value_length|recurrent_layers)|ssm\.(state_size|group_count|time_step_rank|inner_size))$/.test(key);
    const item=value(u32(),keep);if(keep)metadata[key]=key==='tokenizer.chat_template'?!!item:item;
   }
   const alignment=metadata['general.alignment']??32;if(!Number.isInteger(alignment)||alignment<1||alignment>4096||(alignment&(alignment-1)))throw new Error('GGUF tensor alignment is invalid.');

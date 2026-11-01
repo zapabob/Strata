@@ -1,0 +1,41 @@
+{
+  "math": {
+    "pass": true,
+    "gdn_orthogonality_error_beta_half": 0.75,
+    "reflection_requires_beta_times_norm_squared": 2,
+    "rotation_preserved_distinct_block_norms": [
+      1.0,
+      2.0
+    ],
+    "different_rotation_dot_original": 1.0,
+    "different_rotation_dot_after": 0.9323273456060345,
+    "gdn_cross_8_block_entry": -0.25,
+    "fp4_fixed_scale_counterexample_abs_error": 0.19999999999999996,
+    "fp32_32_elements_bits": 1024,
+    "mxfp4_32_elements_plus_scale_bits": 136,
+    "arbitrary_64_fp32_bits": 2048,
+    "28_fp32_coordinates_bits": 896,
+    "state_bytes_per_layer_hv48": 3145728,
+    "state_bytes_36_layers": 113246208,
+    "state_bytes_48_layers": 150994944
+  },
+  "followup": {
+    "pass": true,
+    "rotation_gram_max_abs_error": 2.220446049250313e-16,
+    "rotation_determinant": 0.9999999999999993,
+    "linf_before": 0.35355339059327373,
+    "linf_after": 0.9999999999999998,
+    "linf_amplification": 2.82842712474619,
+    "exact_dot": 0.7,
+    "rotated_dot": 0.6999999999999998,
+    "fixed_scale_fp4_dot": 0.0,
+    "dot_error_expansion": -0.6999999999999998,
+    "rotated_gdn_key_axis_32_steps_max_state_error": 4.440892098500626e-16,
+    "rotated_gdn_key_axis_32_steps_max_output_error": 5.551115123125783e-16,
+    "logical_state_read_write_bytes": 6291456,
+    "assumed_peak_bytes_per_second": 448000000000,
+    "conditional_all_dram_floor_us": 14.043428571428572,
+    "qualification": "Not measured DRAM traffic, not a proven runtime lower bound. Rotation invariance precedes quantization and assumes coordinated state changes."
+  },
+  "runs": []
+}

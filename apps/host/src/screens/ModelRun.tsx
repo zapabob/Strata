@@ -16,6 +16,7 @@ import { IMAGE_GENERATION_VISIBLE } from '../lib/features';
 import { FloatingMenu } from '../components/FloatingMenu';
 import { ModelsScreen } from './Models';
 import { configDocument, configPatch, readConfig, type ConfigDocument } from '../lib/config';
+import { pinStrataEngineBackend } from '../lib/strata-engine-backend';
 import { contextTokens, estimate, execution } from '../lib/experience';
 import { demoRunExperience, planMemory } from '../lib/run-memory';
 import { computerIdentity, configIdentity, defaultProfileKey, emptyProfiles, readProfiles, recommendedConfig, resourceConfig, RUN_PROFILES_KEY, saveProfile, type ComputerUse, type RunProfiles } from '../lib/run-profiles';
@@ -39,19 +40,21 @@ export function ModelRunScreen() {
     const location = parseLocation(window.location.hash), entry = location.param;
     const [other, setOther] = useState(entry === 'local' || entry === 'local-import'), [importFirst, setImportFirst] = useState(entry === 'local-import');
     const [llamaPath, setLlamaPath] = useState<string | null>(null);
+    const [llamaBackend, setLlamaBackend] = useState<string | undefined>(undefined);
     // Before the engine's answer arrives the page would show the bundled Starter and then jump to the installed model (#3740): show a neutral placeholder instead.
     if (!native && !settled)
         return <div className="main__body"><div className="wrap stack" role="status" aria-label={tr("Loading…")}><div className="skel" style={{ height: 20, width: '60%' }}/><div className="skel" style={{ height: 20, width: '80%' }}/><div className="skel" style={{ height: 20, width: '70%' }}/></div></div>;
     // Fork: keep llama.cpp alternative path picker (F11 / local GGUF).
     if (native && other && llamaPath === null)
-        return <NativeLocalModel onBack={() => { setOther(false); setImportFirst(false); }} onAlternative={path => setLlamaPath(path)}/>;
+        return <NativeLocalModel onBack={() => { setOther(false); setImportFirst(false); }} onAlternative={(path, backend) => { setLlamaPath(path); setLlamaBackend(backend); }}/>;
     if (native && !other)
         return <NativeModels onOtherModels={() => setOther(true)} onImport={() => { setImportFirst(true); setOther(true); }}/>;
-    return <><LegacyModelRunScreen importFirst={importFirst || llamaPath !== null} importPath={llamaPath ?? undefined} initialVariant={location.query.get('variant') ?? undefined}/>{tr(other ? <button className="st-btn native-return" onClick={() => { setLlamaPath(null); setOther(false); }}>{tr("Back")}</button> : null)}</>;
+    return <><LegacyModelRunScreen importFirst={importFirst || llamaPath !== null} importPath={llamaPath ?? undefined} preferredBackend={llamaBackend} initialVariant={location.query.get('variant') ?? undefined}/>{tr(other ? <button className="st-btn native-return" onClick={() => { setLlamaPath(null); setLlamaBackend(undefined); setOther(false); }}>{tr("Back")}</button> : null)}</>;
 }
-function LegacyModelRunScreen({ importFirst = false, importPath, initialVariant }: {
+function LegacyModelRunScreen({ importFirst = false, importPath, preferredBackend, initialVariant }: {
     importFirst?: boolean;
     importPath?: string;
+    preferredBackend?: string;
     initialVariant?: string;
 }) {
     const engine = useStore(s => s.engine), hardware = useStore(s => s.hardware), library = useStore(s => s.library);
@@ -194,6 +197,16 @@ function LegacyModelRunScreen({ importFirst = false, importPath, initialVariant 
         if (model)
             familySelections.current.set(model.family, model.id);
     }, [model?.id]);
+    // Load with Strata (Hikari PQ2 / TurboQuant): pin bundled PrismML after import lands on the run screen.
+    useEffect(() => {
+        if (!preferredBackend || !config || !model?.local)
+            return;
+        if (preferredBackend !== 'PrismML' && preferredBackend !== 'TurboQuant')
+            return;
+        const pinned = pinStrataEngineBackend(config, model, preferredBackend);
+        if (pinned !== config)
+            update(pinned);
+    }, [preferredBackend, model?.id, model?.local, model?.quant, config?.expert?.['runtime.backend']]);
     useEffect(() => {
         if (!config || !model || !connected)
             return;
@@ -267,10 +280,17 @@ function LegacyModelRunScreen({ importFirst = false, importPath, initialVariant 
             void chooseImage('off');
         }
     }
-    function chooseModel(id: string) {
-        if (id === model?.id)
-            return;
+    function chooseModel(id: string, backendHint?: string) {
+        const hint = backendHint ?? preferredBackend;
         const next = getState().library?.variants.find(v => v.id === id);
+        if (id === model?.id) {
+            if (config && model?.local) {
+                const pinned = pinStrataEngineBackend(config, model, hint);
+                if (pinned !== config)
+                    update(pinned);
+            }
+            return;
+        }
         if (model && next && next.family !== model.family) {
             familyDrafts.current.set(model.family, { variantId: model.id, draft: rawDraft, profile: activeProfile, image: imageChoice });
             const previous = familyDrafts.current.get(next.family);
@@ -279,7 +299,9 @@ function LegacyModelRunScreen({ importFirst = false, importPath, initialVariant 
                 setStage('idle');
                 setIssues([]);
                 setActiveProfile(previous.profile);
-                setConfigDraft(previous.draft);
+                const restored = previous.draft ? (() => { try { return readConfig(previous.draft); } catch { return null; } })() : null;
+                const pinned = restored ? pinStrataEngineBackend(restored, next, hint) : null;
+                setConfigDraft(pinned ? JSON.stringify(pinned, null, 2) : previous.draft);
                 void chooseImage(previous.image);
                 return;
             }
@@ -288,20 +310,38 @@ function LegacyModelRunScreen({ importFirst = false, importPath, initialVariant 
         setStage('idle');
         setIssues([]);
         const profileId = profiles.defaults[defaultProfileKey(computer, id)];
-        if (profileId)
-            chooseProfile(profileId);
+        let nextConfig: ConfigDocument | null = null;
+        if (profileId) {
+            setActiveProfile(profileId);
+            const profile = profiles.profiles.find(p => p.id === profileId);
+            if (profile) {
+                nextConfig = structuredClone(profile.config);
+                void chooseImage(profile.imageModel ?? 'off');
+            }
+            else if (engine && hardware) {
+                setActiveProfile('current');
+                nextConfig = recommendedConfig(engine, hardware);
+            }
+        }
         else {
             setActiveProfile('current');
             if (engine && hardware) {
-                const nextConfig = recommendedConfig(engine, hardware);
+                nextConfig = recommendedConfig(engine, hardware);
                 if (next?.local) {
                     const k = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024].filter(k => k * 1024 <= next.contextMax).at(-1) ?? 1;
                     const context = Math.min(32, k);
                     nextConfig.beginner.contextLength = `${context}k`;
                     nextConfig.expert['ctx.length'] = `${context}K`;
                 }
-                update(nextConfig);
             }
+        }
+        if (nextConfig) {
+            update(pinStrataEngineBackend(nextConfig, next, hint));
+        }
+        else if (config && next?.local) {
+            const pinned = pinStrataEngineBackend(config, next, hint);
+            if (pinned !== config)
+                update(pinned);
         }
     }
     function chooseFamily(family: string) {
@@ -491,7 +531,7 @@ function LegacyModelRunScreen({ importFirst = false, importPath, initialVariant 
       {tr(selectedProfile && profileChanged ? <button role="menuitem" className="menu__item run-settings-action" onClick={() => { setProfileMenu(false); chooseProfile(selectedProfile.id); }}><span className="run-settings-icon"><Icon name="refresh" size={18}/></span>{tr("Restore saved settings")}</button> : null)}
     </FloatingMenu> : null)}
     <Dialog open={libraryOpen} className="run-library-dialog" title={tr("Manage models")} onClose={() => setLibraryOpen(false)}><ModelsScreen embedded familyOverride={model.family} selectedVariant={model.id} contextOverride={ctx} onChoose={id => { chooseModel(id); setLibraryOpen(false); }}/></Dialog>
-    <LocalModelImport open={localModelOpen} directory={library.disk.modelsDir} initialPath={importPath} onClose={() => setLocalModelOpen(false)} onChoose={id => chooseModel(id)}/>
+    <LocalModelImport open={localModelOpen} directory={library.disk.modelsDir} initialPath={importPath} onClose={() => setLocalModelOpen(false)} onChoose={id => chooseModel(id, preferredBackend)}/>
     <Dialog open={profileOpen} compact title={tr(updateExisting ? 'Update saved settings' : 'Save settings')} onClose={() => !pending && setProfileOpen(false)} actions={<><Btn disabled={pending} onClick={() => setProfileOpen(false)}>{tr("Cancel")}</Btn><Btn variant="primary" disabled={!profileName.trim() || pending || imagePending || invalid} onClick={() => void storeProfile()}>{tr(pending ? 'Saving…' : updateExisting ? 'Update settings' : 'Save settings')}</Btn></>}><div className="run-save-profile"><label className="input-field"><span>{tr("Name")}</span><input className="st-input" aria-label={tr("Settings name")} maxLength={64} value={profileName} onChange={e => setProfileName(e.target.value)}/></label><p className="small muted">{tr(model.name)} · {tr(ctx / 1024)}{tr("K \u00B7 ")}{tr(use === 'full' ? 'Maximum performance' : 'Room for other apps')}</p><label className="run-default-choice"><input type="checkbox" checked={makeDefault} onChange={e => setMakeDefault(e.target.checked)}/><span>{tr("Use by default for this model")}<small>{tr("On this computer. Restore it whenever you open Models.")}</small></span></label>{tr(profileError ? <ErrorNotice message={profileError}/> : null)}</div></Dialog>
     <DemoTest open={testOpen} onClose={() => setTestOpen(false)} experience={experience}/>
     <Dialog open={discardOpen} compact title={tr("Restore saved settings?")} onClose={() => setDiscardOpen(false)} actions={<><Btn onClick={() => setDiscardOpen(false)}>{tr("Keep editing")}</Btn><Btn onClick={() => { setConfigDraft(null); void chooseImage(imageModels?.applied ?? 'off'); setActiveProfile('current'); setIssues([]); setDiscardOpen(false); }}>{tr("Restore settings")}</Btn></>}><p>{tr("Replace this draft with the settings last saved to the engine.")}</p></Dialog>

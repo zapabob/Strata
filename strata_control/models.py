@@ -915,15 +915,16 @@ def plan_import(raw_path: str) -> dict:
                 "expected_tensor_count": observed_tensor_count,
                 "setup_args_hint": ["--family", fam, "--model", mod, "--gguf-dir", str(shards[0].parent)],
             }
-        elif arch in ("qwen35", "prism") or any("PQ2_0" in t for t in metadata.get("tensor_types", {})):
-            candidate = {
-                "family": "qwen",
-                "model": "Q2_0",
-                "basis": "prism_pq2_0_descriptor",
-                "expected_expert_types": list(observed_experts),
-                "expected_tensor_count": observed_tensor_count,
-                "setup_args_hint": ["--family", "qwen", "--model", "Q2_0", "--gguf-dir", str(shards[0].parent)],
-            }
+    # Prism tensor encodings are not native Q2_0, even under a known shard name.
+    # Leave them to the app's local llama-server path instead of preparing an
+    # unrelated Flash-Next pack (which also reports the wrong disk requirement).
+    local_runtime = "PrismML" if metadata is not None and {"PQ2_0", "PTQ1_0"} & metadata.get("tensor_types", {}).keys() else None
+    if local_runtime:
+        candidate = None
+        messages.append(
+            "These model files run on Strata’s PrismML engine (bundled with the app). "
+            "Use Load with Strata — no native Qwen Q2_0 pack preparation is needed."
+        )
     if "multiple_model_groups" in issues:
         candidate = None                                  # nothing is chosen for the person
     if candidate is None and not {"multiple_model_groups", "incomplete_or_invalid_shard_set"} & set(issues):
@@ -934,7 +935,7 @@ def plan_import(raw_path: str) -> dict:
             issues.append("missing_or_unexpected_expert_quantization")
     return {"source": str(path), "model_dir": str(model_dir), "scope": "local_gguf_candidate", "files": files,
             "file_count": len(files), "total_bytes": sum(item["bytes"] for item in files),
-            "metadata": metadata, "candidate_selection": candidate,
+            "metadata": metadata, "candidate_selection": candidate, "local_runtime": local_runtime,
             "plain_issues": list(dict.fromkeys((missing_words(missing_shards) if (i == "incomplete_or_invalid_shard_set" and missing_shards) else plain_issue(i)) for i in issues)),
             "observed_expert_types": sorted(observed_experts),
             "observed_tensor_count": observed_tensor_count,

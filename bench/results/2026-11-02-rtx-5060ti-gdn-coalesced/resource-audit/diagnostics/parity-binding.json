@@ -1,0 +1,6 @@
+{
+  "library_sha256": "6885F56CDE14918DB898172B860B5A4EAE9B5ACE48C55D7E85BC7A0AEC5AED06",
+  "scope": "Current GDN parity source and verify/fused objects; other kernels resolved from recorded existing library, not a full engine build",
+  "library": "H:\\Strata\\releases\\hakua040-native-upstream-r1\\Release\\strata_kernels.lib",
+  "parity_source_sha256": "CD460674625643E641F356DEFD94597E41EE66DE306D410001ED6C27C5F4A8DD"
+}

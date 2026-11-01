@@ -1,0 +1,1088 @@
+{
+  "utc": "2026-11-01T19:42:11.3152749Z",
+  "source_root": "C:\\Users\\downl\\Documents\\ChatGPT\\Strata",
+  "inputs": [
+    {
+      "path": "include\\strata\\artifact\\dequant.hpp",
+      "sha256": "e904a075ee9e7dd4f1e5d38c9c7f9ac33d96b7d754078355a94d03c411cb90d5"
+    },
+    {
+      "path": "include\\strata\\artifact\\gguf_reader.hpp",
+      "sha256": "42cb53deff631805b1c7b32108f255628a2d0dd3ce726444e647e726b335b623"
+    },
+    {
+      "path": "include\\strata\\artifact\\gguf_split.hpp",
+      "sha256": "2f66d12f231c840fcd0177d9b2552aa98759252e95c6b5740e670cf0afa9e1b1"
+    },
+    {
+      "path": "include\\strata\\artifact\\model_family.hpp",
+      "sha256": "aa1de52091a83e55edb58faec12515cb734a33dd2219d17b4004493a560e4cbf"
+    },
+    {
+      "path": "include\\strata\\core\\adapt_async_default.hpp",
+      "sha256": "66c8cd51b6cb5310111f992fa3e5f9787260f8d8b554e5e62648abedafa37d40"
+    },
+    {
+      "path": "include\\strata\\core\\arch_defaults.hpp",
+      "sha256": "a5bfc4b7206f903bba96a7b1e2d17f448caaa3b1b29c81ff411e2c82d065fb2e"
+    },
+    {
+      "path": "include\\strata\\core\\auto_cache.hpp",
+      "sha256": "64169c2872729119aa9719ba68a380e9bb5e277fd344fd17b4884ed8484f9b66"
+    },
+    {
+      "path": "include\\strata\\core\\batch_rows.hpp",
+      "sha256": "d44f38911d09ff94775eede69b631f650c2d7184345b1392357b0af2a464ba0c"
+    },
+    {
+      "path": "include\\strata\\core\\batch_telemetry.hpp",
+      "sha256": "f07cdae551adf34dccd988b484ee3174fb805846c331bea246b64f9bcb5d1b62"
+    },
+    {
+      "path": "include\\strata\\core\\conversation_buffer.hpp",
+      "sha256": "88bf74178628af541b0c0259b7762d73b1f1b6850143e8e73545d53dbf43e6b1"
+    },
+    {
+      "path": "include\\strata\\core\\conversation_cache.hpp",
+      "sha256": "221217f03200bc23f52f5a6eaffe6809c47c01841980429746334ae1d60f0f96"
+    },
+    {
+      "path": "include\\strata\\core\\conversation_file.hpp",
+      "sha256": "ac40835c3fa9bb507d905f5e589f0f4a60d566edc345ef93e86d3c2cee15869b"
+    },
+    {
+      "path": "include\\strata\\core\\conversation_memory.hpp",
+      "sha256": "3610c1052e1a2c816f571ef3abb44a778ede9cdd94bf7c8b6597e0018b9df9bc"
+    },
+    {
+      "path": "include\\strata\\core\\conversation_snapshot.hpp",
+      "sha256": "35254e5b3053c22023c8715fec646fcbbab8acb347dea4dda7ae9cd0986d2c7f"
+    },
+    {
+      "path": "include\\strata\\core\\coupled_draft.hpp",
+      "sha256": "787ffbe0f1fbbba1ec20e5865ecfc1582826e5a05b0c2b1078f6e03196c5509d"
+    },
+    {
+      "path": "include\\strata\\core\\defaults_026.hpp",
+      "sha256": "3d66027607dcc49858299aa088da2a0b228acf3439ebb1ce924122ff128096f7"
+    },
+    {
+      "path": "include\\strata\\core\\device.hpp",
+      "sha256": "7d364e4f310b4a74613adffb05ecf1533091cc6c070ae66bcfee203c43d01ad6"
+    },
+    {
+      "path": "include\\strata\\core\\dflash2.hpp",
+      "sha256": "0e98aabf5e616a785bdc22c05ba4346eb004f293eac575d379be791e882d5691"
+    },
+    {
+      "path": "include\\strata\\core\\dma_batch.hpp",
+      "sha256": "da42b32773554b9136809ed5103ab3ccb133fada73b985b7124f7951f826c850"
+    },
+    {
+      "path": "include\\strata\\core\\draft_cap.hpp",
+      "sha256": "86b7dc61b042b766b01029616df928b703760b9e1ac6ebddb7c9c2ead544594d"
+    },
+    {
+      "path": "include\\strata\\core\\emulate.hpp",
+      "sha256": "dd632d490f914e8a473384d6d571b5a9b6cc1280f38339e7555db2d5c9b0b557"
+    },
+    {
+      "path": "include\\strata\\core\\exchange_storage.hpp",
+      "sha256": "6ad43be6bc95434f2177e51fcf8df885d56274e91c99ad44c032b9f59aa5a051"
+    },
+    {
+      "path": "include\\strata\\core\\expert_cache.hpp",
+      "sha256": "cc2750a49964322b2924fe005d307147f2e1fbee67bfb5b7179557467a65cd0c"
+    },
+    {
+      "path": "include\\strata\\core\\expert_nibble.hpp",
+      "sha256": "b6080e28d8de17704e93a501e4edbb0d39484492e0c6308d96bacb39a8e4e9a5"
+    },
+    {
+      "path": "include\\strata\\core\\expert_source.hpp",
+      "sha256": "188b78eba0686e22ceeb8d79c7cc304d5a7c5e6d1493517739079ef933b13f78"
+    },
+    {
+      "path": "include\\strata\\core\\family_layout.hpp",
+      "sha256": "29ca12aa480c306ce7f284a01d2c9abd1299c0dda4514ab651a36dc81c297b7c"
+    },
+    {
+      "path": "include\\strata\\core\\foresight_swap.hpp",
+      "sha256": "3ea448a866c45f373198dd563e45160393fc372776abbccd8e2a31f7f2c6bc6a"
+    },
+    {
+      "path": "include\\strata\\core\\gated_proposal.hpp",
+      "sha256": "ec8bea567fb4c2b7cd0e2040245418bb94cc5c7ff0e2b9f67a89a59e65079e95"
+    },
+    {
+      "path": "include\\strata\\core\\geometry.hpp",
+      "sha256": "3be11960e8538613aab25b6e190571312d06d211d73c46fbd6ef2ba6c6c56923"
+    },
+    {
+      "path": "include\\strata\\core\\gfx12_platform_defaults.hpp",
+      "sha256": "8ec1086cacb74e05e299c7de2ccdba4f6f53ceece340ec1dc0703ffbcc4c8da5"
+    },
+    {
+      "path": "include\\strata\\core\\graph.hpp",
+      "sha256": "590f2daf7221eba25c1720503abdfe4c8b71f85dd21627bb25aec49f87f68b2c"
+    },
+    {
+      "path": "include\\strata\\core\\hit_hook.hpp",
+      "sha256": "b1bc19af4edf12f0a8c821e1989d675917aa569fc9969adb5e9a1cd0d9041daf"
+    },
+    {
+      "path": "include\\strata\\core\\host_graph_launch.hpp",
+      "sha256": "cf931d9f2d019f17210a1e0fa4dff9490ed4b569a57faff3c2e1f4481ab9386f"
+    },
+    {
+      "path": "include\\strata\\core\\layer.hpp",
+      "sha256": "ee7c9518dbaf221a78075068a9a17f91fa44afb2c5d8f62867d294ada22ab913"
+    },
+    {
+      "path": "include\\strata\\core\\layout.hpp",
+      "sha256": "8f8003a004602fcd84eaa5277b0284e6f4c16abf3553411891f5762f201883db"
+    },
+    {
+      "path": "include\\strata\\core\\logit_bias.hpp",
+      "sha256": "e43231d0d90286d201cdafe18a2b2bd0db169f1b053e1c5770ff168753521912"
+    },
+    {
+      "path": "include\\strata\\core\\mtp.hpp",
+      "sha256": "d18e345171ddf1403c517d7972be6b2126ab8d9ab0cd16f1444c15dde0b1f852"
+    },
+    {
+      "path": "include\\strata\\core\\native_cache_bridge.hpp",
+      "sha256": "6c0978f862e1aa63f3daa08c351f465416450134ec39092a95ee590be6c479a0"
+    },
+    {
+      "path": "include\\strata\\core\\native_cache_config.hpp",
+      "sha256": "dd389e767616b2a1a6141531af5347308c0f434077cd63b76bef93e074c8f01f"
+    },
+    {
+      "path": "include\\strata\\core\\native_cache_manifest.hpp",
+      "sha256": "c4a9cdc743171efe2756996ad41ffce808b92e5ccd423fa21a644c5a169fc552"
+    },
+    {
+      "path": "include\\strata\\core\\native_cache_owner.hpp",
+      "sha256": "638e9c5f86ea76347a2e7d066703919a182944c89d182209f836acfad72ee6a9"
+    },
+    {
+      "path": "include\\strata\\core\\native_cache_runtime.hpp",
+      "sha256": "4d97299439d351ca347c44bb3ff4452e46a33baf884e8621852fdac6f1e05494"
+    },
+    {
+      "path": "include\\strata\\core\\native_dense.hpp",
+      "sha256": "9122076d651bc5c0aeadd40109959c43c6f71d00c9d2f22f1e9a4e3f974d421f"
+    },
+    {
+      "path": "include\\strata\\core\\native_head.hpp",
+      "sha256": "6a888cf6b39ada2a18d5989285473bcfe7bb920bd8978c6965a5c2afae692771"
+    },
+    {
+      "path": "include\\strata\\core\\nv_defaults.hpp",
+      "sha256": "f60b43dcda5efefa9b52a5634781c326307705f4fbe62e634e84d06a4f009c1d"
+    },
+    {
+      "path": "include\\strata\\core\\on_device.hpp",
+      "sha256": "32778f8c7d75108ff9ed53a730732759108f43b17eb3cac389b26f05c6ef8c6f"
+    },
+    {
+      "path": "include\\strata\\core\\peer_experts.hpp",
+      "sha256": "19b2aad57748d8b56ed8b9166b6c0937c8d5099719b9cb6b86b480f792fd67d7"
+    },
+    {
+      "path": "include\\strata\\core\\pin_budget.hpp",
+      "sha256": "ccfda54dba4aa36d27ccc1fc5676d60e09d9ec00d3e9531e98fd3f78e39400ea"
+    },
+    {
+      "path": "include\\strata\\core\\pinned_ring.hpp",
+      "sha256": "90d0473708bb2ea614984fd389fb150c225214dda8ac4d463265622dd3a55fdd"
+    },
+    {
+      "path": "include\\strata\\core\\pinned.hpp",
+      "sha256": "1531d0fc2281f2bb6a9ac4f7c83937a73b900ced5e91f477d8a922d846d75739"
+    },
+    {
+      "path": "include\\strata\\core\\ple_residency.hpp",
+      "sha256": "d603b5f3f11a80aaf199f75d4dafd085b87cb70893667217ede4599f94ea25ff"
+    },
+    {
+      "path": "include\\strata\\core\\progress.hpp",
+      "sha256": "ff8151a46b5f9768a6f3fddb4ed57edd15af096f619ffa1859b0721b5a83b054"
+    },
+    {
+      "path": "include\\strata\\core\\remote_expert_opt.hpp",
+      "sha256": "9c60daabc4c03005f4a8dd04949abf9203f624a954c99310ff0e3fec9b36265b"
+    },
+    {
+      "path": "include\\strata\\core\\remote_experts.hpp",
+      "sha256": "0d194250158bdb3817fa6c3c2197de43be18e85768ccbfaa945a6fccbceddcff"
+    },
+    {
+      "path": "include\\strata\\core\\session_save_reclaim.hpp",
+      "sha256": "70204c3deda00111dba1d8ee03aa962e6aff5bed5e45d554086408998e0e1221"
+    },
+    {
+      "path": "include\\strata\\core\\session.hpp",
+      "sha256": "0603d3f8af328036a500ef1846029f98094c74b3dc18b244fd8947942d95b99d"
+    },
+    {
+      "path": "include\\strata\\core\\sm120_series.hpp",
+      "sha256": "05282d26190452a480074b319c05805c8b755ed749c20449be0e9ffea3f5262b"
+    },
+    {
+      "path": "include\\strata\\core\\sm75_series.hpp",
+      "sha256": "453dabbaa85b9feb1e9bcfab6d8a4aa8432d30433734112af227eac6489faa22"
+    },
+    {
+      "path": "include\\strata\\core\\spec_prob.hpp",
+      "sha256": "e9184a1470b2cf491759cf1ab4ce2143259a1b3b7804c56aeb2c922934df92b6"
+    },
+    {
+      "path": "include\\strata\\core\\spec_proposal.hpp",
+      "sha256": "d078edeb1aa1a15493da71666c9571974e4a2ceb3ac7bad596aeba1f992d4fc4"
+    },
+    {
+      "path": "include\\strata\\core\\spin8_attention.hpp",
+      "sha256": "d886235d39cebbb1818c3f39fb8ad8e04c074b6d2c7c36a7203ebaaefebbf193"
+    },
+    {
+      "path": "include\\strata\\core\\tc_sm75.hpp",
+      "sha256": "af33248c5238b6f2c08a86d490b65b51b4b4d73af37a328049f5c6050b1bb2e5"
+    },
+    {
+      "path": "include\\strata\\core\\uma_cache.hpp",
+      "sha256": "be3171518b666b769b6f9283cb6543fdd829d8e14dc879a52c399fbc606bd44a"
+    },
+    {
+      "path": "include\\strata\\core\\verify.hpp",
+      "sha256": "f0963c2b310fbb9ac76a6927f9d12ccb0bc9489a54db43524a5fd1cbb25e194e"
+    },
+    {
+      "path": "include\\strata\\core\\vmm.hpp",
+      "sha256": "efbde35652d3ff7e364111da6fdb4ad24b25ad514d430b94d75174ad6b7d0221"
+    },
+    {
+      "path": "include\\strata\\core\\weights.hpp",
+      "sha256": "6b7d5606200d8de336238952a71bf59bf3eddf33e776633e26b7d127e9b831e9"
+    },
+    {
+      "path": "include\\strata\\core\\window_evict.hpp",
+      "sha256": "1f96aededbe7fa575063dc742baca1e83053ef184ad384640f7dfa9521e3954b"
+    },
+    {
+      "path": "include\\strata\\dsv41\\exl3_cpu.hpp",
+      "sha256": "c7222109ed2371b6ca7bfb1e2e404c4e55e145890880c1240b10f12c6b82d4f1"
+    },
+    {
+      "path": "include\\strata\\dsv41\\exl3.hpp",
+      "sha256": "fe30ca99f449aec537bfd1a7f3918af9d0e8aa6a69a5d8c8907d11765e5ebc28"
+    },
+    {
+      "path": "include\\strata\\dsv41\\hip_extra.h",
+      "sha256": "8c67154389040836cfba02429c3424295a5ba2da8787742ded7e6a163f966ad1"
+    },
+    {
+      "path": "include\\strata\\dsv41\\hip_or_cuda.h",
+      "sha256": "dc5a68298e78073e866483c18688420d4a59536c1b537535081094007944abe1"
+    },
+    {
+      "path": "include\\strata\\dsv41\\moe_win.hpp",
+      "sha256": "caebf15504c747298665395c8c33001c95efce28dbc4535ad8f737522a82fb4a"
+    },
+    {
+      "path": "include\\strata\\dsv41\\sampler.hpp",
+      "sha256": "9a058cec62b7fb0bf80035500720a434d3595d0c40fe2c357d7c5770e556c945"
+    },
+    {
+      "path": "include\\strata\\hip_compat\\cublas_v2.h",
+      "sha256": "be8108bd08af56f54636e05a1749bce131e3c3b1b4c7d38baeb7d408b5e02bee"
+    },
+    {
+      "path": "include\\strata\\hip_compat\\cuda_fp16.h",
+      "sha256": "e1e1063b38b8936d004df8a71d5ee8ed6a1dadea1631c4817d3b39027760ea91"
+    },
+    {
+      "path": "include\\strata\\hip_compat\\cuda_runtime_api.h",
+      "sha256": "a3ab3be0fb321e6c80c54d8df97364ee6587323d0a7496b8f99068552bdb1dcb"
+    },
+    {
+      "path": "include\\strata\\hip_compat\\cuda_runtime.h",
+      "sha256": "107ea865d8126e346637fd48efe673abe675b2ce48fa97899579b580021dd8a2"
+    },
+    {
+      "path": "include\\strata\\hip_compat\\intrinsics.hpp",
+      "sha256": "88874e797f01a3a0b57ca6fede50e1a401f3ebf46c823dd90ba12602dcfd0deb"
+    },
+    {
+      "path": "include\\strata\\hip_compat\\math_constants.h",
+      "sha256": "a99166c19e9cb9ab162b238c9b510e2314aec68811d0d870fa01ba8e701bbf93"
+    },
+    {
+      "path": "include\\strata\\kernels\\bf16_bits.hpp",
+      "sha256": "641cad7a2a95a5a7e452e0f859fa99e0a99c05cb7c3a8f87f49164310e6d6b63"
+    },
+    {
+      "path": "include\\strata\\kernels\\bf16_gemv.hpp",
+      "sha256": "315bdc3b5c73c74f8e2305617284f8990eefe08e2799531e0e73da2a7ff110dd"
+    },
+    {
+      "path": "include\\strata\\kernels\\cpu\\expert_layout.hpp",
+      "sha256": "35db929236b617d9d3d510df937f0e4d6d9846c63ed8743bb5c6317182c5eb02"
+    },
+    {
+      "path": "include\\strata\\kernels\\cpu\\expert.hpp",
+      "sha256": "e6a3889391afcd05c5e7cd00274c036a17c773d486afe4764e62e3adaf730e6a"
+    },
+    {
+      "path": "include\\strata\\kernels\\cpu\\hadamard.hpp",
+      "sha256": "d82ae6216126122feb525d30539de57501d53b18a0fc5a28c34b1a78a4f5c742"
+    },
+    {
+      "path": "include\\strata\\kernels\\cpu\\iq_avx1.hpp",
+      "sha256": "a98ecfa386ad56b57719b1b06c7c57f271d2444eeb425d64033c7892877ca74f"
+    },
+    {
+      "path": "include\\strata\\kernels\\cpu\\iq_avx2.hpp",
+      "sha256": "fc1820c5bcd6f516c363481d414f08a631497743571b5e7d5cbdfe433b6df90f"
+    },
+    {
+      "path": "include\\strata\\kernels\\cpu\\iq_avx512.hpp",
+      "sha256": "75959a556d74aed78d8046a08a05004989c3a18f2fce505b1645c0d79fd2d981"
+    },
+    {
+      "path": "include\\strata\\kernels\\cpu\\kq_avx1.hpp",
+      "sha256": "4409d297e2c25beedf38ad6105e83cc79e62c3a22f2f86b127a2527948c1e3ee"
+    },
+    {
+      "path": "include\\strata\\kernels\\cpu\\kq_avx2.hpp",
+      "sha256": "810cecff725f1cf64d92658409ef1995c1d4473b305bcf0edd2803e1d1fedf0f"
+    },
+    {
+      "path": "include\\strata\\kernels\\cpu\\native_expert.hpp",
+      "sha256": "674a7a563d6354d18b3fda19fcdedc3fd93ddf39846e44c249fe53a040e32383"
+    },
+    {
+      "path": "include\\strata\\kernels\\cpu\\numa_pool.hpp",
+      "sha256": "0b64324a75bf7964fb969753bdd81ad226446bb8b797574515102314b4737782"
+    },
+    {
+      "path": "include\\strata\\kernels\\cpu\\nvfp4_avx2.hpp",
+      "sha256": "c9d36c228dc77d0bad2309b3647e8c9e7817c17cd5065dcc6afdff7367645da1"
+    },
+    {
+      "path": "include\\strata\\kernels\\cpu\\nvfp4_avx512.hpp",
+      "sha256": "e1987a0ba337c4262dca997b8aadea24497df30bd7b09c2e01f73fdc0045e790"
+    },
+    {
+      "path": "include\\strata\\kernels\\cpu\\pool_plan.hpp",
+      "sha256": "807d56cc918965dfbb8b027fb37a82db743f11eef06174e2c7e1fb7fb3f87e7a"
+    },
+    {
+      "path": "include\\strata\\kernels\\cpu\\pool.hpp",
+      "sha256": "3aedf04af5c1399710155f9a75c7f68de873d40ace488388e2f7c6c768fe9c1f"
+    },
+    {
+      "path": "include\\strata\\kernels\\cpu\\tq_cpu.hpp",
+      "sha256": "29e43bb6ca91c2e8a14baa3e0f408369dfb8afae87468d25cd5c3a2446c3a7fd"
+    },
+    {
+      "path": "include\\strata\\kernels\\cvec.hpp",
+      "sha256": "d35c8fb25eeed1cc6ff710e70dbf43c55958baeb18affd10f5427aa0b7a5f183"
+    },
+    {
+      "path": "include\\strata\\kernels\\dequant_bf16.hpp",
+      "sha256": "12ca188deadad32ecc9479fdebbe020a28455f0179ff7cbcd7411fcbf19be2e1"
+    },
+    {
+      "path": "include\\strata\\kernels\\dequant_s2.hpp",
+      "sha256": "ecdeb8eb3d82f059e2ea06db011a70dfcda6b4b260b811be48fd99354ff00bee"
+    },
+    {
+      "path": "include\\strata\\kernels\\dflash2.hpp",
+      "sha256": "25ab54100d26f24c1afbaea521dd8370cc26cf2f39ddc7df596b653b1d8a8add"
+    },
+    {
+      "path": "include\\strata\\kernels\\dp4a.hpp",
+      "sha256": "65730a72d545071e7439bdb1261e3e044ca6dda63e2ced3f38e1d987bb1c57f8"
+    },
+    {
+      "path": "include\\strata\\kernels\\elementwise.hpp",
+      "sha256": "42f80d43a97ac66ad9e4fc98947f2a0d8e8d4ec0e674fd11142a0603f902ca56"
+    },
+    {
+      "path": "include\\strata\\kernels\\f16_bits.hpp",
+      "sha256": "d68d3a559eff673d9a1a033e1bd4712547f550dcb7f3ac367ce537732b278dd9"
+    },
+    {
+      "path": "include\\strata\\kernels\\fuse_decode.hpp",
+      "sha256": "5dacd9a9c8847b2d2c0dd87c8c0de139e038ad4a016ed342de87c98eb03623c1"
+    },
+    {
+      "path": "include\\strata\\kernels\\fused_gdn.hpp",
+      "sha256": "415e1ba6613dbd557ee2dbf87a24dcaa4125a1dcd13e2f4f838d64f577129295"
+    },
+    {
+      "path": "include\\strata\\kernels\\fused_gr.hpp",
+      "sha256": "7c55e3eac9b4f6b228767ab261cda41fc290f43eea61a03bfc041cd651f8ac23"
+    },
+    {
+      "path": "include\\strata\\kernels\\gdn.hpp",
+      "sha256": "b540225582bd59f513c60cd84955a6b33925b6b2a7fda9393b3d2c7d09d147c2"
+    },
+    {
+      "path": "include\\strata\\kernels\\gfx_arch.hpp",
+      "sha256": "ec3c88fbc8ec007cd7cb72c13d31ef1ee4998a6a02ad3f05066c1e72c62ba865"
+    },
+    {
+      "path": "include\\strata\\kernels\\gr.hpp",
+      "sha256": "a9dcd4f01a09ea98fa6bea37ff59625e0c7c0b477f5366b92c3c50531a3750d1"
+    },
+    {
+      "path": "include\\strata\\kernels\\iq_kernels.hpp",
+      "sha256": "e39ec530706c50be1405944cf68564a64d60d2142c13a9d9f281eb323905c523"
+    },
+    {
+      "path": "include\\strata\\kernels\\kv_q4.hpp",
+      "sha256": "aae15d84b6c5ed0798890a3cd6b96d981326f7eb8ba526e0031428bc8b49c051"
+    },
+    {
+      "path": "include\\strata\\kernels\\kv_q8.hpp",
+      "sha256": "a387ad25fe13c95d5195fd4d3bb7db22dc68e1370c84ccc2d342ddadeef976ee"
+    },
+    {
+      "path": "include\\strata\\kernels\\kv_stream.hpp",
+      "sha256": "42a7a62c4fb33a56c49e898cbd9d35f001fd7af16f9307c93337c3922e00373e"
+    },
+    {
+      "path": "include\\strata\\kernels\\mrope.hpp",
+      "sha256": "3702ab05f3a6d8f41b04c43feef1159f6631e231f5e23ccaa93752c4bf12143b"
+    },
+    {
+      "path": "include\\strata\\kernels\\native_flash_attn.hpp",
+      "sha256": "45c9224b670b833c1a86ceb4a0328c66c1658d0916334da1ee37f98fa7eaf47e"
+    },
+    {
+      "path": "include\\strata\\kernels\\native_gdn_preprocess.hpp",
+      "sha256": "65702c36beb74b89befb27603ec3c532de18c3c68dc012ad456738b44b7d07ff"
+    },
+    {
+      "path": "include\\strata\\kernels\\native_gdn.hpp",
+      "sha256": "5d1e2fca9f19596a164701553eb81c0625e38bf80a236f79d3cf0476daaf4a41"
+    },
+    {
+      "path": "include\\strata\\kernels\\native_gr_norm.hpp",
+      "sha256": "6bd6917ffd3e2827f64590f82fb9e665ce4969183bc2d4cfae6fbffe6e89fe9a"
+    },
+    {
+      "path": "include\\strata\\kernels\\native_gr_postops.hpp",
+      "sha256": "1df3b3db594307c1c0538fb0a77e91e9c218d1b78125eefda497e7742dd85041"
+    },
+    {
+      "path": "include\\strata\\kernels\\native_mmvq.hpp",
+      "sha256": "ad87934c635ad45070c2ab1049599194455f2f9e8a858acd95b6aa265d1cdc08"
+    },
+    {
+      "path": "include\\strata\\kernels\\native_moe.hpp",
+      "sha256": "405e03e3e50658552b7ea4bcbb40040960080d2e629a493bed0db2e447af4ae5"
+    },
+    {
+      "path": "include\\strata\\kernels\\native_ple_postops.hpp",
+      "sha256": "5f4dca820c04ce627ac538cd040b90ba3b2552d5594f3c44f2f798360fa3d0f3"
+    },
+    {
+      "path": "include\\strata\\kernels\\native_qsa_indexer.hpp",
+      "sha256": "46862458f7f65cb1bb5ef2e2f19f2bc3d946b6daf8b86ea8d7e429820875883d"
+    },
+    {
+      "path": "include\\strata\\kernels\\native_qsa_score.hpp",
+      "sha256": "17d5b45cbafaa28337aea98c1fb83a373a97a6d1d9b9c8596074e103e6a776f1"
+    },
+    {
+      "path": "include\\strata\\kernels\\native_qsa.hpp",
+      "sha256": "76a1940510ed4f86ee55788bc4823ace9f8ac8f613168eddecc32abc0686d7cf"
+    },
+    {
+      "path": "include\\strata\\kernels\\native_rope.hpp",
+      "sha256": "eeddd405d4ed267b59adef30a370ba226a7cbf44ff74e2c92c09a45204bbc9b9"
+    },
+    {
+      "path": "include\\strata\\kernels\\native_router.hpp",
+      "sha256": "5f3a11e58467ca2b0973e9d1929583b6349db9162ea784815c2a3f8b421ebc96"
+    },
+    {
+      "path": "include\\strata\\kernels\\ngram.hpp",
+      "sha256": "91b65e2f9a132f55cd09250a32833897a8a58fc49f936f052ebd06c735f86069"
+    },
+    {
+      "path": "include\\strata\\kernels\\pdl.hpp",
+      "sha256": "d46e0477417db9362d2185ac9bbc764b3f4f047cc6d98371a5e84dbcff148fc6"
+    },
+    {
+      "path": "include\\strata\\kernels\\ple.hpp",
+      "sha256": "e8e37d78c391169badcc6e2f27a6629f6da2be06c68401dc8cf8b03471144ec1"
+    },
+    {
+      "path": "include\\strata\\kernels\\q8_1_finite.hpp",
+      "sha256": "6e0cd7756407930e01a2e3f29976eb6c9a69c62cb0976e0ff201317fe98bcd92"
+    },
+    {
+      "path": "include\\strata\\kernels\\qsa_decode_attn.hpp",
+      "sha256": "30b6ec371046e7414867402b0b8b3a7a1f214e540ebca81280663de6a093b224"
+    },
+    {
+      "path": "include\\strata\\kernels\\qsa_pattn.hpp",
+      "sha256": "0b6d3337d7779005bab6b206475408c2f4937eb0dcffe26717aa23210ea4fd16"
+    },
+    {
+      "path": "include\\strata\\kernels\\qsa_prompt_attn.hpp",
+      "sha256": "e652bedbc4791f5247630ad93f2cbe6af7489184471589e07d2530fdb6e32924"
+    },
+    {
+      "path": "include\\strata\\kernels\\qsa_select.hpp",
+      "sha256": "40a1e38b3470e3d4540713920704d46e4c302cd0c7237906d41060e0fdb7bfe7"
+    },
+    {
+      "path": "include\\strata\\kernels\\qsa.hpp",
+      "sha256": "a1b012ccbd62295688302aa5554324e9d72777f6179d675fb9a0f597e6a921b5"
+    },
+    {
+      "path": "include\\strata\\kernels\\quantize_act_dev.cuh",
+      "sha256": "619b76fbd242da13230dc1429c00cdf58a359d70b2ca1fa33fd0ee00715dbe59"
+    },
+    {
+      "path": "include\\strata\\kernels\\quantize_act.hpp",
+      "sha256": "4bb28ba002786950b364544776f1915435ae95005d0e7d72b38520afbca69e6e"
+    },
+    {
+      "path": "include\\strata\\kernels\\rope_scaling.hpp",
+      "sha256": "30021d34209741a33fecab8ab8e0d047440ff646112406e8b619f23f0a642073"
+    },
+    {
+      "path": "include\\strata\\kernels\\rope.hpp",
+      "sha256": "1aa8d0eefdd327dabccc6f57546f0d22ff858a4f42bf2cbf8e222311a5652a54"
+    },
+    {
+      "path": "include\\strata\\kernels\\route_prior.hpp",
+      "sha256": "caf43f2ad98f73703bf2df95ac24c70b69720058fc4f952d0a7c00f7e372c5ff"
+    },
+    {
+      "path": "include\\strata\\kernels\\router_top10.hpp",
+      "sha256": "3e540fc521de3beb999e4c086b3a4cff0bf70763e6d42f7292cf9505a591f140"
+    },
+    {
+      "path": "include\\strata\\kernels\\s_gemv.hpp",
+      "sha256": "0537b60043499d6f3384f8ed36770f54aa7f218b23bf763a3d53f7fc64afc9fd"
+    },
+    {
+      "path": "include\\strata\\kernels\\s_rowdev.cuh",
+      "sha256": "f35d75a9d3f2add6dc757089fdebdca8ee92bc80eca68e0cb556b58fafbe2dd1"
+    },
+    {
+      "path": "include\\strata\\kernels\\s2_expert_grouped.hpp",
+      "sha256": "e5f596739e84b457082e9696ee3c2c83bfb1bc05a6fb340a0f8ebbf499eea712"
+    },
+    {
+      "path": "include\\strata\\kernels\\s2_gemv_q8.hpp",
+      "sha256": "a4f947ef7cf24f132c013a6f06ac14485d807eb8fbb334c8677fc514313f17e8"
+    },
+    {
+      "path": "include\\strata\\kernels\\s2_gemv.hpp",
+      "sha256": "6edef4943809f67d63d60993962505af974001363d46bd72b97b121b364827a7"
+    },
+    {
+      "path": "include\\strata\\kernels\\sampler.hpp",
+      "sha256": "b41004e7646e5df06646269f7fbef459c7a192db5a020bbf9a0e3f1959b70217"
+    },
+    {
+      "path": "include\\strata\\kernels\\shared_expert.hpp",
+      "sha256": "e74db12dbc6c7b174ae1842521fcc01f12379d4c2a5c4729afac490d4e66baa3"
+    },
+    {
+      "path": "include\\strata\\kernels\\swiglu.cuh",
+      "sha256": "d77c96f5c6a4a58098198bf1435e3248b40761751fd8804d4c36912de7832147"
+    },
+    {
+      "path": "include\\strata\\kernels\\verify_kernels.hpp",
+      "sha256": "e8938493193d83b9ba6c5a76fd90cb9a8aa4c0d5f4caa9832090a5097046a39e"
+    },
+    {
+      "path": "include\\strata\\kernels\\window_limits.hpp",
+      "sha256": "60db3c2fc036bd6dcc0377bcc96858570e2be9f06e64caf80bfa33dabdb70f65"
+    },
+    {
+      "path": "include\\strata\\kernels\\window_start.hpp",
+      "sha256": "a38d0594ef5680bc3b30fe31aa29cec18e0b4531bde7978caef9834b0116a73b"
+    },
+    {
+      "path": "include\\strata\\ngram\\ple_reader.hpp",
+      "sha256": "41182d36990688b9c2aca737c9f7c05120e0bf1677f9435e9bc08a2603fea9be"
+    },
+    {
+      "path": "include\\strata\\perf131k\\blob_failure.hpp",
+      "sha256": "05ea6e1fcb87b4fc3c0ccc10b0249b354a2f4c6d7e1481b0522f37d15a77c096"
+    },
+    {
+      "path": "include\\strata\\perf131k\\trace.hpp",
+      "sha256": "178bf42fe4de5d5eaaacbd6f95fd4bde618b72369964c0a2992aeffee6b1866f"
+    },
+    {
+      "path": "include\\strata\\plan\\plan.hpp",
+      "sha256": "d321e6b56bd50671eba8f0af90792c7800154b166578297ca608f2b4f2a1799c"
+    },
+    {
+      "path": "include\\strata\\platform\\aux_cpus.hpp",
+      "sha256": "8bf8686f3e03d6cb96f0f50a26c9f8e647ae4524af49e7a6f2d87d03e1db2f4d"
+    },
+    {
+      "path": "include\\strata\\platform\\cpu_relax.hpp",
+      "sha256": "81ef6f79ddd818ab2f455ced6f0261fcb24d9fe75ae5bb8ef952e053a4df17c4"
+    },
+    {
+      "path": "include\\strata\\platform\\direct_file.hpp",
+      "sha256": "dab7672210ce090411ab9fe6757438cddf059769ff8f35a8f15bc146bb938223"
+    },
+    {
+      "path": "include\\strata\\platform\\hip_compat\\cublas_v2.h",
+      "sha256": "1a6eb0eebbeda23502d4c3b6e4e36e3515a27102e8383bec14ebf97060d21717"
+    },
+    {
+      "path": "include\\strata\\platform\\hip_compat\\cuda_fp16.h",
+      "sha256": "a44c84a2194a223f7d62004818dfd8bda0f085bb009654a68c40ef8fa63315e6"
+    },
+    {
+      "path": "include\\strata\\platform\\hip_compat\\cuda_runtime.h",
+      "sha256": "a44c84a2194a223f7d62004818dfd8bda0f085bb009654a68c40ef8fa63315e6"
+    },
+    {
+      "path": "include\\strata\\platform\\hip_compat\\math_constants.h",
+      "sha256": "2938ed247129b9a0748fc73bba9734243284cdaa0af9a9efb4adc4033cc5ff03"
+    },
+    {
+      "path": "include\\strata\\platform\\hip_compat\\strata_hip.h",
+      "sha256": "2af3463d8492a343b9c25a4f8da2cdeff0d3605f5bdb7a04a8d24f28ad30108a"
+    },
+    {
+      "path": "include\\strata\\platform\\host_limits.hpp",
+      "sha256": "900c55e142822ee2e1599a2bfe108894f36f2bacb8d5b1844f54d25443da98ea"
+    },
+    {
+      "path": "include\\strata\\platform\\memory.hpp",
+      "sha256": "62a1f03fa6f1a8f4cc487b0d9b7460b0f941136f34f9f96c1ddffd181c5f3d70"
+    },
+    {
+      "path": "include\\strata\\platform\\thread_name.hpp",
+      "sha256": "264c3f076714875e1978df96f8d35b15683f4b44de5f1139668982197b2d47fc"
+    },
+    {
+      "path": "include\\strata\\prefill\\copy_events.hpp",
+      "sha256": "16f8f86476984b939e728302b03da44867960ea3b385c84e334f827ce8cd3d57"
+    },
+    {
+      "path": "include\\strata\\prefill\\gdn_chunk.hpp",
+      "sha256": "69c2ea377db05560f68c24c66edb503118d1b994649f59163380f3db488a0420"
+    },
+    {
+      "path": "include\\strata\\prefill\\gdn_probe.hpp",
+      "sha256": "0d2426aaa8a324a9e019da151a40ebc60a3ba9f98d6effc99bcf789deb1da7a5"
+    },
+    {
+      "path": "include\\strata\\prefill\\gemm.hpp",
+      "sha256": "9dc8742178b359136696f3aa73fa94f04746cbe9fcad089b16617a70ea4d1f73"
+    },
+    {
+      "path": "include\\strata\\prefill\\kernels.hpp",
+      "sha256": "99c3ec04eaa39c0753f59a03e9422952b59105b3a1d48e3ba83ad0f3f540fcd4"
+    },
+    {
+      "path": "include\\strata\\prefill\\kva_floor.hpp",
+      "sha256": "912b5d04fbd45cb6124a4524f6f059d917633750980f1ab283621a2d3552bd6d"
+    },
+    {
+      "path": "include\\strata\\prefill\\kva.hpp",
+      "sha256": "27956bfdfc266d9707f4e6b7559fb7a33d90e336e85bf67bf6c59ad003a75c6c"
+    },
+    {
+      "path": "include\\strata\\prefill\\mmq_kq_abi.hpp",
+      "sha256": "39600b7204e4bba5b164f40c8968089cd7f7a59f7aa06af4f67f051f213a9a6c"
+    },
+    {
+      "path": "include\\strata\\prefill\\moe_fused_iq.hpp",
+      "sha256": "7580ef242edbbda0a07d6f653fe05774dffecc0e6e92f27118b7f3053e97c208"
+    },
+    {
+      "path": "include\\strata\\prefill\\moe_fused.hpp",
+      "sha256": "e3ff9edd59cd17df01b9a908346d4d4f4452f892a32f644eefb1344c01958726"
+    },
+    {
+      "path": "include\\strata\\prefill\\moe_mmq.hpp",
+      "sha256": "ab259da0ce1154dbeb196d3bef5c7ba462915f91cc14f4ca67c7f42374f4c4fc"
+    },
+    {
+      "path": "include\\strata\\prefill\\moe_ws.hpp",
+      "sha256": "138a3b5af845acd7be5183d11dfda36a2eb52ed95ad5bbe9cd1a5a40181d8443"
+    },
+    {
+      "path": "include\\strata\\prefill\\prefill.hpp",
+      "sha256": "3e9bfee560906c479389d0956a73dd3c915c82623f432f174a33e122f61c7c70"
+    },
+    {
+      "path": "include\\strata\\prefill\\share_rules.hpp",
+      "sha256": "8bfeca72f693a4d6700227a8f4ef3b59792a52db86553c7b429d9370a442a61b"
+    },
+    {
+      "path": "include\\strata\\prefill\\warm_policy.hpp",
+      "sha256": "0d94176032a404c5244ebc3a18cd38c7c4da2b3035cb64060ea4aa610eae3f25"
+    },
+    {
+      "path": "include\\strata\\prefill\\xmx_moe.hpp",
+      "sha256": "72b04cb7a48da6a0876322e284a83bfbc6f79d886a82fd93ed73d19efd34e054"
+    },
+    {
+      "path": "include\\strata\\program\\adapt_decay.hpp",
+      "sha256": "82b5bf928b746b98504590164b9c9674e79242c9510ced12f85ecea8dd8c529d"
+    },
+    {
+      "path": "include\\strata\\program\\batch_groups.hpp",
+      "sha256": "518999c8ca8264b31f69792696fb949f7c0b3e0a17867be5be943a72cedcccbb"
+    },
+    {
+      "path": "include\\strata\\program\\batch_read.hpp",
+      "sha256": "ff4357f27eb9de0c49ebbf38d364866433f3cca6cec48664b869d8130d85943a"
+    },
+    {
+      "path": "include\\strata\\program\\context_boundary.hpp",
+      "sha256": "e6178f0719711a261dafa6463564abe068c3df4540585b154af7832e6c663076"
+    },
+    {
+      "path": "include\\strata\\program\\conv_cache.hpp",
+      "sha256": "0844742404324be29c06ebe4d5bac53c2abc98d1bf7f67c89a5c59563e035668"
+    },
+    {
+      "path": "include\\strata\\program\\draft_kv_plan.hpp",
+      "sha256": "340850454225019b5617d3597ff810e553f87c9b5fd7ea7acc687bcba4d94c6a"
+    },
+    {
+      "path": "include\\strata\\program\\gpu_report.hpp",
+      "sha256": "a74ee94448e79cd0e14b21511059c9c0426b8ac9cc759be46bf20d51f09731d2"
+    },
+    {
+      "path": "include\\strata\\program\\joined_prefetch.hpp",
+      "sha256": "4c37c6f0eb7a69bd4c5094c5e8db8964b78fc879014282a5316556a150da3f40"
+    },
+    {
+      "path": "include\\strata\\program\\logits_selection.hpp",
+      "sha256": "43d890895c451e321db696df818719f65b7f0b32a87ff7ad76ea915d205408ce"
+    },
+    {
+      "path": "include\\strata\\program\\message_boundary.hpp",
+      "sha256": "130ec944349a40f3ad912193cc47e8cbefb93f806ea9ad4801343b02a2a98f12"
+    },
+    {
+      "path": "include\\strata\\program\\par_counters.hpp",
+      "sha256": "70704655641365ecbb9ef9135111025d4949a3dd885b86c01658bca5121f0b24"
+    },
+    {
+      "path": "include\\strata\\program\\pipe_probe.hpp",
+      "sha256": "049eb9162a2eae668bf54bd3e70abdbca297ee6a31fda7780c017c45f674745d"
+    },
+    {
+      "path": "include\\strata\\program\\prefill_plan.hpp",
+      "sha256": "fd9be2106129a83bef0c7004fb2715b7b2f7d1070b74cb40a2d54b552a4ebd03"
+    },
+    {
+      "path": "include\\strata\\program\\split_ring.hpp",
+      "sha256": "c1442f7f53491f140f119b9aa719d8da45e94324b39f379a8aea0ba16b6505a4"
+    },
+    {
+      "path": "include\\strata\\program\\split_rules.hpp",
+      "sha256": "3312a71e742b67797381fb455c6de587b6b4d3ebf0cc35f95d386ac835e2cf5d"
+    },
+    {
+      "path": "include\\strata\\program\\stage_reserve.hpp",
+      "sha256": "2d01853c10192fe0e7258a2e5983baa01dd4deabc82879abf3c065b626122f37"
+    },
+    {
+      "path": "include\\strata\\qwen35\\engine.hpp",
+      "sha256": "30a4d107c66f1239d0d38b37006a1340f8e2f565440a9a0138ab2fb524f2064e"
+    },
+    {
+      "path": "include\\strata\\qwen35\\sampling.hpp",
+      "sha256": "05df3d1cc0597312c91ca74aeab97c3fc9ce9048bf6544dc695fd62dc308198e"
+    },
+    {
+      "path": "include\\strata\\spec\\controller.hpp",
+      "sha256": "4429d18b63d3d4120e93000c45aa9fc2433ac1bc0f80896e07c6b3ecc75c5cac"
+    },
+    {
+      "path": "include\\strata\\spec\\draft_policy.hpp",
+      "sha256": "398ac157c9a3a6e2eae14b61b6222f8050acd4a47029913a972afb59833c299e"
+    },
+    {
+      "path": "include\\strata\\spec\\draft_source.hpp",
+      "sha256": "684810c155b18582f2cbf1444d43b7b3109a6cb79ff66c5ed295b8fdc92e478a"
+    },
+    {
+      "path": "include\\strata\\spec\\spec_start.hpp",
+      "sha256": "2169e7a9a86d4928876b6bc287b8c0390d5513600d1e2ee8833798af0212c1d4"
+    },
+    {
+      "path": "include\\strata\\spec\\suffix_drafter.hpp",
+      "sha256": "d7aa1e28ddee88670f825f02bd129e2e8063cd4934dff8aa4f57613f0181c48b"
+    },
+    {
+      "path": "src\\kernels\\cuda\\bf16_gemv.cu",
+      "sha256": "d63f2f226e730004c5ae4362cbc273f49114a0da28ff0dd277a1bb2d67d3749b"
+    },
+    {
+      "path": "src\\kernels\\cuda\\cvec.cu",
+      "sha256": "4b6abe99a6a010869fea187cc3d88c92b7a9553e319071ffc8424f2aa96cf358"
+    },
+    {
+      "path": "src\\kernels\\cuda\\dequant_bf16.cu",
+      "sha256": "97b164a3bd53317548bc1d8bfe1723f595dd6a67907b541db3223d4c7ce1939a"
+    },
+    {
+      "path": "src\\kernels\\cuda\\dequant_s2.cu",
+      "sha256": "01c4ab291bda6a5801dc68b623de730a996b06768514466a6461f169fadbbc9c"
+    },
+    {
+      "path": "src\\kernels\\cuda\\dflash2.cu",
+      "sha256": "20ce223cb921399d687b39a17768b5367adf227941d17df6d074da983aa32e6f"
+    },
+    {
+      "path": "src\\kernels\\cuda\\elementwise.cu",
+      "sha256": "0c5b8e6323ed251d79a356e467e29b1537005ee5debbd963b4f807d5143e99bf"
+    },
+    {
+      "path": "src\\kernels\\cuda\\fused_gdn.cu",
+      "sha256": "41216e5d1a1dc5c9f790a63b2f8ef60fbb6953e9e5fb1dd116db37b35e2df008"
+    },
+    {
+      "path": "src\\kernels\\cuda\\fused_gr.cu",
+      "sha256": "194162008d0b7414f5f0082b5770aa8611c3c932bb9262222708db98e0a1f6f2"
+    },
+    {
+      "path": "src\\kernels\\cuda\\gdn.cu",
+      "sha256": "d59c482e149de52e2ee67dbfbb116da1d37171bad9d800f17b8cd998d4c5db7f"
+    },
+    {
+      "path": "src\\kernels\\cuda\\gr.cu",
+      "sha256": "236090d5b7cbf6b78fb3350e2dea48077f477c31fee8fb79c07740d9b9b5366f"
+    },
+    {
+      "path": "src\\kernels\\cuda\\iq_kernels.cu",
+      "sha256": "c8700b05848d440365b28e1dad580b120d521bda463a94d65f9abc7d9a1b9598"
+    },
+    {
+      "path": "src\\kernels\\cuda\\kv_q4.cu",
+      "sha256": "7997c6a9a13f9009ab17099fcef44f4544801fa60f2d4d190b7fcbc33002feba"
+    },
+    {
+      "path": "src\\kernels\\cuda\\kv_q8.cu",
+      "sha256": "951ce9d05f26a42a84b1ebce0a9c63cfe335d6b8cb4c9242e5795c832a089e3d"
+    },
+    {
+      "path": "src\\kernels\\cuda\\kv_stream.cu",
+      "sha256": "a8877ab90ffa34d4d078cc53d87db00b5ab8dea439af9e0198aba055c573313c"
+    },
+    {
+      "path": "src\\kernels\\cuda\\native_bf16.cu",
+      "sha256": "5fa7d9501ea49c1e6ca15d1f0b386c1ef598f251ee30137e0c826e44a40fce47"
+    },
+    {
+      "path": "src\\kernels\\cuda\\native_flash_attn.cu",
+      "sha256": "da6a890b7be905eea65412e63966e609c4de85623b9cf2c189a968162850345d"
+    },
+    {
+      "path": "src\\kernels\\cuda\\native_gdn_preprocess.cu",
+      "sha256": "3425592df533ac98fecefa1e11860717059181a15e48bed726c11642e724099a"
+    },
+    {
+      "path": "src\\kernels\\cuda\\native_gdn.cu",
+      "sha256": "82a034ec172b647748401798c513699b6d4ef73977fa98b0449c2a23e332d5b7"
+    },
+    {
+      "path": "src\\kernels\\cuda\\native_gr_norm.cu",
+      "sha256": "af12a531d991ecef04cd0816360965cb79c84136216136aae5eb2279d64790cf"
+    },
+    {
+      "path": "src\\kernels\\cuda\\native_gr_postops.cu",
+      "sha256": "7c78a12ea89e8a351c0cb90abdd882cd03ba37cf88225489b2162b748bc69e28"
+    },
+    {
+      "path": "src\\kernels\\cuda\\native_mmvq.cu",
+      "sha256": "8d669471e1cf742f1a6e6a680429f625e9e9e41487fd2eaf76530ad745c6d3be"
+    },
+    {
+      "path": "src\\kernels\\cuda\\native_moe.cu",
+      "sha256": "bc49d690a8ae9d4c772f5d7dab7441d2c5150366b7d1b67c40d8315715dd390a"
+    },
+    {
+      "path": "src\\kernels\\cuda\\native_ple_postops.cu",
+      "sha256": "1509164a2c5607b97e9bc10efb162384d44a4d1d31e50100ef0392718dac3254"
+    },
+    {
+      "path": "src\\kernels\\cuda\\native_qsa_indexer.cu",
+      "sha256": "14f7ba5fa25a60fe76f96b6d0ea1f96230469f7ee2e210c36ddfb8bb846d32d2"
+    },
+    {
+      "path": "src\\kernels\\cuda\\native_qsa_score.cu",
+      "sha256": "06de27e791efa8d151d68bbb007eadca597ea8b46749d68fa408a0750d795594"
+    },
+    {
+      "path": "src\\kernels\\cuda\\native_qsa.cu",
+      "sha256": "f6d358d65ba57ad77cc26fffab3975eecd0c74e191eaa76d4fd22edae4f6e3ce"
+    },
+    {
+      "path": "src\\kernels\\cuda\\native_rope.cu",
+      "sha256": "f0f7f521995a5b5dd53f1bd4505f3c154d3cf0d6308b4ac18ae1a0d23f94b90d"
+    },
+    {
+      "path": "src\\kernels\\cuda\\native_router.cu",
+      "sha256": "92397eb006ff25eb5030e7d6b8e1b5011bfb149ab90b6da2f515fd49bd5e379f"
+    },
+    {
+      "path": "src\\kernels\\cuda\\nib_gu_proto.cuh",
+      "sha256": "a4a12d34b2d938ffb9df5b58a78fad90ca1976511fa84c9d9eb7c243d051505a"
+    },
+    {
+      "path": "src\\kernels\\cuda\\ple.cu",
+      "sha256": "fb456ccb335c018b9ed915689d340f1db834cfed3ddedd443a0f654db8d786a1"
+    },
+    {
+      "path": "src\\kernels\\cuda\\q8_1_il.cuh",
+      "sha256": "cd466bc19493702c78170263f581f67f95fff8338e74ac21f7ada840419f3b85"
+    },
+    {
+      "path": "src\\kernels\\cuda\\q8_sm60.cuh",
+      "sha256": "fa6696f1f261463da2fd768f2d0762351b2fd6eefeeca7c4f628914ec8e51b9e"
+    },
+    {
+      "path": "src\\kernels\\cuda\\qsa_decode_attn.cu",
+      "sha256": "1e934a79a6423cbbbb0d6a3fa4473bdec64d0b33e8498196dcf3d5f4ed813e01"
+    },
+    {
+      "path": "src\\kernels\\cuda\\qsa_pattn.cu",
+      "sha256": "42dc68a37c2d4e5626e2e5230f7dfb894edb1f24a3f55bbec1c2a3e925913516"
+    },
+    {
+      "path": "src\\kernels\\cuda\\qsa_prompt_attn.cu",
+      "sha256": "76ea9cbeb10547278b44763a9c04b345acb15c5bfb5d33e84c2ec1ab757b146c"
+    },
+    {
+      "path": "src\\kernels\\cuda\\qsa_scores_gfx1100_test.cu",
+      "sha256": "e18190ead3cd94a205ab031a4fd74e55af220970f645913d4ee30a1b22e83358"
+    },
+    {
+      "path": "src\\kernels\\cuda\\qsa_select.cu",
+      "sha256": "6484eebd2a03b99bbd8d4dfdc8feb161202a805ee4406552cc0ef74f036ee427"
+    },
+    {
+      "path": "src\\kernels\\cuda\\qsa.cu",
+      "sha256": "f90b867a635988e7c6095c911536b05cb0cc6ee55cfaa247e678c7306e9a25cf"
+    },
+    {
+      "path": "src\\kernels\\cuda\\quantize_act.cu",
+      "sha256": "2ae2d0a2de14191ae832b3bada86b4c7659ddd79bbf87b060578681ef3a8ee5f"
+    },
+    {
+      "path": "src\\kernels\\cuda\\rope.cu",
+      "sha256": "03322e5a3ebbde0701477c827c6ba1f3e143dd35a04448e9d7f892633798832f"
+    },
+    {
+      "path": "src\\kernels\\cuda\\route_prior.cu",
+      "sha256": "600d7bc3cd2b91af3b7bef87787d2879296ad4a36b5c52aaf8ebec4fd32293b4"
+    },
+    {
+      "path": "src\\kernels\\cuda\\router_top10.cu",
+      "sha256": "0672ef9cc05a0b261c6c19c94680379c6ce43c1862c7a2fb719879b2f71838bf"
+    },
+    {
+      "path": "src\\kernels\\cuda\\s_gemv_pair.cu",
+      "sha256": "83d2d88692b148f8fa36538bf4c570f286635da4b3433e9fe7afba36c22ef593"
+    },
+    {
+      "path": "src\\kernels\\cuda\\s_gemv.cu",
+      "sha256": "4604fddbdc2cdc4e53da30e9100135c516c230d2d4e4e6f4d262aa3dc9688c59"
+    },
+    {
+      "path": "src\\kernels\\cuda\\s2_expert_grouped.cu",
+      "sha256": "3edc6780fb711e1da7b2cc13a70629901b9672ae877bd6395edf8c111eb10df6"
+    },
+    {
+      "path": "src\\kernels\\cuda\\s2_gemv_fast.cu",
+      "sha256": "b216a294e4162b9f1913522aad9f1e7bd529eaa4287604a2f9d7c44c7770bd73"
+    },
+    {
+      "path": "src\\kernels\\cuda\\s2_gemv_q8.cu",
+      "sha256": "0f0448c5b3055390e15104e1b7bccdb48fab1c49142b9d9bef8036dded8ee9ea"
+    },
+    {
+      "path": "src\\kernels\\cuda\\s2_gemv_quads.cu",
+      "sha256": "28104600cb2b238d3e448e772396dfa3348af1a6880b63f490acbb3054f81274"
+    },
+    {
+      "path": "src\\kernels\\cuda\\s2_gemv.cu",
+      "sha256": "51bf69254ef0f180d80e3d107b4c37560877566847580625ca68e446b14a861b"
+    },
+    {
+      "path": "src\\kernels\\cuda\\s26_tsum.cuh",
+      "sha256": "a37f053d7320a9eee47f6050e5d19d381338291f69ec0ba628cad383a693041a"
+    },
+    {
+      "path": "src\\kernels\\cuda\\sampler.cu",
+      "sha256": "cef5c85b5addfcd0f75426f26477bad982810410ecca936cf4154c11b00f0e4f"
+    },
+    {
+      "path": "src\\kernels\\cuda\\shared_expert.cu",
+      "sha256": "7cdf6bcae10fcff234161aadcabcbcfeda6f46538823f84d183fc6d1258dcbbb"
+    },
+    {
+      "path": "src\\kernels\\cuda\\tq_lut_i8.cuh",
+      "sha256": "299dbe0070fa60faefa4e70d5a5bbaed952171b6c4572c94b981b69c5da62d89"
+    },
+    {
+      "path": "src\\kernels\\cuda\\verify_kernels.cu",
+      "sha256": "b6fc402cd513ff2d4923ccdd3c6dda25c30c743de506b6014048758fc38fbb65"
+    },
+    {
+      "path": "third_party\\ggml\\ggml-common-tq.h",
+      "sha256": "6de08a861bdca6abddcbcc1b3e653e43a4c5cbb7229c8a398603e87eb54117c6"
+    },
+    {
+      "path": "third_party\\ggml\\ggml-common.h",
+      "sha256": "1178f7e6222e0b712334c69fe2f56785bdc0e590b9124f869f8590f5ef6f35f0"
+    }
+  ],
+  "schema": 1,
+  "vcvars": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Auxiliary\\Build\\vcvars64.bat",
+  "common_flags": "\"C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v13.3\\bin\\nvcc.exe\" -std=c++20 -O2 -arch=sm_120 -Xptxas=-v -DNDEBUG -D_WINDOWS -DSTRATA_VERIFY_MAX_T=8 -DSTRATA_Q6K_EXPERTS=1 -DSTRATA_HAVE_DFLASH2=1 -Xcompiler /EHsc,/utf-8,/MT,/Ob2 -I \"C:\\Users\\downl\\Documents\\ChatGPT\\Strata\\include\" -I \"C:\\Users\\downl\\Documents\\ChatGPT\\Strata\\third_party\\ggml\" -I \"C:\\Users\\downl\\Documents\\ChatGPT\\Strata\\src\\kernels\\cuda\"",
+  "nvcc_version": "nvcc: NVIDIA (R) Cuda compiler driver\r\nCopyright (c) 2005-2026 NVIDIA Corporation\r\nBuilt on Tue_Jun__9_14:30:19_Pacific_Daylight_Time_2026\r\nCuda compilation tools, release 13.3, V13.3.73\r\nBuild cuda_13.3.r13.3/compiler.38244171_0\r\n",
+  "scope": "Standalone sm_120 compiler audit; not a full engine build or runtime benchmark",
+  "script_sha256": "FEE462856DF3E97EAB06441A746F5F53E8940017220862DE9795590FE212F64C",
+  "nvcc": "C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v13.3\\bin\\nvcc.exe",
+  "units": [
+    {
+      "fast": false,
+      "source": "C:\\Users\\downl\\Documents\\ChatGPT\\Strata\\src\\kernels\\cuda\\fused_gdn.cu",
+      "name": "fused_gdn"
+    },
+    {
+      "fast": false,
+      "source": "C:\\Users\\downl\\Documents\\ChatGPT\\Strata\\src\\kernels\\cuda\\verify_kernels.cu",
+      "name": "verify_kernels"
+    },
+    {
+      "fast": false,
+      "source": "C:\\Users\\downl\\Documents\\ChatGPT\\Strata\\build\\gdn-resource-qualified\\verify_kernels_two_blocks.cu",
+      "name": "verify_kernels_two_blocks"
+    },
+    {
+      "fast": false,
+      "source": "C:\\Users\\downl\\Documents\\ChatGPT\\Strata\\build\\gdn-resource-qualified\\verify_kernels_ungrouped_q.cu",
+      "name": "verify_kernels_ungrouped_q"
+    }
+  ],
+  "head": "b52a198300f11437b1ed2d2cc373aa73f60ea055"
+}

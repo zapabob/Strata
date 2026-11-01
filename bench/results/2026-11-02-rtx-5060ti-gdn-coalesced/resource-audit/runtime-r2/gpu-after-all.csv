@@ -1,0 +1,2 @@
+timestamp, name, memory.free [MiB], utilization.gpu [%]
+2026/11/02 04:57:01.817, NVIDIA GeForce RTX 5060 Ti, 4510 MiB, 97 %

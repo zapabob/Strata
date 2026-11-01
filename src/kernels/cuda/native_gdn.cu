@@ -30,11 +30,14 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
+#include <cstring>
 #include <stdexcept>
 
 namespace strata::kernels {
 namespace {
 std::atomic<bool> enabled{false};
+std::atomic<bool> coalesced{false};
 constexpr int S = 128;
 static_assert(S == strata::core::kCompiledGeometry.ssm_state_size, "native_gdn is compiled for core/geometry.hpp");
 
@@ -82,6 +85,57 @@ step(float* __restrict__ state, const float* __restrict__ q, const float* __rest
     }
 }
 
+// Stage contiguous columns before applying the pinned column-wise reduction.
+// Pitch 33 avoids column-wise shared-memory bank conflicts. Arithmetic order,
+// head mapping and the external state layout remain unchanged.
+__global__ void __launch_bounds__(256, 2)
+step_coalesced(float* __restrict__ state, const float* __restrict__ q, const float* __restrict__ k,
+               const float* __restrict__ v, const float* __restrict__ gate, const float* __restrict__ beta,
+               float* __restrict__ output, int h_k, int h_v, float scale) {
+    __shared__ float tile[S][33];
+    const int head = blockIdx.x;
+    const int lane = threadIdx.x;
+    const int warp = threadIdx.y;
+    const int col_base = blockIdx.z * 32;
+    const int q_head = head % h_k;
+    for (int row = warp; row < S; row += 8)
+        tile[row][lane] = state[(size_t(row) * h_v + head) * S + col_base + lane];
+    __syncthreads();
+
+    float k_reg[4], q_reg[4];
+#pragma unroll
+    for (int r = 0; r < 4; ++r) {
+        k_reg[r] = k[q_head * S + r * 32 + lane];
+        q_reg[r] = q[q_head * S + r * 32 + lane];
+    }
+    const float g_val = expf(gate[head]);
+#pragma unroll
+    for (int c = 0; c < 4; ++c) {
+        const int col = warp + c * 8;
+        float s_shard[4];
+        float kv_shard = 0.0f;
+#pragma unroll
+        for (int r = 0; r < 4; ++r) {
+            s_shard[r] = tile[r * 32 + lane][col];
+            kv_shard += s_shard[r] * k_reg[r];
+        }
+        const float kv_col = warp_sum(kv_shard);
+        const float delta_col = (v[head * S + col_base + col] - g_val * kv_col) * beta[head];
+        float attn_partial = 0.0f;
+#pragma unroll
+        for (int r = 0; r < 4; ++r) {
+            s_shard[r] = g_val * s_shard[r] + k_reg[r] * delta_col;
+            attn_partial += s_shard[r] * q_reg[r];
+            tile[r * 32 + lane][col] = s_shard[r];
+        }
+        const float attn_col = warp_sum(attn_partial);
+        if (lane == 0) output[head * S + col_base + col] = attn_col * scale;
+    }
+    __syncthreads();
+    for (int row = warp; row < S; row += 8)
+        state[(size_t(row) * h_v + head) * S + col_base + lane] = tile[row][lane];
+}
+
 bool valid_span(const void* pointer, size_t bytes) {
     const auto address = reinterpret_cast<uintptr_t>(pointer);
     return pointer && address % sizeof(float) == 0 && bytes <= UINTPTR_MAX - address;
@@ -92,7 +146,13 @@ bool overlap(const void* a, size_t an, const void* b, size_t bn) {
 }
 }
 
-void native_gdn_set_enabled(bool value) { enabled.store(value, std::memory_order_relaxed); }
+void native_gdn_set_enabled(bool value) {
+    const char* option = std::getenv("STRATA_NATIVE_GDN_COALESCED");
+    native_gdn_set_coalesced(value && option && std::strcmp(option, "1") == 0);
+    enabled.store(value, std::memory_order_relaxed);
+}
+void native_gdn_set_coalesced(bool value) { coalesced.store(value, std::memory_order_relaxed); }
+bool native_gdn_coalesced() { return coalesced.load(std::memory_order_relaxed); }
 bool native_gdn_enabled() { return enabled.load(std::memory_order_relaxed); }
 
 void native_gdn_step(float* state, const float* q, const float* k, const float* v,
@@ -116,8 +176,13 @@ void native_gdn_step(float* state, const float* q, const float* k, const float* 
             throw std::invalid_argument("native GDN requires aligned input spans disjoint from state and output");
     }
     const float scale = 1.0f / sqrtf(float(S));
-    step<<<dim3(unsigned(shape.h_v), 1, S / 4), dim3(32, 4), 0, static_cast<cudaStream_t>(stream)>>>(
-        state, q, k, v, gate, beta, output, int(shape.h_k), int(shape.h_v), scale);
+    if (native_gdn_coalesced()) {
+        step_coalesced<<<dim3(unsigned(shape.h_v), 1, S / 32), dim3(32, 8), 0, static_cast<cudaStream_t>(stream)>>>(
+            state, q, k, v, gate, beta, output, int(shape.h_k), int(shape.h_v), scale);
+    } else {
+        step<<<dim3(unsigned(shape.h_v), 1, S / 4), dim3(32, 4), 0, static_cast<cudaStream_t>(stream)>>>(
+            state, q, k, v, gate, beta, output, int(shape.h_k), int(shape.h_v), scale);
+    }
     const auto error = cudaGetLastError();
     if (error != cudaSuccess) throw std::runtime_error(cudaGetErrorString(error));
 }

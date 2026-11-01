@@ -57,6 +57,29 @@ test('bounded reader gets real metadata and rejects fake extensions, partial ten
  const oversized=Buffer.alloc(24);oversized.write('GGUF');oversized.writeUInt32LE(3,4);oversized.writeBigUInt64LE(2n**63n,8);writeFileSync(file,oversized);assert.throws(()=>readGGUF(file),/unsupported integer/);
 });
 
+test('Hikari-style qwen35 hybrid counts 16 attention / 48 recurrent for KV kb/token',t=>{
+ const root=fixture(t),file=join(root,'Hikari-LoRA-fixed-scale-PQ2_0.gguf');
+ ggufFixture(file,{
+  arch:'qwen35',name:'Hikari fixture',context:262144,fileType:141,tensorType:142,tensorElements:128,tensorBytes:34,
+  omit:['qwen35.block_count','qwen35.attention.head_count','qwen35.attention.head_count_kv','qwen35.embedding_length'],
+  extra:[
+   ['qwen35.block_count',4,64],['qwen35.embedding_length',4,2048],
+   ['qwen35.attention.head_count',4,16],['qwen35.attention.head_count_kv',4,4],
+   ['qwen35.attention.key_length',4,256],['qwen35.attention.value_length',4,256],
+   ['qwen35.full_attention_interval',4,4],
+  ],
+ });
+ const preview=inspectLocalModel(file);
+ assert.equal(preview.variant.local.nFullAttention,16);
+ assert.equal(preview.variant.local.nRecurrent,48);
+ // Legacy FP16-element kb/token on attention layers only: 16*4*(256+256)/1024 = 32
+ assert.equal(preview.variant.kvKbPerToken,32);
+ assert.equal(preview.variant.memoryPlan.nFullAttention,16);
+ assert.equal(preview.variant.memoryPlan.attentionKvGiB,4.25);
+ assert.equal(preview.variant.memoryPlan.fits,null);
+ assert.ok(preview.warnings.some(w=>/Hybrid Attention/i.test(w)));
+});
+
 test('choosing any shard finds the first, validates every shard and catches missing or mismatched sets',t=>{
  const root=fixture(t),first=join(root,'Orca-00001-of-00002.gguf'),second=join(root,'Orca-00002-of-00002.gguf');
  ggufFixture(first,{splitNo:0,splitCount:2,tensorName:'a.weight'});ggufFixture(second,{splitNo:1,splitCount:2,tensorName:'b.weight'});

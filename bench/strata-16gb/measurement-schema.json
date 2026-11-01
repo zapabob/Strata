@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "strata-16gb-run-observation-v1",
+  "title": "Strata 16GB RunObservation",
+  "type": "object",
+  "required": ["schemaVersion", "diagnosticId", "createdAt", "backend", "model", "requested", "vram"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "diagnosticId": { "type": "string", "minLength": 8 },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "backend": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": ["string", "null"] },
+        "version": { "type": ["string", "null"] },
+        "binarySha256": { "type": ["string", "null"] }
+      }
+    },
+    "model": {
+      "type": "object",
+      "properties": {
+        "id": { "type": ["string", "null"] },
+        "metadataSignature": { "type": ["string", "null"] },
+        "fileRevision": { "type": ["string", "null"] }
+      }
+    },
+    "requested": {
+      "type": "object",
+      "properties": {
+        "context": { "type": ["integer", "null"] },
+        "kType": { "type": ["string", "null"] },
+        "vType": { "type": ["string", "null"] },
+        "gpuPlacement": { "type": ["string", "null"] },
+        "batch": { "type": ["integer", "null"] },
+        "ubatch": { "type": ["integer", "null"] },
+        "parallel": { "type": ["integer", "null"] },
+        "flashAttention": { "type": ["boolean", "null"] },
+        "memoryMode": { "type": ["string", "null"] }
+      }
+    },
+    "effective": {
+      "type": ["object", "null"],
+      "properties": {
+        "context": { "type": ["integer", "null"] },
+        "gpuLayers": { "type": ["integer", "null"] },
+        "offloadReported": { "type": ["string", "null"] },
+        "argvDigest": { "type": ["string", "null"] }
+      }
+    },
+    "vram": {
+      "type": "object",
+      "required": ["dedicated", "shared"],
+      "properties": {
+        "dedicated": {
+          "type": "object",
+          "properties": {
+            "totalMib": { "type": ["number", "null"] },
+            "usedMib": { "type": ["number", "null"] },
+            "freeMib": { "type": ["number", "null"] },
+            "reservedMib": { "type": ["number", "null"] }
+          }
+        },
+        "shared": {
+          "type": "object",
+          "properties": {
+            "totalMib": { "type": ["number", "null"] },
+            "usedMib": { "type": ["number", "null"] }
+          }
+        },
+        "sources": { "type": "array", "items": { "type": "string" } },
+        "observedAt": { "type": "string" }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "description": "Filled by bench harness; absent on pure diagnostic captures",
+      "properties": {
+        "model_load_seconds": { "type": ["number", "null"] },
+        "ttft_ms": { "type": ["number", "null"] },
+        "prefill_new_tokens_per_sec": { "type": ["number", "null"] },
+        "decode_tokens_per_sec": { "type": ["number", "null"] },
+        "cached_prefix_tokens": { "type": ["integer", "null"] },
+        "gpu_dedicated_peak_mib": { "type": ["number", "null"] },
+        "gpu_shared_peak_mib": { "type": ["number", "null"] },
+        "oom_or_abort": { "type": "boolean" }
+      }
+    }
+  }
+}

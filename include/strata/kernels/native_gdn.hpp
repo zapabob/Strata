@@ -8,6 +8,12 @@ namespace strata::kernels {
 void native_gdn_set_enabled(bool enabled);
 bool native_gdn_enabled();
 
+// Opt-in coalesced state staging; configure before graph capture. Default: false.
+// native_gdn_set_enabled(true) also samples STRATA_NATIVE_GDN_COALESCED=1.
+// Only the separate recurrence uses this (--native-gdn --no-fused-gdn).
+void native_gdn_set_coalesced(bool enabled);
+bool native_gdn_coalesced();
+
 // Pinned CUDA gated_delta_net recurrence for one token, S=128 and h_v % h_k=0.
 // q/k are normalized F32 inputs; q MUST NOT be pre-scaled by 1/sqrt(S).
 // Scaling is applied to the completed readout, as in the pinned fused operator.

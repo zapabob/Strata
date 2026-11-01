@@ -1,0 +1,530 @@
+{
+  "math": {
+    "pass": true,
+    "gdn_orthogonality_error_beta_half": 0.75,
+    "reflection_requires_beta_times_norm_squared": 2,
+    "rotation_preserved_distinct_block_norms": [
+      1.0,
+      2.0
+    ],
+    "different_rotation_dot_original": 1.0,
+    "different_rotation_dot_after": 0.9323273456060345,
+    "gdn_cross_8_block_entry": -0.25,
+    "fp4_fixed_scale_counterexample_abs_error": 0.19999999999999996,
+    "fp32_32_elements_bits": 1024,
+    "mxfp4_32_elements_plus_scale_bits": 136,
+    "arbitrary_64_fp32_bits": 2048,
+    "28_fp32_coordinates_bits": 896,
+    "state_bytes_per_layer_hv48": 3145728,
+    "state_bytes_36_layers": 113246208,
+    "state_bytes_48_layers": 150994944
+  },
+  "followup": {
+    "pass": true,
+    "rotation_gram_max_abs_error": 2.220446049250313e-16,
+    "rotation_determinant": 0.9999999999999993,
+    "linf_before": 0.35355339059327373,
+    "linf_after": 0.9999999999999998,
+    "linf_amplification": 2.82842712474619,
+    "exact_dot": 0.7,
+    "rotated_dot": 0.6999999999999998,
+    "fixed_scale_fp4_dot": 0.0,
+    "dot_error_expansion": -0.6999999999999998,
+    "rotated_gdn_key_axis_32_steps_max_state_error": 4.440892098500626e-16,
+    "rotated_gdn_key_axis_32_steps_max_output_error": 5.551115123125783e-16,
+    "logical_state_read_write_bytes": 6291456,
+    "assumed_peak_bytes_per_second": 448000000000,
+    "conditional_all_dram_floor_us": 14.043428571428572,
+    "qualification": "Not measured DRAM traffic, not a proven runtime lower bound. Rotation invariance precedes quantization and assumes coordinated state changes."
+  },
+  "runs": [
+    {
+      "source": "C:\\Users\\downl\\Documents\\ChatGPT\\Strata\\build\\gdn-coalesced-experiment\\followup\\full-r4.jsonl",
+      "device": {
+        "test": "device",
+        "name": "NVIDIA GeForce RTX 5060 Ti",
+        "cc": "12.0",
+        "sm_count": 36,
+        "l2_bytes": 33554432,
+        "persisting_l2_max_bytes": 20971520,
+        "runtime": 13050,
+        "driver": 13050
+      },
+      "correctness": [
+        {
+          "test": "correctness",
+          "hk": 1,
+          "hv": 1,
+          "steps": 32,
+          "seed": 19,
+          "bitwise": true,
+          "graph": true,
+          "invalid_inputs": true,
+          "fp64_steps": 16,
+          "max_state_abs": 1.75928142e-08,
+          "max_output_abs": 1.33066888e-09
+        },
+        {
+          "test": "correctness",
+          "hk": 2,
+          "hv": 6,
+          "steps": 32,
+          "seed": 27,
+          "bitwise": true,
+          "graph": true,
+          "invalid_inputs": true,
+          "fp64_steps": 16,
+          "max_state_abs": 7.97651197e-08,
+          "max_output_abs": 1.2652367e-08
+        },
+        {
+          "test": "correctness",
+          "hk": 16,
+          "hv": 48,
+          "steps": 256,
+          "seed": 42,
+          "bitwise": true,
+          "graph": true,
+          "invalid_inputs": true,
+          "fp64_steps": 16,
+          "max_state_abs": 1.16377466e-07,
+          "max_output_abs": 1.63454427e-08
+        },
+        {
+          "test": "correctness",
+          "hk": 17,
+          "hv": 51,
+          "steps": 32,
+          "seed": 53,
+          "bitwise": true,
+          "graph": true,
+          "invalid_inputs": true,
+          "fp64_steps": 16,
+          "max_state_abs": 9.17814496e-08,
+          "max_output_abs": 1.26597288e-08
+        }
+      ],
+      "distributions": [
+        {
+          "layers": 1,
+          "mode": "coalesced_recurrence",
+          "n": 15,
+          "median_us": 8.52899998,
+          "min_us": 8.15199967,
+          "max_us": 11.2309996,
+          "p10_us": 8.38650018,
+          "p90_us": 8.9095002
+        },
+        {
+          "layers": 1,
+          "mode": "coalesced_separate_norm",
+          "n": 15,
+          "median_us": 9.39350016,
+          "min_us": 8.98549985,
+          "max_us": 10.2075003,
+          "p10_us": 8.99850018,
+          "p90_us": 9.41099972
+        },
+        {
+          "layers": 1,
+          "mode": "existing_fused_norm",
+          "n": 15,
+          "median_us": 6.74299989,
+          "min_us": 6.36250013,
+          "max_us": 7.14850007,
+          "p10_us": 6.36699982,
+          "p90_us": 6.80899993
+        },
+        {
+          "layers": 1,
+          "mode": "original_recurrence",
+          "n": 15,
+          "median_us": 30.2214995,
+          "min_us": 29.7944993,
+          "max_us": 51.5099987,
+          "p10_us": 29.8309997,
+          "p90_us": 33.3884992
+        },
+        {
+          "layers": 1,
+          "mode": "original_separate_norm",
+          "n": 15,
+          "median_us": 33.9439996,
+          "min_us": 30.5860005,
+          "max_us": 38.8990007,
+          "p10_us": 30.7154991,
+          "p90_us": 34.7324982
+        },
+        {
+          "layers": 48,
+          "mode": "coalesced_recurrence",
+          "n": 15,
+          "median_us": 21.4506661,
+          "min_us": 20.8431656,
+          "max_us": 23.4433338,
+          "p10_us": 20.8691657,
+          "p90_us": 22.8314996
+        },
+        {
+          "layers": 48,
+          "mode": "coalesced_separate_norm",
+          "n": 15,
+          "median_us": 23.0123326,
+          "min_us": 22.0041672,
+          "max_us": 24.6383324,
+          "p10_us": 22.0659996,
+          "p90_us": 24.0734989
+        },
+        {
+          "layers": 48,
+          "mode": "existing_fused_norm",
+          "n": 15,
+          "median_us": 15.7351668,
+          "min_us": 14.4311662,
+          "max_us": 16.5503335,
+          "p10_us": 14.5348335,
+          "p90_us": 16.4631667
+        },
+        {
+          "layers": 48,
+          "mode": "original_recurrence",
+          "n": 15,
+          "median_us": 72.4296669,
+          "min_us": 69.0041681,
+          "max_us": 76.535667,
+          "p10_us": 69.6099997,
+          "p90_us": 74.8294989
+        },
+        {
+          "layers": 48,
+          "mode": "original_separate_norm",
+          "n": 15,
+          "median_us": 73.480169,
+          "min_us": 70.084999,
+          "max_us": 78.7439992,
+          "p10_us": 72.7414985,
+          "p90_us": 76.1361669
+        }
+      ],
+      "comparisons": [
+        {
+          "layers": 1,
+          "baseline": "original_recurrence",
+          "candidate": "coalesced_recurrence",
+          "median_paired_speed_ratio": 3.5526737805423854,
+          "median_speed_ratio_bootstrap_95pct": [
+            3.506724704308979,
+            3.684488131514804
+          ],
+          "candidate_faster_rounds": 15,
+          "rounds": 15
+        },
+        {
+          "layers": 1,
+          "baseline": "original_separate_norm",
+          "candidate": "coalesced_separate_norm",
+          "median_paired_speed_ratio": 3.6445414400248435,
+          "median_speed_ratio_bootstrap_95pct": [
+            3.4390108719691295,
+            3.7478192062063176
+          ],
+          "candidate_faster_rounds": 15,
+          "rounds": 15
+        },
+        {
+          "layers": 1,
+          "baseline": "existing_fused_norm",
+          "candidate": "coalesced_separate_norm",
+          "median_paired_speed_ratio": 0.7168546092546362,
+          "median_speed_ratio_bootstrap_95pct": [
+            0.7080624373560883,
+            0.7487247754802119
+          ],
+          "candidate_faster_rounds": 0,
+          "rounds": 15
+        },
+        {
+          "layers": 48,
+          "baseline": "original_recurrence",
+          "candidate": "coalesced_recurrence",
+          "median_paired_speed_ratio": 3.334078429817947,
+          "median_speed_ratio_bootstrap_95pct": [
+            3.2294125524720245,
+            3.453413386189494
+          ],
+          "candidate_faster_rounds": 15,
+          "rounds": 15
+        },
+        {
+          "layers": 48,
+          "baseline": "original_separate_norm",
+          "candidate": "coalesced_separate_norm",
+          "median_paired_speed_ratio": 3.199529676683309,
+          "median_speed_ratio_bootstrap_95pct": [
+            3.0966157051533107,
+            3.3262184505795056
+          ],
+          "candidate_faster_rounds": 15,
+          "rounds": 15
+        },
+        {
+          "layers": 48,
+          "baseline": "existing_fused_norm",
+          "candidate": "coalesced_separate_norm",
+          "median_paired_speed_ratio": 0.6753061608828751,
+          "median_speed_ratio_bootstrap_95pct": [
+            0.6565111335927327,
+            0.6903761724702345
+          ],
+          "candidate_faster_rounds": 0,
+          "rounds": 15
+        }
+      ],
+      "caveat": "Concurrent GPU workload; these are kernel timings, not model throughput."
+    },
+    {
+      "source": "C:\\Users\\downl\\Documents\\ChatGPT\\Strata\\build\\gdn-coalesced-experiment\\followup\\full-r5.jsonl",
+      "device": {
+        "test": "device",
+        "name": "NVIDIA GeForce RTX 5060 Ti",
+        "cc": "12.0",
+        "sm_count": 36,
+        "l2_bytes": 33554432,
+        "persisting_l2_max_bytes": 20971520,
+        "runtime": 13050,
+        "driver": 13050
+      },
+      "correctness": [
+        {
+          "test": "correctness",
+          "hk": 1,
+          "hv": 1,
+          "steps": 32,
+          "seed": 19,
+          "bitwise": true,
+          "graph": true,
+          "invalid_inputs": true,
+          "fp64_steps": 16,
+          "max_state_abs": 1.75928142e-08,
+          "max_output_abs": 1.33066888e-09
+        },
+        {
+          "test": "correctness",
+          "hk": 2,
+          "hv": 6,
+          "steps": 32,
+          "seed": 27,
+          "bitwise": true,
+          "graph": true,
+          "invalid_inputs": true,
+          "fp64_steps": 16,
+          "max_state_abs": 7.97651197e-08,
+          "max_output_abs": 1.2652367e-08
+        },
+        {
+          "test": "correctness",
+          "hk": 16,
+          "hv": 48,
+          "steps": 256,
+          "seed": 42,
+          "bitwise": true,
+          "graph": true,
+          "invalid_inputs": true,
+          "fp64_steps": 16,
+          "max_state_abs": 1.16377466e-07,
+          "max_output_abs": 1.63454427e-08
+        },
+        {
+          "test": "correctness",
+          "hk": 17,
+          "hv": 51,
+          "steps": 32,
+          "seed": 53,
+          "bitwise": true,
+          "graph": true,
+          "invalid_inputs": true,
+          "fp64_steps": 16,
+          "max_state_abs": 9.17814496e-08,
+          "max_output_abs": 1.26597288e-08
+        }
+      ],
+      "distributions": [
+        {
+          "layers": 1,
+          "mode": "coalesced_recurrence",
+          "n": 15,
+          "median_us": 8.54550023,
+          "min_us": 8.15750007,
+          "max_us": 13.7759997,
+          "p10_us": 8.16449989,
+          "p90_us": 8.59650038
+        },
+        {
+          "layers": 1,
+          "mode": "coalesced_separate_norm",
+          "n": 15,
+          "median_us": 9.40250047,
+          "min_us": 9.05350037,
+          "max_us": 9.81650036,
+          "p10_us": 9.0640001,
+          "p90_us": 9.48200002
+        },
+        {
+          "layers": 1,
+          "mode": "existing_fused_norm",
+          "n": 15,
+          "median_us": 6.59300014,
+          "min_us": 6.40249997,
+          "max_us": 7.3210001,
+          "p10_us": 6.42299978,
+          "p90_us": 6.86149998
+        },
+        {
+          "layers": 1,
+          "mode": "original_recurrence",
+          "n": 15,
+          "median_us": 30.3054992,
+          "min_us": 29.8100002,
+          "max_us": 39.7605002,
+          "p10_us": 29.8285,
+          "p90_us": 34.8649994
+        },
+        {
+          "layers": 1,
+          "mode": "original_separate_norm",
+          "n": 15,
+          "median_us": 36.0330008,
+          "min_us": 31.1715007,
+          "max_us": 41.3465016,
+          "p10_us": 31.2245004,
+          "p90_us": 37.090499
+        },
+        {
+          "layers": 48,
+          "mode": "coalesced_recurrence",
+          "n": 15,
+          "median_us": 22.279501,
+          "min_us": 21.0996668,
+          "max_us": 24.0511671,
+          "p10_us": 21.1160009,
+          "p90_us": 23.2406656
+        },
+        {
+          "layers": 48,
+          "mode": "coalesced_separate_norm",
+          "n": 15,
+          "median_us": 22.4913334,
+          "min_us": 21.0121671,
+          "max_us": 24.6676678,
+          "p10_us": 21.0528324,
+          "p90_us": 24.1573329
+        },
+        {
+          "layers": 48,
+          "mode": "existing_fused_norm",
+          "n": 15,
+          "median_us": 15.9208328,
+          "min_us": 14.5246672,
+          "max_us": 16.5931669,
+          "p10_us": 15.2576665,
+          "p90_us": 16.5190001
+        },
+        {
+          "layers": 48,
+          "mode": "original_recurrence",
+          "n": 15,
+          "median_us": 72.3483314,
+          "min_us": 69.0886676,
+          "max_us": 77.7241687,
+          "p10_us": 69.1049993,
+          "p90_us": 76.0691663
+        },
+        {
+          "layers": 48,
+          "mode": "original_separate_norm",
+          "n": 15,
+          "median_us": 74.4425009,
+          "min_us": 69.8973338,
+          "max_us": 77.3475021,
+          "p10_us": 70.6014981,
+          "p90_us": 76.8534988
+        }
+      ],
+      "comparisons": [
+        {
+          "layers": 1,
+          "baseline": "original_recurrence",
+          "candidate": "coalesced_recurrence",
+          "median_paired_speed_ratio": 3.6941541586508873,
+          "median_speed_ratio_bootstrap_95pct": [
+            3.5168961977059783,
+            4.0855042616015576
+          ],
+          "candidate_faster_rounds": 15,
+          "rounds": 15
+        },
+        {
+          "layers": 1,
+          "baseline": "original_separate_norm",
+          "candidate": "coalesced_separate_norm",
+          "median_paired_speed_ratio": 3.811603655415367,
+          "median_speed_ratio_bootstrap_95pct": [
+            3.5795545339764843,
+            3.9615629071807934
+          ],
+          "candidate_faster_rounds": 15,
+          "rounds": 15
+        },
+        {
+          "layers": 1,
+          "baseline": "existing_fused_norm",
+          "candidate": "coalesced_separate_norm",
+          "median_paired_speed_ratio": 0.7071850343338529,
+          "median_speed_ratio_bootstrap_95pct": [
+            0.6844987809928821,
+            0.7288543664014471
+          ],
+          "candidate_faster_rounds": 0,
+          "rounds": 15
+        },
+        {
+          "layers": 48,
+          "baseline": "original_recurrence",
+          "candidate": "coalesced_recurrence",
+          "median_paired_speed_ratio": 3.2574869553635164,
+          "median_speed_ratio_bootstrap_95pct": [
+            3.118776346885729,
+            3.365606529015983
+          ],
+          "candidate_faster_rounds": 15,
+          "rounds": 15
+        },
+        {
+          "layers": 48,
+          "baseline": "original_separate_norm",
+          "candidate": "coalesced_separate_norm",
+          "median_paired_speed_ratio": 3.2793856272006088,
+          "median_speed_ratio_bootstrap_95pct": [
+            3.1355822823266655,
+            3.4308177789050074
+          ],
+          "candidate_faster_rounds": 15,
+          "rounds": 15
+        },
+        {
+          "layers": 48,
+          "baseline": "existing_fused_norm",
+          "candidate": "coalesced_separate_norm",
+          "median_paired_speed_ratio": 0.7012009977125356,
+          "median_speed_ratio_bootstrap_95pct": [
+            0.6564250552986224,
+            0.7347642667843952
+          ],
+          "candidate_faster_rounds": 0,
+          "rounds": 15
+        }
+      ],
+      "caveat": "Concurrent GPU workload; these are kernel timings, not model throughput."
+    }
+  ]
+}

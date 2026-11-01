@@ -1,0 +1,15 @@
+{
+  "host": {
+    "available_ram": 13576667136,
+    "commit_headroom": 26257465344,
+    "H_free": 195740692480
+  },
+  "gpu": {
+    "monotonic_s": 42154.281,
+    "memory.free": 14421,
+    "memory.used": 1630,
+    "utilization.gpu": 2,
+    "clocks.sm": 1200,
+    "clocks.mem": 7001
+  }
+}

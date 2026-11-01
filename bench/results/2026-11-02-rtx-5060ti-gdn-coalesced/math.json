@@ -1,0 +1,23 @@
+{
+  "math": {
+    "pass": true,
+    "gdn_orthogonality_error_beta_half": 0.75,
+    "reflection_requires_beta_times_norm_squared": 2,
+    "rotation_preserved_distinct_block_norms": [
+      1.0,
+      2.0
+    ],
+    "different_rotation_dot_original": 1.0,
+    "different_rotation_dot_after": 0.9323273456060345,
+    "gdn_cross_8_block_entry": -0.25,
+    "fp4_fixed_scale_counterexample_abs_error": 0.19999999999999996,
+    "fp32_32_elements_bits": 1024,
+    "mxfp4_32_elements_plus_scale_bits": 136,
+    "arbitrary_64_fp32_bits": 2048,
+    "28_fp32_coordinates_bits": 896,
+    "state_bytes_per_layer_hv48": 3145728,
+    "state_bytes_36_layers": 113246208,
+    "state_bytes_48_layers": 150994944
+  },
+  "runs": []
+}

@@ -28,7 +28,7 @@ def gguf_fixture(*, architecture="qwen4exp", tokenizer=True, expert_type=42,
                   ("tokenizer.ggml.merges", 9, struct.pack("<IQ", 8, 1) + string("a b"))]
     header = (b"GGUF" + struct.pack("<IQQ", 3, 2 if overlapping_tensors else 1, len(pairs)) +
               b"".join(string(key) + struct.pack("<I", kind) + value for key, kind, value in pairs))
-    elements, payload_bytes = (64, 18) if expert_type == 42 else (256, 144)
+    elements, payload_bytes = {42: (64, 18), 142: (128, 34), 143: (128, 28)}.get(expert_type, (256, 144))
     header += string("blk.0.ffn_gate_exps.weight") + struct.pack(
         "<IQIQ", 1, elements, expert_type, 0)
     if overlapping_tensors:
@@ -235,6 +235,50 @@ class ModelInventoryTests(unittest.TestCase):
         self.assertFalse(json.loads(output.getvalue())["ok"])
         self.assertEqual(json.loads(output.getvalue())["plan"]["file_set_status"],
                          "invalid_or_incomplete")
+
+    def test_prism_weights_do_not_select_native_qwen_preparation(self):
+        from strata_control import models
+
+        for tensor_type in (142, 143):
+            for name in ("Hikari-LoRA-fixed-scale-PQ2_0.gguf", "Flash-Q2_0.gguf"):
+                with self.subTest(tensor_type=tensor_type, name=name):
+                    source = self.root / f"prism-{tensor_type}-{name}"
+                    source.mkdir()
+                    candidate = source / name
+                    candidate.write_bytes(gguf_fixture(architecture="qwen35", expert_type=tensor_type))
+                    before = candidate.read_bytes()
+                    plan = models.plan_import(str(candidate))
+                    self.assertIsNone(plan["candidate_selection"])
+                    self.assertEqual(plan["local_runtime"], "PrismML")
+                    self.assertIn("unrecognized_or_unsupported_model_variant", plan["issues"])
+                    self.assertNotEqual(plan["file_set_status"], "plausible")
+                    self.assertTrue(any("PrismML" in message for message in plan["messages"]))
+                    self.assertFalse(plan["would_write"])
+                    self.assertEqual(candidate.read_bytes(), before)
+
+    def test_stale_native_install_refuses_prism_before_hardware_or_preparation(self):
+        from tools.strata_mcp import Tools, ToolError
+
+        candidate = self.root / "Hikari-LoRA-fixed-scale-PQ2_0.gguf"
+        candidate.write_bytes(gguf_fixture(architecture="qwen35", expert_type=142))
+        strata = mock.Mock()
+        strata.tables.return_value = ({}, {}, [], "fixture")
+        with self.assertRaisesRegex(ToolError, "require PrismML"):
+            Tools(strata).install_plan(
+                "qwen", "Q2_0", 32768, "no", "int8", None, None,
+                None, None, None, None, gguf_dir=str(self.root)
+            )
+        strata.tables.assert_called_once_with()
+        strata.hardware.assert_not_called()
+
+    def test_dense_qwen_architecture_alone_does_not_select_q2_0(self):
+        from strata_control import models
+
+        candidate = self.root / "dense-qwen.gguf"
+        candidate.write_bytes(gguf_fixture(architecture="qwen35", expert_type=12))
+        plan = models.plan_import(str(candidate))
+        self.assertIsNone(plan["candidate_selection"])
+        self.assertIn("unrecognized_or_unsupported_model_variant", plan["issues"])
 
     def test_import_plan_rejects_symlink_and_wrong_magic(self):
         wrong = self.root / "bad.gguf"

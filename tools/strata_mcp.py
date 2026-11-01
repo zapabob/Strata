@@ -2300,6 +2300,24 @@ class Tools:
     def install_plan(self, family, model, context, vision, kv, gpu, gpus, backend, low_ram, port, data_dir, gguf_dir=None):
         s = self.s
         models, families, contexts, _src = s.tables()
+        if gguf_dir:
+            from strata_control import models as local_models
+            from strata_control.profiles import ProfileError
+
+            local = Path(os.path.expandvars(gguf_dir)).expanduser()
+            if not local.is_absolute() or not local.is_dir() or ".." in local.parts:
+                raise ToolError("gguf_dir must be an existing absolute folder")
+            # Empty acquisition folders retain the existing setup behavior.
+            preview = {}
+            if any(local.glob("*.gguf")):
+                try:
+                    preview = local_models.plan_import(str(local))
+                except ProfileError as error:
+                    raise ToolError(str(error)) from error
+            if preview.get("local_runtime") == "PrismML":
+                raise ToolError("These GGUF files run on Strata’s PrismML engine, not native Qwen Q2_0 preparation. "
+                                "In Models, choose Load with Strata (PrismML). "
+                                "No model download or native pack preparation is needed.")
         if gpu is not None and gpus is not None:
             raise ToolError("give gpu (one card) or gpus (several), not both")
         if sys.version_info < (3, 10) or (WIN and sys.maxsize <= 2**32):

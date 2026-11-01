@@ -1,0 +1,29 @@
+--- a/src/kernels/cuda/verify_kernels.cu
++++ b/src/kernels/cuda/verify_kernels.cu
+@@ -284,7 +284,7 @@
+     if (idx % 32 == 0) xq[idx / 32].ds = q8_1_ds(d, sum);   // #606: clamped (the QFUSE path bypassed the finite helper)
+ }
+ 
+-template <bool ALL_OUT, bool Q>
++template <bool ALL_OUT, bool Q, bool UNGROUPED = false>
+ __global__ void __launch_bounds__(S * RG) gdn_step_norm_multi_kernel(float* __restrict__ state,
+                                                                      const float* __restrict__ hbuf, int C,
+                                                                      const float* __restrict__ gate,
+@@ -294,7 +294,7 @@
+                                                                      float* __restrict__ y, int h_k, int h_v, int T,
+                                                                      const int32_t* __restrict__ n_keep, int t_out_begin,
+                                                                      GdnQ81* __restrict__ xq, GdnGroups grp = {}) {
+-    if (grp.n > 0) {   // group blockIdx.y - its slot's state and its rows of the window's buffers
++    if (!UNGROUPED && grp.n > 0) {   // group blockIdx.y - its slot's state and its rows of the window's buffers
+         const int gi = blockIdx.y, f = grp.first[gi];
+         state = grp.state[gi];
+         hbuf += (size_t) f * C;
+@@ -1208,7 +1208,7 @@
+     if (xq && t_out_begin < n_tok) {
+         if (all_out) gdn_step_norm_multi_kernel<true, true><<<g1, b1, 0, (cudaStream_t) stream>>>(
+             state, h, conv_channels, gate, beta, z, gamma, eps, y, h_k, h_v, n_tok, nullptr, 0, xq);
+-        else gdn_step_norm_multi_kernel<false, true><<<g1, b1, 0, (cudaStream_t) stream>>>(
++        else gdn_step_norm_multi_kernel<false, true, true><<<g1, b1, 0, (cudaStream_t) stream>>>(
+             state, h, conv_channels, gate, beta, z, gamma, eps, y, h_k, h_v, n_tok, n_keep, t_out_begin, xq);
+     } else if (all_out) {
+         gdn_step_norm_multi_kernel<true, false><<<g1, b1, 0, (cudaStream_t) stream>>>(

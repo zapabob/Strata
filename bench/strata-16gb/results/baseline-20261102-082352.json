@@ -1,0 +1,286 @@
+{
+  "captureKind": "baseline-idle",
+  "pins": {
+    "capturedAt": "2026-11-01T23:23:55.0924557Z",
+    "branch": "feat/vram-16gb-pr-a-b",
+    "forkHead": "b52a198300f11437b1ed2d2cc373aa73f60ea055",
+    "originMain": "b52a198300f11437b1ed2d2cc373aa73f60ea055",
+    "upstreamMain": "c62d5e3a15b40ea51c96aae9e8d36928965f53ab",
+    "gitStatusShort": [
+      " M apps/desktop/src-tauri/Cargo.toml",
+      " M apps/host/server/gguf.mjs",
+      " M apps/host/server/local-models.mjs",
+      " M apps/host/tests/local-models.test.mjs",
+      " M include/strata/kernels/native_gdn.hpp",
+      " M src/kernels/cuda/native_gdn.cu",
+      " M strata_control/models.py",
+      " M tests/terminal/test_models.py",
+      " M tools/strata_mcp.py",
+      "?? _docs/2026-11-02_gdn-coalesced-experiment_Codex.md",
+      "?? _docs/2026-11-02_gdn-followup-audit_Codex.md",
+      "?? _docs/2026-11-02_gdn-resource-audit_Codex.md",
+      "?? _docs/2026-11-02_hikari-import-routing-fix_Codex.md",
+      "?? _docs/2026-11-02_hikari-local-model-recovery_Codex.md",
+      "?? _docs/2026-11-02_hikari-return-from-swift_Codex.md",
+      "?? apps/host/server/model-memory.mjs",
+      "?? apps/host/server/run-observation.mjs",
+      "?? apps/host/server/vram-observation.mjs",
+      "?? apps/host/tests/model-memory.test.mjs",
+      "?? apps/host/tests/run-observation.test.mjs",
+      "?? bench/gdn_multi_resource_bench.cpp",
+      "?? bench/native_gdn_coalesced_bench.cpp",
+      "?? bench/results/2026-11-02-rtx-5060ti-gdn-coalesced/",
+      "?? bench/strata-16gb/",
+      "?? tests/gdn_experiment/",
+      "?? tools/analyze_gdn_experiment.py",
+      "?? tools/analyze_gdn_native_profile.py",
+      "?? tools/analyze_gdn_resources.py",
+      "?? tools/audit_gdn_cuda_resources.ps1",
+      "?? tools/benchmark_gdn_resources.ps1",
+      "?? tools/benchmark_native_gdn_coalesced.ps1",
+      "?? tools/profile_gdn_native_followup.py"
+    ],
+    "planForkHead": "b52a198300f11437b1ed2d2cc373aa73f60ea055",
+    "planUpstreamHead": "c62d5e3a15b40ea51c96aae9e8d36928965f53ab",
+    "hikariRevision": "c42fdf9debd1ba8daf4ac171d81b2052f841058f",
+    "prismSource": "73bfe6cc485554822f80c473a3c0c4f25e80f41b",
+    "nvidiaSmiCsv": "name, uuid, driver_version, memory.total [MiB], memory.used [MiB], memory.free [MiB], memory.reserved [MiB], pcie.link.gen.current, pcie.link.width.current, power.limit [W], clocks.current.graphics [MHz], temperature.gpu\r\nNVIDIA GeForce RTX 5060 Ti, GPU-41ca9d79-72ba-17a4-a836-51ff11f9851f, 621.01, 16311 MiB, 9454 MiB, 6597 MiB, 261 MiB, 1, 8, 180.00 W, 982 MHz, 33.08\r\n",
+    "windowsGpuAdapterMemory": [
+      {
+        "Name": "luid_0x00000000_0x0000F4C9_phys_0",
+        "DedicatedUsage": 0,
+        "SharedUsage": 8192,
+        "TotalCommitted": 598016
+      },
+      {
+        "Name": "luid_0x00000000_0x0000B0AC_phys_0",
+        "DedicatedUsage": 9928323072,
+        "SharedUsage": 187715584,
+        "TotalCommitted": 10399707136
+      }
+    ],
+    "os": {
+      "Caption": "Microsoft Windows 11 Pro",
+      "Version": "10.0.26300",
+      "TotalVisibleMemorySizeKiB": 33422724,
+      "FreePhysicalMemoryKiB": 3912800
+    },
+    "cpuInfo": {
+      "Name": "AMD Ryzen 5 4500 6-Core Processor              ",
+      "NumberOfCores": 6,
+      "NumberOfLogicalProcessors": 12,
+      "MaxClockSpeed": 3600
+    },
+    "processes": [
+      {
+        "name": "Hermes",
+        "pid": 10564,
+        "workingSetBytes": 14372864,
+        "owner": null
+      },
+      {
+        "name": "Hermes",
+        "pid": 16156,
+        "workingSetBytes": 82112512,
+        "owner": null
+      },
+      {
+        "name": "Hermes",
+        "pid": 27452,
+        "workingSetBytes": 55349248,
+        "owner": null
+      },
+      {
+        "name": "Hermes",
+        "pid": 29732,
+        "workingSetBytes": 294236160,
+        "owner": null
+      },
+      {
+        "name": "Hermes",
+        "pid": 38276,
+        "workingSetBytes": 8306688,
+        "owner": null
+      },
+      {
+        "name": "hermes-watchdog",
+        "pid": 15972,
+        "workingSetBytes": 28438528,
+        "owner": null
+      },
+      {
+        "name": "llama-server",
+        "pid": 27364,
+        "workingSetBytes": 5806338048,
+        "owner": null
+      },
+      {
+        "name": "strata-desktop",
+        "pid": 41916,
+        "workingSetBytes": 18550784,
+        "owner": null
+      }
+    ],
+    "ram": {
+      "totalMib": 32639.4,
+      "availableMib": 3821.1
+    },
+    "cpu": {
+      "loadPct": null,
+      "privateCommitMib": null
+    }
+  },
+  "observation": {
+    "schemaVersion": 1,
+    "diagnosticId": "9cfb9065c3bf58d0c357f477c794d837-403ac169",
+    "createdAt": "2026-11-01T23:23:56.430Z",
+    "backend": {
+      "kind": "diagnostic",
+      "version": null,
+      "executablePath": null,
+      "binarySha256": null
+    },
+    "model": {
+      "id": "baseline-idle",
+      "metadataSignature": null,
+      "fileRevision": "c42fdf9debd1ba8daf4ac171d81b2052f841058f"
+    },
+    "requested": {
+      "context": 131072,
+      "kType": "q8_0",
+      "vType": "q8_0",
+      "gpuPlacement": "none",
+      "ngl": null,
+      "batch": 2048,
+      "ubatch": 512,
+      "parallel": 1,
+      "flashAttention": true,
+      "expertCache": null,
+      "memoryMode": "ordinary"
+    },
+    "estimated": null,
+    "effective": {
+      "context": null,
+      "argvDigest": null,
+      "argv": null,
+      "gpuLayers": null,
+      "offloadReported": "unknown",
+      "binarySha256": null,
+      "batch": 2048,
+      "ubatch": 512,
+      "parallel": 1,
+      "kType": "q8_0",
+      "vType": "q8_0"
+    },
+    "vram": {
+      "dedicated": {
+        "totalMib": 16311,
+        "usedMib": 9452,
+        "freeMib": 6599,
+        "reservedMib": 261
+      },
+      "shared": {
+        "totalMib": null,
+        "usedMib": 177
+      },
+      "sources": [
+        "nvidia-smi",
+        "windows-gpu-counters"
+      ],
+      "observedAt": "2026-11-01T23:23:55.390Z",
+      "devices": {
+        "nvidia": [
+          {
+            "name": "NVIDIA GeForce RTX 5060 Ti",
+            "dedicated": {
+              "totalMib": 16311,
+              "usedMib": 9452,
+              "freeMib": 6599,
+              "reservedMib": 261
+            }
+          }
+        ],
+        "windows": [
+          {
+            "luid": "luid_0x00000000_0x0000F4C9_phys_0",
+            "dedicatedUsedMib": 0,
+            "sharedUsedMib": 0
+          },
+          {
+            "luid": "luid_0x00000000_0x0000B0AC_phys_0",
+            "dedicatedUsedMib": 9484,
+            "sharedUsedMib": 177
+          }
+        ]
+      }
+    },
+    "cpu": {
+      "loadPct": null,
+      "privateCommitMib": null
+    },
+    "ram": {
+      "totalMib": 32639.4,
+      "availableMib": 3821.1
+    },
+    "processes": [
+      {
+        "name": "Hermes",
+        "pid": 10564,
+        "workingSetBytes": 14372864,
+        "owner": null
+      },
+      {
+        "name": "Hermes",
+        "pid": 16156,
+        "workingSetBytes": 82112512,
+        "owner": null
+      },
+      {
+        "name": "Hermes",
+        "pid": 27452,
+        "workingSetBytes": 55349248,
+        "owner": null
+      },
+      {
+        "name": "Hermes",
+        "pid": 29732,
+        "workingSetBytes": 294236160,
+        "owner": null
+      },
+      {
+        "name": "Hermes",
+        "pid": 38276,
+        "workingSetBytes": 8306688,
+        "owner": null
+      },
+      {
+        "name": "hermes-watchdog",
+        "pid": 15972,
+        "workingSetBytes": 28438528,
+        "owner": null
+      },
+      {
+        "name": "llama-server",
+        "pid": 27364,
+        "workingSetBytes": 5806338048,
+        "owner": null
+      },
+      {
+        "name": "strata-desktop",
+        "pid": 41916,
+        "workingSetBytes": 18550784,
+        "owner": null
+      }
+    ],
+    "cachePolicy": "diagnostic-idle",
+    "policyRevision": "pr-a-2026-11-02",
+    "allocLog": null,
+    "comparabilityKey": "9cfb9065c3bf58d0c357f477c794d837",
+    "sealedAt": "2026-11-01T23:23:56.435Z"
+  },
+  "notes": [
+    "Idle baseline: no model loaded by this script.",
+    "Dedicated VRAM and shared GPU memory are separate fields.",
+    "Do not treat this as a speed result."
+  ]
+}

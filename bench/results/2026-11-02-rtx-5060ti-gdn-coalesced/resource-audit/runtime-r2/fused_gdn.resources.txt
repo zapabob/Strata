@@ -1,0 +1,28 @@
+
+Fatbin elf code:
+================
+arch = sm_120
+code version = [1,8]
+host = windows
+compile_size = 64bit
+
+Resource usage:
+ Common:
+  GLOBAL:0
+ Function _ZN6strata7kernels45_GLOBAL__N__d07afaaf_12_fused_gdn_cu_2c3f195d20gdn_step_norm_kernelILb1EEEvPfPKfS5_S5_S5_S5_S5_S5_fS3_ii:
+  REG:128 STACK:0 SHARED:6208 LOCAL:0 CONSTANT[0]:984 TEXTURE:0 SURFACE:0 SAMPLER:0
+ Function _ZN6strata7kernels45_GLOBAL__N__d07afaaf_12_fused_gdn_cu_2c3f195d20gdn_step_norm_kernelILb0EEEvPfPKfS5_S5_S5_S5_S5_S5_fS3_ii:
+  REG:128 STACK:0 SHARED:6208 LOCAL:0 CONSTANT[0]:984 TEXTURE:0 SURFACE:0 SAMPLER:0
+ Function _ZN6strata7kernels45_GLOBAL__N__d07afaaf_12_fused_gdn_cu_2c3f195d13gdn_ab_kernelEPKfPKtS5_S3_S3_PfS6_ii:
+  REG:40 STACK:0 SHARED:0 LOCAL:0 CONSTANT[0]:960 TEXTURE:0 SURFACE:0 SAMPLER:0
+ Function _ZN6strata7kernels45_GLOBAL__N__d07afaaf_12_fused_gdn_cu_2c3f195d18gdn_conv_l2_kernelEPfPKfS4_S2_if:
+  REG:20 STACK:0 SHARED:1040 LOCAL:0 CONSTANT[0]:936 TEXTURE:0 SURFACE:0 SAMPLER:0
+
+Fatbin ptx code:
+================
+arch = sm_120
+code version = [9,3]
+host = windows
+compile_size = 64bit
+compressed
+ptxasOptions = -v 

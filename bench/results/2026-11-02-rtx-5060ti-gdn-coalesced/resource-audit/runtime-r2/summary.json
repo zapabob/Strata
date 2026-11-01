@@ -1,0 +1,321 @@
+{
+  "schema": 1,
+  "performance_qualified": false,
+  "limits": "Shared GPU; unfixed clocks; synthetic recurrent inputs; event timing excludes allocation/host/model work; no DRAM counters or E2E run. No speedup adoption verdict.",
+  "resources": {
+    "fused_gdn": [
+      {
+        "kernel": "void strata::kernels::<unnamed>::gdn_step_norm_kernel<(bool)1>(float *, const float *, const float *, const float *, const float *, const float *, const float *, const float *, float, float *, int, int)",
+        "registers": 128,
+        "stack_bytes": 0,
+        "local_bytes": 0,
+        "spill_store_bytes": 0,
+        "spill_load_bytes": 0
+      },
+      {
+        "kernel": "void strata::kernels::<unnamed>::gdn_step_norm_kernel<(bool)0>(float *, const float *, const float *, const float *, const float *, const float *, const float *, const float *, float, float *, int, int)",
+        "registers": 128,
+        "stack_bytes": 0,
+        "local_bytes": 0,
+        "spill_store_bytes": 0,
+        "spill_load_bytes": 0
+      }
+    ],
+    "verify_kernels": [
+      {
+        "kernel": "void strata::kernels::<unnamed>::gdn_step_norm_multi_kernel<(bool)0, (bool)1>(float *, const float *, int, const float *, const float *, const float *, const float *, float, float *, int, int, int, const int *, int, strata::kernels::<unnamed>::GdnQ81 *, strata::kernels::GdnGroups)",
+        "registers": 128,
+        "stack_bytes": 8,
+        "local_bytes": 0,
+        "spill_store_bytes": 16,
+        "spill_load_bytes": 8
+      },
+      {
+        "kernel": "void strata::kernels::<unnamed>::gdn_step_norm_multi_kernel<(bool)1, (bool)1>(float *, const float *, int, const float *, const float *, const float *, const float *, float, float *, int, int, int, const int *, int, strata::kernels::<unnamed>::GdnQ81 *, strata::kernels::GdnGroups)",
+        "registers": 84,
+        "stack_bytes": 0,
+        "local_bytes": 0,
+        "spill_store_bytes": 0,
+        "spill_load_bytes": 0
+      },
+      {
+        "kernel": "void strata::kernels::<unnamed>::gdn_step_norm_multi_kernel<(bool)1, (bool)0>(float *, const float *, int, const float *, const float *, const float *, const float *, float, float *, int, int, int, const int *, int, strata::kernels::<unnamed>::GdnQ81 *, strata::kernels::GdnGroups)",
+        "registers": 84,
+        "stack_bytes": 0,
+        "local_bytes": 0,
+        "spill_store_bytes": 0,
+        "spill_load_bytes": 0
+      },
+      {
+        "kernel": "void strata::kernels::<unnamed>::gdn_step_norm_multi_kernel<(bool)0, (bool)0>(float *, const float *, int, const float *, const float *, const float *, const float *, float, float *, int, int, int, const int *, int, strata::kernels::<unnamed>::GdnQ81 *, strata::kernels::GdnGroups)",
+        "registers": 128,
+        "stack_bytes": 0,
+        "local_bytes": 0,
+        "spill_store_bytes": 0,
+        "spill_load_bytes": 0
+      }
+    ],
+    "verify_kernels_two_blocks": [
+      {
+        "kernel": "void strata::kernels::<unnamed>::gdn_step_norm_multi_kernel<(bool)0, (bool)1>(float *, const float *, int, const float *, const float *, const float *, const float *, float, float *, int, int, int, const int *, int, strata::kernels::<unnamed>::GdnQ81 *, strata::kernels::GdnGroups)",
+        "registers": 64,
+        "stack_bytes": 0,
+        "local_bytes": 0,
+        "spill_store_bytes": 0,
+        "spill_load_bytes": 0
+      },
+      {
+        "kernel": "void strata::kernels::<unnamed>::gdn_step_norm_multi_kernel<(bool)1, (bool)1>(float *, const float *, int, const float *, const float *, const float *, const float *, float, float *, int, int, int, const int *, int, strata::kernels::<unnamed>::GdnQ81 *, strata::kernels::GdnGroups)",
+        "registers": 64,
+        "stack_bytes": 24,
+        "local_bytes": 0,
+        "spill_store_bytes": 24,
+        "spill_load_bytes": 20
+      },
+      {
+        "kernel": "void strata::kernels::<unnamed>::gdn_step_norm_multi_kernel<(bool)1, (bool)0>(float *, const float *, int, const float *, const float *, const float *, const float *, float, float *, int, int, int, const int *, int, strata::kernels::<unnamed>::GdnQ81 *, strata::kernels::GdnGroups)",
+        "registers": 64,
+        "stack_bytes": 48,
+        "local_bytes": 0,
+        "spill_store_bytes": 44,
+        "spill_load_bytes": 40
+      },
+      {
+        "kernel": "void strata::kernels::<unnamed>::gdn_step_norm_multi_kernel<(bool)0, (bool)0>(float *, const float *, int, const float *, const float *, const float *, const float *, float, float *, int, int, int, const int *, int, strata::kernels::<unnamed>::GdnQ81 *, strata::kernels::GdnGroups)",
+        "registers": 64,
+        "stack_bytes": 8,
+        "local_bytes": 0,
+        "spill_store_bytes": 8,
+        "spill_load_bytes": 8
+      }
+    ],
+    "verify_kernels_ungrouped_q": [
+      {
+        "kernel": "void strata::kernels::<unnamed>::gdn_step_norm_multi_kernel<(bool)0, (bool)1, (bool)1>(float *, const float *, int, const float *, const float *, const float *, const float *, float, float *, int, int, int, const int *, int, strata::kernels::<unnamed>::GdnQ81 *, strata::kernels::GdnGroups)",
+        "registers": 128,
+        "stack_bytes": 0,
+        "local_bytes": 0,
+        "spill_store_bytes": 0,
+        "spill_load_bytes": 0
+      },
+      {
+        "kernel": "void strata::kernels::<unnamed>::gdn_step_norm_multi_kernel<(bool)1, (bool)1, (bool)0>(float *, const float *, int, const float *, const float *, const float *, const float *, float, float *, int, int, int, const int *, int, strata::kernels::<unnamed>::GdnQ81 *, strata::kernels::GdnGroups)",
+        "registers": 84,
+        "stack_bytes": 0,
+        "local_bytes": 0,
+        "spill_store_bytes": 0,
+        "spill_load_bytes": 0
+      },
+      {
+        "kernel": "void strata::kernels::<unnamed>::gdn_step_norm_multi_kernel<(bool)1, (bool)0, (bool)0>(float *, const float *, int, const float *, const float *, const float *, const float *, float, float *, int, int, int, const int *, int, strata::kernels::<unnamed>::GdnQ81 *, strata::kernels::GdnGroups)",
+        "registers": 84,
+        "stack_bytes": 0,
+        "local_bytes": 0,
+        "spill_store_bytes": 0,
+        "spill_load_bytes": 0
+      },
+      {
+        "kernel": "void strata::kernels::<unnamed>::gdn_step_norm_multi_kernel<(bool)0, (bool)0, (bool)0>(float *, const float *, int, const float *, const float *, const float *, const float *, float, float *, int, int, int, const int *, int, strata::kernels::<unnamed>::GdnQ81 *, strata::kernels::GdnGroups)",
+        "registers": 128,
+        "stack_bytes": 0,
+        "local_bytes": 0,
+        "spill_store_bytes": 0,
+        "spill_load_bytes": 0
+      }
+    ]
+  },
+  "timings": [
+    {
+      "buffers": 1,
+      "tokens": 1,
+      "baseline_run_median_us": [
+        7.201,
+        7.858,
+        7.718,
+        7.224
+      ],
+      "candidate_run_median_us": [
+        6.9175,
+        6.9485,
+        6.943,
+        7.846
+      ],
+      "baseline_median_of_runs_us": 7.471,
+      "candidate_median_of_runs_us": 6.94575,
+      "paired_candidate_over_baseline": [
+        0.960630467990557,
+        0.8842580809366252,
+        0.8995853848147188,
+        1.0861018826135105
+      ]
+    },
+    {
+      "buffers": 1,
+      "tokens": 2,
+      "baseline_run_median_us": [
+        9.111501,
+        9.5245,
+        9.407,
+        9.056
+      ],
+      "candidate_run_median_us": [
+        8.9035,
+        8.901,
+        8.8975,
+        8.868999
+      ],
+      "baseline_median_of_runs_us": 9.2592505,
+      "candidate_median_of_runs_us": 8.89925,
+      "paired_candidate_over_baseline": [
+        0.9771715988397519,
+        0.9345372460496614,
+        0.9458382055915808,
+        0.9793505962897529
+      ]
+    },
+    {
+      "buffers": 1,
+      "tokens": 4,
+      "baseline_run_median_us": [
+        13.032499,
+        13.0525,
+        12.9875,
+        13.000501
+      ],
+      "candidate_run_median_us": [
+        12.802,
+        12.8015,
+        12.773,
+        12.7655
+      ],
+      "baseline_median_of_runs_us": 13.0165,
+      "candidate_median_of_runs_us": 12.78725,
+      "paired_candidate_over_baseline": [
+        0.9823135225254956,
+        0.980769967439188,
+        0.9834841193455245,
+        0.981923696632922
+      ]
+    },
+    {
+      "buffers": 1,
+      "tokens": 8,
+      "baseline_run_median_us": [
+        20.987,
+        21.0205,
+        20.959499,
+        20.987499
+      ],
+      "candidate_run_median_us": [
+        20.571001,
+        20.518999,
+        20.549,
+        20.539001
+      ],
+      "baseline_median_of_runs_us": 20.987249499999997,
+      "candidate_median_of_runs_us": 20.5440005,
+      "paired_candidate_over_baseline": [
+        0.9801782532043647,
+        0.9761422896696084,
+        0.9804146559037503,
+        0.9786302312629056
+      ]
+    },
+    {
+      "buffers": 48,
+      "tokens": 1,
+      "baseline_run_median_us": [
+        26.081335,
+        25.837835,
+        19.282167,
+        25.823166
+      ],
+      "candidate_run_median_us": [
+        27.818331,
+        26.322166,
+        25.943666,
+        25.861666
+      ],
+      "baseline_median_of_runs_us": 25.8305005,
+      "candidate_median_of_runs_us": 26.132916,
+      "paired_candidate_over_baseline": [
+        1.0665991982388938,
+        1.018745030301494,
+        1.345474603554673,
+        1.0014909093640958
+      ]
+    },
+    {
+      "buffers": 48,
+      "tokens": 2,
+      "baseline_run_median_us": [
+        27.531166,
+        26.374498,
+        18.649334,
+        30.930498
+      ],
+      "candidate_run_median_us": [
+        26.824333,
+        26.271166,
+        26.270332,
+        26.114502
+      ],
+      "baseline_median_of_runs_us": 26.952832,
+      "candidate_median_of_runs_us": 26.270749000000002,
+      "paired_candidate_over_baseline": [
+        0.9743260783070358,
+        0.996082124482521,
+        1.4086471935137201,
+        0.8442962024083803
+      ]
+    },
+    {
+      "buffers": 48,
+      "tokens": 4,
+      "baseline_run_median_us": [
+        30.757166,
+        36.643501,
+        22.4695,
+        31.115
+      ],
+      "candidate_run_median_us": [
+        32.550999,
+        34.747669,
+        29.895166,
+        32.227833
+      ],
+      "baseline_median_of_runs_us": 30.936083,
+      "candidate_median_of_runs_us": 32.389416,
+      "paired_candidate_over_baseline": [
+        1.0583224410207364,
+        0.9482628038188818,
+        1.3304775807205322,
+        1.03576516149767
+      ]
+    },
+    {
+      "buffers": 48,
+      "tokens": 8,
+      "baseline_run_median_us": [
+        50.089664,
+        49.903667,
+        40.369999,
+        49.309666
+      ],
+      "candidate_run_median_us": [
+        49.623337,
+        51.373669,
+        40.422832,
+        49.126171
+      ],
+      "baseline_median_of_runs_us": 49.6066665,
+      "candidate_median_of_runs_us": 49.374753999999996,
+      "paired_candidate_over_baseline": [
+        0.9906901551585573,
+        1.0294567932252354,
+        1.001308719378467,
+        0.9962787214985395
+      ]
+    }
+  ]
+}

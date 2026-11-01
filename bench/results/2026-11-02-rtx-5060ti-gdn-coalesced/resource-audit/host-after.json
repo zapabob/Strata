@@ -1,0 +1,7 @@
+{
+  "utc": "2026-11-01T19:49:38.9873800Z",
+  "available_ram_bytes": 4616404992,
+  "total_ram_bytes": 34224869376,
+  "free_virtual_bytes": 5110816768,
+  "real_model_run": "NOT_RUN: admission requires 16 GiB available RAM and 8 GiB available VRAM"
+}

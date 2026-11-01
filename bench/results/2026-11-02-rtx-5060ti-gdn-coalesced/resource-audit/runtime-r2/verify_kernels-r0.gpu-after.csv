@@ -1,0 +1,2 @@
+timestamp, name, memory.used [MiB], memory.free [MiB], utilization.gpu [%], clocks.current.sm [MHz], clocks.current.memory [MHz]
+2026/11/02 04:55:30.308, NVIDIA GeForce RTX 5060 Ti, 11672 MiB, 4379 MiB, 99 %, 3097 MHz, 14867 MHz

@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "created": "2026-11-02",
+  "target": {
+    "gpu": "NVIDIA GeForce RTX 5060 Ti",
+    "vramMib": 16311,
+    "os": "Windows 11",
+    "ramGb": 32
+  },
+  "pins": {
+    "forkHeadAtPlan": "b52a198300f11437b1ed2d2cc373aa73f60ea055",
+    "upstreamHeadAtPlan": "c62d5e3a15b40ea51c96aae9e8d36928965f53ab",
+    "hikariRevision": "c42fdf9debd1ba8daf4ac171d81b2052f841058f",
+    "prismSource": "73bfe6cc485554822f80c473a3c0c4f25e80f41b"
+  },
+  "workloads": [
+    {
+      "id": "H0-baseline-diag",
+      "kind": "diagnostic",
+      "context": [4096, 32768],
+      "kType": "q8_0",
+      "vType": "q8_0",
+      "notes": "Capture RunObservation only; no speed claim"
+    },
+    {
+      "id": "L0-context-ladder",
+      "kind": "capacity",
+      "context": [4096, 32768, 65536, 131072],
+      "inputNearContext": false,
+      "notes": "Capacity vs near-full input are separate arms"
+    }
+  ],
+  "privacy": {
+    "forbidPromptTextInResults": true,
+    "forbidApiKeys": true,
+    "forbidAbsolutePrivatePaths": true
+  }
+}
