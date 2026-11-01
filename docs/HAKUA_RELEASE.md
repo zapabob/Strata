@@ -1,6 +1,6 @@
 # Hakua Windows release qualification
 
-GUI/Product **0.4.0-preview.20261101.1**, native engine/Control **0.4.0**, Hakua-memory **0.3.5**. Integrated upstream 0.2.9 is frozen at `c62d5e3a15b40ea51c96aae9e8d36928965f53ab`. Local package checks are complete. Public download verification is pending.
+GUI/Product **0.4.0-preview.20261101.1**, native engine/Control **0.4.0**, Hakua-memory **0.3.5**. Integrated upstream 0.2.9 is frozen at `c62d5e3a15b40ea51c96aae9e8d36928965f53ab`. Local package checks are complete. Public release and anonymous download verification are complete; see the publication record below.
 
 ## Distribution and installation
 
@@ -36,6 +36,10 @@ App source: `be0960a0707ab2e7fc1a90d5a7888ffd149c9858`. Embedded unchanged Contr
 | `strata-engine-0.4.0-windows-x86_64-cuda-cuda13.tar.gz` | 1418256311 | `3972253734ce936527d75c6048bad7b7bffbcefad32085cdca6143d367ba0e84` |
 | `strata-feed.json` | 1381 | `98d6a3c7b01cc0dc1dc9acb062539bac794348221200ef6e5254289ab1f3331e` |
 | `strata-feed.json.sig` | 151 | `d51204e14739662b7ab2791748c3ed761d268248ebc41c3c9f5f01f57d684603` |
+
+## Published download verification
+
+Published 2026-11-01T19:36:42Z, release ID430808779, source tag `v0.4.0-preview.20261101.1` at `a35bb92c8fb3f53ff75ebccf1fa457519d6e0b77`. All eight public assets were downloaded without authentication and matched the qualified local size, SHA256 and GitHub asset digest. The latest-release pointer, latest/download feed, Ed25519 feed signature, sequence20261101160145 and flat engine/Control package URLs passed at 2026-11-01T19:39:33.566443+00:00. App binaries remain those built from be0960a0; this publication receipt changes documentation only.
 
 ## Limits and retained failures
 
