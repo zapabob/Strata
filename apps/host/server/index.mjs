@@ -71,6 +71,7 @@ import { appVersionFrom, appVersionToShow } from './app-version.mjs';
 import { createImageModels } from './image-models.mjs';
 import { createRuntimeModels } from './runtime-models.mjs';
 import { createNativeControl } from './native-control.mjs';
+import { createLlamaMemory, sameMemoryOrigin } from './llama-memory.mjs';
 import { nativeUnloadPlan } from './storage-check.mjs';
 import { installBundledEngine, cleanupAfterInstall } from './bundled-engine.mjs';
 import { systemLocale } from './region.mjs';
@@ -124,6 +125,7 @@ const imageModels = createImageModels({ dataDir: store.DATA_DIR, modelsDir: () =
 /* The installed app ships Strata Control (python + strata_control) next to the host; a source checkout has none and keeps its older paths. */
 const CONTROL = findControl();
 const control = createControl({ control: CONTROL });
+const llamaMemory=createLlamaMemory({directory:store.DATA_DIR,control:CONTROL,enable:()=>supervisor.enableMemory(),target:()=>supervisor.memoryTarget(),onBeforeStop:supervisor.onBeforeStop});
 // Files a run as administrator made in Strata's own folders (owner Administrators) are given back to the user at every start; best effort, never blocks.
 if (control && process.platform === 'win32' && !process.env.STRATA_NO_REPAIR_ACCESS) void control.repairAccess().catch(() => {});
 /* Which window shows the page (the app window or, when that cannot run, a browser tab) and what only the app window can do: app-ui.mjs. */
@@ -1007,6 +1009,20 @@ async function api(req, res, path, method, url) {
   // --- events -------------------------------------------------------------
   if (path.startsWith('/api/memory')) return handleMemoryRoute(req, res, path, method, readBody);
   if (path === '/api/events') return hub.add(res);
+  if(path==='/api/hakua/chat'&&method==='POST'){
+    if(!native.state().capabilities.hakuaChatbot)return error(res,404,'Hakua memory chat is off.');
+    return await llamaMemory.chat(req,res);
+  }
+  if(path==='/api/hakua/access'&&method==='POST'){
+    res.removeHeader('access-control-allow-origin');
+    if(!sameMemoryOrigin(req))return error(res,403,'Open memory chat in the local Strata app.');
+    if(!native.state().capabilities.hakuaChatbot)return error(res,404,'Hakua memory chat is off.');
+    if(serving.state().requests.some(r=>['queued','generating'].includes(r.state)))return error(res,409,'Finish requests before opening memory chat.');
+    try { await readBody(req,1024); }
+    catch { return error(res,400,'Memory access needs a valid JSON request within 1 KiB.'); }
+    try { return json(res,200,await llamaMemory.access()); }
+    catch(e) { return error(res,409,e.message); }
+  }
   if(path.startsWith('/api/native')){try{
   if(path==='/api/native'&&method==='GET')return json(res,200,await native.refresh(url.searchParams.get('refresh')==='1'));
   if(path==='/api/native'&&method==='PATCH')return json(res,200,await native.configure(await readBody(req)));
@@ -1328,6 +1344,13 @@ async function api(req, res, path, method, url) {
     return token.length >= 32 && given.length === token.length && timingSafeEqual(Buffer.from(given), Buffer.from(token));
   };
   // Which window the person is using: the page shows "Quit Strata" in browser mode only.
+  if (path === '/api/app/build' && method === 'GET') {
+    res.setHeader('Cache-Control', 'no-store');
+    // Read the Host's own package. The shell's environment cannot establish which Host was bundled.
+    let host = null;
+    try { host = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version ?? null; } catch { /* renderer shows recovery */ }
+    return json(res, 200, { host, shell: process.env.STRATA_APP_VERSION?.trim() || null });
+  }
   if (path === '/api/app/mode' && method === 'GET') return json(res, 200, appUi.state());
   if (path === '/api/app/quit' && method === 'POST') {
     // A web page cannot send this header without the browser asking the host first, and the host refuses pages that are not local (above).
@@ -2291,10 +2314,11 @@ server.listen(PORT, HOST, () => {
 let stopping=false;
 const shutdown = async () => {
   if(stopping)return;stopping=true;
+  llamaMemory.close();
   clearInterval(taskTimer);tasks.close();
   const timeout=setTimeout(()=>process.exit(0),control?45000:10000);timeout.unref();   // stopping an engine through Control: drained (15 s), then ended; the shell's deadline is longer
   server.close();server.closeAllConnections?.();
-  await Promise.allSettled([localShare.stop(),cloudflare.stop(),native.close(),agent.close()]);
+  await Promise.allSettled([localShare.stop(),cloudflare.stop(),native.close(),agent.close(),supervisor.stop()]);
   process.exit(0);
 };
 // Every ordinary way of being told to stop takes the clean path: Ctrl+C, kill, the terminal closing (SIGHUP), Ctrl+Break.

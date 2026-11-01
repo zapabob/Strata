@@ -1,0 +1,8 @@
+.hakua-memory-log{max-height:calc(var(--st-s-16)*4);overflow:auto;border:1px solid var(--st-line);border-radius:var(--st-r-sm);padding:var(--st-s-4);background:var(--st-surface-2)}
+.hakua-memory-log:empty{display:none}
+.hakua-memory-turn+ .hakua-memory-turn{margin-top:var(--st-s-4)}
+.hakua-memory-turn p{white-space:pre-wrap;overflow-wrap:anywhere;margin:var(--st-s-1) 0 0}
+.hakua-memory-consent{display:flex;flex-direction:column;gap:var(--st-s-3);margin-top:var(--st-s-4)}
+.hakua-memory-consent label{display:flex;align-items:flex-start;gap:var(--st-s-2)}
+.hakua-memory-consent input{accent-color:var(--st-accent);margin-top:var(--st-s-1)}
+.hakua-memory-dialog textarea{resize:vertical;min-height:calc(var(--st-s-16)*2)}

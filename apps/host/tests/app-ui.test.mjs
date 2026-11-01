@@ -109,10 +109,23 @@ async function startHost(extraEnv) {
 }
 
 test('browser-mode host over HTTP: mode, Quit needs the client header, then the host stops cleanly and only listens on 127.0.0.1', async () => {
-  const { port, host, exited, home, base } = await startHost({ STRATA_UI_MODE: 'browser' });
+  const { port, host, exited, home, base } = await startHost({ STRATA_UI_MODE: 'browser', STRATA_HAKUA_CHATBOT: '1' });
   try {
     const mode = await (await fetch(`${base}/api/app/mode`)).json();
     assert.equal(mode.mode, 'browser'); assert.equal(mode.canQuit, true);
+    const buildResponse = await fetch(`${base}/api/app/build`);
+    const build = await buildResponse.json();
+    assert.equal(buildResponse.headers.get('cache-control'), 'no-store');
+    assert.equal(build.host, JSON.parse(await (await import('node:fs/promises')).readFile(join(root, 'package.json'), 'utf8')).version);
+    assert.equal(build.shell, process.env.STRATA_APP_VERSION?.trim() || null);
+    const memory = await fetch(`${base}/api/hakua/chat`, {method:'POST',headers:{origin:base},body:'{}'});
+    assert.equal(memory.status,401);
+    assert.match((await memory.json()).error,/valid Hakua memory key/);
+    const crossMemory = await fetch(`${base}/api/hakua/access`, {method:'POST',headers:{origin:'http://localhost:1'},body:'{}'});
+    assert.equal(crossMemory.status,403);
+    const unavailableMemory = await fetch(`${base}/api/hakua/access`, {method:'POST',headers:{origin:base},body:'{}'});
+    assert.equal(unavailableMemory.status,409);
+    assert.match((await unavailableMemory.json()).error,/updated Hakua Control|Load a PrismML/);
     // a plain POST (what a web page could send without asking first) is refused, and so is a page from another site
     assert.equal((await fetch(`${base}/api/app/quit`, { method: 'POST' })).status, 403);
     assert.equal((await fetch(`${base}/api/app/quit`, { method: 'POST', headers: { 'x-strata-client': 'ui', origin: 'https://example.com' } })).status, 403);

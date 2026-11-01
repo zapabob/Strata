@@ -28,7 +28,36 @@
     <link rel="manifest" href="/site.webmanifest" />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <main id="startup-status" role="status" style="max-width:36rem;margin:12vh auto;padding:1.5rem;font-family:system-ui,sans-serif;line-height:1.6">
+        <h1>Starting Strata…</h1>
+        <p>Checking the installed app.</p>
+        <button type="button" onclick="location.reload()">Reload</button>
+      </main>
+    </div>
+    <script>
+      // This remains available when the module or one of its imports fails to load.
+      (() => {
+        let ready = false;
+        const failed = () => {
+          if (ready) return;
+          const status = document.getElementById('startup-status');
+          if (!status) return;
+          status.setAttribute('role', 'alert');
+          status.querySelector('h1').textContent = 'Strata could not start';
+          status.querySelector('p').textContent = 'Reload the app. If this continues, reinstall the complete matching Hakua release. Your model files and memories do not need to be deleted.';
+        };
+        const timer = setTimeout(failed, 20000);
+        addEventListener('error', failed, true);
+        addEventListener('unhandledrejection', failed);
+        addEventListener('strata-renderer-ready', () => {
+          ready = true;
+          clearTimeout(timer);
+          removeEventListener('error', failed, true);
+          removeEventListener('unhandledrejection', failed);
+        }, { once: true });
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

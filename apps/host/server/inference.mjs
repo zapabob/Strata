@@ -249,7 +249,7 @@ export async function proxyCompletion({ baseUrl, message, history = [], systemPr
   const sampling = { temperature: defaults['sample.temp'] ?? 0.6, top_p: defaults['sample.topP'] ?? 0.95, top_k: defaults['sample.topK'] ?? 40, repeat_penalty: defaults['sample.repeat'] ?? 1.05, seed: defaults['sample.seed'] ?? -1, experimental_speed_projection: defaults['sample.speedProjection'] ?? true, ...(Number(defaults['sample.maxTokens']) > 0 ? {max_tokens: Number(defaults['sample.maxTokens'])} : {}) };
   const res = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', ...(authorization?{authorization:`Bearer ${authorization}`} :supervised && getStore().serving?.apiKey ? { authorization: `Bearer ${getStore().serving.apiKey}` } : {}) },
+    headers: { 'content-type': 'application/json', ...(authorization?{authorization:`Bearer ${authorization}`} :supervised && (supervisor.authenticationKey() || getStore().serving?.apiKey) ? { authorization: `Bearer ${supervisor.authenticationKey() || getStore().serving.apiKey}` } : {}) },
     signal,
     body: JSON.stringify({
       model: modelId,

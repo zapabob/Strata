@@ -147,6 +147,7 @@ def check(folder: Path) -> int:
     python = folder / pt.PYTHON_PINS[target]["python"]
     problems = []
     for need in (python, folder / "strata.py", folder / "strata_control", folder / "serve" / "server.py", folder / "BUNDLE.json",
+                 folder / "serve" / "memory_harness.py", folder / "serve" / "llama_memory.py",
                  folder / "setup.py", folder / "tools" / "strata_mcp.py", folder / "tools" / "iq_pack.py", folder / "data" / "draft_vocab.bin"):
         if not need.exists():
             problems.append(f"missing {need}")

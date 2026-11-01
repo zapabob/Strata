@@ -7,6 +7,14 @@ export const DESKTOP_MEMORY_KEY_ENV='STRATA_HAKUA_LOCAL_KEY';
 /** Preserve explicit operator configuration, including an explicit disabled harness. */
 export function configureDesktopMemory(cfg,{enabled=false,directory,env=process.env}={}) {
   if(!enabled || cfg.hakua_harness!==undefined) return null;
+  const identity=desktopMemoryIdentity({directory,env});
+  privateMemoryArgs(cfg);
+  cfg.hakua_harness={enabled:true,users:[{principal:'local',key_env:DESKTOP_MEMORY_KEY_ENV,root:identity.profileRoot}]};
+  return identity;
+}
+
+/** Shared local identity across native, PrismML and TurboQuant; no store is opened. */
+export function desktopMemoryIdentity({directory,env=process.env}={}) {
   if(env.STRATA_BATCH_TRACE) {
     if(!['0','false','off'].includes(String(env.STRATA_BATCH_TRACE).trim().toLowerCase())) {
       throw new Error('Unset STRATA_BATCH_TRACE before using Hakua memory.');
@@ -19,8 +27,6 @@ export function configureDesktopMemory(cfg,{enabled=false,directory,env=process.
   const key=env[DESKTOP_MEMORY_KEY_ENV]??randomBytes(32).toString('hex');
   env[DESKTOP_MEMORY_KEY_ENV]=key;
   const root=join(resolve(directory),'hakua-memory','local');
-  privateMemoryArgs(cfg);
-  cfg.hakua_harness={enabled:true,users:[{principal:'local',key_env:DESKTOP_MEMORY_KEY_ENV,root}]};
   return {profileKey:key,profileRoot:root};
 }
 

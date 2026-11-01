@@ -47,6 +47,20 @@ test('the fix catalogs have the same keys and placeholders in all nine languages
   }
 });
 
+test('memory read/save consent and result notices are translated in every supported language', async () => {
+  const en = await read('en');
+  for (const language of languages.filter(value => value !== 'en')) {
+    const catalog = await read(language);
+    setTranslationLanguage(language);
+    for (let index = 1; index <= 11; index++) {
+      const id = 'hk' + String(index).padStart(3, '0');
+      assert.equal(typeof catalog[id], 'string', `${language}: ${id}`);
+      assert.notEqual(tr(en[id]), en[id], `${language}: ${id} must not fall back to English`);
+    }
+  }
+  setTranslationLanguage('en');
+});
+
 test('the /plan, /research and /new hints and the four "Open ..." hints are translated (#3479, #3825)', () => {
   for (const language of ['zh', 'ru']) {
     setTranslationLanguage(language);

@@ -11,6 +11,8 @@
  *   2. any already-running OpenAI-compatible server on localhost
  */
 import { CONTEXT_TOKENS } from './catalog.mjs';
+import { randomBytes } from 'node:crypto';
+import { privateLlamaArgs } from './llama-memory-policy.mjs';
 import { spawn } from 'node:child_process';
 import { existsSync, readFileSync, realpathSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -22,6 +24,8 @@ import { resolveKvSettings, explicitKvEnvironment } from './kv-settings.mjs';
 import {localBackendChoice,findLocalBackend,verifyLocalBackend,requireRuntimeKv} from './local-backends.mjs';
 
 const LOG_LIMIT = 400;
+const emptyMetrics = () => ({source:'none',promptTokens:0,predictedTokens:0,promptTps:0,outputTps:0,
+  kvUsage:0,kvTokens:0,requestsProcessing:0,requestsDeferred:0,sampledAt:null});
 
 const state = {
   status: 'stopped', // stopped | starting | running | stopping | error
@@ -38,21 +42,27 @@ const state = {
   startedAt: null,
   error: null,
   logs: [],
-  metrics: {
-    source: 'none',
-    promptTokens: 0,
-    predictedTokens: 0,
-    promptTps: 0,
-    outputTps: 0,
-    kvUsage: 0,
-    kvTokens: 0,
-    requestsProcessing: 0,
-    requestsDeferred: 0,
-    sampledAt: null,
-  },
+  metrics: emptyMetrics(),
 };
 
 let child = null;
+let lastStart = null, privateKey = '', memoryMode = false;
+const stopListeners=new Set();
+export function onBeforeStop(listener){stopListeners.add(listener);return()=>stopListeners.delete(listener);}
+export function authenticationKey(){return privateKey;}
+export function memoryTarget(){
+  if(!isRunning()||!memoryMode||!privateKey)throw new Error('Open Hakua memory chat for a ready local model first.');
+  return {pid:state.pid,port:state.port,model:state.modelId,args:[...state.args],server_key:privateKey};
+}
+export async function enableMemory(){
+  if(!isRunning()||!lastStart)throw new Error('Load a PrismML or TurboQuant model first.');
+  if(!['PrismML','TurboQuant'].includes(state.requestedBackend))throw new Error('Hakua memory requires a verified PrismML or TurboQuant runtime.');
+  if(!memoryMode){
+    if(state.metrics.requestsProcessing||state.metrics.requestsDeferred)throw new Error('Finish the current model requests before opening memory chat.');
+    await start({...lastStart,privateMemory:true});
+  }
+  return memoryTarget();
+}
 let pollTimer = null;
 let hubRef = null;
 let mcpAt=0,mcpStatus=null,mcpPending=false;
@@ -274,13 +284,18 @@ export async function preflight({config,modelPath}) {
   return {binary,backend,runtime};
 }
 
-export async function start({ modelId, modelPath, port = 8080, config, hardware, timeoutMs = 120_000 }) {
-  const args = buildArgs({ modelPath, config, hardware, port });
+export async function start({ modelId, modelPath, port = 8080, config, hardware, timeoutMs = 120_000, privateMemory = false }) {
+  const ordinaryArgs = buildArgs({ modelPath, config, hardware, port });
+  const args = privateMemory ? privateLlamaArgs(ordinaryArgs) : ordinaryArgs;
   const {binary,backend,runtime}=await preflight({config,modelPath});
   if (state.status === 'running' && state.modelId === modelId && state.port === port && state.binary===binary.path && state.requestedBackend===backend && JSON.stringify(state.args)===JSON.stringify(args)) {
     return status();
   }
+  if(privateMemory && !['PrismML','TurboQuant'].includes(backend))throw new Error('A verified local memory runtime is required.');
   if (child) await stop();
+  lastStart={modelId,modelPath,port,config:structuredClone(config),hardware:structuredClone(hardware),timeoutMs};
+  memoryMode=privateMemory;
+  privateKey=privateMemory?randomBytes(32).toString('hex'):'';
   state.binary=binary.path;
   state.binarySource=binary.source;
   state.requestedBackend=backend;
@@ -292,6 +307,8 @@ export async function start({ modelId, modelPath, port = 8080, config, hardware,
   state.modelPath = modelPath;
   state.error = null;
   state.logs = [];
+  state.metrics = emptyMetrics();
+  mcpAt=0;mcpStatus=null;
   state.args = args;
   state.command = describeCommand();
   hubRef?.send('engine-status', status());
@@ -300,7 +317,8 @@ export async function start({ modelId, modelPath, port = 8080, config, hardware,
 
   child = spawn(binary.path, state.args, {
     cwd: join(MODELS_DIR, '..'),
-    env: { ...explicitKvEnvironment(), LLAMA_CACHE: join(MODELS_DIR, '..', 'cache') },
+    windowsHide: true,
+    env: { ...explicitKvEnvironment(), LLAMA_CACHE: join(MODELS_DIR, '..', 'cache'), ...(privateKey?{LLAMA_API_KEY:privateKey}:{}) },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   const launched = child;
@@ -319,6 +337,7 @@ export async function start({ modelId, modelPath, port = 8080, config, hardware,
   child.stderr.on('data', onData('err'));
 
   child.on('exit', (code, signal) => {
+    if(child!==launched)return; // A late exit from the previous process cannot stop its replacement.
     log('supervisor', `engine exited (${signal ?? code})`);
     child = null;
     state.pid = null;
@@ -333,7 +352,7 @@ export async function start({ modelId, modelPath, port = 8080, config, hardware,
   });
 
   try {
-    await waitForHealth(port, timeoutMs, launched, () => spawnError, config.serving?.apiKey ?? '');
+    await waitForHealth(port, timeoutMs, launched, () => spawnError, privateKey || config.serving?.apiKey || '');
   } catch (err) {
     state.status = 'error';
     state.error = err.message;
@@ -351,6 +370,8 @@ export async function start({ modelId, modelPath, port = 8080, config, hardware,
 }
 
 export async function stop() {
+  for(const listener of stopListeners)listener();
+  state.metrics=emptyMetrics();
   if (!child) {
     state.status = 'stopped';
     state.pid = null;
@@ -428,23 +449,27 @@ export function parseEngineMetrics(text) {
 
 export async function pollMetrics() {
   if (state.status !== 'running') return state.metrics;
+  const owner=child;
   try {
     const res = await fetch(`http://127.0.0.1:${state.port}/metrics${state.metrics.dashboard?'?requests=all':''}`, {
       signal: AbortSignal.timeout(1500),
-      headers: state.apiKey ? { authorization: `Bearer ${state.apiKey}` } : undefined,
+      headers: privateKey || state.apiKey ? { authorization: `Bearer ${privateKey || state.apiKey}` } : undefined,
     });
     if (!res.ok) throw new Error(String(res.status));
-    state.metrics = { ...parseEngineMetrics(await res.text()), sampledAt: new Date().toISOString() };
+    const metrics=parseEngineMetrics(await res.text());
+    if(child!==owner||state.status!=='running')return state.metrics;
+    state.metrics = { ...metrics, sampledAt: new Date().toISOString() };
     if(state.metrics.dashboard) {
       state.metrics.dashboard.mcp=mcpStatus;
       if(!mcpPending&&Date.now()-mcpAt>10000) {
         mcpPending=true;mcpAt=Date.now();
-        void fetch(`http://127.0.0.1:${state.port}/mcp`,{signal:AbortSignal.timeout(1500),headers:state.apiKey?{authorization:`Bearer ${state.apiKey}`}:undefined})
+        void fetch(`http://127.0.0.1:${state.port}/mcp`,{signal:AbortSignal.timeout(1500),headers:privateKey||state.apiKey?{authorization:`Bearer ${privateKey||state.apiKey}`}:undefined})
           .then(async response=>{mcpStatus=response.ok?await response.json():null;})
           .catch(()=>{mcpStatus=null;}).finally(()=>{mcpPending=false;});
       }
     }
   } catch {
+    if(child!==owner||state.status!=='running')return state.metrics;
     state.metrics = { ...state.metrics, source: 'unavailable', sampledAt: new Date().toISOString() };
   }
   return state.metrics;

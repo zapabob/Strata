@@ -4,7 +4,7 @@ The Hakua Windows fork bundles the reviewed Hakua-memory 0.3.5 base wheel. Loadi
 
 Real native-engine verification on 2026-10-30 saved a fictional preference, stopped the server and engine, started a fresh process and recalled that preference. Read-only consent left the memory records unchanged, and both servers exited normally. This verifies that scenario; multiuser isolation, general summary quality and the final installer still require their own checks. See [the release qualification record](../docs/HAKUA_RELEASE.md).
 
-PrismML and TurboQuant currently have separate inference paths. The native memory sidebar does not imply memory support for those paths. See [local backends](../docs/LOCAL_LLAMA_BACKENDS.md).
+The 0.4.0 source candidate adds an explicit memory dialog for owned PrismML/PQ2_0 and TurboQuant runtimes. Finish active requests, load the verified backend, then open **Hakua memory** in the sidebar. This restarts that server with authentication and shared prompt/slot caches disabled. The dialog uses the local principal key automatically; select read and save independently before each message. Both choices reset after sending. These backends share the native route's local memory root, without writing the dialog conversation to ordinary chat history. Plain text is supported; tools and attachments are not. Only a normally completed answer can produce a consented factual summary; empty summaries and bare acknowledgments are rejected. Closing or stopping cancels an unfinished turn, but cannot undo a summary already committed. Packaging and final release qualification are still pending. See [local backends](../docs/LOCAL_LLAMA_BACKENDS.md).
 
 ## Use the desktop profile
 

@@ -8,13 +8,17 @@ Strataを基盤とするHakuaチャットボット。 [zapabob/Strata](https://g
 
 このフォークのWindowsインストーラーを取得して実行し、対応モデルを選んで読み込みます。サイドバーのHakua memoryから記憶チャットを開けます。操作手順は約30秒です。ダウンロード、インストール、モデル読み込みの待ち時間は別にかかります。
 
-[Windows EXE](https://github.com/zapabob/Strata/releases/download/v0.3.3-preview.20261030.1/Strata_0.3.3-preview.20261030.1_x64-setup.exe) · [7z](https://github.com/zapabob/Strata/releases/download/v0.3.3-preview.20261030.1/Hakua-Strata-0.3.3-preview.20261030.1-windows-x64-sm120.7z) · [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.3.3-preview.20261030.1/SHA256SUMS.txt)
+ソース版0.4.0は検証中です。修正版の配布・公開はまだ完了していません。
+
+[Windows EXE](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/Strata_0.4.0-preview.20261101.1_x64-setup.exe) · [7z](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/Hakua-Strata-0.4.0-preview.20261101.1-windows-x64-sm120.7z) · [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/SHA256SUMS.txt)
 
 7zには同じインストーラーが入っています。展開してからセットアップ用のEXEを実行してください。
 
 ## このフォークの独自機能
 
 Hakuaは、そのリクエストで同意した場合だけ記憶を参照し、会話要約を保存します。参照と保存の同意は独立しており、リクエストごとに解除されます。対応するネイティブモデルを読み込むと、アプリがローカルの記憶プロファイルを自動で作成します。Hakua memoryを開き、ダイアログの専用キーをコピーし、記憶ページで記憶のチェック欄を選択してから、About → Settingsに貼り付けてください。ソース版の設定を含む詳しい手順は[記憶ガイド](serve/MEMORY_HARNESS.md)にあります。
+
+PrismML/PQ2_0とTurboQuantでも、モデルを読み込み、サイドバーのHakua memoryから記憶チャットを開けます。追加経路のダイアログは本人用のローカルキーを自動で使い、参照・保存は毎回別々のチェック欄で選びます。最初に開く際は、処理中のリクエストを終えてください。アプリが管理するサーバーを認証付き・共有キャッシュ無効の設定で起動し直します。ネイティブと追加経路は同じローカル記憶を使います。起動時にはGUI・Host・デスクトップ本体の版を照合し、混在や読み込み失敗時は復旧手順を表示します。
 
 Hermesの運用ツールは、承認済みSOUL.md / MEMORY.mdの同期、Ebbinghaus記憶、意味グラフ、Obsidian書き出し、sleepによる整理に対応します。これらはチャット画面とは別の機能です。追加のRAG・埋め込み依存は基本インストーラーに含みません。
 
@@ -36,12 +40,12 @@ Spin(8)/Triality、Query-v3、Bonsaiの実験機能は、対応する設定を�
 
 | | |
 | --- | --- |
-| GUI / Product | `0.3.3-preview.20261030.1` |
-| Engine | `0.3.3` (CUDA sm_120) |
+| GUI / Product | `0.4.0-preview.20261101.1` |
+| Engine | `0.4.0` (CUDA sm_120) |
 | Hakua-memory | `0.3.5` |
 | Upstream | `870aedd9` · 0.2.8 |
 
-<!-- App version in this preview tree: `0.3.3-preview.20261030.1` -->
+<!-- App version in this preview tree: `0.4.0-preview.20261101.1` -->
 
 このプレビューは未署名です。導入前にSHA256SUMS.txtと照合してください。[リリース検証記録](docs/HAKUA_RELEASE.md)に実際の試験結果と制約を記載します。ビルド成功だけで推論の正常動作を確認したとはしません。 この未署名プレビューはインストーラーで手動更新してください。署名付き自動更新は未検証です。
 

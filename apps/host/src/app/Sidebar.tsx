@@ -18,6 +18,7 @@ import { MOD, runCommand } from '../lib/commands';
 import { bindingFor, bindingKeys, useBindings } from '../lib/shortcut-bindings';
 import { Btn, Dialog, Icon, IconBtn, type IconName } from '../components/ui';
 import { Brand } from '../components/Brand';
+import { HakuaLlamaChat, type LlamaMemoryAccess } from '../components/HakuaLlamaChat';
 import { api } from '../lib/client';
 import { addWorkspace, deleteSession, go, isUnread, pickWorkspace, pushToast, renameSession, removeWorkspace, renameWorkspace, selectSession, setActiveWorkspace, setNavOpen, togglePin, toggleRail, setTheme, useStore } from '../lib/store';
 export function Sidebar({ containerRef }: {
@@ -40,6 +41,8 @@ export function Sidebar({ containerRef }: {
     const activeSession = useStore(s => s.activeSession);
     const [query, setQuery] = useState('');
     const [hakuaAccess, setHakuaAccess] = useState<{profileKey: string; profileRoot?: string} | null>(null);
+    const [llamaAccess,setLlamaAccess]=useState<LlamaMemoryAccess|null>(null);
+    const [hakuaOpening,setHakuaOpening]=useState(false);
     const [searchOpen, setSearchOpen] = useState(false);
     const searchInput = useRef<HTMLInputElement>(null);
     const searchTrigger = useRef<HTMLButtonElement>(null);
@@ -105,7 +108,7 @@ export function Sidebar({ containerRef }: {
       </div>
       <div className="nav__foot">
         <button className="enginechip" data-state={status === 'Ready' ? 'ready' : ['Reading prompt', 'Thinking', 'Generating', 'Loading'].includes(status) ? 'busy' : 'off'} onClick={() => go('models')} title={tr("{0} \u00B7 {1} \u00B7 {2}", [modelName, modelQuant, tr(status)])} aria-label={tr("{0} \u00B7 {1}", [modelName, modelQuant])}><span className="enginechip__family"><Icon name={modelFamilyIcon(current?.family)} size={20}/><span className="enginechip__dot"/></span><span className="enginechip__text nav__rail-hide"><span className="enginechip__title">{modelName}</span><span className="enginechip__sub">{modelQuant}</span></span></button>
-        {tr(native?.capabilities?.hakuaChatbot ? <button type="button" className="st-btn nav-hakua" disabled={!nativeCurrent || nativeCurrent.status !== 'ready'} title={tr(!nativeCurrent || nativeCurrent.status !== 'ready' ? 'Load a native model first. Hakua memory chat opens its local web page.' : 'Open Hakua memory chat for the loaded model (local browser; enter your memory key there).')} aria-label={tr("Hakua memory chat")} onClick={() => { void api.post<{profileKey?: string; profileRoot?: string}>('/api/native/hakua-chat', { instanceId: nativeCurrent?.id }).then(access => { if(access.profileKey) setHakuaAccess({profileKey:access.profileKey,profileRoot:access.profileRoot}); else pushToast('info', 'Hakua memory chat', 'Opened the local memory page. Enter your own memory key there; the Host key is not used.'); },  error => pushToast('warn', 'Could not open Hakua chat', error instanceof Error ? error.message : String(error))); }}><Icon name="chat" size={18}/><span className="nav__rail-hide">{tr("Hakua memory")}</span></button> : null)}
+        {tr(native?.capabilities?.hakuaChatbot ? <button type="button" className="st-btn nav-hakua" disabled={hakuaOpening || (!current && nativeCurrent?.status !== 'ready')} aria-busy={hakuaOpening} title={tr(hakuaOpening ? 'Preparing memory chat…' : 'Open Hakua memory chat for the loaded model.')} aria-label={tr("Hakua memory chat")} onClick={() => { setHakuaOpening(true); const local=nativeCurrent?.status !== 'ready'; void api.post<{profileKey?: string; profileRoot?: string; runtimeId?: string}>(local?'/api/hakua/access':'/api/native/hakua-chat', { instanceId: nativeCurrent?.id }).then(access => { if(local && access.profileKey && access.runtimeId) setLlamaAccess({profileKey:access.profileKey,profileRoot:access.profileRoot,runtimeId:access.runtimeId}); else if(access.profileKey) setHakuaAccess({profileKey:access.profileKey,profileRoot:access.profileRoot}); else pushToast('info', 'Hakua memory chat', 'Opened the local memory page. Enter your own memory key there; the Host key is not used.'); }, error => pushToast('warn', 'Could not open Hakua chat', error instanceof Error ? error.message : String(error))).finally(()=>setHakuaOpening(false)); }}><Icon name="chat" size={18}/><span className="nav__rail-hide">{tr("Hakua memory")}</span></button> : null)}
         <NavLink route="skills" label={tr("Skills")} icon="skills" current={location.route}/>
         <NavLink route="monitor" label={tr("Monitor")} icon="activity" current={location.route}/>
         <NavLink route="models" label={tr("Models")} icon="models" current={location.route === 'tuning' ? 'models' : location.route}/>
@@ -117,6 +120,7 @@ export function Sidebar({ containerRef }: {
       <button role="menuitem" className="menu__item" onClick={() => { togglePin(menuId); closeMenu(); }}><Icon name="pin"/>{tr(menuSession.pinned ? 'Unpin' : 'Pin')}</button>
       <button role="menuitem" className="menu__item menu__item--danger" onClick={() => { setNavOpen(false); setDeleteId(menuId); setMenuId(null); }}><Icon name="trash"/>{tr("Delete chat")}</button>
     </FloatingMenu> : null)}
+    {llamaAccess?<HakuaLlamaChat access={llamaAccess} onClose={()=>setLlamaAccess(null)}/>:null}
     <Dialog open={!!hakuaAccess} compact title={tr("Hakua memory chat")} onClose={() => setHakuaAccess(null)}
       actions={<><Btn onClick={() => setHakuaAccess(null)}>{tr("Close")}</Btn><Btn variant="primary" onClick={() => { if(hakuaAccess) void navigator.clipboard.writeText(hakuaAccess.profileKey).then(() => pushToast('info', tr("Copied"), ''), () => pushToast('warn', tr("Copy"), tr("Select the key and copy it manually."))); }}>{tr("Copy")}</Btn></>}>
       <p>{tr("Select a memory checkbox on the local page first, then paste this profile key into About → Settings. Confirm consent again before sending.")}</p>

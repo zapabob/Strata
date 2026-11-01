@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Hakua product version 0.3.3-preview.20261030.1, engine 0.3.3 (Metal 0.3.3-metal). Integrated upstream Niko1221 0.2.8 at 870aedd9. The public model families are DeepSeekV4.1-Flash-1017,
+Hakua product version 0.4.0-preview.20261101.1, engine 0.4.0 (Metal source 0.4.0-metal); source candidate, qualification and publication pending. Integrated upstream Niko1221 0.2.8 at 870aedd9. The public model families are DeepSeekV4.1-Flash-1017,
 Qwen3.8-Flash-Next and Qwen3.6-35B-A3B. DeepSeek V4.1-Flash runs in the app and in the Terminal
 (`strata launch --family deepseek41 --model ist-das-2.00bpw`; sets in
 [docs/MODELS.md](docs/MODELS.md#deepseek-v41-flash)). Read **[docs/AI_REFERENCE.md](docs/AI_REFERENCE.md)** for model availability, APIs, hardware limits and

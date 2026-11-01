@@ -1,5 +1,7 @@
 # Hakua Windows release qualification
 
+The source tree now targets GUI/Product **0.4.0-preview.20261101.1** and native engine/Control **0.4.0**. This follow-up is still in qualification: no 0.4.0 installer, archive, tag or release is published. Its changes add startup recovery/version checks and consented memory on owned PrismML/PQ2_0 and TurboQuant servers. The 0.3.3 evidence below describes that earlier published package, not the new source candidate. Current implementation and test evidence are recorded in [_docs/2026-10-31_hakua-gui-and-llama-memory_Codex.md](../_docs/2026-10-31_hakua-gui-and-llama-memory_Codex.md).
+
 GUI/Product: **0.3.3-preview.20261030.1**. Native engine/Control: **0.3.3**. Hakua-memory: **0.3.5**.
 
 This Windows preview integrates upstream 0.2.8 at `870aedd9e1ebe1c91f94da93b59af17729f6c5c0`, the release's fixed upstream source cut. Implementation commit: `767b92fdc24aaacda58812aef2fe87869109a308`; native source was merged in `6b1139108b62e08174286357bacb57d7525b564f`. Local package qualification and downloaded-release verification are complete. [Published release](https://github.com/zapabob/Strata/releases/tag/v0.3.3-preview.20261030.1), source tag `336f074b772197ce9ec249b9586c0dab9269c369`, published 2026-10-30 02:12:17 UTC. The release is the fork's latest release; its title and these instructions identify it as an unsigned preview. [Installation instructions](HAKUA_INSTALL.md).

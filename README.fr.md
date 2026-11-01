@@ -8,13 +8,17 @@ Chatbot Hakua fondé sur Strata. [zapabob/Strata](https://github.com/zapabob/Str
 
 Téléchargez puis lancez le programme Windows de ce fork, choisissez un modèle compatible et chargez-le. Hakua memory dans la barre latérale ouvre le chat à mémoire. Les manipulations prennent environ 30 secondes ; téléchargement, installation et chargement demandent du temps supplémentaire.
 
-[Windows EXE](https://github.com/zapabob/Strata/releases/download/v0.3.3-preview.20261030.1/Strata_0.3.3-preview.20261030.1_x64-setup.exe) · [7z](https://github.com/zapabob/Strata/releases/download/v0.3.3-preview.20261030.1/Hakua-Strata-0.3.3-preview.20261030.1-windows-x64-sm120.7z) · [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.3.3-preview.20261030.1/SHA256SUMS.txt)
+La version source 0.4.0 est encore en cours de validation et de publication.
+
+[Windows EXE](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/Strata_0.4.0-preview.20261101.1_x64-setup.exe) · [7z](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/Hakua-Strata-0.4.0-preview.20261101.1-windows-x64-sm120.7z) · [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/SHA256SUMS.txt)
 
 Le fichier 7z contient le même installateur. Extrayez-le, puis lancez le fichier EXE pour installer le logiciel.
 
 ## Fonctions propres à ce fork
 
 Hakua ne lit les souvenirs et ne sauvegarde un résumé qu’avec votre accord pour la requête en cours. Les deux choix sont indépendants et réinitialisés ensuite. Au chargement d’un modèle natif compatible, l’application crée automatiquement un profil mémoire local. Ouvrez Hakua memory, copiez la clé du profil dans la boîte de dialogue et cochez une option de mémoire sur la page locale, puis collez la clé dans About → Settings. Le [guide mémoire](serve/MEMORY_HARNESS.md) décrit aussi la configuration d’un serveur lancé depuis les sources.
+
+PrismML/PQ2_0 et TurboQuant peuvent aussi utiliser Hakua-memory. Chargez le modèle puis ouvrez Hakua memory dans la barre latérale. La nouvelle fenêtre utilise automatiquement votre clé locale ; lecture et sauvegarde se choisissent séparément à chaque requête. Terminez les requêtes en cours avant la première ouverture : le serveur géré par l’application redémarre avec authentification et sans caches partagés. Les trois chemins partagent le même profil mémoire local. Au démarrage, les versions GUI, Host et bureau sont comparées ; des fichiers incompatibles ou illisibles déclenchent des instructions de récupération.
 
 Les outils Hermes synchronisent SOUL.md / MEMORY.md approuvés et proposent mémoire Ebbinghaus, graphe sémantique, export Obsidian et consolidation sleep. Ils sont distincts du chat ; les dépendances RAG et embeddings optionnelles ne sont pas incluses.
 
@@ -36,12 +40,12 @@ Conservez modèles et souvenirs hors du dossier de l’application. Aucun souven
 
 | | |
 | --- | --- |
-| GUI / Product | `0.3.3-preview.20261030.1` |
-| Engine | `0.3.3` (CUDA sm_120) |
+| GUI / Product | `0.4.0-preview.20261101.1` |
+| Engine | `0.4.0` (CUDA sm_120) |
 | Hakua-memory | `0.3.5` |
 | Upstream | `870aedd9` · 0.2.8 |
 
-<!-- App version in this preview tree: `0.3.3-preview.20261030.1` -->
+<!-- App version in this preview tree: `0.4.0-preview.20261101.1` -->
 
 Cette préversion n’est pas signée. Vérifiez SHA256SUMS.txt avant l’installation. Le [rapport de qualification](docs/HAKUA_RELEASE.md) indique les résultats réels et limites. Une compilation réussie ne prouve pas l’inférence. Cette préversion non signée se met à jour manuellement avec le programme d’installation ; les mises à jour automatiques signées ne sont pas encore vérifiées.
 
