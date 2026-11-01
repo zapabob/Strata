@@ -11,7 +11,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 TEMPLATE = ROOT / "apps" / "desktop" / "src-tauri" / "nsis" / "installer.nsi"
-MAKENSIS = Path(os.environ.get("LOCALAPPDATA", "")) / "tauri" / "NSIS" / "makensis.exe"
+MAKENSIS = Path(os.environ.get("MAKENSIS") or
+                str(Path(os.environ.get("LOCALAPPDATA", "")) / "tauri" / "NSIS" / "makensis.exe"))
 DATA = ["components/engine/0.1.45/strata.exe", "install/strata-iq3_s.json", "procs/p.json", "runtime/r.json", "time-skip/t.json",
         "presets/p.json"]
 APP = ["strata-desktop.exe", "uninstall.exe", "host/server/index.mjs", "node/node.exe", "control/python/python.exe"]
@@ -58,7 +59,9 @@ class MigrationTests(unittest.TestCase):
         template = TEMPLATE.read_text(encoding="utf-8")
         block = chr(10).join(re.search(rf"; STRATA-{name}-BEGIN.*?; STRATA-{name}-END", template, re.S).group(0) for name in ("MIGRATE", "STOP", "CLEAN"))
         script = work / "t.nsi"
-        script.write_text('Unicode true\nOutFile "t.exe"\nRequestExecutionLevel user\nSilentInstall silent\n' + block + "\nSection\n" + body + "\nSectionEnd\n", encoding="utf-8")
+        script.write_text('Unicode true\nOutFile "t.exe"\nRequestExecutionLevel user\nSilentInstall silent\n'
+                          '!include "LogicLib.nsh"\n!include "FileFunc.nsh"\n' + block + "\nSection\n" + body +
+                          '\nWriteUninstaller "u.exe"\nSectionEnd\nSection Uninstall\nSectionEnd\n', encoding="utf-8")
         done = subprocess.run([str(MAKENSIS), "/V1", str(script)], cwd=work, capture_output=True, text=True)
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         subprocess.run([str(work / "t.exe")], cwd=work, check=True, timeout=60)
@@ -143,9 +146,10 @@ class MigrationTests(unittest.TestCase):
             inst = base / "Programs" / "Strata"
             touch(inst, ["strata-desktop.exe", "control/python/python.exe", "control/python/Lib/__pycache__/argparse.cpython-312.pyc",
                          "control/serve/__pycache__/server.cpython-312.pyc", "host/server/index.mjs", "host/logs/made-at-run.txt", "node/node.exe",
-                         "harness/BUNDLE.json", "components/engine/keep.txt", "runtime/keep.json"])
-            self.run_nsis(f'!insertmacro StrataRemoveAppFolders "{inst}"', base)
-            for folder in ("control", "host", "node", "harness"):
+                         "harness/BUNDLE.json", "engine-bundle/0.1.47/strata.exe", "local-backends/prism/old.bin",
+                         "notices/old.txt", "components/engine/keep.txt", "runtime/keep.json"])
+            self.run_nsis(f'!insertmacro StrataRemoveAppFolders "{inst}" ""', base)
+            for folder in ("control", "host", "node", "harness", "engine-bundle", "local-backends", "notices"):
                 self.assertFalse((inst / folder).exists(), folder)
             for name in ("components/engine/keep.txt", "runtime/keep.json", "strata-desktop.exe"):
                 self.assertTrue((inst / name).is_file(), f"kept: {name}")

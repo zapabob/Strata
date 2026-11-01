@@ -36,6 +36,8 @@ Le moteur natif fourni sert à la conversation textuelle. Cette préversion ne c
 
 Conservez modèles et souvenirs hors du dossier de l’application. Aucun souvenir personnel, clé ou poids n’est distribué. Fermez l’application avant la mise à jour. Pour revenir en arrière, gardez une sauvegarde et installez une version antérieure de ce fork.
 
+Si la réduction dans la zone de notification est activée, × masque la fenêtre. Avant une mise à jour, faites un clic droit sur l’icône Strata dans cette zone et choisissez Quitter Strata pour fermer complètement l’application.
+
 [Models](docs/MODELS.md) · [Install](docs/HAKUA_INSTALL.md) · [Hermes tools](tools/hakua_hermes_memory_stack.py)
 
 ## Versions et vérification

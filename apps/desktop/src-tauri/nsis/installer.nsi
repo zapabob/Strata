@@ -720,17 +720,149 @@ SectionEnd
 
 ; STRATA-CLEAN-BEGIN
 ; The app writes into its own folders while it runs (Python bytecode caches under control\, for one), and the file-by-file delete below does not know them,
-; so those folders stayed behind with a few dozen files. These four folders hold only what the installer put there and what the app made there;
-; user data is never in them (it lives in the data folder), and the install folder itself is still removed with a plain RMDir.
-!macro StrataRemoveAppFolders INSTALLDIR
-  RMDir /r "${INSTALLDIR}\control"
-  RMDir /r "${INSTALLDIR}\host"
-  RMDir /r "${INSTALLDIR}\node"
-  RMDir /r "${INSTALLDIR}\harness"
+; so those folders stayed behind with a few dozen files. Bundled engines can also survive an older uninstaller and be adopted after an update.
+; Replace the seven installer-managed resource folders before copying an update. User profiles, memories and models live outside these folders.
+; Keep unrelated files in the installation root; never recursively remove the whole installation directory.
+!macro StrataCheckInstallFolder INSTALLDIR PREFIX
+  Push $0
+  Push $1
+  GetFullPathName $0 "${INSTALLDIR}"
+  !if "${PREFIX}" == "un."
+    ${un.GetRoot} "$0" $1
+  !else
+    ${GetRoot} "$0" $1
+  !endif
+  ${If} "${INSTALLDIR}" == ""
+  ${OrIf} $0 == ""
+  ${OrIf} $0 == $1
+  ${OrIf} $0 == "$1\"
+    MessageBox MB_ICONSTOP|MB_OK "Choose a dedicated Strata installation folder, not a drive or share root." /SD IDOK
+    SetErrorLevel 2
+    Quit
+  ${EndIf}
+  System::Call 'kernel32::GetFileAttributesW(w r0) i.r0'
+  ${If} $0 != -1
+    IntOp $1 $0 & 0x400
+    ${If} $1 != 0
+      MessageBox MB_ICONSTOP|MB_OK "The Strata installation folder is a link. Choose its regular destination folder instead." /SD IDOK
+      SetErrorLevel 2
+      Quit
+    ${EndIf}
+  ${EndIf}
+  Pop $1
+  Pop $0
+!macroend
+
+!macro StrataRegularTreeFunction PREFIX
+Function ${PREFIX}StrataTreeHasLink
+  Exch $0
+  Push $1
+  Push $2
+  Push $3
+  Push $4
+  Push $5
+  Push $6
+  StrCpy $5 0
+  System::Call 'kernel32::GetFileAttributesW(w r0) i.r6'
+  IntOp $3 $6 & 0x400
+  ${If} $6 == -1
+  ${OrIf} $3 != 0
+    StrCpy $5 1
+  ${Else}
+    ClearErrors
+    FindFirst $1 $2 "$0\*"
+    ${If} ${Errors}
+      StrCpy $5 1
+    ${Else}
+      ${DoWhile} $2 != ""
+        ${If} $2 != "."
+        ${AndIf} $2 != ".."
+          StrCpy $4 "$0\$2"
+          System::Call 'kernel32::GetFileAttributesW(w r4) i.r6'
+          IntOp $3 $6 & 0x400
+          ${If} $6 == -1
+          ${OrIf} $3 != 0
+            StrCpy $5 1
+            ${ExitDo}
+          ${EndIf}
+          IntOp $3 $6 & 0x10
+          ${If} $3 != 0
+            Push $4
+            Call ${PREFIX}StrataTreeHasLink
+            Pop $3
+            ${If} $3 != 0
+              StrCpy $5 1
+              ${ExitDo}
+            ${EndIf}
+          ${EndIf}
+        ${EndIf}
+        FindNext $1 $2
+      ${Loop}
+      FindClose $1
+    ${EndIf}
+  ${EndIf}
+  StrCpy $0 $5
+  Pop $6
+  Pop $5
+  Pop $4
+  Pop $3
+  Pop $2
+  Pop $1
+  Exch $0
+FunctionEnd
+!macroend
+!insertmacro StrataRegularTreeFunction ""
+!insertmacro StrataRegularTreeFunction "un."
+
+!macro StrataCheckManagedAppFolder INSTALLDIR FOLDER PREFIX
+  Push $0
+  Push $1
+  System::Call 'kernel32::GetFileAttributesW(w "${INSTALLDIR}\${FOLDER}") i.r0'
+  ${If} $0 != -1
+    Push "${INSTALLDIR}\${FOLDER}"
+    Call ${PREFIX}StrataTreeHasLink
+    Pop $1
+    ${If} $1 != 0
+      MessageBox MB_ICONSTOP|MB_OK "A Strata application folder contains a link or cannot be checked. Setup stopped to protect its target. Choose a regular installation folder." /SD IDOK
+      SetErrorLevel 2
+      Quit
+    ${EndIf}
+  ${EndIf}
+  Pop $1
+  Pop $0
+!macroend
+
+!macro StrataRemoveManagedAppFolder INSTALLDIR FOLDER
+  ClearErrors
+  RMDir /r "${INSTALLDIR}\${FOLDER}"
+  ${If} ${Errors}
+    MessageBox MB_ICONSTOP|MB_OK "Strata application files are still in use. Close Strata and its models, then run setup again." /SD IDOK
+    SetErrorLevel 2
+    Quit
+  ${EndIf}
+!macroend
+!macro StrataRemoveAppFolders INSTALLDIR PREFIX
+  !insertmacro StrataCheckInstallFolder "${INSTALLDIR}" "${PREFIX}"
+  ; Check every tree before removing any tree: RMDir /r can follow nested directory junctions.
+  !insertmacro StrataCheckManagedAppFolder "${INSTALLDIR}" "control" "${PREFIX}"
+  !insertmacro StrataCheckManagedAppFolder "${INSTALLDIR}" "host" "${PREFIX}"
+  !insertmacro StrataCheckManagedAppFolder "${INSTALLDIR}" "node" "${PREFIX}"
+  !insertmacro StrataCheckManagedAppFolder "${INSTALLDIR}" "harness" "${PREFIX}"
+  !insertmacro StrataCheckManagedAppFolder "${INSTALLDIR}" "engine-bundle" "${PREFIX}"
+  !insertmacro StrataCheckManagedAppFolder "${INSTALLDIR}" "local-backends" "${PREFIX}"
+  !insertmacro StrataCheckManagedAppFolder "${INSTALLDIR}" "notices" "${PREFIX}"
+  !insertmacro StrataRemoveManagedAppFolder "${INSTALLDIR}" "control"
+  !insertmacro StrataRemoveManagedAppFolder "${INSTALLDIR}" "host"
+  !insertmacro StrataRemoveManagedAppFolder "${INSTALLDIR}" "node"
+  !insertmacro StrataRemoveManagedAppFolder "${INSTALLDIR}" "harness"
+  !insertmacro StrataRemoveManagedAppFolder "${INSTALLDIR}" "engine-bundle"
+  !insertmacro StrataRemoveManagedAppFolder "${INSTALLDIR}" "local-backends"
+  !insertmacro StrataRemoveManagedAppFolder "${INSTALLDIR}" "notices"
 !macroend
 ; STRATA-CLEAN-END
 
 Section Install
+  !insertmacro StrataCheckInstallFolder "$INSTDIR" ""
   SetOutPath $INSTDIR
 
   !ifmacrodef NSIS_HOOK_PREINSTALL
@@ -740,6 +872,8 @@ Section Install
   !insertmacro StrataMigrateOldInstall "$LOCALAPPDATA\${PRODUCTNAME}" "$INSTDIR"
 
   !insertmacro CheckIfAppIsRunning "$INSTDIR\${MAINBINARYNAME}.exe" "${PRODUCTNAME}"
+
+  !insertmacro StrataRemoveAppFolders "$INSTDIR" ""
 
   ; Copy main executable
   File "${MAINBINARYSRCPATH}"
@@ -871,6 +1005,7 @@ Function un.onInit
 FunctionEnd
 
 Section Uninstall
+  !insertmacro StrataCheckInstallFolder "$INSTDIR" "un."
 
   !ifmacrodef NSIS_HOOK_PREUNINSTALL
     !insertmacro NSIS_HOOK_PREUNINSTALL
@@ -909,7 +1044,7 @@ Section Uninstall
   {{/each}}
 
 
-  !insertmacro StrataRemoveAppFolders "$INSTDIR"
+  !insertmacro StrataRemoveAppFolders "$INSTDIR" "un."
 
   ; Delete uninstaller
   Delete "$INSTDIR\uninstall.exe"

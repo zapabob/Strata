@@ -36,6 +36,8 @@ The bundled native engine is for text chat. Native image input and the separate 
 
 Keep models and personal memory outside the app folder; no personal memories, profile keys or weights are distributed. Close the app before upgrading. To roll back, retain a data backup and install an earlier fork release.
 
+With tray storage enabled, × hides the window. To exit fully before an update, right-click the Strata tray icon and choose Quit Strata.
+
 [Models](docs/MODELS.md) · [Install](docs/HAKUA_INSTALL.md) · [Hermes tools](tools/hakua_hermes_memory_stack.py)
 
 ## Versions and validation

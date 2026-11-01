@@ -36,6 +36,8 @@ Dołączony silnik natywny służy do rozmowy tekstowej. Ta wersja podglądowa n
 
 Modele i wspomnienia przechowuj poza folderem aplikacji. Osobiste wspomnienia, klucze i wagi nie są dołączone. Zamknij aplikację przed aktualizacją. Aby wrócić, zachowaj kopię danych i zainstaluj starsze wydanie forka.
 
+Gdy włączone jest chowanie do zasobnika, × ukrywa okno. Przed aktualizacją kliknij prawym przyciskiem ikonę Strata w zasobniku i wybierz Zakończ Strata, aby całkowicie zamknąć aplikację.
+
 [Models](docs/MODELS.md) · [Install](docs/HAKUA_INSTALL.md) · [Hermes tools](tools/hakua_hermes_memory_stack.py)
 
 ## Wersje i weryfikacja

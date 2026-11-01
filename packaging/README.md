@@ -148,6 +148,16 @@ The Terminal bundles a private Python and its dependencies for `windows-x86_64`,
 
 ## Release checks and gaps
 
+Windows updates replace the seven installer-managed resource folders before copying the new payload: Control, Host, Node, Harness, engine-bundle, local-backends and notices. The installer checks those trees for links first and refuses linked or locked content instead of reporting a mixed installation as successful. User profiles, memories and model libraries live outside these folders.
+
+Run the Windows cleanup regression with an installed NSIS compiler and a fresh output directory:
+
+```powershell
+pwsh -NoProfile -File tools/test_nsis_upgrade.ps1 -OutputDir (Join-Path $env:TEMP 'Strata-nsis-check-1')
+```
+
+It compiles the production cleanup macros into isolated fixtures. It checks upgrades, fresh/empty directories, locked runtimes, nested directory junctions and an installation-root junction, plus uninstall/data preservation. It does not download models or install the real app. The final full installer still needs its own upgrade and payload comparison.
+
 - CI covers scripts, Terminal checks, Metal builds and Docker images ([.github/workflows](../.github/workflows)). It does not replace native desktop
   packaging, signing or real-GPU acceptance on every target. Some recipes still run by hand.
 - Signing needs the owner's credentials, which are never in this tree. The feed and every engine package are signed with the feed key

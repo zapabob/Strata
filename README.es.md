@@ -36,6 +36,8 @@ El motor nativo incluido permite chat de texto. Esta versión preliminar no incl
 
 Guarda modelos y recuerdos fuera de la carpeta del programa. No se distribuyen recuerdos personales, claves ni pesos. Cierra la aplicación antes de actualizar. Para volver atrás, conserva una copia de tus datos e instala una versión anterior del fork.
 
+Con la opción de minimizar a la bandeja activada, × oculta la ventana. Antes de actualizar, haz clic derecho en el icono de Strata de la bandeja y elige Salir de Strata para cerrar la aplicación por completo.
+
 [Models](docs/MODELS.md) · [Install](docs/HAKUA_INSTALL.md) · [Hermes tools](tools/hakua_hermes_memory_stack.py)
 
 ## Versiones y verificación

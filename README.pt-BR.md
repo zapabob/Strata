@@ -36,6 +36,8 @@ O motor nativo incluído atende ao chat de texto. Esta prévia não inclui a ent
 
 Mantenha modelos e lembranças fora da pasta do programa. Lembranças pessoais, chaves e pesos não são distribuídos. Feche o aplicativo antes de atualizar. Para voltar, preserve o backup e instale uma versão anterior deste fork.
 
+Com a opção de recolher à bandeja ativada, × oculta a janela. Antes de atualizar, clique com o botão direito no ícone do Strata na bandeja e escolha Sair do Strata para encerrar o aplicativo por completo.
+
 [Models](docs/MODELS.md) · [Install](docs/HAKUA_INSTALL.md) · [Hermes tools](tools/hakua_hermes_memory_stack.py)
 
 ## Versões e verificação

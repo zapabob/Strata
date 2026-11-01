@@ -18,8 +18,8 @@ POWERSHELL = shutil.which("powershell") or shutil.which("pwsh")
 
 class PinTests(unittest.TestCase):
     def test_both_scripts_pin_the_same_windows_digest_and_version(self):
-        sh = (SCRIPTS / "fetch-node.sh").read_text()
-        ps = (SCRIPTS / "fetch-node.ps1").read_text()
+        sh = (SCRIPTS / "fetch-node.sh").read_text(encoding="utf-8")
+        ps = (SCRIPTS / "fetch-node.ps1").read_text(encoding="utf-8")
         sh_digest = re.search(r'win-x64\)\s+echo "([0-9a-f]{64})"', sh).group(1)
         ps_digest = re.search(r"\$Expected = '([0-9a-f]{64})'", ps).group(1)
         self.assertEqual(sh_digest, ps_digest)
