@@ -37,6 +37,8 @@ for(const name of ['Strata-MIT.txt','ggml-MIT.txt','NVIDIA-EULA.txt','NVIDIA-LIC
 const noticeNames=files(notices).map(path=>relative(notices,path).replaceAll('\\','/')).filter(name=>name!=='NOTICES.json').sort();
 if(JSON.stringify(noticeNames)!==JSON.stringify(Object.keys(noticeRecord.files).sort()))throw new Error('Third-party notice membership changed');
 for(const name of noticeNames)if(sha256(join(notices,name))!==noticeRecord.files[name])throw new Error('Third-party notice changed: '+name);
+const libstrixNotice=join(root,'third_party/libstrix/NOTICE.md');
+if(existsSync(libstrixNotice)&&noticeRecord.files['libstrix-NOTICE.md']!==sha256(libstrixNotice))throw new Error('Missing or stale upstream libstrix attribution');
 if(JSON.stringify(noticeRecord.microsoftSources)!==JSON.stringify(json(join(root,'packaging/microsoft-2022-notice-sources.json'))))throw new Error('Pinned Microsoft notice provenance changed');
 if(JSON.stringify(noticeRecord.qwenSource)!==JSON.stringify(vectorProvenance.license)||sha256(join(notices,'Qwen-Community-License-1.0.txt'))!==qwenLicenseHash)throw new Error('Missing or changed Qwen notice');
 if(sha256(join(notices,'README.md'))!==sha256(join(root,'packaging/hakua-third-party-notices.md')))throw new Error('Stale third-party notice index');

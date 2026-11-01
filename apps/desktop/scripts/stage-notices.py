@@ -38,6 +38,9 @@ def main():
         entries[name]=sha(target)
     copy(ROOT/"LICENSE","Strata-MIT.txt")
     copy(args.ggml_source/"LICENSE","ggml-MIT.txt")
+    libstrix_notice=ROOT/"third_party/libstrix/NOTICE.md"
+    if libstrix_notice.is_file():
+        copy(libstrix_notice,"libstrix-NOTICE.md")
     copy(args.cuda_dir/"EULA.txt","NVIDIA-EULA.txt")
     copy(args.cuda_dir/"LICENSE","NVIDIA-LICENSE.txt")
     copy(args.node_dir/"LICENSE","Node-LICENSE.txt","ed34dd8e3f0a78dbaf00d0444ce8e285b015b765379c2e17880455f70370f8e9")
