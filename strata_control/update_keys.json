@@ -3,6 +3,11 @@
   "keys": [
     {
       "alg": "ed25519",
+      "key_id": "1daf8588d50b1049",
+      "public": "yKcXRKK2lcPUat7VD0mVCDtJXcxXBfcCQCHMubcS53Q="
+    },
+    {
+      "alg": "ed25519",
       "key_id": "5d1bc23abbeffd0d",
       "public": "KjnXZB0T1r3dmBNot8h+c4rTicRtllg1LH9fUlTw4ZY="
     }

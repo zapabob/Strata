@@ -1,7 +1,7 @@
 #!/bin/sh
 # Strata Terminal: one-line installer for Linux (x86_64, and ARM64 on the NVIDIA DGX Spark) and macOS (Apple silicon).
 #
-#     curl -fsSL https://github.com/Niko1221/Strata/releases/latest/download/install.sh -o install.sh && sh install.sh
+#     curl -fsSL https://github.com/zapabob/Strata/releases/latest/download/install.sh -o install.sh && sh install.sh
 #
 # What it does, in order (and nothing else):
 #   1. finds out which computer this is (system, processor, graphics card) so it can fetch the right archive;
@@ -21,7 +21,7 @@
 # STRATA_INSTALL_TEST_TRUST=1 (a test feed: also fetch <feed>/test-trust.json and trust only that key for the check in step 4).
 set -eu
 
-FEED="${STRATA_FEED:-https://github.com/Niko1221/Strata/releases/latest/download}"
+FEED="${STRATA_FEED:-https://github.com/zapabob/Strata/releases/latest/download}"
 FEED="${FEED%/}"
 DATA_DIR="${STRATA_DATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/strata}"
 BIN_DIR="${STRATA_BIN_DIR:-$HOME/.local/bin}"

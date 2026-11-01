@@ -30,7 +30,7 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-RELEASE_FEED = "https://github.com/Niko1221/Strata/releases/latest/download"      # the address built into install.sh / install.ps1; a local feed bakes its own in its place
+RELEASE_FEED = "https://github.com/zapabob/Strata/releases/latest/download"      # the address built into install.sh / install.ps1; a local feed bakes its own in its place
 sys.path.insert(0, str(ROOT / "packaging"))
 sys.path.insert(0, str(ROOT))
 

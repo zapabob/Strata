@@ -13,16 +13,40 @@ export function localBackendChoice(expert=[]) {
  if(selected!=='Automatic'&&!LOCAL_BACKENDS[selected])throw new Error('Unknown local llama-server backend: '+selected);
  return selected;
 }
+/** Installed signed engine components may carry the separate llama-server runtimes. */
+function componentBackendRoots(componentsDir,definition,platform) {
+ if(!componentsDir)return [];
+ const engine=join(componentsDir,'engine');let entries,pinned;
+ try {entries=readdirSync(engine,{withFileTypes:true});}catch{return [];}
+ try {pinned=JSON.parse(readFileSync(join(componentsDir,'state.json'),'utf8').replace(/^\uFEFF/,'')).engine?.pinned;}catch{}
+ const prefix=platform==='win32'?'windows-':platform==='darwin'?'macos-':'linux-';
+ const roots=[];
+ for(const entry of entries) {
+  if(!entry.isDirectory()||entry.isSymbolicLink()||entry.name.startsWith('.')||(pinned&&entry.name!==pinned))continue;
+  try {
+   const component=join(engine,entry.name),manifest=JSON.parse(readFileSync(join(component,'engine-component.json'),'utf8'));
+   if(manifest.id!=='strata-engine'||!/^\d+\.\d+\.\d+$/.test(manifest.version??'')||!manifest.platform?.startsWith(prefix)||!Array.isArray(manifest.files))continue;
+   const name=manifest.version+'-'+manifest.platform+'-'+manifest.backend+(manifest.variant?'-'+manifest.variant:'');
+   if(name!==entry.name)continue; // An incomplete staging directory is never an installed component.
+   const runtime='local-backends/'+definition.id+'/runtime.json',declared=manifest.files.find(file=>file.path===runtime);
+   if(!/^[a-f0-9]{64}$/.test(declared?.sha256??''))continue;
+   const dir=join(component,'local-backends',definition.id),rel=relative(realpathSync(component),realpathSync(dir));
+   if(isAbsolute(rel)||rel==='..'||rel.startsWith('..'+(process.platform==='win32'?'\\':'/')))continue;
+   roots.push({dir,componentRuntimeSha256:declared.sha256,componentVersion:manifest.version});
+  }catch{ /* A missing, linked or incomplete component is not a runtime. */ }
+ }
+ return roots.sort((a,b)=>b.componentVersion.localeCompare(a.componentVersion,undefined,{numeric:true}));
+}
 export function findLocalBackend(choice,{componentsDir,installRoot=resolve(dirname(fileURLToPath(import.meta.url)),'../..'),platform=process.platform}={}) {
  const definition=LOCAL_BACKENDS[choice];
  if(!definition)throw new Error('Choose PrismML or TurboQuant explicitly.');
- const roots=[join(installRoot,'local-backends',definition.id),componentsDir&&join(componentsDir,'local-backends',definition.id)].filter(Boolean);
+ const roots=[{dir:join(installRoot,'local-backends',definition.id)},...(componentsDir?[{dir:join(componentsDir,'local-backends',definition.id)}]:[]),...componentBackendRoots(componentsDir,definition,platform)];
  const candidates=[];
- for(const root of roots) {
+ for(const {dir:root,componentRuntimeSha256} of roots) {
   const binary=join(root,platform==='win32'?'llama-server.exe':'llama-server');
   if(existsSync(binary)&&existsSync(join(root,'runtime.json'))) {
    try {const version=JSON.parse(readFileSync(join(root,'runtime.json'),'utf8')).version;
-    if(/^\d+\.\d+\.\d+$/.test(version))candidates.push({path:binary,source:choice,manifestPath:join(root,'runtime.json'),backend:definition.id,version});
+    if(/^\d+\.\d+\.\d+$/.test(version))candidates.push({path:binary,source:choice,manifestPath:join(root,'runtime.json'),backend:definition.id,version,...(componentRuntimeSha256?{componentRuntimeSha256}:{})});
    } catch { /* an incomplete package is not usable */ }
   }
  }
@@ -33,6 +57,7 @@ async function hash(path) {const digest=createHash('sha256');for await(const chu
 export async function verifyLocalBackend(binary,choice) {
  const expected=LOCAL_BACKENDS[choice];
  if(!expected||!binary?.manifestPath)throw new Error('A verified local '+choice+' runtime is required.');
+ if(binary.componentRuntimeSha256&&await hash(binary.manifestPath)!==binary.componentRuntimeSha256)throw new Error('Local runtime component manifest changed. Reinstall the engine package.');
  const root=dirname(resolve(binary.manifestPath));
  const manifest=JSON.parse(readFileSync(binary.manifestPath,'utf8'));
  if(manifest.schema!==1||manifest.backend!==expected.id||manifest.source?.repository!==expected.repository||manifest.source?.commit!==expected.commit)throw new Error('The selected local runtime has an unknown source identity.');

@@ -21,6 +21,7 @@ for(const name of ['icon.png','icon.ico'])if(sha256(join(root,'apps/desktop/src-
 const nsis=json(join(root,'apps/desktop/src-tauri/tauri.conf.json')).bundle?.windows?.nsis;
 if(nsis?.headerImage||nsis?.sidebarImage)throw new Error('Unqualified supplied installer artwork');
 const shellConfig=json(join(root,'apps/desktop/src-tauri/tauri.conf.json'));
+if(process.platform==='win32')for(const name of ['engine-bundle','local-backends'])if(shellConfig.bundle?.resources?.['resources/'+name])throw new Error('The Windows app must distribute GPU runtimes as a separate engine component');
 if(JSON.stringify(shellConfig.plugins?.updater?.endpoints)!==JSON.stringify(['https://github.com/zapabob/Strata/releases/latest/download/latest.json']))throw new Error('The Hakua shell must use the fork update endpoint');
 for(const name of ['apps/host/package.json','apps/desktop/package.json']) if(json(join(root,name)).version!==product) throw new Error(`Product version mismatch: ${name}`);
 for(const name of ['strata_cli','strata_control','serve']) verifyTree(join(root,name),join(control,name));

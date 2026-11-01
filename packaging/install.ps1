@@ -1,6 +1,6 @@
 # Strata Terminal: one-line installer for Windows (PowerShell 5.1 or newer).
 #
-#     irm https://github.com/Niko1221/Strata/releases/latest/download/install.ps1 | iex
+#     irm https://github.com/zapabob/Strata/releases/latest/download/install.ps1 | iex
 #
 # What it does, in order (and nothing else):
 #   1. finds out which computer this is (Windows, processor, graphics card);
@@ -26,7 +26,7 @@ function Die([string]$msg) { [Console]::Error.WriteLine("strata installer: $msg"
 try { [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12 } catch { }
 try { if ([Net.WebRequest]::DefaultWebProxy) { [Net.WebRequest]::DefaultWebProxy.Credentials = [Net.CredentialCache]::DefaultNetworkCredentials } } catch { }
 
-$feed = if ($env:STRATA_FEED) { $env:STRATA_FEED } else { 'https://github.com/Niko1221/Strata/releases/latest/download' }
+$feed = if ($env:STRATA_FEED) { $env:STRATA_FEED } else { 'https://github.com/zapabob/Strata/releases/latest/download' }
 $feed = $feed.TrimEnd('/')
 if (-not $feed) {
     Die 'this installer does not know where the Strata release folder is. Set $env:STRATA_FEED to its address and run it again, for example: $env:STRATA_FEED=''https://example.org/strata'''

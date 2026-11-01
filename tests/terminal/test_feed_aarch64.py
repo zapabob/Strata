@@ -25,7 +25,7 @@ from strata_control import updater  # noqa: E402
 
 COMMON = "strata-feed.json"
 ARM = "strata-feed-linux-aarch64.json"
-RELEASE = "https://github.com/Niko1221/Strata/releases/latest/download"
+RELEASE = "https://github.com/zapabob/Strata/releases/latest/download"
 
 
 def host(platform):
@@ -92,6 +92,13 @@ class DefaultSource(unittest.TestCase):
     def test_a_remembered_mirror_is_kept_on_arm64(self):
         with host("linux-aarch64"):
             self.assertEqual(self.source(remembered="https://mirror.example/f.json"), "https://mirror.example/f.json")
+
+    def test_legacy_upstream_default_migrates_but_explicit_upstream_is_honored(self):
+        upstream = "https://github.com/Niko1221/Strata/releases/latest/download/strata-feed.json"
+        with host("windows-x86_64"):
+            self.assertEqual(self.source(remembered=upstream), RELEASE + "/" + COMMON)
+            self.assertEqual(self.source(feed=upstream), upstream)
+            self.assertEqual(self.source(env=upstream), upstream)
 
 
 class ReadsTheRightFile(unittest.TestCase):
