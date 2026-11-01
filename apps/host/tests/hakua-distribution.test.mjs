@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync,cpSync,symlinkSync} from 'node:fs';
+import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync,cpSync,symlinkSync,renameSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createHash} from 'node:crypto';
@@ -43,7 +43,15 @@ test('installed engine components supply explicit backends and honor a component
   assert.equal(selected.path,join(root,'engine',folders[1],'local-backends',LOCAL_BACKENDS[choice].id,exe),'linked and staging payloads are excluded');
   assert.equal(selected.version,'0.5.0');await verifyLocalBackend(selected,choice);
  }
- writeFileSync(join(root,'state.json'),JSON.stringify({engine:{pinned:folders[0]}}));
+ // Control uses a manifest-digest suffix when a same-version package is replaced.
+ const previous=join(root,'engine',folders[1]);
+ const digest=hash(readFileSync(join(previous,'engine-component.json'))).slice(0,8);
+ folders[1]+='-'+digest;renameSync(previous,join(root,'engine',folders[1]));
+ cpSync(join(root,'engine',folders[1]),join(root,'engine',folders[1].slice(0,-8)+(digest==='00000000'?'11111111':'00000000')),{recursive:true});
+ for(const choice of Object.keys(LOCAL_BACKENDS))assert.equal(findLocalBackend(choice,options).path,join(root,'engine',folders[1],'local-backends',LOCAL_BACKENDS[choice].id,exe));
+ // This is the real Control engine_component.UPDATE_STATE contract.
+ mkdirSync(join(root,'.updates'),{recursive:true});
+ writeFileSync(join(root,'.updates','state.json'),JSON.stringify({engine:{pinned:folders[0]}}));
  const selected=findLocalBackend('PrismML',options);assert.equal(selected.version,'0.4.0');
  const path=selected.manifestPath;const old=readFileSync(path,'utf8');writeFileSync(path,old.replace('0.4.0','0.4.1'));
  await assert.rejects(verifyLocalBackend({...selected,version:'0.4.1'},'PrismML'),/component.*manifest changed/i);

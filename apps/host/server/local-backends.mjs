@@ -18,16 +18,17 @@ function componentBackendRoots(componentsDir,definition,platform) {
  if(!componentsDir)return [];
  const engine=join(componentsDir,'engine');let entries,pinned;
  try {entries=readdirSync(engine,{withFileTypes:true});}catch{return [];}
- try {pinned=JSON.parse(readFileSync(join(componentsDir,'state.json'),'utf8').replace(/^\uFEFF/,'')).engine?.pinned;}catch{}
+ try {const value=JSON.parse(readFileSync(join(componentsDir,'.updates','state.json'),'utf8').replace(/^\uFEFF/,'')).engine?.pinned;pinned=typeof value==='string'&&value&&!/[\\/]/.test(value)?value:null;}catch{}
  const prefix=platform==='win32'?'windows-':platform==='darwin'?'macos-':'linux-';
  const roots=[];
  for(const entry of entries) {
   if(!entry.isDirectory()||entry.isSymbolicLink()||entry.name.startsWith('.')||(pinned&&entry.name!==pinned))continue;
   try {
-   const component=join(engine,entry.name),manifest=JSON.parse(readFileSync(join(component,'engine-component.json'),'utf8'));
+   const component=join(engine,entry.name),bytes=readFileSync(join(component,'engine-component.json')),manifest=JSON.parse(bytes.toString('utf8'));
    if(manifest.id!=='strata-engine'||!/^\d+\.\d+\.\d+$/.test(manifest.version??'')||!manifest.platform?.startsWith(prefix)||!Array.isArray(manifest.files))continue;
    const name=manifest.version+'-'+manifest.platform+'-'+manifest.backend+(manifest.variant?'-'+manifest.variant:'');
-   if(name!==entry.name)continue; // An incomplete staging directory is never an installed component.
+   // Control adds the signed manifest digest when reinstalling an existing folder.
+   if(name!==entry.name&&name+'-'+createHash('sha256').update(bytes).digest('hex').slice(0,8)!==entry.name)continue;
    const runtime='local-backends/'+definition.id+'/runtime.json',declared=manifest.files.find(file=>file.path===runtime);
    if(!/^[a-f0-9]{64}$/.test(declared?.sha256??''))continue;
    const dir=join(component,'local-backends',definition.id),rel=relative(realpathSync(component),realpathSync(dir));
