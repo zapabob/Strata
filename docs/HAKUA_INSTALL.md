@@ -2,7 +2,7 @@
 
 GUI/Product `0.4.0-preview.20261101.1` · native engine/Control `0.4.0` · Hakua-memory `0.3.5`.
 
-This candidate is still being qualified. The download links below become usable after publication; see the [qualification record](HAKUA_RELEASE.md). The earlier published package is [0.3.3](https://github.com/zapabob/Strata/releases/tag/v0.3.3-preview.20261030.1).
+Use this fork's 0.4.0 preview packages below. See the [qualification record](HAKUA_RELEASE.md) for exact tests and supported limits.
 
 Check the [qualification record](HAKUA_RELEASE.md) for publication status and measured limits. This is an unsigned manual-update preview for Windows x64 and NVIDIA CUDA sm_120, tested on an RTX 5060 Ti. Other GPUs and operating systems need their own qualified packages.
 

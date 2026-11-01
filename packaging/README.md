@@ -177,3 +177,11 @@ It compiles the production cleanup macros into isolated fixtures. It checks upgr
 - **Mac packaging tests:** the first DMG self-test (8/8) and the engine's 17 kernel-parity suites ran on an Apple M4 GPU in a 16 GiB Mac, with service stand-ins for signing.
   Later inference measurements on larger Macs are in [MAC.md](../docs/MAC.md).
 - **Intel Arc:** official since 0.1.40.2. The 2026-10 B70 tests used the source build, not the engine package. `sycl/setup_intel.py` (Docker) remains the source-build route.
+
+### Hakua Windows release layout
+
+The Hakua app EXE contains its private Node/Python runtimes, Control, Hakua-memory and Harness. Publish the signed GPU engine component separately. The outer 7z contains the identical setup EXE, INSTALL.md and its checksum. Full inference models and personal profiles are excluded.
+
+For GitHub Release assets, use Windows Control ZIP with `packaging/feed_tool.py pack-control` and the options `--format zip --url-prefix=`. Use `--url-prefix=` for `pack-engine` too. This empty prefix puts package URLs beside strata-feed.json; the tool defaults control/ and engine/ do not describe this flat asset layout. Generate the matching install-manifest.txt for the ZIP Control package. Verify the signed feed, package sizes/hashes and anonymous latest/download URLs after publication.
+
+This Windows app is code-unsigned and uses manual installer updates. The signed feed has engine/Control entries and no app entry or latest.json. Component Ed25519 signatures do not replace Windows executable signing. Keep private signing material and personal profile data outside the checkout and release assets. See docs/HAKUA_RELEASE.md for qualified source commits, final digests and unsupported hardware/features.

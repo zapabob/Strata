@@ -8,7 +8,7 @@ Strataを基盤とするHakuaチャットボット。 [zapabob/Strata](https://g
 
 このフォークのWindowsインストーラーを取得して実行します。初回起動時にアプリが案内する対応エンジンをインストールし、モデルを選んで読み込みます。サイドバーのHakua memoryから記憶チャットを開けます。操作手順は約30秒です。アプリ・エンジン・モデルのダウンロード、インストール、読み込みの待ち時間は別にかかります。
 
-ソース版0.4.0は検証中です。修正版の配布・公開はまだ完了していません。
+Windowsプレビュー0.4.0です。確認した試験と対応範囲は[リリース検証記録](docs/HAKUA_RELEASE.md)をご覧ください。
 
 [Windows EXE](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/Strata_0.4.0-preview.20261101.1_x64-setup.exe) · [7z](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/Hakua-Strata-0.4.0-preview.20261101.1-windows-x64-sm120.7z) · [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/SHA256SUMS.txt)
 

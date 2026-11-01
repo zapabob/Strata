@@ -8,7 +8,7 @@ Chatbot Hakua baseado no Strata. [zapabob/Strata](https://github.com/zapabob/Str
 
 Baixe e execute o instalador Windows deste fork. Na primeira abertura, instale o motor compatível oferecido e depois escolha e carregue um modelo. Hakua memory na barra lateral abre o chat com memória. Os passos levam cerca de 30 segundos; downloads, instalação e carregamento exigem tempo adicional.
 
-A versão fonte 0.4.0 ainda está em validação; a publicação não foi concluída.
+Prévia para Windows 0.4.0: veja os testes realizados e os limites no [registro de validação](docs/HAKUA_RELEASE.md).
 
 [Windows EXE](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/Strata_0.4.0-preview.20261101.1_x64-setup.exe) · [7z](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/Hakua-Strata-0.4.0-preview.20261101.1-windows-x64-sm120.7z) · [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/SHA256SUMS.txt)
 

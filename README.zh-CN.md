@@ -8,7 +8,7 @@
 
 下载并运行本分支的 Windows 安装程序。首次启动时安装应用推荐的兼容引擎，再选择并加载模型。通过侧栏 Hakua memory 打开记忆聊天。操作步骤约需 30 秒；应用、引擎和模型的下载、安装及加载时间另计。
 
-源码候选版 0.4.0 仍在验证中，修正版尚未发布。
+Windows 预览版 0.4.0：已完成的测试和支持范围见[发布验证记录](docs/HAKUA_RELEASE.md)。
 
 [Windows EXE](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/Strata_0.4.0-preview.20261101.1_x64-setup.exe) · [7z](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/Hakua-Strata-0.4.0-preview.20261101.1-windows-x64-sm120.7z) · [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/SHA256SUMS.txt)
 

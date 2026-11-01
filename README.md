@@ -8,7 +8,7 @@ Hakua chatbot, built on Strata. [zapabob/Strata](https://github.com/zapabob/Stra
 
 Download and run this fork's Windows installer. On first start, install the compatible engine offered by the app, then choose and load a model. Open Hakua memory in the sidebar. The setup actions take about 30 seconds; app, engine and model downloads, installation and loading take longer.
 
-Source candidate 0.4.0: release qualification and publication are still in progress.
+Windows preview 0.4.0: measured checks and supported limits are in the [qualification record](docs/HAKUA_RELEASE.md).
 
 [Windows EXE](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/Strata_0.4.0-preview.20261101.1_x64-setup.exe) · [7z](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/Hakua-Strata-0.4.0-preview.20261101.1-windows-x64-sm120.7z) · [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/SHA256SUMS.txt)
 
