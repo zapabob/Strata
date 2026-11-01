@@ -1,4 +1,4 @@
-"""The release app configuration: the engine travels inside every installer, the updater signs, the Mac minimum matches the Metal engine."""
+"""Release resources, signed-updater overlays and platform requirements."""
 from __future__ import annotations
 
 import json
@@ -26,9 +26,15 @@ def merge_patch(base, patch):
 
 
 class ReleaseConfig(unittest.TestCase):
-    def test_every_installer_bundles_the_engine(self):
-        self.assertEqual(load("tauri.conf.json")["bundle"]["resources"]["resources/engine-bundle"], "engine-bundle")
-        self.assertEqual(load("tauri.tester.conf.json")["bundle"]["resources"]["resources/engine-bundle"], "engine-bundle")   # the same place
+    def test_windows_release_separates_gpu_engines_and_keeps_private_runtimes(self):
+        resources = load("tauri.conf.json")["bundle"]["resources"]
+        self.assertNotIn("resources/engine-bundle", resources)
+        self.assertNotIn("resources/local-backends", resources)
+        for name in ("node", "control", "harness", "notices"):
+            self.assertEqual(resources["resources/" + name], name)
+        # An explicitly selected developer overlay can still bundle a local engine.
+        tester = merge_patch(load("tauri.conf.json"), load("tauri.tester.conf.json"))
+        self.assertEqual(tester["bundle"]["resources"]["resources/engine-bundle"], "engine-bundle")
 
     def test_the_release_overlay_makes_signed_updater_artifacts(self):
         self.assertIs(load("tauri.release.conf.json")["bundle"]["createUpdaterArtifacts"], True)
