@@ -118,7 +118,8 @@ int main() {
       CHECK(!bridge->owner().host_usable());
       CHECK(bridge->reset(error));
       int failure=1;
-      CUDA(cudaMemcpy(bridge->owner().query_status_device(),&failure,4,cudaMemcpyHostToDevice));
+      // Keep the injected device fault ordered before status staging on the bound stream.
+      CUDA(cudaMemcpyAsync(bridge->owner().query_status_device(),&failure,sizeof(failure),cudaMemcpyHostToDevice,stream));
       CHECK(bridge->stage_status(error)); CUDA(cudaStreamSynchronize(stream));
       CHECK(!bridge->observe(true,error));
       CUDA(cudaGraphExecDestroy(exec)); CUDA(cudaGraphDestroy(graph));
