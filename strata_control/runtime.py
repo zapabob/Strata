@@ -609,19 +609,33 @@ def start(name: str, *, wait: float = 300, shutdown_timeout: float = 30,
             raise ProfileError("runtime host failed to start; inspect " + str(log_path), 6)
     if wait == 0:
         return {"ok": True, "profile": name, "state": "starting", "plan": plan}
+    return _wait_for_start(name, proc, wait, on_status)
+
+
+def _wait_for_start(name: str, proc: subprocess.Popen, wait: float, on_status=None) -> dict:
+    """Wait for serving readiness after the owner publishes its control state."""
     deadline = time.monotonic() + wait
     result: dict = {}
-    while time.monotonic() < deadline:
-        result = _rpc(name, "status")
-        if on_status is not None:
-            try:
-                on_status(result)
-            except Exception:                                   # noqa: BLE001 - progress must never break a start
-                on_status = None
-        if result.get("state") in ("ready", "failed"):
-            return {**result, "ok": result["state"] == "ready",
-                    "exit_code": 6 if result["state"] == "failed" else 0}
-        time.sleep(0.2)
+    while (remaining := deadline - time.monotonic()) > 0:
+        try:
+            result = _rpc(name, "status", timeout=min(5.0, remaining))
+        except ProfileError as exc:
+            # The owner publishes its listener before planning/launching the server.
+            # Slow imports can occupy it longer than one status RPC, while the
+            # requested startup budget still has time. Retry only that timeout
+            # and only while our original Popen handle says the owner is alive.
+            if exc.exit_code != 8 or proc.poll() is not None:
+                raise
+        else:
+            if on_status is not None:
+                try:
+                    on_status(result)
+                except Exception:                               # noqa: BLE001 - progress must never break a start
+                    on_status = None
+            if result.get("state") in ("ready", "failed"):
+                return {**result, "ok": result["state"] == "ready",
+                        "exit_code": 6 if result["state"] == "failed" else 0}
+        time.sleep(min(0.2, max(0.0, deadline - time.monotonic())))
     return {"ok": False, "profile": name, "state": "starting", "error": "startup_wait_expired",
             "phase": result.get("phase"), "exit_code": 8}
 
