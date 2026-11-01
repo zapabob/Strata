@@ -1,7 +1,9 @@
 # Strata packaging: targets, recipes and locks
 
-This page is for developers who build the desktop app, the Terminal archive and the engine packages. To install Strata, use
-[docs/INSTALL.md](../docs/INSTALL.md). It describes the current release (app and Terminal 0.2.5, Control and engines 0.1.50).
+This page is for developers who build the desktop app, the Terminal archive and the engine packages. To install this Hakua
+Windows fork, use [docs/HAKUA_INSTALL.md](../docs/HAKUA_INSTALL.md). Product0.4.0-preview.20261101.1 uses Control/engine0.4.0;
+actual qualification and publication status are in [HAKUA_RELEASE.md](../docs/HAKUA_RELEASE.md). The cross-platform recipes below
+are upstream reference and do not establish qualification of a Hakua package on those platforms.
 How packages are signed and published is in [UPDATES.md](UPDATES.md), and the package format is in [ENGINE-COMPONENT.md](ENGINE-COMPONENT.md).
 
 Release assets show what was published; the platform guides and retained reports show what was tested. A published package does not
