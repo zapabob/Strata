@@ -20,3 +20,9 @@ legacy 経路は起動していない。
 メッセージ: Qwen3.6 UD-Q4_K_XL places about 18.7 GiB of experts in RAM with the current engine. 16.5 GiB is free and 6.4 GiB stays aside for the rest of the PC. The model was not started.
 
 これは空き物理 RAM の判定であり、起動時間でもトークン速度でもない。mapped-pack の実 GGUF 起動は未計測。T04 の warmup 比較、T06 の転送、T07 の kernel、GUI 上の chat / stop / restart は未実行。
+
+## 実ファイル
+
+`H:\Strata\models\models\qwen36-UD-Q4_K_XL\Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf` は存在する。サイズは 22853663008 bytes。中身のハッシュは取っていない。
+
+保存設定 `strata-qwen36-ud-q4_k_xl.json` は `--max-context 65536`、`--prefill auto`、`--mtp 2`。`cache_type_k` は `q8_0`、`cache_type_v` は `turbo3`。本線の FP32 KV ではない。明示した cache 型は起動前に拒否する契約なので、この設定のままではエンジンを起動しない。設定ファイルは書き換えていない。
