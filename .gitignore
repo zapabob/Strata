@@ -91,6 +91,9 @@ node_modules/
 # the pruned DeepSeek Harness (MIT) is built by apps/desktop/scripts/stage-harness.mjs
 /apps/desktop/src-tauri/resources/harness/*
 !/apps/desktop/src-tauri/resources/harness/.gitignore
+# third-party notice files staged into the Windows installer resources; not source
+/apps/desktop/src-tauri/resources/notices/*
+!/apps/desktop/src-tauri/resources/notices/.gitignore
 # screenshots and checkpoints from the Mac rebuild live outside git (StrataSplit\evidence-archive)
 /apps/host/docs/evidence/
 /apps/host/docs/checkpoints/
