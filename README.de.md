@@ -1,59 +1,64 @@
 # Hakua / Strata
 
-Hakua-Chatbot auf Basis von Strata. [zapabob/Strata](https://github.com/zapabob/Strata) · [Niko1221/Strata](https://github.com/Niko1221/Strata)
+Hakua-Chatbot auf Strata. Dieser Fork liefert eine Windows-Vorschau mit Hakua memory und getrennten GPU-Laufzeiten. [zapabob/Strata](https://github.com/zapabob/Strata) · Upstream [Niko1221/Strata](https://github.com/Niko1221/Strata)
 
 [English](README.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [Deutsch](README.de.md) · [Français](README.fr.md) · [Español](README.es.md) · [Português](README.pt-BR.md) · [Polski](README.pl.md)
 
-## TLDR · Installationsschritte in 30 Sekunden
+## Installation (Windows-Vorschau)
 
-Lade den Windows-Installer dieses Forks herunter und führe ihn aus. Installiere beim ersten Start die angebotene kompatible Engine, wähle dann ein Modell und lade es. Hakua memory in der Seitenleiste öffnet den Gedächtnis-Chat. Die Schritte dauern etwa 30 Sekunden; Downloads, Installation und Laden dauern länger.
+1. Lade die [Setup-EXE](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/Strata_0.4.0-preview.20261101.1_x64-setup.exe) herunter (oder das [7z](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/Hakua-Strata-0.4.0-preview.20261101.1-windows-x64-sm120.7z) mit derselben EXE).
+2. Vergleiche sie vor dem Start mit [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/SHA256SUMS.txt). Es gibt keine Windows-Codesignatur. Die Digests dieses Tags wurden am 2026-11-02 aktualisiert; nutze nicht eine alte SUMS-Datei.
+3. Beende Strata vollständig (Infobereich → Strata beenden), falls bereits installiert, und starte die EXE.
+4. Installiere beim ersten Start die angebotene signierte Engine oder importiere die passende `.tar.gz` derselben Release. Wähle dann einen Modellordner und lade ein Modell.
 
-Windows-Vorschau 0.4.0: Gemessene Prüfungen und unterstützte Grenzen stehen im [Prüfbericht](docs/HAKUA_RELEASE.md).
+Die Klickfolge ist kurz. Downloads, Engine-Aktivierung und Modellladen dauern länger und brauchen Speicherplatz sowie VRAM. Details: [HAKUA_INSTALL.md](docs/HAKUA_INSTALL.md). Gemessene Grenzen: [HAKUA_RELEASE.md](docs/HAKUA_RELEASE.md).
 
-[Windows EXE](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/Strata_0.4.0-preview.20261101.1_x64-setup.exe) · [7z](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/Hakua-Strata-0.4.0-preview.20261101.1-windows-x64-sm120.7z) · [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/SHA256SUMS.txt)
+## Was der Installer enthält
 
-Das 7z-Archiv enthält denselben Installer. Entpacke es und starte dann die Setup-EXE.
+| Im App-Installer | Separat |
+| --- | --- |
+| GUI / Host, privates Node 24.22.2, Control / CPython 3.12.15, Hakua-memory 0.3.5, Harness | Signierte CUDA-Engine (~1,4 GB): natives Strata + PrismML + TurboQuant |
+| Manuelle App-Updates über diese EXE | Modellgewichte (zehn bis hundert GB) |
 
-## Besonderheiten dieses Forks
+Für die veröffentlichte App brauchst du kein systemweites Node, Python, pip oder einen Compiler. Upstream-Installer von Niko1221 enthalten diese Fork-Änderungen nicht.
 
-Hakua liest Erinnerungen und speichert Zusammenfassungen nur nach deiner Zustimmung für die jeweilige Anfrage. Beide Optionen sind unabhängig und werden danach zurückgesetzt. Beim Laden eines unterstützten nativen Modells legt die Desktop-App automatisch ein lokales Gedächtnisprofil an. Öffne Hakua memory, kopiere den Profilschlüssel aus dem Dialog und wähle auf der lokalen Gedächtnisseite eine Gedächtnisoption aus und füge ihn dann unter About → Settings ein. Die [Gedächtnisanleitung](serve/MEMORY_HARNESS.md) beschreibt auch die Konfiguration eines Servers aus dem Quellcode.
+## Lokales Modell laden
 
-Auch PrismML/PQ2_0 und TurboQuant nutzen Hakua-memory: Modell laden und Hakua memory in der Seitenleiste öffnen. Der neue Dialog verwendet den lokalen persönlichen Schlüssel automatisch; Lesen und Speichern werden für jede Anfrage getrennt gewählt. Vor dem ersten Öffnen laufende Anfragen abschließen: Der von der App verwaltete Server startet mit Authentifizierung und ohne gemeinsame Caches neu. Alle drei Wege teilen dasselbe lokale Gedächtnisprofil. Beim Start werden GUI-, Host- und Desktop-Version geprüft; gemischte oder nicht ladbare Dateien führen zu Wiederherstellungshinweisen.
+- **Native Strata-Pakete** (unterstützte Qwen-Textpakete): nativen Prepare-/Load-Pfad der App nutzen.
+- **Hikari / PQ2_0-GGUF**: **Load with Strata** (PrismML) nutzen. Kein natives Prepare für PQ2_0.
+- **Gewöhnliche GGUF + TurboQuant-Cache**: Backend `TurboQuant`, K=`FP16`, V=`TURBO2` / `TURBO3` / `TURBO4`, dann neu laden. TurboQuant-K bleibt wegen korrupter Antworten aus.
 
-Hermes-Werkzeuge synchronisieren freigegebene SOUL.md / MEMORY.md und bieten Ebbinghaus-Speicher, semantischen Graphen, Obsidian-Export und sleep-Konsolidierung. Sie sind vom Chat getrennt; optionale RAG- und Embedding-Pakete gehören nicht zum Basisinstaller.
+PrismML und TurboQuant sind eigene Programme in der Engine-Komponente. Details: [LOCAL_LLAMA_BACKENDS.md](docs/LOCAL_LLAMA_BACKENDS.md). Passende Pakete: ISTA-DASLab → Unsloth → Gyro.
 
-Für eine lokale PQ2_0-GGUF wählen Sie in den erweiterten Modelleinstellungen das llama-server-Backend `PrismML`. Für Standard-GGUF mit TurboQuant wählen Sie `TurboQuant` und stellen den K-Cache auf `FP16` und V auf `TURBO2`, `TURBO3` oder `TURBO4`. TurboQuant für K ist in diesem Kandidaten wegen fehlerhafter Antworten im Modelltest gesperrt. Laden Sie das Modell nach einem Backendwechsel erneut. Jedes Backend nutzt eigene mitgelieferte Programme und Bibliotheken; PQ2_0 und TurboQuant sind getrennte Wege. Siehe [Einrichtung und Grenzen](docs/LOCAL_LLAMA_BACKENDS.md).
+Läuft ein Modell über den Strata-/Supervisor-Pfad, kann Agent diese lokale Instanz für unterstützte Werkzeuge nutzen (z. B. Websuche). Rein native Sitzungen nutzen denselben Pfad nicht.
 
-Experimente mit Spin(8)/Triality, Query-v3 und Bonsai erfordern ausdrücklich gewählte, kompatible Einstellungen. Es gibt keine allgemeine Zusage zu Geschwindigkeit oder Qualität.
+## Hakua memory
 
-Wie die offizielle App enthält der Installer privates Node und Python sowie Hakua-memory 0.3.5. GPU-Engines werden separat verteilt: Nach deiner Auswahl lädt die App eine signierte Hakua-Engine-Komponente herunter oder importiert eine bereits heruntergeladene Datei. Diese Komponente enthält native CUDA-, PrismML- und TurboQuant-Laufzeiten. Modellgewichte werden separat geladen. Für die veröffentlichte App brauchst du weder systemweit installiertes Node oder Python noch pip oder einen Compiler.
+Nach dem Laden eines unterstützten Modells **Hakua memory** in der Seitenleiste öffnen. Lesen und Speichern sind getrennt und werden pro Anfrage zurückgesetzt.
 
-## Kompatibilität und Updates
+- Nativ: Schlüssel aus dem Dialog unter About → Settings einfügen und auf der Gedächtnisseite markieren.
+- PrismML / TurboQuant: die App liefert den lokalen Schlüssel; vor dem ersten Öffnen laufende Anfragen beenden.
 
-Dieses Windows-Paket ist für NVIDIA RTX 50, CUDA sm_120. Andere GPUs, Linux und macOS benötigen eigene kompatible Pakete. Upstream-Installer enthalten diese Änderungen nicht. Gewichte sind separat und können viele GB benötigen. Bevorzuge passende Pakete von ISTA-DASLab, danach Unsloth und Gyro.
+Anleitung: [MEMORY_HARNESS.md](serve/MEMORY_HARNESS.md). Hermes-SOUL/MEMORY-Werkzeuge sind vom Chat getrennt und für die Grundnutzung nicht nötig.
 
-Die separat verteilte native Engine dient dem Textchat. Native Bildeingabe und die separate native DeepSeek-Engine sind in dieser Vorschau nicht enthalten.
-
-Modelle und persönliche Erinnerungen bleiben außerhalb des Programmordners. Erinnerungen, Schlüssel und Gewichte werden nicht mitgeliefert. Beende die App vor Updates. Für ein Rollback sichere deine Daten und installiere eine frühere Fork-Version.
-
-Bei aktivierter Ablage im Infobereich blendet × das Fenster aus. Klicke vor einem Update mit der rechten Maustaste auf das Strata-Symbol im Infobereich und wähle Strata beenden, um die App vollständig zu schließen.
-
-[Models](docs/MODELS.md) · [Install](docs/HAKUA_INSTALL.md) · [Hermes tools](tools/hakua_hermes_memory_stack.py)
-
-## Versionen und Prüfung
+## Versionen
 
 | | |
 | --- | --- |
 | GUI / Product | `0.4.0-preview.20261101.1` |
-| Engine | `0.4.0` (CUDA sm_120) |
+| Engine / Control | `0.4.0` (CUDA sm_120) |
 | Hakua-memory | `0.3.5` |
-| Upstream | `c62d5e3a` · 0.2.9 |
+| Upstream-Freeze | `c62d5e3a` · 0.2.9 |
 
-<!-- App version in this preview tree: `0.4.0-preview.20261101.1` -->
+Release: [v0.4.0-preview.20261101.1](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261101.1). Engine und Feed sind Ed25519-signiert und werden von der App geprüft. Automatische signierte App-Updates sind nicht qualifiziert; aktualisiere mit diesem Installer.
 
-Der Windows-Installer hat keine Windows-Codesignatur. Prüfe SHA256SUMS.txt vor der Installation. Die separate Engine-Komponente und ihr Update-Feed sind signiert und werden von der App geprüft. App-Updates erfolgen manuell mit dem Installer; signierte automatische App-Updates sind noch nicht qualifiziert. Das [Prüfprotokoll](docs/HAKUA_RELEASE.md) nennt Ergebnisse und Grenzen einschließlich der Gedächtnistests mit realen Modellen.
+## Grenzen (gemessene Vorschau)
 
-## Entwicklung und Hilfe
+Windows x64, NVIDIA RTX 50 / CUDA sm_120, geprüft auf RTX 5060 Ti. Nativer Text ist enthalten. Native Bildeingabe und die separate native DeepSeek-Engine fehlen. Andere GPUs und Betriebssysteme brauchen eigene Pakete. Modelle und persönliche Erinnerungen außerhalb des Programmordners belassen. Keine persönlichen Erinnerungen, Schlüssel oder vollständigen Gewichte in der Release.
+
+Spin(8) / Triality / Query-v3 / Bonsai bleiben optionale Experimente. Keine allgemeine Geschwindigkeits- oder Qualitätszusage.
+
+## Entwicklung
 
 ```sh
 python -m pytest tests/terminal tests/test_hakua_hermes_memory_stack.py
@@ -62,8 +67,6 @@ npm --prefix apps/host test
 npm --prefix apps/host run typecheck
 ```
 
-[Build](packaging/README.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Issues](https://github.com/zapabob/Strata/issues)
+[Models](docs/MODELS.md) · [Build](packaging/README.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Issues](https://github.com/zapabob/Strata/issues)
 
-MIT-lizenzierter Strata-Fork. Für Hakua-memory und Modellgewichte gelten eigene Lizenzen. Die Urheberschaft der ursprünglichen Autoren bleibt erhalten.
-
-Der optionale Kontrollvektor aus dem Upstream (480 KB) bleibt standardmäßig aus. Es gilt die [Qwen Community License 1.0](data/experimental-speed-projection/LICENSE). Die vollständigen Modellgewichte werden separat heruntergeladen.
+MIT-Strata-Fork. Hakua-memory und Modellgewichte haben eigene Lizenzen. Credits bleiben bei Autoren und Upstream. Der optionale ~480-KB-Kontrollvektor bleibt standardmäßig aus unter [Qwen Community License 1.0](data/experimental-speed-projection/LICENSE).

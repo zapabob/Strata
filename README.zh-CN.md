@@ -1,59 +1,64 @@
 # Hakua / Strata
 
-基于 Strata 的 Hakua 聊天机器人. [zapabob/Strata](https://github.com/zapabob/Strata) · [Niko1221/Strata](https://github.com/Niko1221/Strata)
+基于 Strata 的 Hakua 聊天机器人。本分支提供带 Hakua memory、GPU 运行时单独分发的 Windows 预览包。[zapabob/Strata](https://github.com/zapabob/Strata) · 上游 [Niko1221/Strata](https://github.com/Niko1221/Strata)
 
 [English](README.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [Deutsch](README.de.md) · [Français](README.fr.md) · [Español](README.es.md) · [Português](README.pt-BR.md) · [Polski](README.pl.md)
 
-## TLDR · 30 秒了解安装
+## 安装（Windows 预览）
 
-下载并运行本分支的 Windows 安装程序。首次启动时安装应用推荐的兼容引擎，再选择并加载模型。通过侧栏 Hakua memory 打开记忆聊天。操作步骤约需 30 秒；应用、引擎和模型的下载、安装及加载时间另计。
+1. 下载 [setup EXE](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/Strata_0.4.0-preview.20261101.1_x64-setup.exe)（或含相同 EXE 的 [7z](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/Hakua-Strata-0.4.0-preview.20261101.1-windows-x64-sm120.7z)）。
+2. 运行前与 [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/SHA256SUMS.txt) 核对。安装程序无 Windows 代码签名。该标签的摘要已于 2026-11-02 更新，请勿使用旧 SUMS。
+3. 若已安装，请从托盘选择退出 Strata 后再运行 EXE。
+4. 首次启动时，在准备界面安装签名引擎，或导入同版本的 `.tar.gz`，然后选择模型目录并加载。
 
-Windows 预览版 0.4.0：已完成的测试和支持范围见[发布验证记录](docs/HAKUA_RELEASE.md)。
+点击步骤很短；下载、激活引擎与加载模型更久，并需要磁盘与显存。详见 [HAKUA_INSTALL.md](docs/HAKUA_INSTALL.md)。实测范围见 [HAKUA_RELEASE.md](docs/HAKUA_RELEASE.md)。
 
-[Windows EXE](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/Strata_0.4.0-preview.20261101.1_x64-setup.exe) · [7z](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/Hakua-Strata-0.4.0-preview.20261101.1-windows-x64-sm120.7z) · [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/SHA256SUMS.txt)
+## 安装包内容
 
-7z 中包含相同的安装程序。请先解压，再运行安装 EXE。
+| 应用安装程序 | 单独分发 |
+| --- | --- |
+| GUI / Host、专用 Node 24.22.2、Control / CPython 3.12.15、Hakua-memory 0.3.5、Harness | 签名 CUDA 引擎（约 1.4 GB）：原生 Strata + PrismML + TurboQuant |
+| 通过本 EXE 手动更新应用 | 模型权重（数十至数百 GB） |
 
-## 本分支的独有功能
+运行发布版无需系统 Node / Python / pip / 编译器。上游 Niko1221 安装程序不含本分支改动。
 
-Hakua 只有获得本次请求的同意后才读取记忆或保存对话摘要。两项权限相互独立，每次请求后重置。加载受支持的原生模型后，桌面应用会自动创建本地记忆配置。打开 Hakua memory，复制对话框中的专用密钥，在本地页面勾选记忆选项，然后将密钥粘贴到 About → Settings。源码服务器的配置方法也见[记忆指南](serve/MEMORY_HARNESS.md)。
+## 加载本地模型
 
-PrismML/PQ2_0 和 TurboQuant 也可使用 Hakua-memory。加载模型后，从侧栏打开 Hakua memory。新增对话框自动使用本地个人密钥，每次请求分别选择读取与保存。首次打开前请完成当前请求；应用会重启其管理的服务器，启用认证并关闭共享缓存。原生后端和新增后端共用本地记忆配置。启动时会核对 GUI、Host 与桌面程序版本，文件混用或加载失败时显示恢复步骤。
+- **原生 Strata 包**（受支持的 Qwen 系文本）：使用应用的原生准备 / 加载。
+- **Hikari / PQ2_0 GGUF**：使用 **Load with Strata**（PrismML）。不要对 PQ2_0 使用原生准备。
+- **普通 GGUF + TurboQuant 缓存**：后端 `TurboQuant`，K=`FP16`，V=`TURBO2` / `TURBO3` / `TURBO4`，然后重新加载。K 侧 TurboQuant 因实测回复损坏而关闭。
 
-Hermes 工具支持同步已批准的 SOUL.md / MEMORY.md、Ebbinghaus 记忆、语义图、Obsidian 导出及 sleep 整理。这些管理工具独立于聊天页面；基础安装包不含可选 RAG 和嵌入依赖。
+PrismML 与 TurboQuant 是引擎内的独立可执行文件。[LOCAL_LLAMA_BACKENDS.md](docs/LOCAL_LLAMA_BACKENDS.md)。按显存选择：ISTA-DASLab → Unsloth → Gyro。
 
-使用本地 PQ2_0 GGUF 时，在模型高级设置的 llama-server 后端中选择 `PrismML`。使用普通 GGUF 的 TurboQuant 缓存时，选择 `TurboQuant`，将 K 缓存设为 `FP16`，V 设为 `TURBO2`、`TURBO3` 或 `TURBO4`。本版本禁用 TurboQuant K 格式，因为实测出现回复损坏。更换后端后请重新加载模型。各后端使用独立的内置程序和库；PQ2_0 与 TurboQuant 是两条独立路径。请查看[配置与限制](docs/LOCAL_LLAMA_BACKENDS.md)。
+当模型经 Strata / supervisor 路径运行时，Agent 可通过该本地实例使用模型支持的工具（例如 web search）。仅原生会话不会走同一路径。
 
-Spin(8)/Triality、Query-v3 与 Bonsai 实验功能需要明确选择兼容配置。不承诺在所有环境下提高速度或质量。
+## Hakua memory
 
-安装程序采用与官方应用相同的结构，包含专用 Node、Python 和固定版本 Hakua-memory 0.3.5。GPU 引擎单独发布：选择安装后，应用下载带签名的 Hakua 引擎组件，也可导入已下载的组件文件。该组件包含原生 CUDA、PrismML 和 TurboQuant 运行环境。模型权重另行下载。运行发布版应用无需系统 Node、Python、pip 或编译器。
+加载受支持模型后，打开侧栏 **Hakua memory**。读取与保存同意相互独立，每轮重置。
 
-## 兼容性与更新
+- 原生：将对话框密钥粘贴到 About → Settings，并在记忆页勾选。
+- PrismML / TurboQuant：应用自动使用本地密钥；首次打开前请结束进行中的请求（会以认证、私有缓存重启自有服务器）。
 
-此 Windows 包面向 NVIDIA RTX 50 系列，CUDA sm_120。其他显卡、Linux 和 macOS 需要各自兼容的包。上游安装程序不包含本分支修改。模型权重单独下载，可能需要数十至数百 GB。优先选择兼容且能容纳的 ISTA-DASLab，其次 Unsloth，再次 Gyro。
+说明：[MEMORY_HARNESS.md](serve/MEMORY_HARNESS.md)。Hermes SOUL/MEMORY 运维工具独立于聊天，基础使用非必需。
 
-单独发布的原生引擎用于文本聊天。此预览版不包含原生图像输入功能及独立的 DeepSeek 原生引擎。
-
-模型与个人记忆保存在应用目录之外。安装包不含个人记忆、密钥或模型权重。更新前关闭应用；回退时保留数据备份并安装较早的本分支版本。
-
-启用托盘收起后，× 只隐藏窗口。更新前请右键单击托盘中的 Strata 图标，选择退出 Strata，完全结束应用。
-
-[Models](docs/MODELS.md) · [Install](docs/HAKUA_INSTALL.md) · [Hermes tools](tools/hakua_hermes_memory_stack.py)
-
-## 版本与验证
+## 版本
 
 | | |
 | --- | --- |
 | GUI / Product | `0.4.0-preview.20261101.1` |
-| Engine | `0.4.0` (CUDA sm_120) |
+| Engine / Control | `0.4.0`（CUDA sm_120） |
 | Hakua-memory | `0.3.5` |
-| Upstream | `c62d5e3a` · 0.2.9 |
+| 上游冻结 | `c62d5e3a` · 0.2.9 |
 
-<!-- App version in this preview tree: `0.4.0-preview.20261101.1` -->
+发布页：[v0.4.0-preview.20261101.1](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261101.1)。引擎与更新源带 Ed25519 签名并由应用校验。应用本体的签名自动更新尚未验证，请用本安装程序更新。
 
-Windows 安装程序没有 Windows 代码签名，安装前请核对 SHA256SUMS.txt。单独发布的引擎组件和更新源带有签名，由应用验证。应用本体通过安装程序手动更新，应用的签名自动更新尚未验证。[发布验证记录](docs/HAKUA_RELEASE.md)列出实际结果与限制，包括实模型记忆测试。
+## 限制（已测预览）
 
-## 开发与支持
+Windows x64、NVIDIA RTX 50 系 / CUDA sm_120，在 RTX 5060 Ti 上检查。含原生文本；不含原生图像输入与独立 DeepSeek 原生引擎。其他 GPU / OS 需各自的包。模型与个人记忆放在应用目录外。发行包不含个人记忆、密钥或完整权重。
+
+Spin(8) / Triality / Query-v3 / Bonsai 为显式实验功能，不承诺整体速度或质量提升。
+
+## 开发
 
 ```sh
 python -m pytest tests/terminal tests/test_hakua_hermes_memory_stack.py
@@ -62,8 +67,6 @@ npm --prefix apps/host test
 npm --prefix apps/host run typecheck
 ```
 
-[Build](packaging/README.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Issues](https://github.com/zapabob/Strata/issues)
+[Models](docs/MODELS.md) · [Build](packaging/README.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Issues](https://github.com/zapabob/Strata/issues)
 
-本项目是 MIT 许可的 Strata 分支。Hakua-memory 和模型权重各有许可，并保留原作者与上游的署名。
-
-上游可选的约 480KB 控制向量默认关闭，随附 [Qwen Community License 1.0](data/experimental-speed-projection/LICENSE) 原文。完整推理模型权重需另行下载。
+MIT 许可的 Strata 分支。Hakua-memory 与模型权重另有许可，保留原作者与上游署名。约 480 KB 控制向量默认关闭，遵循 [Qwen Community License 1.0](data/experimental-speed-projection/LICENSE)。
