@@ -1,6 +1,6 @@
 [package]
 name = "strata-desktop"
-version = "0.4.0-preview.20261101.1"
+version = "0.4.0-preview.20261103.1"
 description = "Strata Desktop — local AI, tuned to one model."
 edition = "2021"
 rust-version = "1.77"

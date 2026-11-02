@@ -6,10 +6,10 @@ Hakua chatbot on Strata. This fork packages a Windows preview with Hakua memory 
 
 ## Install (Windows preview)
 
-1. Download the [setup EXE](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/Strata_0.4.0-preview.20261101.1_x64-setup.exe) (or the [7z](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/Hakua-Strata-0.4.0-preview.20261101.1-windows-x64-sm120.7z) that contains the same EXE).
-2. Compare it with [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/SHA256SUMS.txt) before you run it. The installer has no Windows code signature. Digests on this tag were refreshed on 2026-11-02; use today’s SUMS file, not an older copy.
-3. Quit Strata fully if it is already installed (tray → Quit Strata), then run the EXE.
-4. On first start, install the signed engine offered on the preparation screen, or import the matching `.tar.gz` from the same release. Then choose a model folder and load a model.
+1. Download the [setup EXE](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.1/Strata_0.4.0-preview.20261103.1_x64-setup.exe).
+2. Compare it with [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.1/SHA256SUMS.txt) before you run it. The installer has no Windows code signature. The setup EXE SHA-256 is `335e442bfd174ff3dabf5ea612e37debd707f7f8ccb9b1811ec41d711807efb6` (113,762,866 bytes).
+3. Quit Strata fully if it is already installed (tray → Quit Strata), then run the EXE. An installed copy can be updated with `/S /UPDATE`.
+4. The installer updates the app. It does not contain the CUDA engine. The Qwen3.6 engine package on this tag is separate, has no picture reader, and is not Ed25519-signed (`signature` is null). The signed engine from [v0.4.0-preview.20261101.1](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261101.1) still holds PrismML and TurboQuant. This release does not replace those files.
 
 The click-path is short. Downloads, engine activation and model load take longer and need free disk and VRAM. Full steps: [HAKUA_INSTALL.md](docs/HAKUA_INSTALL.md). Measured limits: [HAKUA_RELEASE.md](docs/HAKUA_RELEASE.md).
 
@@ -17,7 +17,7 @@ The click-path is short. Downloads, engine activation and model load take longer
 
 | In the app installer | Separate |
 | --- | --- |
-| GUI / Host, private Node 24.22.2, Control / CPython 3.12.15, Hakua-memory 0.3.5, Harness | Signed CUDA engine component (~1.4 GB): native Strata + PrismML + TurboQuant |
+| GUI / Host, private Node 24.22.2, Control / CPython 3.12.15, Hakua-memory 0.3.5, Harness | CUDA engines stay separate. This tag’s Qwen3.6 package is unsigned. PrismML and TurboQuant stay in the signed component from `v0.4.0-preview.20261101.1` |
 | Manual app updates via this EXE | Full model weights (tens or hundreds of GB) |
 
 You do not need system Node, Python, pip or a compiler for the released app. An upstream Niko1221 installer does not include this fork’s changes.
@@ -45,12 +45,20 @@ Guide: [MEMORY_HARNESS.md](serve/MEMORY_HARNESS.md). Hermes SOUL/MEMORY operator
 
 | | |
 | --- | --- |
-| GUI / Product | `0.4.0-preview.20261101.1` |
+| GUI / Product | `0.4.0-preview.20261103.1` |
 | Engine / Control | `0.4.0` (CUDA sm_120) |
 | Hakua-memory | `0.3.5` |
 | Upstream freeze | `c62d5e3a` · 0.2.9 |
 
-Release page: [v0.4.0-preview.20261101.1](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261101.1). The engine component and feed are Ed25519-signed and checked by the app. Automatic signed app updates are not qualified; update the app with this installer.
+Release page: [v0.4.0-preview.20261103.1](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.1). This tag’s installer and Qwen3.6 engine package are not signed. The Ed25519 feed and the signed engine on `v0.4.0-preview.20261101.1` were not replaced. Automatic signed app updates are not qualified; update the app with this installer.
+
+## Qwen3.6 on 32 GB RAM / 16 GB VRAM
+
+The main line stays Qwen3.6-35B-A3B UD-Q4_K_XL, context 65536, FP32 KV, MTP 2. New paths are opt-in. A setting this engine does not apply is refused before the process starts. A private-cache request is refused. It is not removed to force a start.
+
+The mapped expert pack stays off unless the launch asks for it and the engine SHA-256 is `512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046`. The legacy host arena stays the default. Startup time and token speed for this build were not measured. The CUDA spill guard did not pass against the reviewed baseline.
+
+On a 32 GB PC the host can refuse UD-Q4_K_XL before launch when free physical RAM cannot hold the legacy 18.75 GiB expert arena plus the reserve. That refusal is not a measurement that the model now fits in 16 GB of VRAM.
 
 ## Limits (measured preview)
 

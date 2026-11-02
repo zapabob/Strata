@@ -6,8 +6,8 @@ Chatbot Hakua sobre Strata. Esta bifurcación ofrece una vista previa de Windows
 
 ## Instalación (vista previa Windows)
 
-1. Descarga el [EXE de instalación](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/Strata_0.4.0-preview.20261101.1_x64-setup.exe) (o el [7z](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/Hakua-Strata-0.4.0-preview.20261101.1-windows-x64-sm120.7z) con el mismo EXE).
-2. Compáralo con [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/SHA256SUMS.txt) antes de ejecutarlo. No hay firma de código Windows. Los digests de esta etiqueta se actualizaron el 2026-11-02; no uses un SUMS antiguo.
+1. Descarga el [EXE de instalación](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.1/Strata_0.4.0-preview.20261103.1_x64-setup.exe).
+2. Compáralo con [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.1/SHA256SUMS.txt) antes de ejecutarlo. No hay firma de código Windows. SHA-256 del EXE: `335e442bfd174ff3dabf5ea612e37debd707f7f8ccb9b1811ec41d711807efb6` (113.762.866 bytes).
 3. Sal de Strata por completo (bandeja → Salir de Strata) si ya está instalado y ejecuta el EXE.
 4. En el primer inicio, instala el motor firmado ofrecido o importa el `.tar.gz` correspondiente de la misma release. Luego elige una carpeta de modelos y carga un modelo.
 
@@ -45,12 +45,12 @@ Guía: [MEMORY_HARNESS.md](serve/MEMORY_HARNESS.md). Las herramientas Hermes SOU
 
 | | |
 | --- | --- |
-| GUI / Product | `0.4.0-preview.20261101.1` |
+| GUI / Product | `0.4.0-preview.20261103.1` |
 | Engine / Control | `0.4.0` (CUDA sm_120) |
 | Hakua-memory | `0.3.5` |
 | Congelación upstream | `c62d5e3a` · 0.2.9 |
 
-Página de release: [v0.4.0-preview.20261101.1](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261101.1). El motor y el feed tienen firma Ed25519 y la app las comprueba. Las actualizaciones automáticas firmadas de la app no están cualificadas; actualiza con este instalador.
+Página de release: [v0.4.0-preview.20261103.1](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.1). El instalador y el paquete de motor Qwen3.6 de esta etiqueta no están firmados. El feed Ed25519 y el motor firmado de `v0.4.0-preview.20261101.1` siguen en su sitio. Las actualizaciones automáticas firmadas de la app no están cualificadas; actualiza con este instalador. El instalador no incluye el motor CUDA. El paquete Qwen3.6 no tiene lector de imágenes y `signature` es null. PrismML y TurboQuant siguen en el componente firmado. La línea principal es Qwen3.6-35B-A3B UD-Q4_K_XL, contexto 65536, KV FP32, MTP 2. Las rutas nuevas son opt-in. Un ajuste no aplicado, o una petición de caché privada, se rechaza antes de arrancar. El mapped expert pack solo si se pide y el SHA-256 del motor es `512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046`. El arena de host anterior sigue siendo el predeterminado. El tiempo de arranque y la velocidad de tokens no se midieron. El CUDA spill guard no pasó la baseline revisada. En un PC de 32 GB, UD-Q4_K_XL puede rechazarse antes del arranque si la RAM física libre no cubre el arena legacy de 18,75 GiB más la reserva. Eso no es una medida de que quepa en 16 GB de VRAM.
 
 ## Límites (vista previa medida)
 

@@ -35,7 +35,7 @@ const vectorProvenance=verifyControlData(root,control),qwenLicenseHash=vectorPro
 const notices=join(resources,'notices'),noticeRecord=json(join(notices,'NOTICES.json'));
 if(noticeRecord.schema!==1||!noticeRecord.files||!Object.keys(noticeRecord.files).length)throw new Error('Stage the third-party notices');
 for(const name of ['Strata-MIT.txt','ggml-MIT.txt','NVIDIA-EULA.txt','NVIDIA-LICENSE.txt','Node-LICENSE.txt','Microsoft-VisualStudio-Community-2022.docx','Microsoft-Build-Tools-2022.docx','Microsoft-Visual-C-Runtime-2015-2022.docx','Qwen-Community-License-1.0.txt'])if(!noticeRecord.files[name])throw new Error('Missing third-party notice: '+name);
-const noticeNames=files(notices).map(path=>relative(notices,path).replaceAll('\\','/')).filter(name=>name!=='NOTICES.json').sort();
+const noticeNames=files(notices).map(path=>relative(notices,path).replaceAll('\\','/')).filter(name=>name!=='NOTICES.json' && name!=='.gitignore').sort();
 if(JSON.stringify(noticeNames)!==JSON.stringify(Object.keys(noticeRecord.files).sort()))throw new Error('Third-party notice membership changed');
 for(const name of noticeNames)if(sha256(join(notices,name))!==noticeRecord.files[name])throw new Error('Third-party notice changed: '+name);
 const libstrixNotice=join(root,'third_party/libstrix/NOTICE.md');

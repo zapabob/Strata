@@ -6,8 +6,8 @@ Strata 上の Hakua チャットボット。Windows プレビューとして、H
 
 ## 導入（Windows プレビュー）
 
-1. [setup EXE](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/Strata_0.4.0-preview.20261101.1_x64-setup.exe) を取得します（同じ EXE 入りの [7z](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/Hakua-Strata-0.4.0-preview.20261101.1-windows-x64-sm120.7z) でも可）。
-2. 実行前に [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/SHA256SUMS.txt) と照合します。Windows のコード署名はありません。このタグのダイジェストは 2026-11-02 に差し替えています。古い SUMS を使わないでください。
+1. [setup EXE](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.1/Strata_0.4.0-preview.20261103.1_x64-setup.exe) を取得します。
+2. 実行前に [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.1/SHA256SUMS.txt) と照合します。Windows のコード署名はありません。setup EXE の SHA-256 は `335e442bfd174ff3dabf5ea612e37debd707f7f8ccb9b1811ec41d711807efb6`（113,762,866 bytes）です。
 3. すでに入っている場合はトレイから「Strata を終了」で完全終了してから EXE を実行します。
 4. 初回は準備画面で署名付きエンジンの導入を選ぶか、同じリリースの `.tar.gz` を取り込みます。その後モデルフォルダーを選んで読み込みます。
 
@@ -45,12 +45,16 @@ PrismML と TurboQuant はエンジン内の別実行ファイルです。[LOCAL
 
 | | |
 | --- | --- |
-| GUI / Product | `0.4.0-preview.20261101.1` |
+| GUI / Product | `0.4.0-preview.20261103.1` |
 | Engine / Control | `0.4.0`（CUDA sm_120） |
 | Hakua-memory | `0.3.5` |
 | 上流固定 | `c62d5e3a` · 0.2.9 |
 
-リリース: [v0.4.0-preview.20261101.1](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261101.1)。エンジンとフィードは Ed25519 署名があり、アプリが検証します。アプリ本体の署名付き自動更新は未検証で、更新はこのインストーラーで行います。
+リリース: [v0.4.0-preview.20261103.1](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.1)。このタグのインストーラーと Qwen3.6 エンジンパッケージに署名はありません。`v0.4.0-preview.20261101.1` の Ed25519 フィードと署名済みエンジンは差し替えていません。アプリ本体の署名付き自動更新は未検証で、更新はこのインストーラーで行います。
+
+インストーラーはアプリだけを更新します。CUDA エンジンは入りません。このタグの Qwen3.6 パッケージは別配布で、画像リーダーは無く、`signature` は null です。PrismML と TurboQuant は `v0.4.0-preview.20261101.1` の署名済みコンポーネントに残しています。
+
+本線は Qwen3.6-35B-A3B UD-Q4_K_XL、context 65536、FP32 KV、MTP 2 のままです。新しい経路は opt-in です。エンジンが適用しない設定は起動前に拒否します。private-cache の要求も拒否し、起動させるために外しません。mapped expert pack は、起動がそれを要求し、エンジン SHA-256 が `512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046` のときだけです。既定は従来の host arena です。このビルドの起動時間とトークン速度は未計測です。CUDA spill guard は登録済み baseline に対して不合格です。32GB の PC では、空き物理 RAM が legacy の 18.75 GiB expert arena と reserve を満たさないとき、UD-Q4_K_XL を起動前に拒否できます。それは 16GB VRAM に収まった測定ではありません。
 
 ## 制限（測定したプレビュー）
 

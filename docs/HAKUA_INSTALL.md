@@ -1,6 +1,6 @@
 # Install Hakua / Strata on Windows
 
-GUI/Product `0.4.0-preview.20261101.1` · native engine/Control `0.4.0` · Hakua-memory `0.3.5`.
+GUI/Product `0.4.0-preview.20261103.1` · native engine/Control `0.4.0` · Hakua-memory `0.3.5`. The app installer on this tag has no Windows code signature. Its Qwen3.6 engine package is separate and is not Ed25519-signed. PrismML and TurboQuant stay in the signed component from `v0.4.0-preview.20261101.1`. Startup time and token speed for the 20261103.1 engine were not measured.
 
 Use this fork's 0.4.0 preview packages below. See the [qualification record](HAKUA_RELEASE.md) for exact tests and supported limits.
 
@@ -8,7 +8,7 @@ Check the [qualification record](HAKUA_RELEASE.md) for publication status and me
 
 ## Start
 
-Download the [setup EXE](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/Strata_0.4.0-preview.20261101.1_x64-setup.exe), or the [7z containing that same installer](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/Hakua-Strata-0.4.0-preview.20261101.1-windows-x64-sm120.7z). With the 7z, extract it before running the EXE. Compare the file with [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261101.1/SHA256SUMS.txt).
+Download the [setup EXE](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.1/Strata_0.4.0-preview.20261103.1_x64-setup.exe). Compare the file with [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.1/SHA256SUMS.txt). SHA-256 `335e442bfd174ff3dabf5ea612e37debd707f7f8ccb9b1811ec41d711807efb6`, 113762866 bytes. The installer has no Windows code signature.
 
 Close the running app and unload models before updating. Back up the app's data directory first. Run the installer for your Windows account. Keep enough free disk space for extraction and model files; when C: is short of space, save the download and choose an installation directory on a drive with room.
 
@@ -37,7 +37,7 @@ $installTemp = 'H:\Hakua-install-temp'
 New-Item -ItemType Directory -Path $installTemp -Force | Out-Null
 $env:TEMP = $installTemp
 $env:TMP = $installTemp
-Start-Process -FilePath (Join-Path $PWD 'Strata_0.4.0-preview.20261101.1_x64-setup.exe') -Wait
+Start-Process -FilePath (Join-Path $PWD 'Strata_0.4.0-preview.20261103.1_x64-setup.exe') -Wait
 ```
 
 ## 日本語の導入手順
