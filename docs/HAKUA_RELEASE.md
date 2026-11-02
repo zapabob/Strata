@@ -24,13 +24,15 @@ Earlier supplementary runs passed setup975 with two skips/359 subtests, server13
 
 ## Package identities
 
-App source: `be0960a0707ab2e7fc1a90d5a7888ffd149c9858`. Embedded unchanged Control source: `a684b50d5c149718fdc538d71c97c8389760347d`. Native source: `4a6a54141ff6adabf64a16117b5ee0f8a80aff93`. Shell SHA256: `ee0621a49e38aae3f3b40584a2c2fd77f1636c2f892d3e9f64751dbebff70284`. GUI receipt SHA256: `11433b751da7e7310ef6005c241323e7f7b374d8b9101995195b6fb07270d6be`. Personal memories, keys and full inference model weights are excluded. The licensed small experimental control vector remains off by default.
+Current public app installer (rebuild uploaded 2026-11-02): workspace `8870f25309ca7142a44b0042b1d16f337e4487af` (Hikari Strata-engine load / agent / 16GB hybrid VRAM tooling). Embedded Control source remains `a684b50d5c149718fdc538d71c97c8389760347d`. Signed engine/Control/feed assets are unchanged from the 2026-11-01 publication. Installed NSIS-patched shell SHA256: `a52b2eff958eed250f43bb7fe5a21b384ff792da59e5010aaa185033e8d60f4c`. Personal memories, keys and full inference model weights are excluded. The licensed small experimental control vector remains off by default.
+
+Earlier first-publication identities (superseded for the three app assets below, retained for audit): app source `be0960a0707ab2e7fc1a90d5a7888ffd149c9858`; native source `4a6a54141ff6adabf64a16117b5ee0f8a80aff93`; shell SHA256 `ee0621a49e38aae3f3b40584a2c2fd77f1636c2f892d3e9f64751dbebff70284`; GUI receipt SHA256 `11433b751da7e7310ef6005c241323e7f7b374d8b9101995195b6fb07270d6be`.
 
 | Asset | Bytes | SHA256 |
 | --- | ---: | --- |
-| `Hakua-Strata-0.4.0-preview.20261101.1-windows-x64-sm120.7z` | 110737917 | `6843508dc339fbd965154e7271fd6b1c69e8a1dd181479c6c8dc6aa10f921822` |
-| `SHA256SUMS.txt` | 727 | `539c2d0cd96e60e429975a7bbd69c2b75320e614d2ebe861d29902cace8610be` |
-| `Strata_0.4.0-preview.20261101.1_x64-setup.exe` | 110747830 | `172f563f635fa85218f8faa170177d4d756ca9df90a0e755a114f15ac2e588dc` |
+| `Hakua-Strata-0.4.0-preview.20261101.1-windows-x64-sm120.7z` | 113749050 | `7d02e384a502600b0e2b2143cbb73ebc8c71893af8a2fd8532b74ad823bb6fbe` |
+| `SHA256SUMS.txt` | 720 | `411ab24fd7579daca3a1f73d240de65718399b1de3511b5f416988a32e7c73f6` |
+| `Strata_0.4.0-preview.20261101.1_x64-setup.exe` | 113758075 | `9682b59774fa1b552d9ba09c7d0baed0028f0b7b104cfeec4c9b0a3d7eda2a26` |
 | `install-manifest.txt` | 135 | `91bb97a42fce7b463dfdf28298ab5f66583b4ecee845c93ed23f29fd41d49b9d` |
 | `strata-control-0.4.0-windows-x86_64.zip` | 73041197 | `2f550ea2e0a5b5693b7f42b642538dd545e46e5da94ddd4666fdd4261c4f7c6f` |
 | `strata-engine-0.4.0-windows-x86_64-cuda-cuda13.tar.gz` | 1418256311 | `3972253734ce936527d75c6048bad7b7bffbcefad32085cdca6143d367ba0e84` |
@@ -39,7 +41,9 @@ App source: `be0960a0707ab2e7fc1a90d5a7888ffd149c9858`. Embedded unchanged Contr
 
 ## Published download verification
 
-Published 2026-11-01T19:36:42Z, release ID430808779, source tag `v0.4.0-preview.20261101.1` at `a35bb92c8fb3f53ff75ebccf1fa457519d6e0b77`. All eight public assets were downloaded without authentication and matched the qualified local size, SHA256 and GitHub asset digest. The latest-release pointer, latest/download feed, Ed25519 feed signature, sequence20261101160145 and flat engine/Control package URLs passed at 2026-11-01T19:39:33.566443+00:00. App binaries remain those built from be0960a0; this publication receipt changes documentation only.
+First published 2026-11-01T19:36:42Z, release ID430808779, source tag `v0.4.0-preview.20261101.1` at `a35bb92c8fb3f53ff75ebccf1fa457519d6e0b77`. All eight public assets were downloaded without authentication and matched the then-qualified local size, SHA256 and GitHub asset digest. The latest-release pointer, latest/download feed, Ed25519 feed signature, sequence20261101160145 and flat engine/Control package URLs passed at 2026-11-01T19:39:33.566443+00:00.
+
+Installer rebuild upload 2026-11-02T09:51Z (JST 18:51): replaced only `Strata_0.4.0-preview.20261101.1_x64-setup.exe`, `Hakua-Strata-0.4.0-preview.20261101.1-windows-x64-sm120.7z` and `SHA256SUMS.txt` on the same tag via `gh release upload --clobber`. Signed engine/Control/feed/install-manifest digests were left unchanged. Anonymous curl downloads of the three replaced assets matched the staged SHA256 and GitHub digests at 2026-11-02T09:58:59Z. Local gates for this rebuild: CUDA engine rebuild + `verify-release` + NSIS `NSIS_BUILD_EXIT=0` + `/S /UPDATE` DisplayVersion `0.4.0-preview.20261101.1` + smoke `strata-desktop` start. Full Host/Python suite and 13 production-shell self-tests were not re-run for this upload; earlier 2026-11-01 suite evidence remains that of the first publication payload.
 
 ## Limits and retained failures
 
