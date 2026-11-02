@@ -27,6 +27,7 @@
 #include "strata/prefill/moe_mmq.hpp"
 #include "strata/qwen35/engine.hpp"
 #include "strata/qwen35/sampling.hpp"
+#include "strata/qwen35/startup_trace.hpp"
 #include "q36_kernels.cuh"
 #if defined(STRATA_Q36_CPU_POOL)
 #include "strata/kernels/cpu/native_expert.hpp"
@@ -1112,6 +1113,7 @@ bool load(const std::string& path, Model& m, std::string& err, bool want_mtp) {
     std::fprintf(stderr, "strata-q36: %s: %zu tensors (layout checked), %.2f GiB on the GPU in %.1f s (the routed "
                  "experts are placed after the engine's buffers)\n", path.c_str(), checked, (double) bytes / (1 << 30),
                  ms_since(t0) / 1000.0);
+    strata::qwen35::q36_startup("dense_load", "end", (long long) ms_since(t0), (long long) ms_since(t0), nullptr);
     return true;
 }
 
@@ -1508,6 +1510,7 @@ struct Engine {
         CK(cudaMemGetInfo(&fr, &tot));
         std::fprintf(stderr, "strata-q36: context %d cells, prompt chunk %d%s, %.2f GiB of VRAM free\n", ctx, tmax,
                      m->has_mtp ? ", MTP block loaded" : "", (double) fr / (1 << 30));
+        strata::qwen35::q36_startup("buffers", "end", 0, 0, nullptr);
     }
 
     /// The recurrent state and the cache to a fresh sequence.
@@ -2761,15 +2764,24 @@ struct Engine {
         const int32_t filler = 198;   // a newline: any token works
         // #4708: the prompt chunk may equal or exceed the context (--context 2048 with a 2048-token chunk): warm only cells that
         // exist, and start the small-prompt, decode and speculative probes in a fresh sequence instead of appending past the cache.
+        const auto tw = Clock::now();
+        strata::qwen35::q36_startup("warmup_prefill", "begin", 0, 0, nullptr);
         std::vector<int32_t> toks((size_t) std::max(1, std::min(tmax, ctx)), filler);
         process(toks.data(), (int64_t) toks.size(), [](int64_t) {});
+        strata::qwen35::q36_startup("warmup_prefill", "end", (long long) ms_since(tw), (long long) ms_since(tw), nullptr);
         reset();
         if (tmax > kGemmT + 1 && ctx > kGemmT + 1) process(toks.data(), kGemmT + 1, [](int64_t) {});   // the smallest GEMM chunk too
+        const auto td = Clock::now();
+        strata::qwen35::q36_startup("warmup_decode", "begin", (long long) ms_since(t0), 0, nullptr);
         process(&filler, 1, [](int64_t) {});
+        strata::qwen35::q36_startup("warmup_decode", "end", (long long) ms_since(t0), (long long) ms_since(td), nullptr);
         if (mtp_d > 0) {
+            const auto ts = Clock::now();
             std::vector<int32_t> fix, drafts;
             int32_t picks[16];
+            strata::qwen35::q36_startup("warmup_spec", "begin", (long long) ms_since(t0), 0, nullptr);
             spec_step(filler, fix, mtp_d, drafts, picks);
+            strata::qwen35::q36_startup("warmup_spec", "end", (long long) ms_since(t0), (long long) ms_since(ts), nullptr);
         }
         CK(cudaStreamSynchronize(st));
         warming = false;
@@ -2932,6 +2944,8 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, int hybrid
         arena = (uint8_t*) std::malloc(host);
         if (!arena) {
             err = "no host memory for the experts (" + std::to_string(host >> 20) + " MiB)";
+            strata::qwen35::q36_startup("expert_host_alloc", "error", (long long) ms_since(t0), (long long) ms_since(t0),
+                                        "host_allocation_failure");
             return false;
         }
     }
@@ -3008,6 +3022,7 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, int hybrid
                  "staging); %.1f s\n", S, (long long) ne, (double) S * per_slot / (1 << 30), (double) host / (1 << 30),
                  pinned ? "pinned" : "pageable", E.hybrid_t, E.pool->workers() + (E.pool->host_works() ? 1 : 0),
                  (double) staging / (1 << 30), ms_since(t0) / 1000.0);
+    strata::qwen35::q36_startup("expert_repack", "end", (long long) ms_since(t0), (long long) ms_since(t0), nullptr);
     return true;
 #endif
 }

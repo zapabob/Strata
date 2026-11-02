@@ -122,7 +122,7 @@ test('loading Qwen3.6 drops ignored memory flags and refuses an explicit cache f
     const path = join(f.repo, 'strata-iq3_s.json');
     const config = JSON.parse(readFileSync(path, 'utf8'));
     config.arch = 'qwen35moe';
-    config.model_name = 'qwen3.6-35b-a3b-ud-q4_k_xl';
+    config.model_name = 'Qwen3.6-35B-A3B';
     config.args = ['--max-context', '65536', '--prefill', '2048', '--mtp', '2', '--resident-budget-gib', '8'];
     writeFileSync(path, JSON.stringify(config));
     const loaded = await finishJob(f.control, f.control.operation('load', { model: 'iq3_s', resourceProfile: 'performance' }).id);

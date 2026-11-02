@@ -16,7 +16,8 @@ import { resolvePython, venvPython } from './python-resolver.mjs';
 import os from 'node:os';
 import { runtimeVision } from './native-vision.mjs';
 import { dsEngineArgs, dsUserArgs, dsArgsNote, withoutVisionFlag } from './native-ds-args.mjs';
-import { isQwen36Config, prepareQ36Launch } from './q36-run-contract.mjs';
+import { admitQ36LegacyPhysical, isQwen36Config, prepareQ36Launch } from './q36-run-contract.mjs';
+import { parseQ36StartupLine, q36StartupSentence, reduceQ36Startup } from './q36-startup-events.mjs';
 import { componentsDirectory, installerEnvironment, controlEnvironment, sourceServerEnvironment } from './control-runtime.mjs';
 import { createEngineStep } from './engine-step.mjs';
 import { dataFolderFromPick, isDriveRoot, makeFolder, rememberDataFolder, syncDataFolder, terminalSettingsFile } from './model-folder.mjs';
@@ -417,6 +418,11 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   await beforeLoad();if(job.state!=='running')return;
   if(!args.multiple){if(busy(requests().filter(r=>instances.has(r.instanceId))))throw new Error('Finish or cancel native requests before switching models.');for(const existingId of [...instances.keys()]){const existing=instances.get(existingId);/* Force-clear error/loading leftovers from a prior cancel; a blocked stop must not fail the next load (server_stop_deadline_expired). */await unload(existingId,!existing||existing.status!=='ready');}}else if(matching)await unload(matching.id,matching.status!=='ready');
   if(job.state!=='running')return;
+  /* Recheck after the previous model is gone. UD-Q4_K_XL's legacy arena is a measured size; other Qwen3.6 files are not guessed into a fit. */
+  if(isQwen36Config(cfg)&&(cfg.q36_run?.effective?.expertStoreMode??'legacy')==='legacy'){
+    const gate=admitQ36LegacyPhysical({modelName:`${cfg.model_name??''} ${entry.model_name??''} ${args.model??''}`,availablePhysicalBytes:os.freemem(),ramBytes:os.totalmem()});
+    if(gate.decision==='rejected')throw Object.assign(new Error(gate.message),{code:gate.reason});
+  }
   writeFileSync(configPath,JSON.stringify(cfg,null,2),{mode:0o600});
   if(memoryAccess)desktopMemoryAccess.set(id,memoryAccess);
   const instance={id,apiModelId,fingerprint,context:entry.context??0,aliases:cfg.aliases??[],vision:!!cfg.vision,resourceProfile:cfg.ui_resource_profile??null,model:args.model,label:friendlyModelName(snapshot.catalog,args.model)??entry.model_name??args.model,port:cfg.port,gpus:Array.isArray(cfg.gpu)?cfg.gpu:cfg.gpu===undefined?[]:[cfg.gpu],status:'loading',phase:'loading',parallel:cfg.parallel??1,mcpServers:cfg.mcp_servers??cfg.mcpServers??{},key,configPath,ownerJob:job.id,loadedAt:new Date().toISOString(),metrics:null,error:null};
@@ -465,7 +471,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   proc=spawnProcess(py,[join(repo(),'serve/server.py'),'--engine','strata','--config',configPath,'--port',String(cfg.port),'--host','127.0.0.1'],{cwd:repo(),detached:process.platform!=='win32',stdio:['ignore','pipe','pipe'],env:sourceServerEnvironment()});
   instances.set(id,instance);processes.set(id,proc);if(!defaultId||!args.multiple||wasDefault)defaultId=id;
   if(q36Note)append(id,q36Note);
-  for(const stream of [proc.stdout,proc.stderr])stream.on('data',chunk=>{const lines=chunk.toString().split('\n').filter(Boolean);lines.forEach(line=>append(id,line.replaceAll(key,'[redacted]')));job.summary=lines.at(-1)??job.summary;emit();});
+  for(const stream of [proc.stdout,proc.stderr])stream.on('data',chunk=>{const lines=chunk.toString().split('\n').filter(Boolean);let sawStage=false;for(const line of lines){const clean=line.replaceAll(key,'[redacted]');append(id,clean);const event=parseQ36StartupLine(clean);if(!event)continue;sawStage=true;const next=reduceQ36Startup(instance.q36Startup,event);instance.q36Startup=next;const sentence=q36StartupSentence(next);if(sentence&&next===event)job.summary=sentence;}if(!sawStage&&instance.q36Startup?.state!=='error')job.summary=lines.at(-1)??job.summary;emit();});
   proc.on('error',error=>{instance.status='error';instance.error=error.message;emit();});proc.on('exit',code=>{if(instances.has(id)&&instance.status!=='unloading'){instance.status='error';instance.error=`Engine stopped${code===null?'':` (exit ${code})`}. Open diagnostics or reload.`;emit();}});emit();
   }
   /* Cancel may have unloaded the map entry while Control start was still resolving; stop the profile so reload is not blocked by a zombie. */

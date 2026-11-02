@@ -304,3 +304,45 @@ export function prepareQ36Launch(input = {}) {
     : '';
   return { ok: true, argv, note, warnings, dropped, preservedUserArgs: userArgs, contract };
 }
+
+/** Host arena measured for UD-Q4_K_XL on 2026-11-02: "no host memory for the experts (19195 MiB)". Not a size for every Qwen3.6 file. */
+export const Q36_UD_Q4_K_XL_HOST_EXPERT_BYTES = 19195n << 20n;
+
+function gibPhrase(bytes) {
+  const gib = Number(bytes) / 1024 / 1024 / 1024;
+  return (Math.round(gib * 10) / 10).toFixed(1);
+}
+
+/**
+ * Legacy placement copies every expert into a private arena. For the measured UD-Q4_K_XL file,
+ * refuse to start when free physical RAM cannot hold that arena plus a reserve (the larger of 4 GiB and 20% of RAM).
+ * Other Qwen3.6 files stay unknown: their expert bytes are not invented.
+ */
+export function admitQ36LegacyPhysical({ modelName = '', availablePhysicalBytes = null, ramBytes = null } = {}) {
+  if (!/q4_k_xl/i.test(String(modelName))) return { decision: 'unknown', fits: null, reason: 'expert_bytes_unknown' };
+  if (availablePhysicalBytes == null || ramBytes == null) return { decision: 'unknown', fits: null, reason: 'memory_unknown' };
+  let free, ram;
+  try {
+    free = BigInt(availablePhysicalBytes);
+    ram = BigInt(ramBytes);
+  } catch {
+    return { decision: 'unknown', fits: null, reason: 'memory_unknown' };
+  }
+  if (free < 0n || ram < 0n) return { decision: 'unknown', fits: null, reason: 'memory_unknown' };
+  const floor = 4n << 30n;
+  const fifth = ram / 5n;
+  const reserve = fifth > floor ? fifth : floor;
+  const need = Q36_UD_Q4_K_XL_HOST_EXPERT_BYTES + reserve;
+  if (free < need) {
+    return {
+      decision: 'rejected',
+      fits: false,
+      reason: 'physical_reserve',
+      needBytes: need.toString(),
+      reserveBytes: reserve.toString(),
+      availableBytes: free.toString(),
+      message: `Qwen3.6 UD-Q4_K_XL places about 18.7 GiB of experts in RAM with the current engine. ${gibPhrase(free)} GiB is free and ${gibPhrase(reserve)} GiB stays aside for the rest of the PC. The model was not started.`,
+    };
+  }
+  return { decision: 'allowed', fits: true, reason: 'ok', needBytes: need.toString(), reserveBytes: reserve.toString(), availableBytes: free.toString() };
+}
