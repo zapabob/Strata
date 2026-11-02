@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "kind": "user_supplied_historical_evidence_not_new_benchmark",
+  "source_date": "2026-11-02",
+  "source_sha256": "8953c82d982a50f6d546c551f9bff3edb2bcb40fb8fc4f525cc79a5d954a14cb",
+  "source_bytes": 17159,
+  "source_lines": 85,
+  "duplicate_uploads_counted_once": true,
+  "reviewed_source_commit": "170e0d330edd9c03b5dcddfc64b77e498387ff86",
+  "installed_binary_matches_reviewed_source": null,
+  "counts": {
+    "engine_start": 22,
+    "host_allocation_failure": 14,
+    "vram_failure": 2,
+    "expert_placement_complete": 2,
+    "warmup_complete": 1,
+    "native_path_on_C": 0
+  },
+  "completed_timing_observation": {
+    "start_local_as_logged": "2026-11-02 21:56:54",
+    "source_line_range": [
+      73,
+      78
+    ],
+    "context_capacity": 65536,
+    "prefill_effective": 2048,
+    "mtp_requested": 2,
+    "dense_load_seconds": 28.6,
+    "expert_placement_seconds": 266.0,
+    "warmup_seconds": 306.6,
+    "sum_of_three_timed_regions_seconds": 601.2,
+    "total_wall_seconds": null,
+    "expert_gpu_slots_per_layer": 41,
+    "expert_count_per_layer": 256,
+    "slot_capacity_ratio": 0.16015625,
+    "route_hit_rate": null,
+    "expert_gpu_gib": 3.0,
+    "host_expert_gib": 18.75,
+    "host_memory_kind": "pageable",
+    "gpu_staging_gib": 1.1,
+    "decode_tps": null
+  },
+  "not_established": [
+    "physical drive behind logical H path",
+    "page faults during the timed run",
+    "current process ownership",
+    "application readiness for the timed run",
+    "first request latency",
+    "general speedup",
+    "CUDA kernel correctness of proposed changes"
+  ],
+  "plan_execution_status": "NOT_IMPLEMENTED_NOT_GPU_TESTED"
+}

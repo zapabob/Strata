@@ -1,0 +1,23 @@
+﻿{
+    "schema_version":  1,
+    "captured_at_local":  "2026-11-02 23:27:37 +09:00",
+    "source_commit":  "170e0d330edd9c03b5dcddfc64b77e498387ff86",
+    "source_commit_matches_plan":  true,
+    "installed_binary_matches_reviewed_source":  null,
+    "windows_gpu_baseline":  "NOT_RUN",
+    "cuda_build":  "NOT_RUN",
+    "api_gui_e2e":  "NOT_RUN",
+    "cpu":  {
+                "name":  "AMD Ryzen 5 4500 6-Core Processor",
+                "cores":  6,
+                "logical_processors":  12
+            },
+    "ram_bytes":  34224861184,
+    "os":  {
+               "caption":  "Microsoft Windows 11 Pro",
+               "version":  "10.0.26300",
+               "build":  "26300"
+           },
+    "gpu_nvidia_smi":  "NVIDIA GeForce RTX 5060 Ti, 16311 MiB, 621.01, 1, 8",
+    "gpu_note":  "pcie.link.gen.current and pcie.link.width.current are the link nvidia-smi reported at capture (here gen 1 x8). An idle link often downtrains, so this is not the card maximum and not a measured transfer rate."
+}

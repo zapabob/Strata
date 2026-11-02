@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "status": "NOT_RUN",
+  "family": "qwen36",
+  "model": "Qwen3.6-35B-A3B UD-Q4_K_XL",
+  "baseline": {
+    "context": 65536,
+    "mtp": 2,
+    "parallel": 1,
+    "persistent_kv": "fp32",
+    "requested_prefill": "auto",
+    "effective_prefill_reference": 2048,
+    "note": "effective_prefill_reference is the historical engine print. A new run records the print from that run."
+  },
+  "arms": ["A0", "A1", "A2", "A3-cold", "A3-warm", "A4", "A5", "A6"],
+  "excluded_from_baseline": ["context_32k", "context_16k", "mtp_0", "fp16_kv", "other_model"],
+  "success_metric": "load_request_to_first_useful_token",
+  "not_a_success_metric": "ready_timestamp_only"
+}
