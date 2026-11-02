@@ -28,8 +28,15 @@
 | spill guard | 不合格のまま |
 | 速度 | 未計測 |
 
+## リリース
+
+`https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.1`  
+タグは `feat/q36-32gb16gb` の `4031d428`。`--latest=false`。GitHub の latest は `v0.4.0-preview.20261101.1` のまま。main は動かしていない。
+
+資産: setup EXE 113762866 bytes、SHA256SUMS.txt、未署名エンジン tar 719548928 bytes。
+
 ## 残留リスク
 
-- GitHub リリースはこのログの時点ではまだ。
-- mapped-pack の実 GGUF 起動は未計測。
+- mapped-pack の実 GGUF 起動、起動時間、トークン速度は未計測。
+- T06 の転送スケジュールと T07 の CUDA kernel は、測定が無いので既定化していない。
 - 32GB では UD-Q4_K_XL の legacy arena を物理 RAM が拒否し得る。
