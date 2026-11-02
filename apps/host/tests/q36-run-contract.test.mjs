@@ -77,6 +77,39 @@ test('an explicit unsupported setting stops the launch and is not called applied
   const store = prepareQ36Launch({ args: ['--max-context', '65536'], requested: { expertStoreMode: 'mapped-pack' } });
   assert.equal(store.ok, false);
   assert.equal(store.error.code, 'expert_store_not_available');
+  const bounded = prepareQ36Launch({ args: ['--max-context', '65536'], requested: { warmupMode: 'bounded' } });
+  assert.equal(bounded.ok, false);
+  assert.equal(bounded.error.code, 'unsupported_setting');
+});
+
+test('mapped-pack stays off the command line unless this engine digest is allowlisted', () => {
+  const sha = 'ab'.repeat(32);
+  const other = 'cd'.repeat(32);
+  const allowed = prepareQ36Launch({
+    args: ['--model', 'm.gguf', '--max-context', '65536'],
+    requested: { expertStoreMode: 'mapped-pack' },
+    binarySha256: sha,
+    mappedPackDigests: [sha],
+  });
+  assert.equal(allowed.ok, true);
+  assert.equal(allowed.argv[allowed.argv.indexOf('--q36-expert-store') + 1], 'mapped-pack');
+  assert.equal(allowed.contract.effective.expertStoreMode, 'mapped-pack');
+  const denied = prepareQ36Launch({
+    args: ['--model', 'm.gguf', '--q36-expert-store', 'mapped-pack'],
+    binarySha256: other,
+    mappedPackDigests: [sha],
+  });
+  assert.equal(denied.ok, false);
+  assert.equal(denied.error.code, 'expert_store_not_available');
+  assert.equal(denied.argv, undefined);
+  const junk = prepareQ36Launch({
+    args: ['--model', 'm.gguf', '--q36-expert-store', 'spin'],
+    userArgs: ['--q36-expert-store', 'spin'],
+    binarySha256: sha,
+    mappedPackDigests: [sha],
+  });
+  assert.equal(junk.ok, false);
+  assert.equal(junk.error.code, 'unsupported_setting');
 });
 
 test('app-owned flags that this engine ignores are left out of argv and kept in the saved user list', () => {

@@ -27,6 +27,7 @@
 #include "strata/prefill/moe_mmq.hpp"
 #include "strata/qwen35/engine.hpp"
 #include "strata/qwen35/sampling.hpp"
+#include "strata/qwen35/expert_store.hpp"
 #include "strata/qwen35/startup_trace.hpp"
 #include "q36_kernels.cuh"
 #if defined(STRATA_Q36_CPU_POOL)
@@ -863,6 +864,8 @@ struct Model {
     strata::core::ModelGeometry g;
     std::shared_ptr<strata::GgufModel> file;   // kept mapped: the experts are placed after the engine's buffers
     bool hybrid = false;                       // not every expert fits in VRAM: slots + the CPU pool
+    // Mapped only when --q36-expert-store mapped-pack is set. Legacy leaves this empty.
+    std::unique_ptr<strata::qwen35::MappedExpertPack> expert_pack;
     // the packed Q8_0 decode copies (gguf weights, packed copy, bytes): given back when that lets every expert fit
     std::vector<std::tuple<const uint8_t*, uint8_t*, size_t>> packed;
     // the GGUF-native MTP block (blk.<n_layers>, loaded with --mtp): eh_proj over [enorm(e) | hnorm(h)], then an
@@ -2809,7 +2812,8 @@ struct Engine {
 /// The routed experts after the engine's buffers: all in VRAM when they fit in `vram_gib` (< 0: the free VRAM less a
 /// reserve), else the hybrid mode - every expert in host memory, the same number of VRAM slots per layer, a decode
 /// batch's other experts on the CPU pool and a prompt chunk's streamed through two staging buffers.
-bool place_experts(Model& m, Engine& E, double vram_gib, int threads, int hybrid_t, int slots, std::string& err) {
+bool place_experts(Model& m, Engine& E, double vram_gib, int threads, int hybrid_t, int slots, std::string& err,
+                   const std::string& expert_store, const std::string& model_path) {
     const auto t0 = Clock::now();
     const auto& g = m.g;
     const int64_t ne = g.n_expert;
@@ -2897,6 +2901,11 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, int hybrid
 #if !defined(STRATA_Q36_CPU_POOL)
     (void) threads;
     (void) hybrid_t;
+    (void) model_path;
+    if (expert_store == "mapped-pack") {
+        err = "mapped-pack needs the CPU expert pool (STRATA_NATIVE_EXPERTS). The full host arena was not allocated.";
+        return false;
+    }
     err = "the routed experts (" + std::to_string(total >> 20) + " MiB) do not fit in VRAM, and this build has no CPU "
           "expert pool (STRATA_NATIVE_EXPERTS=OFF)";
     return false;
@@ -2933,20 +2942,65 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, int hybrid
             return false;
         }
     }
-    // host memory: every expert, pinned where the driver allows it (the prompt's stream and the slot copies)
+    // host memory: legacy pins or mallocs the whole arena. mapped-pack maps a file of the same bytes
+    // and does not take that arena. A mapped-pack failure does not fall back to malloc.
+    const bool mapped = expert_store == "mapped-pack";
+    if (mapped && mtp_only) {
+        err = "mapped-pack does not cover an mtp-only placement. The full host arena was not allocated.";
+        strata::qwen35::q36_startup("expert_host_alloc", "error", (long long) ms_since(t0), (long long) ms_since(t0),
+                                    "mapped_pack_unsupported");
+        return false;
+    }
     size_t host = 0;
     for (Layer* L : all)
         if (!mtp_only || L == &m.mtp) host += L->stride * (size_t) ne + kMmqTail;
     uint8_t* arena = nullptr;
-    bool pinned = cudaHostAlloc((void**) &arena, host, cudaHostAllocDefault) == cudaSuccess;
-    if (!pinned) {
-        (void) cudaGetLastError();
-        arena = (uint8_t*) std::malloc(host);
-        if (!arena) {
-            err = "no host memory for the experts (" + std::to_string(host >> 20) + " MiB)";
+    bool pinned = false;
+    if (mapped) {
+        strata::qwen35::PackBuildRequest pack_req;
+        pack_req.model_path = model_path;
+        pack_req.tail = kMmqTail;
+        pack_req.layers.reserve(all.size());
+        for (Layer* L : all) {
+            strata::qwen35::PackLayer pl;
+            pl.layout.gu_type = (uint32_t) L->L.gu_type;
+            pl.layout.d_type = (uint32_t) L->L.d_type;
+            pl.layout.n_embd = (uint32_t) g.n_embd;
+            pl.layout.n_ff = (uint32_t) g.n_ff;
+            pl.layout.n_expert = (uint32_t) ne;
+            pl.layout.gu_row = L->L.gu_row;
+            pl.layout.d_row = L->L.d_row;
+            pl.layout.up_off = L->L.up_off;
+            pl.layout.down_off = L->L.down_off;
+            pl.layout.blob_bytes = L->L.bytes;
+            pl.layout.stride = L->stride;
+            pl.source.gate = L->src_g;
+            pl.source.up = L->src_u;
+            pl.source.down = L->src_d;
+            pl.source.src_gsz = L->src_gsz;
+            pl.source.src_dsz = L->src_dsz;
+            pack_req.layers.push_back(pl);
+        }
+        auto opened = strata::qwen35::open_or_build_expert_pack(pack_req, err);
+        if (!opened) {
+            if (err.empty()) err = "mapped expert pack failed. The full host arena was not allocated.";
             strata::qwen35::q36_startup("expert_host_alloc", "error", (long long) ms_since(t0), (long long) ms_since(t0),
-                                        "host_allocation_failure");
+                                        "mapped_pack_failure");
             return false;
+        }
+        m.expert_pack = std::move(opened);
+        strata::qwen35::q36_startup("expert_host_alloc", "end", (long long) ms_since(t0), (long long) ms_since(t0), nullptr);
+    } else {
+        pinned = cudaHostAlloc((void**) &arena, host, cudaHostAllocDefault) == cudaSuccess;
+        if (!pinned) {
+            (void) cudaGetLastError();
+            arena = (uint8_t*) std::malloc(host);
+            if (!arena) {
+                err = "no host memory for the experts (" + std::to_string(host >> 20) + " MiB)";
+                strata::qwen35::q36_startup("expert_host_alloc", "error", (long long) ms_since(t0), (long long) ms_since(t0),
+                                            "host_allocation_failure");
+                return false;
+            }
         }
     }
     size_t off = 0;
@@ -2964,10 +3018,21 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, int hybrid
             L.n_slots = (int) ne;
             continue;
         }
-        L.hblobs = arena + off;
-        off += L.stride * (size_t) ne + kMmqTail;
-        std::memset(L.hblobs, 0, L.stride * (size_t) ne + kMmqTail);
-        for (int64_t e = 0; e < ne; ++e) expert_blob(L, e, L.hblobs + (size_t) e * L.stride);
+        if (mapped) {
+            const uint8_t* view = m.expert_pack ? m.expert_pack->layer_data((uint32_t) li) : nullptr;
+            if (!view) {
+                err = "mapped expert pack is missing a layer. The full host arena was not allocated.";
+                strata::qwen35::q36_startup("expert_repack", "error", (long long) ms_since(t0), (long long) ms_since(t0),
+                                            "mapped_pack_failure");
+                return false;
+            }
+            L.hblobs = const_cast<uint8_t*>(view);
+        } else {
+            L.hblobs = arena + off;
+            off += L.stride * (size_t) ne + kMmqTail;
+            std::memset(L.hblobs, 0, L.stride * (size_t) ne + kMmqTail);
+            for (int64_t e = 0; e < ne; ++e) expert_blob(L, e, L.hblobs + (size_t) e * L.stride);
+        }
         L.n_slots = S;
         if (S > 0) {
             CK(cudaMalloc(&L.blobs, L.stride * (size_t) S + kMmqTail));
@@ -3020,7 +3085,8 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, int hybrid
     std::fprintf(stderr, "strata-q36: hybrid experts: %d of %lld per layer in VRAM (%.2f GiB), all %.2f GiB in %s host "
                  "memory, the rest of a batch of <= %d rows on %d CPU threads, bigger prompt chunks streamed (%.2f GiB "
                  "staging); %.1f s\n", S, (long long) ne, (double) S * per_slot / (1 << 30), (double) host / (1 << 30),
-                 pinned ? "pinned" : "pageable", E.hybrid_t, E.pool->workers() + (E.pool->host_works() ? 1 : 0),
+                 mapped ? "mapped file-backed" : pinned ? "pinned" : "pageable", E.hybrid_t,
+                 E.pool->workers() + (E.pool->host_works() ? 1 : 0),
                  (double) staging / (1 << 30), ms_since(t0) / 1000.0);
     strata::qwen35::q36_startup("expert_repack", "end", (long long) ms_since(t0), (long long) ms_since(t0), nullptr);
     return true;
@@ -3744,6 +3810,7 @@ int strata::qwen35::run(int argc, char** argv) {
     bool warm = true;
     int expert_slots = 0, batch = 0, draft_vocab = -1;
     bool serve_mode = false, graph = true, vision = false, batch_mtp = false;
+    std::string expert_store = "legacy";
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
         auto next = [&]() -> std::string {
@@ -3784,6 +3851,7 @@ int strata::qwen35::run(int argc, char** argv) {
         else if (a == "--cpu-threads") cpu_threads = std::atoi(next().c_str());
         else if (a == "--expert-slots") expert_slots = std::atoi(next().c_str());
         else if (a == "--hybrid-rows") hybrid_rows = std::atoi(next().c_str());
+        else if (a == "--q36-expert-store") expert_store = next();
         else if (serve_mode && a.rfind("--", 0) == 0) {
             // serve passes the config's args plus a few of its own: one this engine does not have is said and skipped
             // (with its value), not fatal
@@ -3798,6 +3866,10 @@ int strata::qwen35::run(int argc, char** argv) {
                          "--bench-tg N)\n");
             return 2;
         }
+    }
+    if (expert_store != "legacy" && expert_store != "mapped-pack") {
+        std::fprintf(stderr, "strata-q36: --q36-expert-store takes legacy or mapped-pack\n");
+        return 2;
     }
     if (model.empty()) { std::fprintf(stderr, "strata-q36: --model is required\n"); return 2; }
 #if !defined(_WIN32)
@@ -3866,7 +3938,7 @@ int strata::qwen35::run(int argc, char** argv) {
                          fr / 1073741824.0, fr_raw / 1073741824.0, packed / 1073741824.0, experts / 1073741824.0, chunk);
     }
     E.init(m, ctx, chunk, batch, vision);
-    if (!place_experts(m, E, expert_vram, cpu_threads, hybrid_rows, expert_slots, err)) {
+    if (!place_experts(m, E, expert_vram, cpu_threads, hybrid_rows, expert_slots, err, expert_store, model)) {
         std::fprintf(stderr, "strata-q36: %s\n", err.c_str());
         return 1;
     }

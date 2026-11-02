@@ -6,8 +6,11 @@
  * actually reads, and refuses a start when the person, or a private-cache policy,
  * asked for something this engine cannot do.
  *
- * Capability list is the `a == "--..."` options in src/qwen35/q36_engine.cu::run
- * at source baseline 170e0d330edd9c03b5dcddfc64b77e498387ff86.
+ * Capability list is the `a == "--..."` options in src/qwen35/q36_engine.cu::run.
+ * Q36_SOURCE_BASELINE is the reviewed public commit. The live flag list is
+ * Q36_CAPABILITY_REVISION. --q36-expert-store mapped-pack is not put on the
+ * command line unless that engine binary's digest is allowlisted, so an older
+ * binary cannot ignore the flag and still allocate the full host arena.
  */
 import { createHash } from 'node:crypto';
 import { closeSync, fstatSync, openSync, realpathSync } from 'node:fs';
@@ -15,7 +18,9 @@ import { basename } from 'node:path';
 import { flagOf, groups } from './native-user-args.mjs';
 
 export const Q36_SOURCE_BASELINE = '170e0d330edd9c03b5dcddfc64b77e498387ff86';
-export const Q36_CAPABILITY_REVISION = 'q36-argv-170e0d33';
+export const Q36_CAPABILITY_REVISION = 'q36-argv-expert-store-1';
+/** Filled after a CUDA build of an engine that contains mapped-pack. Empty means the host will not send the flag. */
+export const Q36_MAPPED_PACK_DIGESTS = new Set();
 export const Q36_ENGINE_DEFAULT_CONTEXT = 32768;
 export const Q36_KV_BYTES_PER_CELL_PER_SEQ = 45056n;
 
@@ -24,7 +29,7 @@ export const Q36_VALUE_FLAGS = new Set([
   '--model', '--native', '--max-new', '--pool-workers', '--gpu', '--max-context', '--ctx',
   '--chunk', '--prefill', '--tokens', '--n', '--force', '--emb', '--dump-full-logits',
   '--bench-pp', '--bench-tg', '--mtp', '--draft-vocab', '--batch', '--slots',
-  '--expert-vram', '--cpu-threads', '--expert-slots', '--hybrid-rows',
+  '--expert-vram', '--cpu-threads', '--expert-slots', '--hybrid-rows', '--q36-expert-store',
 ]);
 /** Options that stand alone. */
 export const Q36_SWITCH_FLAGS = new Set([
@@ -33,6 +38,16 @@ export const Q36_SWITCH_FLAGS = new Set([
 export const Q36_SUPPORTED_FLAGS = new Set([...Q36_VALUE_FLAGS, ...Q36_SWITCH_FLAGS]);
 
 const PRIVATE_CACHE_FLAGS = new Set(['--prompt-cache', '--conversation-cache-mib']);
+
+export function q36MappedPackAllowed(input = {}) {
+  const sha = String(input.binarySha256 ?? '').toLowerCase();
+  if (!/^[0-9a-f]{64}$/.test(sha)) return false;
+  const listed = new Set([...Q36_MAPPED_PACK_DIGESTS].map(item => String(item).toLowerCase()));
+  for (const item of input.mappedPackDigests ?? []) listed.add(String(item).toLowerCase());
+  return listed.has(sha);
+}
+
+const MAPPED_PACK_REFUSAL = 'This engine binary is not on the mapped expert-store allowlist. The launch was not switched, and the full host arena was not requested.';
 const isFlag = text => typeof text === 'string' && text.startsWith('--');
 
 export function isQwen36Config(config = {}) {
@@ -175,8 +190,8 @@ export function prepareQ36Launch(input = {}) {
   if (requested.persistentKv && requested.persistentKv !== 'fp32') {
     return fail('unsupported_setting', 'Qwen3.6 keeps FP32 KV for this launch. Another KV storage was not applied.');
   }
-  if (requested.expertStoreMode && requested.expertStoreMode !== 'legacy') {
-    return fail('expert_store_not_available', 'The mapped expert store is not part of this engine. The legacy placement stays available and this launch was not switched.');
+  if (requested.expertStoreMode && !['legacy', 'mapped-pack'].includes(requested.expertStoreMode)) {
+    return fail('expert_store_not_available', 'The requested expert store is not part of this engine. The launch was not switched.');
   }
   if (requested.warmupMode && !['legacy', 'off'].includes(requested.warmupMode)) {
     return fail('unsupported_setting', `Qwen3.6 warmup mode "${requested.warmupMode}" is not in capability ${Q36_CAPABILITY_REVISION}.`);
@@ -211,6 +226,12 @@ export function prepareQ36Launch(input = {}) {
       }
       if ((item === '--prefill' || item === '--chunk') && value !== 'auto' && !/^\d+$/.test(value)) {
         return fail('unsupported_setting', `${item} needs auto or an integer. The model was not started.`);
+      }
+      if (item === '--q36-expert-store' && value !== 'legacy' && value !== 'mapped-pack') {
+        return fail('unsupported_setting', `${item} ${value} is not a Qwen3.6 expert store. It was not applied and the model was not started.`);
+      }
+      if (item === '--q36-expert-store' && value === 'mapped-pack' && !q36MappedPackAllowed(input)) {
+        return fail('expert_store_not_available', MAPPED_PACK_REFUSAL);
       }
       argv.push(item, value);
       i += 1;
@@ -251,6 +272,16 @@ export function prepareQ36Launch(input = {}) {
   const batchText = readNumberFlag(argv, ['--batch', '--slots']);
   const parallel = Number.isInteger(requested.parallel) ? requested.parallel : (batchText != null ? Number(batchText) : 1);
   const warmupMode = argv.includes('--no-warmup') || requested.warmupMode === 'off' ? 'off' : 'legacy';
+  let expertStoreMode = 'legacy';
+  const storeAt = argv.indexOf('--q36-expert-store');
+  if (storeAt >= 0) expertStoreMode = argv[storeAt + 1];
+  if (requested.expertStoreMode === 'mapped-pack' && expertStoreMode === 'legacy') {
+    if (!q36MappedPackAllowed(input)) return fail('expert_store_not_available', MAPPED_PACK_REFUSAL);
+    argv.push('--q36-expert-store', 'mapped-pack');
+    expertStoreMode = 'mapped-pack';
+  } else if (requested.expertStoreMode === 'legacy' && expertStoreMode === 'mapped-pack') {
+    return fail('unsupported_setting', 'The launch asked for mapped-pack and also for the legacy store. It was not started.');
+  }
 
   if (!input.binarySha256) {
     warnings.push({ code: 'binary_digest_unbound', message: 'The engine binary digest is not bound. Only the legacy expert placement is allowed.' });
@@ -285,7 +316,7 @@ export function prepareQ36Launch(input = {}) {
       parallel,
       persistentKv: 'fp32',
       warmupMode,
-      expertStoreMode: 'legacy',
+      expertStoreMode,
     },
     securityPolicyDigest: input.securityPolicyDigest ?? null,
     argv,
