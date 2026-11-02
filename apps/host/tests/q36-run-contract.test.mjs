@@ -11,6 +11,7 @@ import {
   fileIdentitySync,
   gibToBytes,
   prepareQ36Launch,
+  Q36_MAPPED_PACK_DIGESTS,
   q36PersistentKvBytes,
   sameModelIdentity,
 } from '../server/q36-run-contract.mjs';
@@ -80,6 +81,19 @@ test('an explicit unsupported setting stops the launch and is not called applied
   const bounded = prepareQ36Launch({ args: ['--max-context', '65536'], requested: { warmupMode: 'bounded' } });
   assert.equal(bounded.ok, false);
   assert.equal(bounded.error.code, 'unsupported_setting');
+});
+
+test('the recorded sm_120 engine digest is the only mapped-pack allowlist entry', () => {
+  const listed = [...Q36_MAPPED_PACK_DIGESTS];
+  assert.equal(listed.length, 1);
+  assert.match(listed[0], /^[0-9a-f]{64}$/);
+  const bound = prepareQ36Launch({
+    args: ['--model', 'm.gguf', '--max-context', '65536'],
+    requested: { expertStoreMode: 'mapped-pack' },
+    binarySha256: listed[0],
+  });
+  assert.equal(bound.ok, true);
+  assert.equal(bound.contract.effective.expertStoreMode, 'mapped-pack');
 });
 
 test('mapped-pack stays off the command line unless this engine digest is allowlisted', () => {

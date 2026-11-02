@@ -19,8 +19,12 @@ import { flagOf, groups } from './native-user-args.mjs';
 
 export const Q36_SOURCE_BASELINE = '170e0d330edd9c03b5dcddfc64b77e498387ff86';
 export const Q36_CAPABILITY_REVISION = 'q36-argv-expert-store-1';
-/** Filled after a CUDA build of an engine that contains mapped-pack. Empty means the host will not send the flag. */
-export const Q36_MAPPED_PACK_DIGESTS = new Set();
+/** Release strata.exe that contains --q36-expert-store. SHA-256 of
+ * H:\Strata\releases\hakua040-nsis-native-20261102\Release\strata.exe
+ * after the 2026-11-03 sm_120 link. An older binary is not listed. */
+export const Q36_MAPPED_PACK_DIGESTS = new Set([
+  '512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046',
+]);
 export const Q36_ENGINE_DEFAULT_CONTEXT = 32768;
 export const Q36_KV_BYTES_PER_CELL_PER_SEQ = 45056n;
 
