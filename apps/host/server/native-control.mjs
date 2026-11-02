@@ -16,7 +16,7 @@ import { resolvePython, venvPython } from './python-resolver.mjs';
 import os from 'node:os';
 import { runtimeVision } from './native-vision.mjs';
 import { dsEngineArgs, dsUserArgs, dsArgsNote, withoutVisionFlag } from './native-ds-args.mjs';
-import { admitQ36LegacyPhysical, isQwen36Config, prepareQ36Launch } from './q36-run-contract.mjs';
+import { admitQ36LegacyPhysical, isQwen36Config, prepareQ36Launch, q36FileSha256 } from './q36-run-contract.mjs';
 import { parseQ36StartupLine, q36StartupSentence, reduceQ36Startup } from './q36-startup-events.mjs';
 import { componentsDirectory, installerEnvironment, controlEnvironment, sourceServerEnvironment } from './control-runtime.mjs';
 import { createEngineStep } from './engine-step.mjs';
@@ -335,7 +335,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   const sized=gb>40?Math.max(300,600+(gb-40)*8):300;
   return Math.trunc(Math.max(300,Math.min(ceiling,Math.max(ready,sized))));
  }
- function buildConfig(args,config){
+ function buildConfig(args,config,trusted={}){
   const vision=runtimeVision(config,args.vision);
   const visionPreferences=args.vision!==undefined?{ui_vision_enabled:args.vision!=='no',ui_vision_device:args.vision==='no'?config.ui_vision_device??'yes':args.vision}:{};
   /* The engine options the person set by hand (user_args, and what they wrote into "args" since the last write) go over everything the app generates, and an
@@ -372,7 +372,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   else delete cfg.ds_experts;
   const privacyRequired=packaged&&hakuaChatbotEnabled()&&!ownEngine(cfg)&&cfg.hakua_harness===undefined;
   if(isQwen36Config(cfg)){
-   const prepared=prepareQ36Launch({args:cfg.args??[],userArgs:cfg[USER_KEY]??[],privacyRequired,binarySha256:cfg.engine_sha256??cfg.binary_sha256??null,requested:{context:cfg.max_context??undefined,mtp:cfg.mtp===false?0:undefined,parallel:cfg.parallel??undefined}});
+   const prepared=prepareQ36Launch({args:cfg.args??[],userArgs:cfg[USER_KEY]??[],privacyRequired,binarySha256:typeof trusted.binarySha256==='string'?trusted.binarySha256:null,requested:{context:cfg.max_context??undefined,mtp:cfg.mtp===false?0:undefined,parallel:cfg.parallel??undefined}});
    if(!prepared.ok)throw Object.assign(new Error(prepared.error.message),{code:prepared.error.code});
    cfg.args=prepared.argv;q36Note=prepared.note;cfg.q36_run=prepared.contract;
   }else if(privacyRequired)privateMemoryArgs(cfg);
@@ -398,10 +398,10 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
  /* Which drafter runs, when it is not the one that was asked for (the engine's own words, "Drafting: MTP (DFlash2 didn't fit)"): under Details of the load. */
  async function noteDrafting(job,instance,key){let note='';try{const r=await fetcher(`http://127.0.0.1:${instance.port}/metrics`,{headers:{authorization:`Bearer ${key}`},signal:AbortSignal.timeout(2000)});if(r.ok)note=String((await r.json())?.engine?.drafting_note??'');}catch{/* a convenience */}const lines=[job.drafterNote,note].filter(Boolean);if(lines.length)job.details=[job.details,...lines].filter(Boolean).join('\n');}
  async function loadEngine(job,args){
-  await refresh(true);if(job.state!=='running')return;const {entry,path:configFile}=recordFile(args.model);const config=checkedSettingsConfig(readFileSync(configFile,'utf8'));if(packaged){const engine=await control.engine();if(!engine.usable)throw new Error(ENGINE_NOT_RECOGNISED+(engine.notice?` ${engine.notice}`:''));}if(!entry.ready){const error=missingFilesError(args.model,entry.missing);append(args.model,error.details[0]);throw error;}
+  await refresh(true);if(job.state!=='running')return;const {entry,path:configFile}=recordFile(args.model);const config=checkedSettingsConfig(readFileSync(configFile,'utf8'));let trustedEngineSha=null;if(packaged){const engine=await control.engine();if(!engine.usable)throw new Error(ENGINE_NOT_RECOGNISED+(engine.notice?` ${engine.notice}`:''));if(engine.engine?.exe)trustedEngineSha=q36FileSha256(engine.engine.exe);}if(!entry.ready){const error=missingFilesError(args.model,entry.missing);append(args.model,error.details[0]);throw error;}
   if(externalRunning().length)throw new Error('A Strata server is already running outside this UI. Stop it before loading here, or connect its API in Settings → Models.');
   if(args.multiple&&instances.size>=8)throw new Error('Unload an instance before adding another. Up to eight native instances can run here.');
-  const {cfg,resources,visionPreferences,parallelChoice,parallelNote:chosenNote,dsNote,q36Note}=buildConfig(args,config);
+  const {cfg,resources,visionPreferences,parallelChoice,parallelNote:chosenNote,dsNote,q36Note}=buildConfig(args,config,{binarySha256:trustedEngineSha});
   let parallelNote=chosenNote;
   await prepareDrafter(job,args,cfg,configFile);if(job.state!=='running')return;
   const memoryAccess=configureDesktopMemory(cfg,{enabled:packaged&&hakuaChatbotEnabled()&&!ownEngine(cfg),directory});

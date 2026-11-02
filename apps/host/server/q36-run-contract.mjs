@@ -13,7 +13,7 @@
  * binary cannot ignore the flag and still allocate the full host arena.
  */
 import { createHash } from 'node:crypto';
-import { closeSync, fstatSync, openSync, realpathSync } from 'node:fs';
+import { closeSync, fstatSync, openSync, readFileSync, realpathSync } from 'node:fs';
 import { basename } from 'node:path';
 import { flagOf, groups } from './native-user-args.mjs';
 
@@ -42,6 +42,15 @@ export const Q36_SWITCH_FLAGS = new Set([
 export const Q36_SUPPORTED_FLAGS = new Set([...Q36_VALUE_FLAGS, ...Q36_SWITCH_FLAGS]);
 
 const PRIVATE_CACHE_FLAGS = new Set(['--prompt-cache', '--conversation-cache-mib']);
+
+/** SHA-256 of a file on disk. Null when it cannot be read. A digest written in model settings is not this. */
+export function q36FileSha256(path) {
+  try {
+    return createHash('sha256').update(readFileSync(path)).digest('hex');
+  } catch {
+    return null;
+  }
+}
 
 export function q36MappedPackAllowed(input = {}) {
   const sha = String(input.binarySha256 ?? '').toLowerCase();

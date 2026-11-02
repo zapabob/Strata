@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -12,6 +13,7 @@ import {
   gibToBytes,
   prepareQ36Launch,
   Q36_MAPPED_PACK_DIGESTS,
+  q36FileSha256,
   q36PersistentKvBytes,
   sameModelIdentity,
 } from '../server/q36-run-contract.mjs';
@@ -81,6 +83,25 @@ test('an explicit unsupported setting stops the launch and is not called applied
   const bounded = prepareQ36Launch({ args: ['--max-context', '65536'], requested: { warmupMode: 'bounded' } });
   assert.equal(bounded.ok, false);
   assert.equal(bounded.error.code, 'unsupported_setting');
+});
+
+test('the engine digest is read from the file, and a missing file is not an allowlisted digest', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'q36-sha-'));
+  try {
+    const file = join(dir, 'strata.exe');
+    writeFileSync(file, 'q36-engine');
+    assert.equal(q36FileSha256(file), createHash('sha256').update('q36-engine').digest('hex'));
+    assert.equal(q36FileSha256(join(dir, 'missing.exe')), null);
+    const forged = prepareQ36Launch({
+      args: ['--model', 'm.gguf', '--max-context', '65536'],
+      requested: { expertStoreMode: 'mapped-pack' },
+      binarySha256: q36FileSha256(file),
+    });
+    assert.equal(forged.ok, false);
+    assert.equal(forged.error.code, 'expert_store_not_available');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('the recorded sm_120 engine digest is the only mapped-pack allowlist entry', () => {
