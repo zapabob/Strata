@@ -16,6 +16,7 @@ import { resolvePython, venvPython } from './python-resolver.mjs';
 import os from 'node:os';
 import { runtimeVision } from './native-vision.mjs';
 import { dsEngineArgs, dsUserArgs, dsArgsNote, withoutVisionFlag } from './native-ds-args.mjs';
+import { isQwen36Config, prepareQ36Launch } from './q36-run-contract.mjs';
 import { componentsDirectory, installerEnvironment, controlEnvironment, sourceServerEnvironment } from './control-runtime.mjs';
 import { createEngineStep } from './engine-step.mjs';
 import { dataFolderFromPick, isDriveRoot, makeFolder, rememberDataFolder, syncDataFolder, terminalSettingsFile } from './model-folder.mjs';
@@ -358,7 +359,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   for(const arg of cfg.args??[])if(arg.endsWith('.gguf')&&!existsSync(resolve(repo(),arg)))throw new Error('An engine argument names a missing GGUF. Restore the saved arguments or repair the files.');
   /* The app's own choice of request slots (4, fewer where the card has no room) is part of the configuration, so a tune measures the engine a load will start: slots take VRAM from the expert cache. */
   const parallelChoice=packaged&&!ownEngine(config)?chooseParallel({config:cfg,values:args.values??{},hardware:snapshot.hardware?.gpus?.length?snapshot.hardware:{gpus:hardwareProbe()??[]}}):null;
-  let parallelNote=null,dsNote='';
+  let parallelNote=null,dsNote='',q36Note='';
   /* The agent asks for long answers (a thinking model can use most of the window): let the engine clamp the output to what is left of the context instead of refusing the request. */
   if(packaged&&!ownEngine(config)&&cfg.fit_max_tokens===undefined)cfg.fit_max_tokens=true;
   if(parallelChoice){const applied=applyParallel(cfg,parallelChoice);for(const k of Object.keys(cfg))if(!(k in applied.cfg))delete cfg[k];Object.assign(cfg,applied.cfg);parallelNote=applied.note;}
@@ -368,8 +369,13 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
    const built=dsEngineArgs(cfg.args);cfg.args=built.args;dsNote=dsArgsNote(built);
    if(Array.isArray(cfg[USER_KEY])){const kept=dsUserArgs(cfg[USER_KEY]);if(kept.length)cfg[USER_KEY]=kept;else delete cfg[USER_KEY];}}
   else delete cfg.ds_experts;
-  if(packaged&&hakuaChatbotEnabled()&&!ownEngine(cfg)&&cfg.hakua_harness===undefined)privateMemoryArgs(cfg);
-  return {cfg,resources,visionPreferences,parallelChoice,parallelNote,dsNote};
+  const privacyRequired=packaged&&hakuaChatbotEnabled()&&!ownEngine(cfg)&&cfg.hakua_harness===undefined;
+  if(isQwen36Config(cfg)){
+   const prepared=prepareQ36Launch({args:cfg.args??[],userArgs:cfg[USER_KEY]??[],privacyRequired,binarySha256:cfg.engine_sha256??cfg.binary_sha256??null,requested:{context:cfg.max_context??undefined,mtp:cfg.mtp===false?0:undefined,parallel:cfg.parallel??undefined}});
+   if(!prepared.ok)throw Object.assign(new Error(prepared.error.message),{code:prepared.error.code});
+   cfg.args=prepared.argv;q36Note=prepared.note;cfg.q36_run=prepared.contract;
+  }else if(privacyRequired)privateMemoryArgs(cfg);
+  return {cfg,resources,visionPreferences,parallelChoice,parallelNote,dsNote,q36Note};
  }
  /* The DFlash2 drafter, before a load that uses it: Control says whether the choice needs it (and the file is not here), downloads it pinned and checked, and packs it, with plain progress in the job.
     Never stops the load: a drafter that cannot be had leaves the MTP running, and the job says so. The choice itself is remembered in the model's settings file. */
@@ -394,7 +400,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   await refresh(true);if(job.state!=='running')return;const {entry,path:configFile}=recordFile(args.model);const config=checkedSettingsConfig(readFileSync(configFile,'utf8'));if(packaged){const engine=await control.engine();if(!engine.usable)throw new Error(ENGINE_NOT_RECOGNISED+(engine.notice?` ${engine.notice}`:''));}if(!entry.ready){const error=missingFilesError(args.model,entry.missing);append(args.model,error.details[0]);throw error;}
   if(externalRunning().length)throw new Error('A Strata server is already running outside this UI. Stop it before loading here, or connect its API in Settings → Models.');
   if(args.multiple&&instances.size>=8)throw new Error('Unload an instance before adding another. Up to eight native instances can run here.');
-  const {cfg,resources,visionPreferences,parallelChoice,parallelNote:chosenNote,dsNote}=buildConfig(args,config);
+  const {cfg,resources,visionPreferences,parallelChoice,parallelNote:chosenNote,dsNote,q36Note}=buildConfig(args,config);
   let parallelNote=chosenNote;
   await prepareDrafter(job,args,cfg,configFile);if(job.state!=='running')return;
   const memoryAccess=configureDesktopMemory(cfg,{enabled:packaged&&hakuaChatbotEnabled()&&!ownEngine(cfg),directory});
@@ -429,6 +435,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
    const used=new Set([...instances.values()].map(i=>i.profile));let slot=1;while(used.has('app-'+slot))slot++;instance.profile='app-'+slot;
    instances.set(id,instance);if(!defaultId||!args.multiple||wasDefault)defaultId=id;emit();
    if(dsNote)append(id,dsNote);
+   if(q36Note)append(id,q36Note);
    const startWith=value=>{writeFileSync(configPath,JSON.stringify(value,null,2),{mode:0o600});return control.stop(instance.profile).catch(()=>{}).then(()=>control.saveProfile(instance.profile,configPath)).then(()=>control.start(instance.profile,{waitSeconds:startWait}));};
    started=startWith(cfg);
    started.then(()=>append(id,'Strata Control reports the engine is ready.'),error=>{append(id,error.message);});
@@ -457,6 +464,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   } else {
   proc=spawnProcess(py,[join(repo(),'serve/server.py'),'--engine','strata','--config',configPath,'--port',String(cfg.port),'--host','127.0.0.1'],{cwd:repo(),detached:process.platform!=='win32',stdio:['ignore','pipe','pipe'],env:sourceServerEnvironment()});
   instances.set(id,instance);processes.set(id,proc);if(!defaultId||!args.multiple||wasDefault)defaultId=id;
+  if(q36Note)append(id,q36Note);
   for(const stream of [proc.stdout,proc.stderr])stream.on('data',chunk=>{const lines=chunk.toString().split('\n').filter(Boolean);lines.forEach(line=>append(id,line.replaceAll(key,'[redacted]')));job.summary=lines.at(-1)??job.summary;emit();});
   proc.on('error',error=>{instance.status='error';instance.error=error.message;emit();});proc.on('exit',code=>{if(instances.has(id)&&instance.status!=='unloading'){instance.status='error';instance.error=`Engine stopped${code===null?'':` (exit ${code})`}. Open diagnostics or reload.`;emit();}});emit();
   }

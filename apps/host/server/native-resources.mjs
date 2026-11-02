@@ -1,4 +1,5 @@
 import {USER_KEY,flagValue} from './native-user-args.mjs';
+import {isQwen36Config} from './q36-run-contract.mjs';
 
 /** The engine's own default reserve, and the one setup writes for pictures read on the GPU: neither is a choice of the person. */
 const ENGINE_DEFAULT_RESERVE_MIB=700;
@@ -96,6 +97,8 @@ export function resourceSettings(config,hardware,profile,model={},values={}){
    failure as it was) or {config, words, detail}: the same run config with ONE safer memory setting, a sentence for the user and the
    technical line for Details. The caller tries once and never again, and does not save this config. */
 export function saferStart(config,hardware,model,failure){
+ /* Qwen3.6 ignores --resident-budget-gib and --vram-reserve-mib. A second try that changes them, or that shortens context, would report a different run as a recovery of the same one. */
+ if(isQwen36Config(config))return null;
  const text=String(failure??'');
  // A start that died for a reason that is not memory (a missing or bad DLL, a crash, a blocked file) is not helped by a memory setting, and must not be called a memory failure.
  if(/0xC0000135|0xC000007B|0xC0000142|0xC000001D|0xC0000005|0xC0000409|0xC0000022|error while loading shared libraries|cannot open shared object file|\bENOENT\b|exit code 127|exit code 139|illegal instruction/i.test(text))return null;
