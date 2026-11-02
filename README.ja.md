@@ -6,8 +6,8 @@ Strata 上の Hakua チャットボット。Windows プレビューとして、H
 
 ## 導入（Windows プレビュー）
 
-1. [setup EXE](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.1/Strata_0.4.0-preview.20261103.1_x64-setup.exe) を取得します。
-2. 実行前に [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.1/SHA256SUMS.txt) と照合します。Windows のコード署名はありません。setup EXE の SHA-256 は `335e442bfd174ff3dabf5ea612e37debd707f7f8ccb9b1811ec41d711807efb6`（113,762,866 bytes）です。
+1. [setup EXE](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.2/Strata_0.4.0-preview.20261103.2_x64-setup.exe) を取得します。
+2. 実行前に [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.2/SHA256SUMS.txt) と照合します。Windows のコード署名はありません。setup EXE の SHA-256 は `18a7e0dfc024ec3105c436009a24ec4964cf3b42bb2cd6bc8468afd2d0880e5e`（113,759,039 bytes）です。
 3. すでに入っている場合はトレイから「Strata を終了」で完全終了してから EXE を実行します。
 4. 初回は準備画面で署名付きエンジンの導入を選ぶか、同じリリースの `.tar.gz` を取り込みます。その後モデルフォルダーを選んで読み込みます。
 
@@ -45,12 +45,12 @@ PrismML と TurboQuant はエンジン内の別実行ファイルです。[LOCAL
 
 | | |
 | --- | --- |
-| GUI / Product | `0.4.0-preview.20261103.1` |
+| GUI / Product | `0.4.0-preview.20261103.2` |
 | Engine / Control | `0.4.0`（CUDA sm_120） |
 | Hakua-memory | `0.3.5` |
 | 上流固定 | `c62d5e3a` · 0.2.9 |
 
-リリース: [v0.4.0-preview.20261103.1](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.1)。このタグのインストーラーと Qwen3.6 エンジンパッケージに署名はありません。`v0.4.0-preview.20261101.1` の Ed25519 フィードと署名済みエンジンは差し替えていません。アプリ本体の署名付き自動更新は未検証で、更新はこのインストーラーで行います。
+リリース: [v0.4.0-preview.20261103.2](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.2)。このタグのインストーラーと Qwen3.6 エンジンパッケージに署名はありません。`v0.4.0-preview.20261101.1` の Ed25519 フィードと署名済みエンジンは差し替えていません。アプリ本体の署名付き自動更新は未検証で、更新はこのインストーラーで行います。
 
 インストーラーはアプリだけを更新します。CUDA エンジンは入りません。このタグの Qwen3.6 パッケージは別配布で、画像リーダーは無く、`signature` は null です。PrismML と TurboQuant は `v0.4.0-preview.20261101.1` の署名済みコンポーネントに残しています。
 

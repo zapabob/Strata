@@ -1,6 +1,6 @@
 # Hakua Windows release qualification
 
-A later app preview, **0.4.0-preview.20261103.1**, was built and installed on this PC on 2026-11-03. Its installer has no Windows code signature. Its Qwen3.6 engine package is unsigned, has no picture reader, and its startup time and token speed were not measured. The CUDA spill guard did not pass the reviewed baseline. The publication record below is the earlier signed preview **0.4.0-preview.20261101.1** and is not a measurement of the 20261103.1 engine.
+App preview **0.4.0-preview.20261103.2** hashes the resolved `strata.exe` before it will pass `--q36-expert-store mapped-pack`. The installer has no Windows code signature. The Qwen3.6 engine package is the unsigned build from **0.4.0-preview.20261103.1** (no picture reader). Startup time and token speed were not measured. The CUDA spill guard did not pass the reviewed baseline. The publication record below is the signed preview **0.4.0-preview.20261101.1** and is not a measurement of the 20261103 engine.
 
 GUI/Product recorded below: **0.4.0-preview.20261101.1**, native engine/Control **0.4.0**, Hakua-memory **0.3.5**. Integrated upstream 0.2.9 is frozen at `c62d5e3a15b40ea51c96aae9e8d36928965f53ab`. Local package checks are complete. Public release and anonymous download verification are complete; see the publication record below.
 
