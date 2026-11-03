@@ -164,7 +164,7 @@ export function createNativeControl({directory,requests=()=>[],changed=()=>{},sp
  /* Does the engine in this release serve DFlash2? Control knows (strata_control/drafting.py); asked once, false until it answers. The Models screen offers the choice only when true. */
  let dflash2Served=null,dflash2Support=null,dflash2Selq4=false,dflash2Split=false;
  function probeDrafting(){if(!packaged||dflash2Served!==null||typeof control.draftingPlan!=='function')return;dflash2Served=false;control.draftingPlan({mode:'auto'}).then(p=>{dflash2Served=p.serves===true;dflash2Support=p.serves===true&&p.support&&p.support_line?{level:p.support,line:p.support_line}:null;dflash2Selq4=p.serves===true&&p.selq4===true;dflash2Split=p.split===true;emit();}).catch(()=>{});}
- function hakuaChatbotEnabled(){const v=String(process.env.STRATA_HAKUA_CHATBOT??'').trim().toLowerCase();if(v==='1'||v==='true'||v==='yes'||v==='on')return true;try{return existsSync(join(ROOT,'hakua-chatbot.enabled'));}catch{return false;}}
+ function hakuaChatbotEnabled(){const v=String(process.env.STRATA_HAKUA_CHATBOT??'').trim().toLowerCase();if(v==='0'||v==='false'||v==='no'||v==='off')return false;if(v==='1'||v==='true'||v==='yes'||v==='on')return true;try{return existsSync(join(ROOT,'hakua-chatbot.enabled'));}catch{return false;}}
  function state(){const folder=preferences.downloadDirectory??(modelsDirectory?modelsDirectory():snapshot.installed?.data_folder),space=folder?diskSpace(folder):null;return {...snapshot,downloadDirectory:folder,downloadFreeBytes:space?.free??null,downloadTotalBytes:space?.total??null,fields:nativeFields(),instances:[...instances.values()].map(({key,configPath,fingerprint,mcpServers,ownerJob,...i})=>structuredClone(i)),defaultId,stoppedForUpdate:stoppedForUpdate?{updated:stoppedForUpdate.updated,at:stoppedForUpdate.at,models:stoppedForUpdate.instances.map(i=>({id:i.id,label:i.label}))}:null,jobs:[...jobs.values()].slice(-12).map(({process,abort,engineAbort,rawResult,...j})=>j),capabilities:{responses:sourceText().includes('/v1/responses'),updates:!!snapshot.available,rollback:previousEngine(),componentUpdates:packaged&&typeof control.update==='function',calibration:packaged?false:snapshot.hardware?.gpus?.some(g=>/nvidia/i.test(g.name??''))??false,dflash2:dflash2Served===true,dflash2Support,dflash2Selq4,dflash2Split,hakuaChatbot:hakuaChatbotEnabled()}};}
  let sourceCache={path:'',time:0,text:''};
  function sourceText(){try{const path=join(packaged?control.control.dir:preferences.repo,'serve/server.py'),time=statSync(path).mtimeMs;if(sourceCache.path===path&&sourceCache.time===time)return sourceCache.text;sourceCache={path,time,text:readFileSync(path,'utf8')};return sourceCache.text;}catch{return '';}}
@@ -537,7 +537,14 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   const {cfg,resources,visionPreferences,parallelChoice,parallelNote:chosenNote,dsNote,q36Note}=buildConfig(args,config,drafts?.choice==='dflash2'&&drafts.needed===true&&args.values?.drafting===undefined?'mtp':drafts?.choice??null,{binarySha256:trustedEngineSha});/* (a drafter that is not here and will not be fetched by this load: the MTP runs, and the request slots stay) */
   let parallelNote=chosenNote;
   await prepareDrafter(job,args,cfg,configFile,drafts);if(job.state!=='running')return;
- const memoryAccess=configureDesktopMemory(cfg,{enabled:packaged&&hakuaChatbotEnabled()&&!ownEngine(cfg),directory});
+ /* Hakua private memory injects --prompt-cache 0 after buildConfig. Qwen3.6 must not reach that strip-and-continue
+    path: prepareQ36Launch already refuses when privacyRequired, and this guard keeps the same refusal if a later
+    change ever lets a Qwen3.6 config through with chatbot memory still enabled. */
+ const wantPrivateMemory=packaged&&hakuaChatbotEnabled()&&!ownEngine(cfg);
+ if(wantPrivateMemory&&isQwen36Config(cfg)&&cfg.hakua_harness===undefined){
+  throw Object.assign(new Error('Qwen3.6 has no tested prompt-cache isolation. Private cache flags were not removed to force a start.'),{code:'q36_private_cache_unsupported'});
+ }
+ const memoryAccess=configureDesktopMemory(cfg,{enabled:wantPrivateMemory,directory});
   const fingerprint=createHash('sha256').update(JSON.stringify({...cfg,api_key:undefined,port:undefined})).digest('hex');
   const placement=Array.isArray(cfg.gpu)?cfg.gpu:cfg.gpu===undefined?[]:[cfg.gpu];const matching=[...instances.values()].find(i=>i.model===args.model&&JSON.stringify(i.gpus)===JSON.stringify(placement));
   if(matching?.status==='ready'&&matching.fingerprint===fingerprint&&(args.multiple||instances.size===1))return {summary:`${matching.label} is already ready.`,instanceId:matching.id};
@@ -592,8 +599,10 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
     if(isAccess(error)){instance.status='error';instance.error=said;emit();throw new Error(said);}   // access errors are not memory stops: no safer retry
     /* ONE automatic second try in all, never saved, never repeated (args.retrySafer false turns it off): with a safer memory setting when the
        failure looks like a memory stop, and without several-requests-at-once when that was the app's own default (not a number the user chose).
-       Both changes ride on the same single try, with the plain sentence of the memory change when there is one. */
-    const allowed=args.retrySafer!==false&&job.state==='running'&&!ownEngine(config);
+       Both changes ride on the same single try, with the plain sentence of the memory change when there is one.
+       Qwen3.6 is excluded: saferStart already returns null for it, and dropping parallel would still change the
+       launch contract (configDigest) after the person asked for the same settings. Refuse and report the first stop. */
+    const allowed=args.retrySafer!==false&&job.state==='running'&&!ownEngine(config)&&!isQwen36Config(cfg);
     const safer=allowed?saferStart(cfg,snapshot.hardware,modelArena(args.model),said):null;
     const dropParallel=allowed&&cfg.parallel>1&&!parallelChoice?.explicit;
     if(!safer&&!dropParallel){instance.status='error';instance.error=said;emit();throw new Error(said);}

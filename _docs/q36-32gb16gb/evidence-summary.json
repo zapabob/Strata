@@ -49,5 +49,6 @@
     "general speedup",
     "CUDA kernel correctness of proposed changes"
   ],
-  "plan_execution_status": "NOT_IMPLEMENTED_NOT_GPU_TESTED"
+  "plan_execution_status": "PARTIAL_IMPL_GPU_SPEED_NOT_RUN",
+  "plan_execution_note": "Host contract, startup stages, mapped-pack+pin-pool, installer .5 shipped. T04/T06/T07/T08 paired speed and GUI E2E remain NOT_RUN. Historical timings above are not a new benchmark."
 }

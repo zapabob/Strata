@@ -95,7 +95,13 @@ class StartupLogAnalysisTest(unittest.TestCase):
         summary = json.loads(path.read_text(encoding="utf-8"))
         self.assertEqual(summary["counts"]["engine_start"], 22)
         self.assertEqual(summary["counts"]["host_allocation_failure"], 14)
-        self.assertEqual(summary["plan_execution_status"], "NOT_IMPLEMENTED_NOT_GPU_TESTED")
+        # Status may move from the initial NOT_IMPLEMENTED marker to a partial
+        # marker after host/engine work, but it must never claim a GPU speed run.
+        self.assertIn(
+            summary["plan_execution_status"],
+            {"NOT_IMPLEMENTED_NOT_GPU_TESTED", "PARTIAL_IMPL_GPU_SPEED_NOT_RUN"},
+        )
+        self.assertNotIn("GPU_SPEED_PASS", summary["plan_execution_status"])
         self.assertIsNone(summary["installed_binary_matches_reviewed_source"])
 
 
