@@ -6,8 +6,8 @@ Hakua chatbot on Strata. This fork packages a Windows preview with Hakua memory 
 
 ## Install (Windows preview)
 
-1. Download the [setup EXE](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.4/Strata_0.4.0-preview.20261103.4_x64-setup.exe).
-2. Compare it with [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.4/SHA256SUMS.txt) before you run it. The installer has no Windows code signature. The setup EXE SHA-256 is `9bf5f4c9090484a35a8e3534d310840303cd7d3b1684ebbce272e01fd9937724` (114,979,368 bytes).
+1. Download the [setup EXE](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.5/Strata_0.4.0-preview.20261103.5_x64-setup.exe).
+2. Compare it with [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.5/SHA256SUMS.txt) before you run it. The installer has no Windows code signature. The setup EXE SHA-256 is `090a28ca44dd18508c6a85a6fdef15904c910b9a1758717b6a2382480d35c272` (114,984,071 bytes).
 3. Quit Strata fully if it is already installed (tray → Quit Strata), then run the EXE. An installed copy can be updated with `/S /UPDATE`.
 4. The installer updates the app. It does not contain the CUDA engine. The Qwen3.6 engine package on this tag is separate, has no picture reader, and is not Ed25519-signed (`signature` is null). The signed engine from [v0.4.0-preview.20261101.1](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261101.1) still holds PrismML and TurboQuant. This release does not replace those files.
 
@@ -45,20 +45,20 @@ Guide: [MEMORY_HARNESS.md](serve/MEMORY_HARNESS.md). Hermes SOUL/MEMORY operator
 
 | | |
 | --- | --- |
-| GUI / Product | `0.4.0-preview.20261103.4` |
+| GUI / Product | `0.4.0-preview.20261103.5` |
 | Engine / Control | `0.4.0` (CUDA sm_120) |
 | Hakua-memory | `0.3.5` |
 | Upstream freeze | `ffa80d73` · 0.2.10 |
 
-App version in this preview tree: `0.4.0-preview.20261103.4`
+App version in this preview tree: `0.4.0-preview.20261103.5`
 
-Release page: [v0.4.0-preview.20261103.4](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.4). This tag’s installer and Qwen3.6 engine package are not signed. The Ed25519 feed and the signed engine on `v0.4.0-preview.20261101.1` were not replaced. Automatic signed app updates are not qualified; update the app with this installer.
+Release page: [v0.4.0-preview.20261103.5](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.5). This tag’s installer and Qwen3.6 engine package are not signed. The Ed25519 feed and the signed engine on `v0.4.0-preview.20261101.1` were not replaced. Automatic signed app updates are not qualified; update the app with this installer.
 
 ## Qwen3.6 on 32 GB RAM / 16 GB VRAM
 
 The main line stays Qwen3.6-35B-A3B UD-Q4_K_XL, context 65536, FP32 KV, MTP 2, prefill auto. New paths are opt-in. A setting this engine does not apply is refused before the process starts. A private-cache request is refused. It is not removed to force a start.
 
-The mapped expert pack stays off unless the launch asks for it and the SHA-256 of the resolved `strata.exe` is `dd53df07789e0fefcb87e33acab54f5bfe1faf312ef6bad515924736b715c5b5` or `512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046`. The older digest stays allowed. A digest written in model settings does not unlock the flag. The legacy host arena stays the default. Startup time and token speed for this build were not measured. The CUDA spill guard did not pass against the reviewed baseline.
+The mapped expert pack stays off unless the launch asks for it and the SHA-256 of the resolved `strata.exe` is `6fe110650940d0c19f09909d769393769650045e6bc6eab29ccc49734dbcab29`, `dd53df07789e0fefcb87e33acab54f5bfe1faf312ef6bad515924736b715c5b5`, or `512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046`. The older digest stays allowed. A digest written in model settings does not unlock the flag. The legacy host arena stays the default. Startup time and token speed for this build were not measured. The CUDA spill guard did not pass against the reviewed baseline.
 
 On a 32 GB PC the host can refuse UD-Q4_K_XL before launch when free physical RAM cannot hold the legacy 18.75 GiB expert arena plus the reserve. That refusal is not a measurement that the model now fits in 16 GB of VRAM.
 
