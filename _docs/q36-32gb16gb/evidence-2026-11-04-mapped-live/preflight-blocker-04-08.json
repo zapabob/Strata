@@ -1,0 +1,39 @@
+﻿{
+    "captured_at":  "2026-11-04T04:09:00+09:00",
+    "purpose":  "headroom_remeasure_hours_later_still_hermes_vram",
+    "design_contract":  "Do not kill other apps inference servers (DESIGN non-negotiable #6)",
+    "hardware":  {
+                     "gpu":  "RTX 5060 Ti 16GB",
+                     "ram_free_gb":  6.82,
+                     "ram_total_gb":  31.87
+                 },
+    "nvidia_smi_gpu":  "NVIDIA GeForce RTX 5060 Ti, 16311 MiB, 15322 MiB, 729 MiB, 97 %",
+    "hermes_llama_servers":  [
+                                 {
+                                     "pid":  22944,
+                                     "name":  "llama-server.exe",
+                                     "creation_date":  "\/Date(1793709428446)\/",
+                                     "command_line":  "\"C:\\Users\\downl\\.hermes\\llama\\prism-b10826-c9c34bc\\bin\\llama-server.exe\" -m C:\\Users\\downl\\Desktop\\SO8T\\gguf_models\\zapabobouj\\Hikari-Bonsai-27B-Nimble-LoRA-GGUF\\Hikari-LoRA-fixed-scale-PQ2_0.gguf -c 98304 --parallel 1 --threads 6 --batch-size 2048 --ubatch-size 512 -fa on -ctk q8_0 -ctv q4_0 --spec-type ngram-mod --spec-ngram-mod-n-min 1 --spec-ngram-mod-n-max 16 --jinja --alias Hikari-LoRA-fixed-scale-PQ2_0,qwen3.8-27b-abliterated-mtp --host 127.0.0.1 --port 8080 ",
+                                     "working_set_mb":  286
+                                 },
+                                 {
+                                     "pid":  22836,
+                                     "name":  "llama-server.exe",
+                                     "creation_date":  "\/Date(1793709529700)\/",
+                                     "command_line":  "\"C:\\Users\\downl\\.hermes\\llama\\prism-b10826-c9c34bc\\bin\\llama-server.exe\" -m C:\\Users\\downl\\Desktop\\SO8T\\gguf_models\\zapabobouj\\Hikari-Bonsai-27B-Nimble-LoRA-GGUF\\Hikari-LoRA-fixed-scale-PQ2_0.gguf -c 98304 --parallel 1 -ngl 999 -fa on -ctk q8_0 -ctv q4_0 --threads 6 --threads-batch 12 --batch-size 2048 --ubatch-size 512 --spec-type ngram-mod --spec-ngram-mod-n-min 1 --spec-ngram-mod-n-max 16 --jinja --alias Hikari-LoRA-fixed-scale-PQ2_0,qwen3.8-27b-abliterated-mtp --host 127.0.0.1 --port 8080 ",
+                                     "working_set_mb":  3483.5
+                                 }
+                             ],
+    "free_vram_mib":  729,
+    "decision":  "ABORT_mapped_pack_live_still_blocked",
+    "reason":  "Hermes llama-server PIDs 22836/22944 still alive; GPU 15322/16311 MiB used, 729 MiB free (~96% util); free RAM 6.82 GiB. DESIGN #6 forbids killing Hermes. Not enough VRAM headroom for honest Q36 mapped-pack live + pin-pool.",
+    "secondary_blocker":  "H: FreeGB=0; npm default cache on H: ENOSPC (host node tests rerun with cache on C: PASS 19/19)",
+    "previous_blocker":  "preflight-blocker.json @ 2026-11-04T00:58:22+09:00",
+    "hermes_killed":  false,
+    "mapped_live":  "BLOCKED",
+    "t03_chat_stop_restart":  "NOT_RUN",
+    "t04_t06_t07_t08":  "NOT_RUN",
+    "unsigned_engine_sha256":  "6fe110650940d0c19f09909d769393769650045e6bc6eab29ccc49734dbcab29",
+    "signed_engine_sha256_do_not_overwrite":  "b5e4d5255a48882334b27ab643c22c9c1b54e4580f82b402176a9ca5661bf6f1",
+    "planned_command_when_clear":  "\u0026 \"C:\\Users\\downl\\AppData\\Local\\Strata\\components\\engine\\0.4.0-q36-windows-x86_64-cuda-cuda13\\strata.exe\" --native \"H:\\Strata\\models\\models\\qwen36-UD-Q4_K_XL\\Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf\" --max-context 65536 --prefill auto --mtp 2 --q36-expert-store mapped-pack --serve"
+}

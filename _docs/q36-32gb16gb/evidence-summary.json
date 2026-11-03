@@ -50,7 +50,7 @@
     "CUDA kernel correctness of proposed changes"
   ],
   "plan_execution_status": "PARTIAL_IMPL_GPU_SPEED_NOT_RUN",
-  "plan_execution_note": "Host contract, startup stages, mapped-pack+pin-pool, installer .5 shipped. T03 GUI refuse path captured 2026-11-04 (private-cache; chatbot on). mapped-pack live BLOCKED by Hermes VRAM (DESIGN #6). T04/T06/T07/T08 paired speed NOT_RUN. Historical timings above are not a new benchmark.",
+  "plan_execution_note": "Host contract, startup stages, mapped-pack+pin-pool, installer .5 shipped. T03 GUI refuse path captured 2026-11-04 (private-cache; chatbot on). mapped-pack live still BLOCKED by Hermes VRAM (DESIGN #6) at 2026-11-04T04:09+09:00 remeasure. Host node q36 tests 19/19 PASS (non-GPU). T03 chat/stop/restart and T04/T06/T07/T08 paired speed NOT_RUN. Historical timings above are not a new benchmark.",
   "session_2026_11_04": {
     "mapped_live": "BLOCKED",
     "mapped_live_reason": "Hermes llama-server PIDs 22836/22944 hold VRAM; free ~0.5-0.7 GiB; free RAM often <4 GiB",
@@ -60,6 +60,29 @@
     "t04_t06_t07_t08": "NOT_RUN",
     "invented_speeds": false,
     "hermes_killed": false,
+    "goal_complete": false
+  },
+  "session_2026_11_04_0409_remeasure": {
+    "captured_at": "2026-11-04T04:09:00+09:00",
+    "gpu": "NVIDIA GeForce RTX 5060 Ti",
+    "vram_total_mib": 16311,
+    "vram_used_mib": 15322,
+    "vram_free_mib": 729,
+    "gpu_util_percent": 96,
+    "ram_free_gb": 6.82,
+    "ram_total_gb": 31.87,
+    "hermes_llama_server_pids": [22836, 22944],
+    "hermes_killed": false,
+    "mapped_live": "BLOCKED",
+    "t03_chat_stop_restart": "NOT_RUN",
+    "t04_t06_t07_t08": "NOT_RUN",
+    "host_q36_node_tests": "PASS 19/19",
+    "host_q36_node_tests_evidence": "evidence-2026-11-04-mapped-live/host-q36-node-tests-04-08.txt",
+    "secondary_blocker": "H: volume FreeGB=0; default npm-cache on H: hits ENOSPC (tests reran with npm_config_cache on C:)",
+    "unsigned_engine_sha256_verified": "6fe110650940d0c19f09909d769393769650045e6bc6eab29ccc49734dbcab29",
+    "signed_engine_untouched": true,
+    "model_and_pack_present_on_H": true,
+    "blocker_evidence": "evidence-2026-11-04-mapped-live/preflight-blocker-04-08.json",
     "goal_complete": false
   }
 }

@@ -9,3 +9,4 @@
 - UI resource panel at capture: free VRAM ~0.6–0.7 GB, free RAM ~1.9–4 GB (Hermes llama-server holding VRAM; not killed)
 - Chat/stop/restart NOT run (VRAM blocked; refuse path does not need full load)
 - mapped-pack live NOT run (see ../evidence-2026-11-04-mapped-live/preflight-blocker.json)
+- Remeasure 2026-11-04 04:09 JST: Hermes PIDs 22836/22944 still hold VRAM (729 MiB free); mapped-live still BLOCKED — see ../evidence-2026-11-04-mapped-live/NOTES-04-08.md

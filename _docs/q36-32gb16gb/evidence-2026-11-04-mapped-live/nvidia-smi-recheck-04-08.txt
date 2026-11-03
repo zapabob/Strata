@@ -1,0 +1,40 @@
+﻿Wed Nov  4 04:09:00 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 621.01                 KMD Version: 621.01        CUDA UMD Version: 13.5     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                  Driver-Model | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA GeForce RTX 5060 Ti   WDDM  |   00000000:01:00.0  On |                  N/A |
+| 43%   70C    P1            133W /  180W |   15322MiB /  16311MiB |     96%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|    0   N/A  N/A            3616    C+G   ...cal\LINE\bin\current\LINE.exe      N/A      |
+|    0   N/A  N/A            4280    C+G   ...al\Programs\cursor\Cursor.exe      N/A      |
+|    0   N/A  N/A            5204    C+G   ....0.4314.58\msedgewebview2.exe      N/A      |
+|    0   N/A  N/A            8932    C+G   ...xyewy\ShellExperienceHost.exe      N/A      |
+|    0   N/A  N/A           10568    C+G   ...indows\System32\ShellHost.exe      N/A      |
+|    0   N/A  N/A           10776    C+G   C:\Windows\explorer.exe               N/A      |
+|    0   N/A  N/A           11076    C+G   ...d6e489\cursor-cua-sidecar.exe      N/A      |
+|    0   N/A  N/A           11532    C+G   ...2txyewy\CrossDeviceResume.exe      N/A      |
+|    0   N/A  N/A           11684    C+G   ...5n1h2txyewy\TextInputHost.exe      N/A      |
+|    0   N/A  N/A           12672    C+G   ..._cw5n1h2txyewy\SearchHost.exe      N/A      |
+|    0   N/A  N/A           12716    C+G   ...y\StartMenuExperienceHost.exe      N/A      |
+|    0   N/A  N/A           14088    C+G   ...em32\ApplicationFrameHost.exe      N/A      |
+|    0   N/A  N/A           14468    C+G   ....0.4314.58\msedgewebview2.exe      N/A      |
+|    0   N/A  N/A           19724    C+G   ....0.4314.58\msedgewebview2.exe      N/A      |
+|    0   N/A  N/A           21064    C+G   ...2p2nqsd0c76g0\app\ChatGPT.exe      N/A      |
+|    0   N/A  N/A           22836      C   ...-c9c34bc\bin\llama-server.exe      N/A      |
+|    0   N/A  N/A           22944      C   ...-c9c34bc\bin\llama-server.exe      N/A      |
+|    0   N/A  N/A           25760    C+G   ....0.4314.58\msedgewebview2.exe      N/A      |
+|    0   N/A  N/A           27368    C+G   ....0.4314.58\msedgewebview2.exe      N/A      |
+|    0   N/A  N/A           29084    C+G   ...t\Edge\Application\msedge.exe      N/A      |
+|    0   N/A  N/A           30420    C+G   ...\codex-computer-use-swift.exe      N/A      |
++-----------------------------------------------------------------------------------------+

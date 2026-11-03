@@ -1,0 +1,2 @@
+﻿name, memory.total [MiB], memory.used [MiB], memory.free [MiB], utilization.gpu [%], temperature.gpu, power.draw [W]
+NVIDIA GeForce RTX 5060 Ti, 16311 MiB, 15322 MiB, 729 MiB, 96 %, 69.59, 133.61 W
