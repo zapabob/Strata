@@ -19,11 +19,14 @@ import { flagOf, groups } from './native-user-args.mjs';
 
 export const Q36_SOURCE_BASELINE = '170e0d330edd9c03b5dcddfc64b77e498387ff86';
 export const Q36_CAPABILITY_REVISION = 'q36-argv-expert-store-1';
-/** Release strata.exe that contains --q36-expert-store. SHA-256 of
- * H:\Strata\releases\hakua040-nsis-native-20261102\Release\strata.exe
- * after the 2026-11-03 sm_120 link. An older binary is not listed. */
+/** Release strata.exe files that contain --q36-expert-store. A digest
+ * written in model settings is not consulted. The first entry is the
+ * 2026-11-03 sm_120 link of hakua040-nsis-native-20261102. The second is
+ * H:\Strata\releases\hakua040-native-sync-20261103\Release\strata.exe.
+ * An older binary is not listed. Legacy placement stays the default. */
 export const Q36_MAPPED_PACK_DIGESTS = new Set([
   '512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046',
+  'dd53df07789e0fefcb87e33acab54f5bfe1faf312ef6bad515924736b715c5b5',
 ]);
 export const Q36_ENGINE_DEFAULT_CONTEXT = 32768;
 export const Q36_KV_BYTES_PER_CELL_PER_SEQ = 45056n;

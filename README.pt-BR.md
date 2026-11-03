@@ -6,8 +6,8 @@ Chatbot Hakua no Strata. Este fork oferece uma prévia Windows com Hakua memory 
 
 ## Instalação (prévia Windows)
 
-1. Baixe o [EXE de instalação](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.2/Strata_0.4.0-preview.20261103.2_x64-setup.exe).
-2. Compare com [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.2/SHA256SUMS.txt) antes de executar. Não há assinatura de código Windows. SHA-256 do EXE: `18a7e0dfc024ec3105c436009a24ec4964cf3b42bb2cd6bc8468afd2d0880e5e` (113.759.039 bytes).
+1. Baixe o [EXE de instalação](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.3/Strata_0.4.0-preview.20261103.3_x64-setup.exe).
+2. Compare com [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.3/SHA256SUMS.txt) antes de executar. Não há assinatura de código Windows. SHA-256 do EXE: `a6e8eb762d32f685f3a47d68e3c593f2b5df361bd42bb7c79d8d3a1f65d70f13` (113.054.600 bytes).
 3. Encerre o Strata por completo (bandeja → Sair do Strata) se já estiver instalado e execute o EXE.
 4. Na primeira inicialização, instale o mecanismo assinado oferecido ou importe o `.tar.gz` correspondente da mesma release. Depois escolha uma pasta de modelos e carregue um modelo.
 
@@ -45,12 +45,12 @@ Guia: [MEMORY_HARNESS.md](serve/MEMORY_HARNESS.md). Ferramentas Hermes SOUL/MEMO
 
 | | |
 | --- | --- |
-| GUI / Product | `0.4.0-preview.20261103.2` |
+| GUI / Product | `0.4.0-preview.20261103.3` |
 | Engine / Control | `0.4.0` (CUDA sm_120) |
 | Hakua-memory | `0.3.5` |
 | Congelamento upstream | `ffa80d73` · 0.2.10 |
 
-Página da release: [v0.4.0-preview.20261103.2](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.2). O instalador e o pacote de engine Qwen3.6 desta tag não são assinados. O feed Ed25519 e a engine assinada de `v0.4.0-preview.20261101.1` permanecem. Atualizações automáticas assinadas do app não estão qualificadas; atualize com este instalador. O instalador não contém a engine CUDA. O pacote Qwen3.6 não tem leitor de imagem e `signature` é null. PrismML e TurboQuant ficam no componente assinado. A linha principal é Qwen3.6-35B-A3B UD-Q4_K_XL, contexto 65536, KV FP32, MTP 2. Caminhos novos são opt-in. Um ajuste não aplicado, ou um pedido de cache privado, é recusado antes da partida. O mapped expert pack só se for pedido e o SHA-256 da engine for `512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046`. A arena de host antiga continua o padrão. Tempo de partida e velocidade de tokens não foram medidos. O CUDA spill guard não passou na baseline revisada. Num PC de 32 GB, UD-Q4_K_XL pode ser recusado antes da partida se a RAM física livre não cobrir a arena legacy de 18,75 GiB mais a reserva. Isso não é uma medida de que cabe em 16 GB de VRAM.
+Página da release: [v0.4.0-preview.20261103.3](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.3). O instalador e o pacote de engine Qwen3.6 desta tag não são assinados. O feed Ed25519 e a engine assinada de `v0.4.0-preview.20261101.1` permanecem. Atualizações automáticas assinadas do app não estão qualificadas; atualize com este instalador. O instalador não contém a engine CUDA. O pacote Qwen3.6 não tem leitor de imagem e `signature` é null. PrismML e TurboQuant ficam no componente assinado. A linha principal é Qwen3.6-35B-A3B UD-Q4_K_XL, contexto 65536, KV FP32, MTP 2, prefill auto. Caminhos novos são opt-in. Um ajuste não aplicado, ou um pedido de cache privado, é recusado antes da partida. O mapped expert pack só se for pedido e o SHA-256 da engine for `dd53df07789e0fefcb87e33acab54f5bfe1faf312ef6bad515924736b715c5b5` ou `512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046`. O resumo antigo continua permitido. A arena de host antiga continua o padrão. Tempo de partida e velocidade de tokens não foram medidos. O CUDA spill guard não passou na baseline revisada. Num PC de 32 GB, UD-Q4_K_XL pode ser recusado antes da partida se a RAM física livre não cobrir a arena legacy de 18,75 GiB mais a reserva. Isso não é uma medida de que cabe em 16 GB de VRAM.
 
 ## Limites (prévia medida)
 

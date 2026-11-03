@@ -6,8 +6,8 @@ Czatbot Hakua na Stracie. Ten fork oferuje podgląd Windows z Hakua memory i oso
 
 ## Instalacja (podgląd Windows)
 
-1. Pobierz [EXE instalatora](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.2/Strata_0.4.0-preview.20261103.2_x64-setup.exe).
-2. Porównaj z [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.2/SHA256SUMS.txt) przed uruchomieniem. Brak podpisu kodu Windows. SHA-256 EXE: `18a7e0dfc024ec3105c436009a24ec4964cf3b42bb2cd6bc8468afd2d0880e5e` (113 759 039 bajtów).
+1. Pobierz [EXE instalatora](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.3/Strata_0.4.0-preview.20261103.3_x64-setup.exe).
+2. Porównaj z [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.3/SHA256SUMS.txt) przed uruchomieniem. Brak podpisu kodu Windows. SHA-256 EXE: `a6e8eb762d32f685f3a47d68e3c593f2b5df361bd42bb7c79d8d3a1f65d70f13` (113 054 600 bajtów).
 3. Jeśli Strata jest już zainstalowana, całkowicie ją zamknij (zasobnik → Quit Strata) i uruchom EXE.
 4. Przy pierwszym starcie zainstaluj oferowany podpisany silnik albo zaimportuj pasujący `.tar.gz` z tej samej wersji. Potem wybierz folder modeli i wczytaj model.
 
@@ -45,12 +45,12 @@ Przewodnik: [MEMORY_HARNESS.md](serve/MEMORY_HARNESS.md). Narzędzia Hermes SOUL
 
 | | |
 | --- | --- |
-| GUI / Product | `0.4.0-preview.20261103.2` |
+| GUI / Product | `0.4.0-preview.20261103.3` |
 | Engine / Control | `0.4.0` (CUDA sm_120) |
 | Hakua-memory | `0.3.5` |
 | Zamrożenie upstream | `ffa80d73` · 0.2.10 |
 
-Strona wydania: [v0.4.0-preview.20261103.2](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.2). Instalator i pakiet silnika Qwen3.6 tego tagu nie są podpisane. Feed Ed25519 i podpisany silnik z `v0.4.0-preview.20261101.1` pozostają. Automatyczne podpisane aktualizacje aplikacji nie są kwalifikowane; aktualizuj tym instalatorem. Instalator nie zawiera silnika CUDA. Pakiet Qwen3.6 nie ma czytnika obrazów, a `signature` jest null. PrismML i TurboQuant zostają w podpisanym komponencie. Linia główna: Qwen3.6-35B-A3B UD-Q4_K_XL, kontekst 65536, KV FP32, MTP 2. Nowe ścieżki są opt-in. Ustawienie, którego silnik nie stosuje, oraz żądanie private-cache są odrzucane przed startem. Mapped expert pack tylko na żądanie i gdy SHA-256 silnika to `512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046`. Domyślna zostaje dawna arena hosta. Czas startu i prędkość tokenów nie są zmierzone. CUDA spill guard nie przeszedł przejrzanej baseline. Na PC z 32 GB UD-Q4_K_XL może zostać odrzucony przed startem, gdy wolny fizyczny RAM nie mieści legacy areny 18,75 GiB plus rezerwy. To nie jest pomiar, że model mieści się w 16 GB VRAM.
+Strona wydania: [v0.4.0-preview.20261103.3](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.3). Instalator i pakiet silnika Qwen3.6 tego tagu nie są podpisane. Feed Ed25519 i podpisany silnik z `v0.4.0-preview.20261101.1` pozostają. Automatyczne podpisane aktualizacje aplikacji nie są kwalifikowane; aktualizuj tym instalatorem. Instalator nie zawiera silnika CUDA. Pakiet Qwen3.6 nie ma czytnika obrazów, a `signature` jest null. PrismML i TurboQuant zostają w podpisanym komponencie. Linia główna: Qwen3.6-35B-A3B UD-Q4_K_XL, kontekst 65536, KV FP32, MTP 2, prefill auto. Nowe ścieżki są opt-in. Ustawienie, którego silnik nie stosuje, oraz żądanie private-cache są odrzucane przed startem. Mapped expert pack tylko na żądanie i gdy SHA-256 silnika to `dd53df07789e0fefcb87e33acab54f5bfe1faf312ef6bad515924736b715c5b5` albo `512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046`. Starszy skrót zostaje dozwolony. Domyślna zostaje dawna arena hosta. Czas startu i prędkość tokenów nie są zmierzone. CUDA spill guard nie przeszedł przejrzanej baseline. Na PC z 32 GB UD-Q4_K_XL może zostać odrzucony przed startem, gdy wolny fizyczny RAM nie mieści legacy areny 18,75 GiB plus rezerwy. To nie jest pomiar, że model mieści się w 16 GB VRAM.
 
 ## Ograniczenia (zmierzony podgląd)
 

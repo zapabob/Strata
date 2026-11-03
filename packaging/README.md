@@ -1,7 +1,7 @@
 # Strata packaging: targets, recipes and locks
 
 This page is for developers who build the desktop app, the Terminal archive and the engine packages. To install this Hakua
-Windows fork, use [docs/HAKUA_INSTALL.md](../docs/HAKUA_INSTALL.md). Product 0.4.0-preview.20261103.2 uses Control/engine 0.4.0; the Qwen3.6 engine package on that tag is unsigned.
+Windows fork, use [docs/HAKUA_INSTALL.md](../docs/HAKUA_INSTALL.md). Product 0.4.0-preview.20261103.3 uses Control/engine 0.4.0; the Qwen3.6 engine package on that tag is unsigned, has no picture reader, and `signature` is null. Setup EXE SHA-256 `a6e8eb762d32f685f3a47d68e3c593f2b5df361bd42bb7c79d8d3a1f65d70f13`, 113054600 bytes. Mapped-pack allows `dd53df07789e0fefcb87e33acab54f5bfe1faf312ef6bad515924736b715c5b5`; `512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046` stays allowed. Legacy placement stays the default. Spill guard did not pass. Startup time and token speed were not measured.
 actual qualification and publication status are in [HAKUA_RELEASE.md](../docs/HAKUA_RELEASE.md). The cross-platform recipes below
 are upstream reference and do not establish qualification of a Hakua package on those platforms.
 How packages are signed and published is in [UPDATES.md](UPDATES.md), and the package format is in [ENGINE-COMPONENT.md](ENGINE-COMPONENT.md).

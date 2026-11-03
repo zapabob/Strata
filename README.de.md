@@ -6,8 +6,8 @@ Hakua-Chatbot auf Strata. Dieser Fork liefert eine Windows-Vorschau mit Hakua me
 
 ## Installation (Windows-Vorschau)
 
-1. Lade die [Setup-EXE](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.2/Strata_0.4.0-preview.20261103.2_x64-setup.exe) herunter.
-2. Vergleiche sie vor dem Start mit [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.2/SHA256SUMS.txt). Es gibt keine Windows-Codesignatur. SHA-256 der Setup-EXE: `18a7e0dfc024ec3105c436009a24ec4964cf3b42bb2cd6bc8468afd2d0880e5e` (113.759.039 Bytes).
+1. Lade die [Setup-EXE](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.3/Strata_0.4.0-preview.20261103.3_x64-setup.exe) herunter.
+2. Vergleiche sie vor dem Start mit [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.3/SHA256SUMS.txt). Es gibt keine Windows-Codesignatur. SHA-256 der Setup-EXE: `a6e8eb762d32f685f3a47d68e3c593f2b5df361bd42bb7c79d8d3a1f65d70f13` (113.054.600 Bytes).
 3. Beende Strata vollständig (Infobereich → Strata beenden), falls bereits installiert, und starte die EXE.
 4. Installiere beim ersten Start die angebotene signierte Engine oder importiere die passende `.tar.gz` derselben Release. Wähle dann einen Modellordner und lade ein Modell.
 
@@ -45,12 +45,12 @@ Anleitung: [MEMORY_HARNESS.md](serve/MEMORY_HARNESS.md). Hermes-SOUL/MEMORY-Werk
 
 | | |
 | --- | --- |
-| GUI / Product | `0.4.0-preview.20261103.2` |
+| GUI / Product | `0.4.0-preview.20261103.3` |
 | Engine / Control | `0.4.0` (CUDA sm_120) |
 | Hakua-memory | `0.3.5` |
 | Upstream-Freeze | `ffa80d73` · 0.2.10 |
 
-Release: [v0.4.0-preview.20261103.2](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.2). Installer und Qwen3.6-Engine-Paket dieses Tags sind nicht signiert. Der Ed25519-Feed und die signierte Engine von `v0.4.0-preview.20261101.1` bleiben. Automatische signierte App-Updates sind nicht qualifiziert; aktualisiere mit diesem Installer. Der Installer enthält keine CUDA-Engine. Das Qwen3.6-Paket hat keinen Picture-Reader und `signature` ist null. PrismML und TurboQuant bleiben in der signierten Komponente. Hauptlinie: Qwen3.6-35B-A3B UD-Q4_K_XL, Context 65536, FP32-KV, MTP 2. Neue Wege sind opt-in. Nicht angewendete Einstellungen und Private-Cache-Anfragen werden vor dem Start abgelehnt. Mapped expert pack nur bei Anfrage und Engine-SHA-256 `512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046`. Standard bleibt die alte Host-Arena. Startzeit und Token-Geschwindigkeit sind nicht gemessen. Der CUDA-Spill-Guard ist gegen die geprüfte Baseline nicht bestanden. Auf einem 32-GB-PC kann UD-Q4_K_XL vor dem Start abgelehnt werden, wenn der freie physische RAM die legacy 18,75-GiB-Arena plus Reserve nicht hält. Das ist keine Messung, dass das Modell in 16 GB VRAM passt.
+Release: [v0.4.0-preview.20261103.3](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.3). Installer und Qwen3.6-Engine-Paket dieses Tags sind nicht signiert. Der Ed25519-Feed und die signierte Engine von `v0.4.0-preview.20261101.1` bleiben. Automatische signierte App-Updates sind nicht qualifiziert; aktualisiere mit diesem Installer. Der Installer enthält keine CUDA-Engine. Das Qwen3.6-Paket hat keinen Picture-Reader und `signature` ist null. PrismML und TurboQuant bleiben in der signierten Komponente. Hauptlinie: Qwen3.6-35B-A3B UD-Q4_K_XL, Context 65536, FP32-KV, MTP 2, Prefill auto. Neue Wege sind opt-in. Nicht angewendete Einstellungen und Private-Cache-Anfragen werden vor dem Start abgelehnt. Mapped expert pack nur bei Anfrage und Engine-SHA-256 `dd53df07789e0fefcb87e33acab54f5bfe1faf312ef6bad515924736b715c5b5` oder `512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046`. Der ältere Digest bleibt erlaubt. Standard bleibt die alte Host-Arena. Startzeit und Token-Geschwindigkeit sind nicht gemessen. Der CUDA-Spill-Guard ist gegen die geprüfte Baseline nicht bestanden. Auf einem 32-GB-PC kann UD-Q4_K_XL vor dem Start abgelehnt werden, wenn der freie physische RAM die legacy 18,75-GiB-Arena plus Reserve nicht hält. Das ist keine Messung, dass das Modell in 16 GB VRAM passt.
 
 ## Grenzen (gemessene Vorschau)
 

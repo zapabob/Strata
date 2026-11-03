@@ -6,8 +6,8 @@ Chatbot Hakua sobre Strata. Esta bifurcación ofrece una vista previa de Windows
 
 ## Instalación (vista previa Windows)
 
-1. Descarga el [EXE de instalación](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.2/Strata_0.4.0-preview.20261103.2_x64-setup.exe).
-2. Compáralo con [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.2/SHA256SUMS.txt) antes de ejecutarlo. No hay firma de código Windows. SHA-256 del EXE: `18a7e0dfc024ec3105c436009a24ec4964cf3b42bb2cd6bc8468afd2d0880e5e` (113.759.039 bytes).
+1. Descarga el [EXE de instalación](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.3/Strata_0.4.0-preview.20261103.3_x64-setup.exe).
+2. Compáralo con [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.3/SHA256SUMS.txt) antes de ejecutarlo. No hay firma de código Windows. SHA-256 del EXE: `a6e8eb762d32f685f3a47d68e3c593f2b5df361bd42bb7c79d8d3a1f65d70f13` (113.054.600 bytes).
 3. Sal de Strata por completo (bandeja → Salir de Strata) si ya está instalado y ejecuta el EXE.
 4. En el primer inicio, instala el motor firmado ofrecido o importa el `.tar.gz` correspondiente de la misma release. Luego elige una carpeta de modelos y carga un modelo.
 
@@ -45,12 +45,12 @@ Guía: [MEMORY_HARNESS.md](serve/MEMORY_HARNESS.md). Las herramientas Hermes SOU
 
 | | |
 | --- | --- |
-| GUI / Product | `0.4.0-preview.20261103.2` |
+| GUI / Product | `0.4.0-preview.20261103.3` |
 | Engine / Control | `0.4.0` (CUDA sm_120) |
 | Hakua-memory | `0.3.5` |
 | Congelación upstream | `ffa80d73` · 0.2.10 |
 
-Página de release: [v0.4.0-preview.20261103.2](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.2). El instalador y el paquete de motor Qwen3.6 de esta etiqueta no están firmados. El feed Ed25519 y el motor firmado de `v0.4.0-preview.20261101.1` siguen en su sitio. Las actualizaciones automáticas firmadas de la app no están cualificadas; actualiza con este instalador. El instalador no incluye el motor CUDA. El paquete Qwen3.6 no tiene lector de imágenes y `signature` es null. PrismML y TurboQuant siguen en el componente firmado. La línea principal es Qwen3.6-35B-A3B UD-Q4_K_XL, contexto 65536, KV FP32, MTP 2. Las rutas nuevas son opt-in. Un ajuste no aplicado, o una petición de caché privada, se rechaza antes de arrancar. El mapped expert pack solo si se pide y el SHA-256 del motor es `512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046`. El arena de host anterior sigue siendo el predeterminado. El tiempo de arranque y la velocidad de tokens no se midieron. El CUDA spill guard no pasó la baseline revisada. En un PC de 32 GB, UD-Q4_K_XL puede rechazarse antes del arranque si la RAM física libre no cubre el arena legacy de 18,75 GiB más la reserva. Eso no es una medida de que quepa en 16 GB de VRAM.
+Página de release: [v0.4.0-preview.20261103.3](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.3). El instalador y el paquete de motor Qwen3.6 de esta etiqueta no están firmados. El feed Ed25519 y el motor firmado de `v0.4.0-preview.20261101.1` siguen en su sitio. Las actualizaciones automáticas firmadas de la app no están cualificadas; actualiza con este instalador. El instalador no incluye el motor CUDA. El paquete Qwen3.6 no tiene lector de imágenes y `signature` es null. PrismML y TurboQuant siguen en el componente firmado. La línea principal es Qwen3.6-35B-A3B UD-Q4_K_XL, contexto 65536, KV FP32, MTP 2, prefill auto. Las rutas nuevas son opt-in. Un ajuste no aplicado, o una petición de caché privada, se rechaza antes de arrancar. El mapped expert pack solo si se pide y el SHA-256 del motor es `dd53df07789e0fefcb87e33acab54f5bfe1faf312ef6bad515924736b715c5b5` o `512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046`. El resumen anterior sigue permitido. El arena de host anterior sigue siendo el predeterminado. El tiempo de arranque y la velocidad de tokens no se midieron. El CUDA spill guard no pasó la baseline revisada. En un PC de 32 GB, UD-Q4_K_XL puede rechazarse antes del arranque si la RAM física libre no cubre el arena legacy de 18,75 GiB más la reserva. Eso no es una medida de que quepa en 16 GB de VRAM.
 
 ## Límites (vista previa medida)
 

@@ -104,17 +104,31 @@ test('the engine digest is read from the file, and a missing file is not an allo
   }
 });
 
-test('the recorded sm_120 engine digest is the only mapped-pack allowlist entry', () => {
+test('the recorded sm_120 engine digests are the mapped-pack allowlist, and legacy stays the default', () => {
   const listed = [...Q36_MAPPED_PACK_DIGESTS];
-  assert.equal(listed.length, 1);
-  assert.match(listed[0], /^[0-9a-f]{64}$/);
-  const bound = prepareQ36Launch({
+  assert.deepEqual(listed, [
+    '512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046',
+    'dd53df07789e0fefcb87e33acab54f5bfe1faf312ef6bad515924736b715c5b5',
+  ]);
+  for (const sha of listed) assert.match(sha, /^[0-9a-f]{64}$/);
+  for (const sha of listed) {
+    const bound = prepareQ36Launch({
+      args: ['--model', 'm.gguf', '--max-context', '65536'],
+      requested: { expertStoreMode: 'mapped-pack' },
+      binarySha256: sha,
+    });
+    assert.equal(bound.ok, true, sha);
+    assert.equal(bound.contract.effective.expertStoreMode, 'mapped-pack');
+  }
+  const settingsDigest = { binarySha256: listed[1], expertStoreMode: 'mapped-pack' };
+  const untouched = prepareQ36Launch({
     args: ['--model', 'm.gguf', '--max-context', '65536'],
-    requested: { expertStoreMode: 'mapped-pack' },
-    binarySha256: listed[0],
+    binarySha256: listed[1],
+    modelSettings: settingsDigest,
   });
-  assert.equal(bound.ok, true);
-  assert.equal(bound.contract.effective.expertStoreMode, 'mapped-pack');
+  assert.equal(untouched.ok, true);
+  assert.equal(untouched.contract.effective.expertStoreMode, 'legacy');
+  assert.equal(untouched.argv.includes('--q36-expert-store'), false);
 });
 
 test('mapped-pack stays off the command line unless this engine digest is allowlisted', () => {
