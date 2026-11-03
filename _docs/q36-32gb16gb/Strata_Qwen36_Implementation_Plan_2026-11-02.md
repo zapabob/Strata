@@ -10,7 +10,17 @@
 
 **Spec:** 同梱 `DESIGN.md`。先に読むこと。数値証跡は `evidence-summary.json`、根拠は本書末尾。
 
-**Status:** **PLAN ONLY / NOT IMPLEMENTED / WINDOWS GPU NOT RUN**。本書の新flag・API・test targetは、明記した既存項目以外すべて提案。過去の会話で作成済みとされたpatchや試験件数は、本書の実装証拠へ引き継がない。
+**Status:** **PARTIAL_IMPL / GPU mapped-live BLOCKED / T04–T08 NOT_RUN**。Host契約・startup stage・mapped-pack+pin-pool・installer `.5` までは実装済。Windows GPU の mapped-pack live と paired 速度は **未実行**（偽速度禁止）。完了宣言しない。
+
+| Gate / task | 2026-11-04 時点 | 注記 |
+|---|---|---|
+| Host Q36 node tests | PASS 19/19 | non-GPU; cache を C: に退避して再実行可 |
+| T03 GUI refuse (private-cache) | PARTIAL | chatbot on; 強制解除なし |
+| T03 chat → stop → restart | **NOT_RUN** | Q36 serve 未成立 |
+| mapped-pack live (UD-Q4_K_XL / ctx65536 / MTP2) | **BLOCKED** | Hermes llama-server が VRAM 占有; DESIGN #6 で未殺 |
+| T04 / T06 / T07 / T08 paired speed | **NOT_RUN** | live 前提が未達 |
+| H: disk for live/release | FreeGB **14.2** (was ~0–1) | 2026-11-04 reclaim; remnant npm lock ~0.58 GB |
+| Goal complete | **false** | UpdateGoal complete しない |
 
 **基準日:** 2026-11-02 JST  
 **公開main確認SHA:** `170e0d330edd9c03b5dcddfc64b77e498387ff86`  

@@ -2,7 +2,8 @@
 
 作成日: 2026-11-02 JST  
 対象: `zapabob/Strata`、Windows native、Qwen3.6-35B-A3B UD-Q4_K_XL  
-状態: **提案設計。未実装・未実機検証。**  
+状態: **部分実装あり。GPU mapped-live / paired speed は未実行（NOT_RUN）。完了宣言しない。**  
+最終再測定: 2026-11-04 04:20 JST — Hermes VRAM 占有で mapped-live **BLOCKED**（DESIGN #6 により未殺）。H: FreeGB 1.05→14.2 回収済み。詳細は `evidence-summary.json` / `evidence-2026-11-04-mapped-live/NOTES-04-12.md`。  
 対になる作業計画: `Strata_Qwen36_Implementation_Plan_2026-11-02.md`
 
 ## 1. 目的と対象

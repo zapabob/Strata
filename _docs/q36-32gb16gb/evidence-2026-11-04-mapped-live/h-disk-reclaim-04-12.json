@@ -1,0 +1,136 @@
+{
+    "captured_at":  "2026-11-04T04:19:58+09:00",
+    "free_gb_before":  1.047,
+    "free_gb_after":  14.209,
+    "reclaimed_gb_observed":  13.162,
+    "kept":  [
+                 "H:\\Strata\\releases\\hakua040-nsis-cargo-20261103-5",
+                 "H:\\Strata\\releases\\hakua040-q36-engine-20261103-5",
+                 "H:\\Strata\\releases\\hakua040-preview.20261103.5",
+                 "H:\\Strata\\releases\\hakua040-components-r3",
+                 "H:\\Strata\\releases\\hakua040-native-sync-20261103",
+                 "H:\\Strata\\models"
+             ],
+    "deleted":  [
+                    {
+                        "path":  "H:\\npm-cache",
+                        "expected_gb":  3.354,
+                        "why":  "regenerable npm cache; ENOSPC secondary blocker",
+                        "status":  "error: パス \u0027codegraph-kernel.node\u0027 へのアクセスが拒否されました。"
+                    },
+                    {
+                        "path":  "H:\\pip_cache",
+                        "expected_gb":  0.248,
+                        "why":  "regenerable pip cache",
+                        "status":  "deleted"
+                    },
+                    {
+                        "path":  "H:\\Strata\\releases\\hakua040-nsis-cargo-20261103",
+                        "expected_gb":  2.481,
+                        "why":  "older NSIS cargo vs current .5",
+                        "status":  "deleted"
+                    },
+                    {
+                        "path":  "H:\\Strata\\releases\\hakua040-nsis-cargo-20261103-4",
+                        "expected_gb":  2.178,
+                        "why":  "superseded by nsis-cargo-20261103-5",
+                        "status":  "deleted"
+                    },
+                    {
+                        "path":  "H:\\Strata\\releases\\hakua040-q36-engine-20261103",
+                        "expected_gb":  1.34,
+                        "why":  "older unsigned q36 engine; keep -5",
+                        "status":  "deleted"
+                    },
+                    {
+                        "path":  "H:\\Strata\\releases\\hakua040-q36-engine-sync-20261103",
+                        "expected_gb":  1.353,
+                        "why":  "sync intermediate superseded by -5",
+                        "status":  "deleted"
+                    },
+                    {
+                        "path":  "H:\\Strata\\temp\\official-first-run-r3",
+                        "expected_gb":  2.504,
+                        "why":  "stale QA sandbox engine extract duplicate",
+                        "status":  "deleted"
+                    },
+                    {
+                        "path":  "H:\\Strata\\temp\\official-first-run-r6",
+                        "expected_gb":  1.958,
+                        "why":  "stale QA sandbox engine extract duplicate",
+                        "status":  "deleted"
+                    },
+                    {
+                        "path":  "H:\\Strata\\temp\\official-first-run-r7",
+                        "expected_gb":  1.958,
+                        "why":  "stale QA sandbox engine extract duplicate",
+                        "status":  "deleted"
+                    },
+                    {
+                        "path":  "H:\\Strata\\temp\\official-first-run-r8",
+                        "expected_gb":  1.958,
+                        "why":  "stale QA sandbox engine extract duplicate",
+                        "status":  "deleted"
+                    },
+                    {
+                        "path":  "H:\\Strata\\tmp",
+                        "expected_gb":  0.669,
+                        "why":  "stale dsh/pytest/host subprocess temps Oct30-Nov03",
+                        "status":  "deleted"
+                    },
+                    {
+                        "path":  "H:\\Strata\\temp\\official-first-run-r10",
+                        "expected_gb":  null,
+                        "why":  "leftover stale QA first-run",
+                        "status":  "deleted"
+                    },
+                    {
+                        "path":  "H:\\Strata\\temp\\official-first-run-r2",
+                        "expected_gb":  null,
+                        "why":  "leftover stale QA first-run",
+                        "status":  "deleted"
+                    },
+                    {
+                        "path":  "H:\\Strata\\temp\\official-first-run-r4",
+                        "expected_gb":  null,
+                        "why":  "leftover stale QA first-run",
+                        "status":  "deleted"
+                    },
+                    {
+                        "path":  "H:\\Strata\\temp\\official-first-run-r5",
+                        "expected_gb":  null,
+                        "why":  "leftover stale QA first-run",
+                        "status":  "deleted"
+                    },
+                    {
+                        "path":  "H:\\Strata\\temp\\official-first-run-r9",
+                        "expected_gb":  null,
+                        "why":  "leftover stale QA first-run",
+                        "status":  "deleted"
+                    }
+                ],
+    "log":  [
+                "ERR H:\\npm-cache : パス \u0027codegraph-kernel.node\u0027 へのアクセスが拒否されました。",
+                "OK deleted: H:\\pip_cache",
+                "OK deleted: H:\\Strata\\releases\\hakua040-nsis-cargo-20261103",
+                "OK deleted: H:\\Strata\\releases\\hakua040-nsis-cargo-20261103-4",
+                "OK deleted: H:\\Strata\\releases\\hakua040-q36-engine-20261103",
+                "OK deleted: H:\\Strata\\releases\\hakua040-q36-engine-sync-20261103",
+                "OK deleted: H:\\Strata\\temp\\official-first-run-r3",
+                "OK deleted: H:\\Strata\\temp\\official-first-run-r6",
+                "OK deleted: H:\\Strata\\temp\\official-first-run-r7",
+                "OK deleted: H:\\Strata\\temp\\official-first-run-r8",
+                "OK deleted: H:\\Strata\\tmp",
+                "OK deleted leftover: H:\\Strata\\temp\\official-first-run-r10",
+                "OK deleted leftover: H:\\Strata\\temp\\official-first-run-r2",
+                "OK deleted leftover: H:\\Strata\\temp\\official-first-run-r4",
+                "OK deleted leftover: H:\\Strata\\temp\\official-first-run-r5",
+                "OK deleted leftover: H:\\Strata\\temp\\official-first-run-r9"
+            ],
+    "hermes_killed":  false,
+    "models_untouched":  true,
+    "preview_5_setup_untouched":  true,
+    "components_r3_untouched":  true,
+    "nsis_cargo_5_untouched":  true,
+    "q36_engine_5_untouched":  true
+}

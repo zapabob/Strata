@@ -1,0 +1,25 @@
+{
+    "captured_at":  "2026-11-04T04:20:36+09:00",
+    "gpu":  "NVIDIA GeForce RTX 5060 Ti",
+    "vram_total_mib":  16311,
+    "vram_used_mib":  15321,
+    "vram_free_mib":  730,
+    "gpu_util_percent":  97,
+    "ram_free_gb":  7.61,
+    "ram_total_gb":  31.87,
+    "hermes_llama_server_pids":  [
+                                     22836,
+                                     22944
+                                 ],
+    "hermes_killed":  false,
+    "primary_blocker":  "Hermes llama-server still holds VRAM (~15.3/16.3 GiB); DESIGN #6 no-kill",
+    "secondary_blocker_was":  "H: FreeGB~0 ENOSPC",
+    "h_free_gb_before_reclaim":  1.047,
+    "h_free_gb_after_reclaim":  14.423,
+    "h_disk_reclaim_evidence":  "h-disk-reclaim-04-12.json",
+    "mapped_live":  "BLOCKED",
+    "t03_chat_stop_restart":  "NOT_RUN",
+    "t04_t06_t07_t08":  "NOT_RUN",
+    "invented_speeds":  false,
+    "goal_complete":  false
+}

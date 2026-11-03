@@ -23,10 +23,19 @@
 - 公開mainとQwen36のload・expert layout・placement・warmup・引数処理・dispatch、Host resource設定を読取確認。
 - 計画書のメモリ算術、task構成、Markdown fence、同梱ファイル、ZIP整合性を確認。
 
-## 実施していないもの
+## 実施していないもの（パッケージ作成時点の記述）
 
-Strata本体へのpatch適用、Windows PCの操作、モデル起動、CUDA build、CPU/GPUの実装テスト、速度・品質ベンチマーク、GitHubへのcommit/push/PR/merge/release。
+当初パッケージ時点では、Strata本体へのpatch適用、Windows PCの操作、モデル起動、CUDA build、CPU/GPUの実装テスト、速度・品質ベンチマーク、GitHubへのcommit/push/PR/merge/releaseは未実施と書いた。
 
-本パッケージは計画資料であり、実装済みpatchや実行バイナリではありません。新しいflag/API/test targetは実装案です。過去の会話で作成済みとされたpatchやテスト成績は再利用していません。
+## 2026-11-04 実行状況（正直ラベル）
+
+実装は別セッションで進み、installer `.5` / mapped-pack+pin-pool / Host契約などは存在する。ただし次は **未完了のまま**:
+
+- mapped-pack live: **BLOCKED**（Hermes VRAM、DESIGN #6 で未殺）
+- T03 chat/stop/restart: **NOT_RUN**
+- T04 / T06 / T07 / T08 paired speed: **NOT_RUN**（偽速度なし）
+- Goal complete: **false**
+
+H: は FreeGB 約1→約14 へ安全回収済み（`evidence-2026-11-04-mapped-live/NOTES-04-12.md`）。詳細は `evidence-summary.json` と計画書 Status 表。
 
 原本ログには個人pathが含まれるため、原本はZIPへ複製していません。元ファイルのSHAと原本行番号からユーザー手元で照合できます。

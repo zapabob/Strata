@@ -10,3 +10,4 @@
 - Chat/stop/restart NOT run (VRAM blocked; refuse path does not need full load)
 - mapped-pack live NOT run (see ../evidence-2026-11-04-mapped-live/preflight-blocker.json)
 - Remeasure 2026-11-04 04:09 JST: Hermes PIDs 22836/22944 still hold VRAM (729 MiB free); mapped-live still BLOCKED — see ../evidence-2026-11-04-mapped-live/NOTES-04-08.md
+- Remeasure + H: reclaim 2026-11-04 04:20 JST: VRAM still ~15321/16311 MiB (730 free); Hermes not killed; H: FreeGB 1.05→14.2; mapped-live still BLOCKED — see ../evidence-2026-11-04-mapped-live/NOTES-04-12.md
