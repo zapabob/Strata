@@ -88,4 +88,41 @@ std::string expert_pack_verify(const std::string& pack_path, const std::string& 
 std::string expert_pack_sha256_file(const std::string& path, std::string& err);
 uint64_t expert_pack_last_scratch_bytes();
 
+// Bounded host staging for mapped-pack (T05-B). Default proposal is 2 x 32 MiB.
+// This is not the old 1.10 GiB GPU staging pair. The engine does not use this
+// pool yet; lifetime rules are tested on the CPU first. Production pin
+// (cudaHostAlloc) is a later wire-up and stays opt-in.
+enum class PinSlotState : uint8_t { Reusable = 0, HostFilling = 1, H2dInFlight = 2 };
+
+class ExpertPinPool {
+public:
+    static constexpr uint32_t kDefaultSlots = 2;
+    static constexpr uint64_t kDefaultSlotBytes = 32ull << 20;  // 32 MiB
+
+    explicit ExpertPinPool(uint32_t slots = kDefaultSlots, uint64_t slot_bytes = kDefaultSlotBytes);
+    ExpertPinPool(const ExpertPinPool&) = delete;
+    ExpertPinPool& operator=(const ExpertPinPool&) = delete;
+    ExpertPinPool(ExpertPinPool&&) noexcept;
+    ExpertPinPool& operator=(ExpertPinPool&&) noexcept;
+    ~ExpertPinPool();
+
+    uint32_t slot_count() const;
+    uint64_t slot_bytes() const;
+    uint64_t committed_bytes() const;
+    PinSlotState state(int slot) const;
+    uint8_t* data(int slot);
+    const uint8_t* data(int slot) const;
+
+    // Reusable -> HostFilling. Returns slot index, or -1 when none are free.
+    int begin_fill();
+    // HostFilling -> H2dInFlight. False on a bad slot or wrong state.
+    bool mark_h2d(int slot);
+    // HostFilling or H2dInFlight -> Reusable. False on a bad slot or Reusable.
+    bool release(int slot);
+
+private:
+    struct Impl;
+    std::unique_ptr<Impl> impl_;
+};
+
 }  // namespace strata::qwen35

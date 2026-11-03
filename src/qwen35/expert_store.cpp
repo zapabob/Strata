@@ -1,9 +1,10 @@
-#include "strata/qwen35/expert_store.hpp"
+﻿#include "strata/qwen35/expert_store.hpp"
 
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include <limits>
+#include <memory>
 #include <vector>
 
 #if defined(_WIN32)
@@ -878,6 +879,71 @@ std::unique_ptr<MappedExpertPack> open_or_build_expert_pack(const PackBuildReque
         pack->impl_->layers[i].bytes = plans[i].layer_bytes;
     }
     return pack;
+}
+
+struct ExpertPinPool::Impl {
+    uint64_t slot_bytes = 0;
+    std::vector<std::unique_ptr<uint8_t[]>> buffers;
+    std::vector<PinSlotState> states;
+};
+
+ExpertPinPool::ExpertPinPool(uint32_t slots, uint64_t slot_bytes) : impl_(new Impl()) {
+    if (slots == 0) slots = kDefaultSlots;
+    if (slot_bytes == 0) slot_bytes = kDefaultSlotBytes;
+    impl_->slot_bytes = slot_bytes;
+    impl_->buffers.resize(slots);
+    impl_->states.assign(slots, PinSlotState::Reusable);
+    for (uint32_t i = 0; i < slots; ++i) {
+        impl_->buffers[i].reset(new uint8_t[(size_t) slot_bytes]());
+    }
+}
+
+ExpertPinPool::ExpertPinPool(ExpertPinPool&&) noexcept = default;
+ExpertPinPool& ExpertPinPool::operator=(ExpertPinPool&&) noexcept = default;
+ExpertPinPool::~ExpertPinPool() = default;
+
+uint32_t ExpertPinPool::slot_count() const { return (uint32_t) impl_->states.size(); }
+uint64_t ExpertPinPool::slot_bytes() const { return impl_->slot_bytes; }
+uint64_t ExpertPinPool::committed_bytes() const {
+    return (uint64_t) impl_->states.size() * impl_->slot_bytes;
+}
+
+PinSlotState ExpertPinPool::state(int slot) const {
+    if (slot < 0 || (size_t) slot >= impl_->states.size()) return PinSlotState::Reusable;
+    return impl_->states[(size_t) slot];
+}
+
+uint8_t* ExpertPinPool::data(int slot) {
+    if (slot < 0 || (size_t) slot >= impl_->buffers.size()) return nullptr;
+    return impl_->buffers[(size_t) slot].get();
+}
+
+const uint8_t* ExpertPinPool::data(int slot) const {
+    if (slot < 0 || (size_t) slot >= impl_->buffers.size()) return nullptr;
+    return impl_->buffers[(size_t) slot].get();
+}
+
+int ExpertPinPool::begin_fill() {
+    for (size_t i = 0; i < impl_->states.size(); ++i) {
+        if (impl_->states[i] != PinSlotState::Reusable) continue;
+        impl_->states[i] = PinSlotState::HostFilling;
+        return (int) i;
+    }
+    return -1;
+}
+
+bool ExpertPinPool::mark_h2d(int slot) {
+    if (slot < 0 || (size_t) slot >= impl_->states.size()) return false;
+    if (impl_->states[(size_t) slot] != PinSlotState::HostFilling) return false;
+    impl_->states[(size_t) slot] = PinSlotState::H2dInFlight;
+    return true;
+}
+
+bool ExpertPinPool::release(int slot) {
+    if (slot < 0 || (size_t) slot >= impl_->states.size()) return false;
+    if (impl_->states[(size_t) slot] == PinSlotState::Reusable) return false;
+    impl_->states[(size_t) slot] = PinSlotState::Reusable;
+    return true;
 }
 
 }  // namespace strata::qwen35
