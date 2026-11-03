@@ -6,8 +6,8 @@ Chatbot Hakua sur Strata. Cette fourche propose une préversion Windows avec Hak
 
 ## Installation (préversion Windows)
 
-1. Téléchargez l’[EXE d’installation](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.3/Strata_0.4.0-preview.20261103.3_x64-setup.exe).
-2. Vérifiez-le avec [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.3/SHA256SUMS.txt) avant de l’exécuter. Pas de signature de code Windows. SHA-256 de l’EXE : `a6e8eb762d32f685f3a47d68e3c593f2b5df361bd42bb7c79d8d3a1f65d70f13` (113 054 600 octets).
+1. Téléchargez l’[EXE d’installation](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.4/Strata_0.4.0-preview.20261103.4_x64-setup.exe).
+2. Vérifiez-le avec [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.4/SHA256SUMS.txt) avant de l’exécuter. Pas de signature de code Windows. SHA-256 de l’EXE : `9bf5f4c9090484a35a8e3534d310840303cd7d3b1684ebbce272e01fd9937724` (114 979 368 octets).
 3. Quittez Strata complètement (plateau → Quitter Strata) s’il est déjà installé, puis lancez l’EXE.
 4. Au premier démarrage, installez le moteur signé proposé, ou importez le `.tar.gz` correspondant de la même release. Choisissez ensuite un dossier de modèles et chargez un modèle.
 
@@ -45,12 +45,12 @@ Guide : [MEMORY_HARNESS.md](serve/MEMORY_HARNESS.md). Les outils Hermes SOUL/MEM
 
 | | |
 | --- | --- |
-| GUI / Product | `0.4.0-preview.20261103.3` |
+| GUI / Product | `0.4.0-preview.20261103.4` |
 | Engine / Control | `0.4.0` (CUDA sm_120) |
 | Hakua-memory | `0.3.5` |
 | Gel amont | `ffa80d73` · 0.2.10 |
 
-Page de release : [v0.4.0-preview.20261103.3](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.3). L’installateur et le paquet moteur Qwen3.6 de cette balise ne sont pas signés. Le flux Ed25519 et le moteur signé de `v0.4.0-preview.20261101.1` restent en place. Les mises à jour automatiques signées de l’app ne sont pas qualifiées ; utilisez cet installateur. L’installateur ne contient pas le moteur CUDA. Le paquet Qwen3.6 n’a pas de lecteur d’image et `signature` est null. PrismML et TurboQuant restent dans le composant signé. Ligne principale : Qwen3.6-35B-A3B UD-Q4_K_XL, contexte 65536, KV FP32, MTP 2, prefill auto. Les nouveaux chemins sont opt-in. Un réglage non appliqué, ou un cache privé, est refusé avant le démarrage. Le mapped expert pack ne part que sur demande et si le SHA-256 du moteur est `dd53df07789e0fefcb87e33acab54f5bfe1faf312ef6bad515924736b715c5b5` ou `512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046`. L’ancien condensé reste admis. L’arène hôte d’origine reste le défaut. Le temps de démarrage et la vitesse des jetons ne sont pas mesurés. Le garde-fou CUDA spill n’a pas passé la baseline revue. Sur un PC de 32 Go, UD-Q4_K_XL peut être refusé avant le lancement si la RAM physique libre ne couvre pas l’arène legacy de 18,75 Gio plus la réserve. Ce n’est pas une mesure de tenue dans 16 Go de VRAM.
+Page de release : [v0.4.0-preview.20261103.4](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.4). L’installateur et le paquet moteur Qwen3.6 de cette balise ne sont pas signés. Le flux Ed25519 et le moteur signé de `v0.4.0-preview.20261101.1` restent en place. Les mises à jour automatiques signées de l’app ne sont pas qualifiées ; utilisez cet installateur. L’installateur ne contient pas le moteur CUDA. Le paquet Qwen3.6 n’a pas de lecteur d’image et `signature` est null. PrismML et TurboQuant restent dans le composant signé. Ligne principale : Qwen3.6-35B-A3B UD-Q4_K_XL, contexte 65536, KV FP32, MTP 2, prefill auto. Les nouveaux chemins sont opt-in. Un réglage non appliqué, ou un cache privé, est refusé avant le démarrage. Le mapped expert pack ne part que sur demande et si le SHA-256 du moteur est `dd53df07789e0fefcb87e33acab54f5bfe1faf312ef6bad515924736b715c5b5` ou `512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046`. L’ancien condensé reste admis. L’arène hôte d’origine reste le défaut. Le temps de démarrage et la vitesse des jetons ne sont pas mesurés. Le garde-fou CUDA spill n’a pas passé la baseline revue. Sur un PC de 32 Go, UD-Q4_K_XL peut être refusé avant le lancement si la RAM physique libre ne couvre pas l’arène legacy de 18,75 Gio plus la réserve. Ce n’est pas une mesure de tenue dans 16 Go de VRAM.
 
 ## Limites (préversion mesurée)
 

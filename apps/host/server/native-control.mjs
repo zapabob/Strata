@@ -4,7 +4,7 @@ import {configureDesktopMemory,privateMemoryArgs} from './hakua-desktop.mjs';
 import { spawn } from 'node:child_process';
 import {chooseParallel,applyParallel,withoutParallel,FALLBACK_NOTE} from './native-parallel.mjs';
 import { randomBytes, randomUUID, createHash } from 'node:crypto';
-import { existsSync, readdirSync, readFileSync, writeFileSync, mkdirSync, realpathSync, copyFileSync, renameSync, rmSync, statfsSync, unlinkSync, chmodSync, statSync, accessSync, constants } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, writeFileSync, mkdirSync, realpathSync, copyFileSync, renameSync, rmSync, statfsSync, unlinkSync, chmodSync, statSync, accessSync, constants, openSync, readSync, closeSync, fstatSync } from 'node:fs';
 import { join, resolve, dirname, basename, sep, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:net';
@@ -17,7 +17,7 @@ import os from 'node:os';
 import { markPictures, runtimeVision } from './native-vision.mjs';
 import { dsEngineArgs, dsUserArgs, dsArgsNote, withoutVisionFlag } from './native-ds-args.mjs';
 import { admitQ36LegacyPhysical, isQwen36Config, prepareQ36Launch, q36FileSha256 } from './q36-run-contract.mjs';
-import { parseQ36StartupLine, q36StartupSentence, reduceQ36Startup } from './q36-startup-events.mjs';
+import { parseQ36StartupLine, q36StartupSentence, reduceQ36Startup, pushEngineLogChunk, q36EngineLogPath } from './q36-startup-events.mjs';
 import { componentsDirectory, installerEnvironment, controlEnvironment, sourceServerEnvironment } from './control-runtime.mjs';
 import { createEngineStep } from './engine-step.mjs';
 import { dataFolderFromPick, isDriveRoot, makeFolder, rememberDataFolder, syncDataFolder, terminalSettingsFile } from './model-folder.mjs';
@@ -87,7 +87,34 @@ export function applyNativeApiKeys(cfg,env=process.env){
   return key;
 }
 
-export function createNativeControl({directory,requests=()=>[],changed=()=>{},spawnProcess=spawn,fetcher=fetch,modelsDirectory,nativeDataDirectory=value=>value,beforeLoad=async()=>{},hardwareProbe=()=>[],control=null,ready=null,appUpdater=null,appDirectory=dirname(ROOT),defaultRepo=process.env.STRATA_NATIVE_REPO??resolve(ROOT,'../../Strata')}={}){
+function watchQ36EngineLog(logPath, onChunk, pollMs) {
+  if (typeof logPath !== 'string' || !logPath) return () => {};
+  let offset = 0;
+  try { offset = statSync(logPath).size; } catch { offset = 0; }
+  let stopped = false;
+  const tick = () => {
+    if (stopped) return;
+    let fd;
+    try { fd = openSync(logPath, 'r'); } catch { return; }
+    try {
+      const size = fstatSync(fd).size;
+      if (size < offset) offset = 0;
+      if (size <= offset) return;
+      const len = Math.min(size - offset, 1 << 20);
+      const buf = Buffer.alloc(len);
+      const n = readSync(fd, buf, 0, len, offset);
+      if (n <= 0) return;
+      offset += n;
+      onChunk(buf.subarray(0, n).toString('utf8'));
+    } catch { /* a start is not failed because the engine log could not be read this tick */ }
+    finally { try { closeSync(fd); } catch { /* already closed */ } }
+  };
+  const timer = setInterval(tick, pollMs);
+  timer.unref?.();
+  return () => { stopped = true; clearInterval(timer); };
+}
+
+export function createNativeControl({directory,requests=()=>[],changed=()=>{},spawnProcess=spawn,fetcher=fetch,modelsDirectory,nativeDataDirectory=value=>value,beforeLoad=async()=>{},hardwareProbe=()=>[],control=null,ready=null,appUpdater=null,appDirectory=dirname(ROOT),defaultRepo=process.env.STRATA_NATIVE_REPO??resolve(ROOT,'../../Strata'),engineLogPollMs=200}={}){
  mkdirSync(directory,{recursive:true});
  const settingsPath=join(directory,'native-host.json');
  let preferences=readJson(settingsPath,{repo:defaultRepo});
@@ -106,6 +133,8 @@ export function createNativeControl({directory,requests=()=>[],changed=()=>{},sp
     comes from the component folder, and a start is `strata runtime start` under the owner runtime. Nothing is installed,
     updated or fetched from here. Without `control` (a source checkout) every path below is the original one. */
  const packaged=!!control;
+ const logPollMs=Number.isFinite(engineLogPollMs)&&engineLogPollMs>=20?engineLogPollMs:200;
+ const q36Pending=new Map();
  /* The auto-tuner and the saved tunings are Strata Control's (`strata tune auto`, `strata presets`): the app runs them and follows their status file. */
  const autotuner=createAutoTune({spawnProcess,workDir:join(directory,'native-tune'),launcher:()=>{if(packaged)return {command:control.control.python,prefix:[control.control.cli],cwd:control.control.dir,env:controlEnvironment(control.control)};const py=python();return {command:py.command,prefix:[...py.args,join(repo(),'strata.py')],cwd:repo(),env:{...process.env,PYTHONUNBUFFERED:'1',PYTHONUTF8:'1',PYTHONIOENCODING:'utf-8'}};}});
  /* In the packaged app the model catalog, the GPU probe and the install job are Control's bundled tools/strata_mcp.py and
@@ -122,6 +151,15 @@ export function createNativeControl({directory,requests=()=>[],changed=()=>{},sp
  let stoppedForUpdate=null;
  const emit=()=>{const value=state();writeFileSync(join(directory,'native-jobs.json'),JSON.stringify(value.jobs),{mode:0o600});changed(value);};
  const append=(instanceId,line)=>{logs.push({at:new Date().toISOString(),instanceId,line:String(line).slice(0,2000)});if(logs.length>400)logs.shift();};
+ function notePackagedStartup(instance,job,chunk){
+  const applied=pushEngineLogChunk({pending:q36Pending.get(instance.id)??'',startup:instance.q36Startup??null,phase:instance.phase??null,sentence:null},chunk);
+  q36Pending.set(instance.id,applied.pending);
+  instance.q36Startup=applied.startup;
+  if(!applied.moved)return;
+  if(applied.phase)instance.phase=applied.phase;
+  if(applied.sentence)job.summary=applied.sentence;
+  emit();
+ }
  function diskSpace(path){try{const s=statfsSync(path);return {free:Number(s.bavail)*Number(s.bsize),total:Number(s.blocks)*Number(s.bsize)};}catch{return null;}}
  /* Does the engine in this release serve DFlash2? Control knows (strata_control/drafting.py); asked once, false until it answers. The Models screen offers the choice only when true. */
  let dflash2Served=null,dflash2Support=null,dflash2Selq4=false,dflash2Split=false;
@@ -537,7 +575,10 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
    instances.set(id,instance);if(!defaultId||!args.multiple||wasDefault)defaultId=id;emit();
    if(dsNote)append(id,dsNote);
    if(q36Note)append(id,q36Note);
-   const startWith=value=>{writeFileSync(configPath,JSON.stringify(value,null,2),{mode:0o600});return control.stop(instance.profile).catch(()=>{}).then(()=>control.saveProfile(instance.profile,configPath)).then(()=>control.start(instance.profile,{waitSeconds:startWait}));};
+   /* Q36_STARTUP is the engine's stderr. `_paths` names `{profile}.host.log` (the owner) and the server writes `{profile}.server.log`. Tail the run config's log, which serve opens as the engine stderr. */
+   const stopWatch=watchQ36EngineLog(q36EngineLogPath(cfg),chunk=>{notePackagedStartup(instance,job,chunk);},logPollMs);
+   const startWith=value=>{q36Pending.set(id,'');instance.q36Startup=null;instance.phase='loading';writeFileSync(configPath,JSON.stringify(value,null,2),{mode:0o600});return control.stop(instance.profile).catch(()=>{}).then(()=>control.saveProfile(instance.profile,configPath)).then(()=>control.start(instance.profile,{waitSeconds:startWait}));};
+   try{
    started=startWith(cfg);
    started.then(()=>append(id,'Strata Control reports the engine is ready.'),error=>{append(id,error.message);});
    try{await started;}catch(firstError){let error=firstError;
@@ -562,6 +603,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
     append(id,`The first start stopped (${said}). Starting once more: ${detail}`);job.summary=words;job.details=[said,`Second try: ${detail}`];instance.notice=words;emit();
     try{await startWith(retryConfig);append(id,'Strata Control reports the engine is ready (second try).');}
     catch(second){if(job.state!=='running'){await stopCancelledLoad(job,instance,id);return;}const said2=humanStartError(second);instance.status='error';instance.error=said2;/* the first stop and the second try stay in job.details; the pop-up shows the last stop once */emit();throw new Error(instance.error);}}}
+   }finally{stopWatch();q36Pending.delete(id);}
   } else {
   proc=spawnProcess(py,[join(repo(),'serve/server.py'),'--engine','strata','--config',configPath,'--port',String(cfg.port),'--host','127.0.0.1'],{cwd:repo(),detached:process.platform!=='win32',stdio:['ignore','pipe','pipe'],env:sourceServerEnvironment()});
   instances.set(id,instance);processes.set(id,proc);if(!defaultId||!args.multiple||wasDefault)defaultId=id;

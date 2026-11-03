@@ -6,8 +6,8 @@ Strata 上の Hakua チャットボット。Windows プレビューとして、H
 
 ## 導入（Windows プレビュー）
 
-1. [setup EXE](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.3/Strata_0.4.0-preview.20261103.3_x64-setup.exe) を取得します。
-2. 実行前に [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.3/SHA256SUMS.txt) と照合します。Windows のコード署名はありません。setup EXE の SHA-256 は `a6e8eb762d32f685f3a47d68e3c593f2b5df361bd42bb7c79d8d3a1f65d70f13`（113,054,600 bytes）です。
+1. [setup EXE](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.4/Strata_0.4.0-preview.20261103.4_x64-setup.exe) を取得します。
+2. 実行前に [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.4/SHA256SUMS.txt) と照合します。Windows のコード署名はありません。setup EXE の SHA-256 は `9bf5f4c9090484a35a8e3534d310840303cd7d3b1684ebbce272e01fd9937724`（114,979,368 bytes）です。
 3. すでに入っている場合はトレイから「Strata を終了」で完全終了してから EXE を実行します。
 4. 初回は準備画面で署名付きエンジンの導入を選ぶか、同じリリースの `.tar.gz` を取り込みます。その後モデルフォルダーを選んで読み込みます。
 
@@ -45,14 +45,14 @@ PrismML と TurboQuant はエンジン内の別実行ファイルです。[LOCAL
 
 | | |
 | --- | --- |
-| GUI / Product | `0.4.0-preview.20261103.3` |
+| GUI / Product | `0.4.0-preview.20261103.4` |
 | Engine / Control | `0.4.0`（CUDA sm_120） |
 | Hakua-memory | `0.3.5` |
 | 上流固定 | `ffa80d73` · 0.2.10 |
 
-App version in this preview tree: `0.4.0-preview.20261103.3`
+App version in this preview tree: `0.4.0-preview.20261103.4`
 
-リリース: [v0.4.0-preview.20261103.3](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.3)。このタグのインストーラーと Qwen3.6 エンジンパッケージに署名はありません。`v0.4.0-preview.20261101.1` の Ed25519 フィードと署名済みエンジンは差し替えていません。アプリ本体の署名付き自動更新は未検証で、更新はこのインストーラーで行います。
+リリース: [v0.4.0-preview.20261103.4](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.4)。このタグのインストーラーと Qwen3.6 エンジンパッケージに署名はありません。`v0.4.0-preview.20261101.1` の Ed25519 フィードと署名済みエンジンは差し替えていません。アプリ本体の署名付き自動更新は未検証で、更新はこのインストーラーで行います。
 
 インストーラーはアプリだけを更新します。CUDA エンジンは入りません。このタグの Qwen3.6 パッケージは別配布で、画像リーダーは無く、`signature` は null です。PrismML と TurboQuant は `v0.4.0-preview.20261101.1` の署名済みコンポーネントに残しています。
 

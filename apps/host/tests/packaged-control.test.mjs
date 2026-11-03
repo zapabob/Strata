@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { existsSync } from 'node:fs';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, appendFileSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { tmpdir } from 'node:os';
 import { bundledPython, componentsDirectory, controlEnvironment, createControl, findControl, runCli } from '../server/control-runtime.mjs';
@@ -88,7 +88,7 @@ test('runCli passes the arguments untouched (no shell) and reads JSON', async ()
 
 // ---------------------------------------------------------------------------------- native-control in packaged mode
 
-function packagedFixture({ engineUsable = true, updater = null, repair = false, ids = ['iq2_xs', 'iq3_s'], controlVersion = '0.1.45', extraSizes = [], cliStartWait = 'old' } = {}) {
+function packagedFixture({ engineUsable = true, updater = null, repair = false, ids = ['iq2_xs', 'iq3_s'], controlVersion = '0.1.45', extraSizes = [], cliStartWait = 'old', engineLogPollMs = 200 } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'strata-packaged-test-'));
   const install = join(root, 'install'), data = join(root, 'data');
   mkdirSync(install, { recursive: true });
@@ -119,7 +119,7 @@ function packagedFixture({ engineUsable = true, updater = null, repair = false, 
   const saved = [];
   const spawned = [];
   const rpc = [];
-  let startFailure = null, startFailureLeft = Infinity;
+  let startFailure = null, startFailureLeft = Infinity, startHold = null;
   const control = {
     control: { dir: join(root, 'control'), python: join(root, 'control', 'python', 'python.exe') }, version: controlVersion,
     async installedModels(options) { calls.push(['installedModels', options?.installDir ?? null]); return { install_dir: install, models: configs.map(c => ({ id: c.id, name: `Qwen ${c.id}`, source_config: c.path, component_status: 'present', context_tokens: 32768, backend: 'cuda' })) }; },
@@ -131,7 +131,7 @@ function packagedFixture({ engineUsable = true, updater = null, repair = false, 
     },
     async importPlan(path) { calls.push(['importPlan', path]); return { file_set_status: 'plausible', candidate_selection: { family: 'qwen', model: 'IQ3_S' }, file_count: 2, total_bytes: 1e9, issues: [] }; },
     async saveProfile(name, path) { calls.push(['saveProfile', name, basename(path)]); saved.push(JSON.parse(readFileSync(path, 'utf8'))); return {}; },
-    async start(name, options) { calls.push(['start', name, options?.waitSeconds]); if (startFailure && startFailureLeft-- > 0) { const e = new Error(startFailure.message); e.output = startFailure.output; throw e; } return { ok: true, state: 'ready' }; },
+    async start(name, options) { calls.push(['start', name, options?.waitSeconds]); if (startHold) await startHold(); if (startFailure && startFailureLeft-- > 0) { const e = new Error(startFailure.message); e.output = startFailure.output; throw e; } return { ok: true, state: 'ready' }; },
     async stop(name) { calls.push(['stop', name]); return { ok: true, state: 'stopped' }; },
     ...(repair ? { async repairAccess() { calls.push(['repairAccess']); return { ok: true }; } } : {}),
     ...(updater ? { async updateCheck() { calls.push(['updateCheck']); return updater.report; }, async update(options) { calls.push(['update', options.engine, options.control]); return updater.update(options); } } : {}),
@@ -167,11 +167,47 @@ function packagedFixture({ engineUsable = true, updater = null, repair = false, 
     } };
     return child;
   };
-  const native = createNativeControl({ control, directory: data, spawnProcess, fetcher, requests: () => requests });
+  const native = createNativeControl({ control, directory: data, spawnProcess, fetcher, requests: () => requests, engineLogPollMs });
   const others = () => spawned.filter(s => !String(s.args[0]).endsWith('strata_mcp.py'));
-  return { native, calls, saved, spawned, others, rpc, failStart: (v, times = Infinity) => { startFailure = v; startFailureLeft = times; }, catalog, hardware, install, root, cleanup: () => { if (earlierInstallEnv === undefined) delete process.env.STRATA_INSTALL_DIR; else process.env.STRATA_INSTALL_DIR = earlierInstallEnv; rmSync(root, { recursive: true, force: true }); } };
+  return { native, calls, saved, spawned, others, rpc, failStart: (v, times = Infinity) => { startFailure = v; startFailureLeft = times; }, holdStart: fn => { startHold = fn; }, catalog, hardware, install, root, cleanup: () => { if (earlierInstallEnv === undefined) delete process.env.STRATA_INSTALL_DIR; else process.env.STRATA_INSTALL_DIR = earlierInstallEnv; rmSync(root, { recursive: true, force: true }); } };
 }
 const finish = async (native, id) => { for (let i = 0; i < 400; i++) { const job = native.state().jobs.find(j => j.id === id); if (job.state !== 'running') return job; await new Promise(r => setTimeout(r, 10)); } throw new Error('job did not finish'); };
+
+test('packaged load reports startup stages from the engine log without a GPU', async () => {
+  const f = packagedFixture({ engineLogPollMs: 20 });
+  const log = join(f.root, 'q36-engine.log');
+  writeFileSync(log, 'Q36_STARTUP schema=1 stage=expert_host_alloc state=error elapsed_ms=1 stage_elapsed_ms=1 error_code=old_run\n');
+  const cfgPath = join(f.install, 'strata-iq2_xs.json');
+  writeFileSync(cfgPath, JSON.stringify({ ...JSON.parse(readFileSync(cfgPath, 'utf8')), log }));
+  const seen = [];
+  const waitFor = async (pred) => {
+    const deadline = Date.now() + 3000;
+    while (Date.now() < deadline) {
+      if (pred()) return;
+      await new Promise(r => setTimeout(r, 15));
+    }
+    throw new Error(`startup stage was not reported: ${JSON.stringify(f.native.state().instances.map(i => i.phase))} ${f.native.state().jobs.map(j => j.summary).join(' | ')}`);
+  };
+  const stageLine = (stage, state) => `Q36_STARTUP schema=1 stage=${stage} state=${state} elapsed_ms=4 stage_elapsed_ms=1 error_code=null\n`;
+  f.holdStart(async () => {
+    appendFileSync(log, stageLine('dense_load', 'begin'));
+    await waitFor(() => /Loading weights onto the GPU/.test(f.native.state().jobs.find(j => j.state === 'running')?.summary ?? '') && f.native.state().instances.some(i => i.phase === 'loading'));
+    seen.push('loading');
+    appendFileSync(log, stageLine('warmup_prefill', 'begin'));
+    await waitFor(() => f.native.state().instances.some(i => i.phase === 'warming'));
+    seen.push('warming');
+    appendFileSync(log, `${stageLine('nope', 'begin')}${stageLine('engine_ready', 'end')}`);
+    await waitFor(() => f.native.state().instances.some(i => i.phase === 'ready'));
+    seen.push('ready');
+    assert.doesNotMatch(f.native.state().jobs.find(j => j.state === 'running')?.summary ?? '', /old_run/);
+  });
+  try {
+    await f.native.refresh(true);
+    const job = await finish(f.native, f.native.operation('load', { model: 'iq2_xs' }).id);
+    assert.equal(job.state, 'done', job.error);
+    assert.deepEqual(seen, ['loading', 'warming', 'ready']);
+  } finally { await f.native.close(); f.cleanup(); }
+});
 
 test('packaged: models come from Control, no python, git or engine process is started by the host', async () => {
   const f = packagedFixture();

@@ -69,3 +69,51 @@ export function q36StartupSentence(event) {
   if (event.state === 'cancelled') return `${label} was cancelled.`;
   return `${label}.`;
 }
+
+const WARMING = new Set(['warmup_prefill', 'warmup_decode', 'warmup_spec']);
+
+/** Coarse report of an accepted Q36_STARTUP stage. Names stay loading, warming, ready, and error. */
+export function q36ReportPhase(event) {
+  if (!event?.accepted) return null;
+  if (event.state === 'error') return 'error';
+  if (event.stage === 'engine_ready') return 'ready';
+  if (WARMING.has(event.stage)) return 'warming';
+  return 'loading';
+}
+
+/**
+ * The engine writes Q36_STARTUP to its stderr. serve opens the run config's `log` as that stderr.
+ * strata_control/runtime.py `_paths` returns `{profile}.host.log` (the owner host) and the server
+ * process writes `{profile}.server.log` beside the state file. Neither of those is the engine log.
+ */
+export function q36EngineLogPath(cfg) {
+  const log = cfg?.log;
+  if (typeof log !== 'string') return null;
+  const path = log.trim();
+  if (!path || path.includes('\0')) return null;
+  return path;
+}
+
+/** Feed one chunk of the engine log. Unknown stages are ignored. A later progress line does not clear an error. */
+export function pushEngineLogChunk(prev, chunk) {
+  const text = `${prev?.pending ?? ''}${chunk ?? ''}`;
+  const parts = text.split('\n');
+  const pending = parts.pop() ?? '';
+  let startup = prev?.startup ?? null;
+  let phase = prev?.phase ?? null;
+  let sentence = prev?.sentence ?? null;
+  let moved = false;
+  for (const line of parts) {
+    const event = parseQ36StartupLine(line);
+    if (!event?.accepted) continue;
+    const next = reduceQ36Startup(startup, event);
+    if (next === startup) continue;
+    startup = next;
+    const reported = q36ReportPhase(next);
+    if (reported) phase = reported;
+    const said = q36StartupSentence(next);
+    if (said && next === event) sentence = said;
+    moved = true;
+  }
+  return { pending, startup, phase, sentence, moved };
+}
