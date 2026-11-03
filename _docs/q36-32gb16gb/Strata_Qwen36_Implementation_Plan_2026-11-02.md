@@ -14,13 +14,13 @@
 
 | Gate / task | 2026-11-04 時点 | 注記 |
 |---|---|---|
-| Host Q36 node tests | PASS 19/19 | non-GPU; cache を C: に退避して再実行可 |
+| Host Q36 node tests | PASS 19/19 | 2026-11-04 help rebuild 後も 19/19; TMP/npm-cache は H: |
 | T03 GUI refuse (private-cache) | PARTIAL | chatbot on; 強制解除なし |
 | T03 chat → stop → restart | **NOT_RUN** | Q36 serve 未成立 |
-| mapped-pack live (UD-Q4_K_XL / ctx65536 / MTP2) | **BLOCKED** | Hermes llama-server が VRAM 占有; DESIGN #6 で未殺（05:11: free ~869 MiB） |
+| mapped-pack live (UD-Q4_K_XL / ctx65536 / MTP2) | **BLOCKED** | Hermes llama-server が VRAM 占有; DESIGN #6 で未殺（05:22: free ~873 MiB） |
 | T04 / T06 / T07 / T08 paired speed | **NOT_RUN** | live 前提が未達 |
-| H: disk for live/release | FreeGB **~78.74** (was ~0–1 → 14.2 @04:20) | 05:11 再測; C: ~3.02 は npm 注意のみ |
-| `--help` / `--q36-expert-store` | source 追記 / EXE 未反映 | generate usage + q36 usage; shipped `6fe11065…` は次回 rebuild まで help 省略のまま |
+| H: disk for live/release | FreeGB **~78+** | C: ~3GB は npm 注意のみ |
+| `--help` / `--q36-expert-store` | source + **local EXE** 反映 | ローカル `64226fde…`; 製品 `.5` はまだ `6fe11065…`（次インストーラ待ち） |
 | Goal complete | **false** | UpdateGoal complete しない |
 
 **基準日:** 2026-11-02 JST  

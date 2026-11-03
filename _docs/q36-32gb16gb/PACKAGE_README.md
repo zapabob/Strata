@@ -36,6 +36,6 @@
 - T04 / T06 / T07 / T08 paired speed: **NOT_RUN**（偽速度なし）
 - Goal complete: **false**
 
-H: は FreeGB 約1→約14（04:20 回収）のあと、05:11 再測で **約78.74**（`NOTES-05-10.md`）。`--help` の `--q36-expert-store` 省略は source で訂正（installed unsigned EXE は次回 rebuild まで未反映）。詳細は `evidence-summary.json` と計画書 Status 表。
+H: FreeGB は回収後も十分（05:22 再測 ~77+）。ローカル未署名 q36 を help 正直化込みで再ビルドし digest `64226fde…` を `0.4.0-q36-…` にだけ入れた（署名 `b5e4d525…` 非接触）。製品 `.5` インストーラは未再出荷（`NOTES-05-22-rebuild.md`）。mapped-live は Hermes VRAM で **BLOCKED** のまま。
 
 原本ログには個人pathが含まれるため、原本はZIPへ複製していません。元ファイルのSHAと原本行番号からユーザー手元で照合できます。
