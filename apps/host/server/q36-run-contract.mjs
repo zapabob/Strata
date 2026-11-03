@@ -27,6 +27,8 @@ export const Q36_CAPABILITY_REVISION = 'q36-argv-expert-store-1';
 export const Q36_MAPPED_PACK_DIGESTS = new Set([
   '512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046',
   'dd53df07789e0fefcb87e33acab54f5bfe1faf312ef6bad515924736b715c5b5',
+  // 2026-11-03 mapped-pack host pin-pool wire-up (sm_120), unsigned
+  '6fe110650940d0c19f09909d769393769650045e6bc6eab29ccc49734dbcab29',
 ]);
 export const Q36_ENGINE_DEFAULT_CONTEXT = 32768;
 export const Q36_KV_BYTES_PER_CELL_PER_SEQ = 45056n;

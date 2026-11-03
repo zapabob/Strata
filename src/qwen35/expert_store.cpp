@@ -883,19 +883,36 @@ std::unique_ptr<MappedExpertPack> open_or_build_expert_pack(const PackBuildReque
 
 struct ExpertPinPool::Impl {
     uint64_t slot_bytes = 0;
-    std::vector<std::unique_ptr<uint8_t[]>> buffers;
+    bool owns = true;
+    std::vector<std::unique_ptr<uint8_t[]>> owned;
+    std::vector<uint8_t*> ptrs;
     std::vector<PinSlotState> states;
 };
 
 ExpertPinPool::ExpertPinPool(uint32_t slots, uint64_t slot_bytes) : impl_(new Impl()) {
     if (slots == 0) slots = kDefaultSlots;
     if (slot_bytes == 0) slot_bytes = kDefaultSlotBytes;
+    impl_->owns = true;
     impl_->slot_bytes = slot_bytes;
-    impl_->buffers.resize(slots);
+    impl_->owned.resize(slots);
+    impl_->ptrs.resize(slots);
     impl_->states.assign(slots, PinSlotState::Reusable);
     for (uint32_t i = 0; i < slots; ++i) {
-        impl_->buffers[i].reset(new uint8_t[(size_t) slot_bytes]());
+        impl_->owned[i].reset(new uint8_t[(size_t) slot_bytes]());
+        impl_->ptrs[i] = impl_->owned[i].get();
     }
+}
+
+ExpertPinPool::ExpertPinPool(uint8_t* const* external, uint32_t slots, uint64_t slot_bytes) : impl_(new Impl()) {
+    if (slots == 0 || slot_bytes == 0 || !external) {
+        impl_->owns = true;
+        impl_->slot_bytes = 0;
+        return;
+    }
+    impl_->owns = false;
+    impl_->slot_bytes = slot_bytes;
+    impl_->ptrs.assign(external, external + slots);
+    impl_->states.assign(slots, PinSlotState::Reusable);
 }
 
 ExpertPinPool::ExpertPinPool(ExpertPinPool&&) noexcept = default;
@@ -907,6 +924,7 @@ uint64_t ExpertPinPool::slot_bytes() const { return impl_->slot_bytes; }
 uint64_t ExpertPinPool::committed_bytes() const {
     return (uint64_t) impl_->states.size() * impl_->slot_bytes;
 }
+bool ExpertPinPool::owns_buffers() const { return impl_->owns; }
 
 PinSlotState ExpertPinPool::state(int slot) const {
     if (slot < 0 || (size_t) slot >= impl_->states.size()) return PinSlotState::Reusable;
@@ -914,13 +932,13 @@ PinSlotState ExpertPinPool::state(int slot) const {
 }
 
 uint8_t* ExpertPinPool::data(int slot) {
-    if (slot < 0 || (size_t) slot >= impl_->buffers.size()) return nullptr;
-    return impl_->buffers[(size_t) slot].get();
+    if (slot < 0 || (size_t) slot >= impl_->ptrs.size()) return nullptr;
+    return impl_->ptrs[(size_t) slot];
 }
 
 const uint8_t* ExpertPinPool::data(int slot) const {
-    if (slot < 0 || (size_t) slot >= impl_->buffers.size()) return nullptr;
-    return impl_->buffers[(size_t) slot].get();
+    if (slot < 0 || (size_t) slot >= impl_->ptrs.size()) return nullptr;
+    return impl_->ptrs[(size_t) slot];
 }
 
 int ExpertPinPool::begin_fill() {

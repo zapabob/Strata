@@ -866,6 +866,12 @@ struct Model {
     bool hybrid = false;                       // not every expert fits in VRAM: slots + the CPU pool
     // Mapped only when --q36-expert-store mapped-pack is set. Legacy leaves this empty.
     std::unique_ptr<strata::qwen35::MappedExpertPack> expert_pack;
+    // T05-B: 2xN MiB host staging for H2D from the mapped pack. Not the 1.10 GiB GPU stage pair.
+    // Empty on legacy. cudaHostAlloc preferred; pageable malloc is an explicit fallback.
+    std::unique_ptr<strata::qwen35::ExpertPinPool> pin_pool;
+    uint8_t* pin_mem[2] = {nullptr, nullptr};
+    uint64_t pin_slot_bytes = 0;
+    bool pin_cuda_host = false;
     // the packed Q8_0 decode copies (gguf weights, packed copy, bytes): given back when that lets every expert fit
     std::vector<std::tuple<const uint8_t*, uint8_t*, size_t>> packed;
     // the GGUF-native MTP block (blk.<n_layers>, loaded with --mtp): eh_proj over [enorm(e) | hnorm(h)], then an
@@ -2172,6 +2178,40 @@ struct Engine {
     const Layer& layer_at(int li) const { return li < (int) m->layers.size() ? m->layers[(size_t) li] : m->mtp; }
 
     /// A streamed forward over the state indices `seq`: the first two layers' experts start copying now.
+    // Mapped-pack H2D through the bounded host pin pool (T05-B). Legacy keeps a direct copy.
+    // Chunks when the transfer is larger than one slot. Synchronizes before releasing a slot.
+    void h2d_from_host(void* dst, const void* src, size_t n, cudaStream_t stream) {
+        strata::qwen35::ExpertPinPool* pool = m && m->expert_pack ? m->pin_pool.get() : nullptr;
+        if (!pool || n == 0) {
+            if (n) CK(cudaMemcpyAsync(dst, src, n, cudaMemcpyHostToDevice, stream));
+            return;
+        }
+        size_t off = 0;
+        while (off < n) {
+            int s = pool->begin_fill();
+            if (s < 0) {
+                CK(cudaStreamSynchronize(stream));
+                s = pool->begin_fill();
+            }
+            if (s < 0) {
+                CK(cudaMemcpyAsync((uint8_t*) dst + off, (const uint8_t*) src + off, n - off, cudaMemcpyHostToDevice,
+                                   stream));
+                return;
+            }
+            const size_t chunk = std::min(n - off, (size_t) pool->slot_bytes());
+            std::memcpy(pool->data(s), (const uint8_t*) src + off, chunk);
+            if (!pool->mark_h2d(s)) {
+                pool->release(s);
+                CK(cudaMemcpyAsync((uint8_t*) dst + off, (const uint8_t*) src + off, n - off, cudaMemcpyHostToDevice,
+                                   stream));
+                return;
+            }
+            CK(cudaMemcpyAsync((uint8_t*) dst + off, pool->data(s), chunk, cudaMemcpyHostToDevice, stream));
+            CK(cudaStreamSynchronize(stream));
+            pool->release(s);
+            off += chunk;
+        }
+    }
     void stream_begin(const std::vector<int>& seq) {
         stream_seq = seq;
         stream_pos = 0;
@@ -2190,7 +2230,7 @@ struct Engine {
         // fewer than half the experts resident (a 12 GB card): the one whole-layer copy is faster than many small ones
         // (RTX 3060, UD-Q4_K_XL at 37 of 256: pp2048 1970 whole vs 1540 in runs)
         if (all || 2 * L.n_slots < ne) {
-            CK(cudaMemcpyAsync(stage[b], L.hblobs, L.stride * (size_t) ne, cudaMemcpyHostToDevice, cst));
+            h2d_from_host(stage[b], L.hblobs, L.stride * (size_t) ne, cst);
         } else {
             for (int x = 0; x < ne;) {
                 const bool dev = H.slot_of[(size_t) x] >= 0;
@@ -2204,8 +2244,7 @@ struct Engine {
                     CK(cudaMemcpyAsync(stage[b] + (size_t) x * L.stride, L.blobs + (size_t) H.slot_of[(size_t) x] * L.stride,
                                        n, cudaMemcpyDeviceToDevice, cst));
                 else
-                    CK(cudaMemcpyAsync(stage[b] + (size_t) x * L.stride, L.hblobs + (size_t) x * L.stride, n,
-                                       cudaMemcpyHostToDevice, cst));
+                    h2d_from_host(stage[b] + (size_t) x * L.stride, L.hblobs + (size_t) x * L.stride, n, cst);
                 x = y;
             }
         }
@@ -2335,8 +2374,7 @@ struct Engine {
                     H.slot_of[(size_t) y] = -1;
                     H.slot_of[(size_t) x] = s;
                     H.exp_in_slot[(size_t) s] = x;
-                    CK(cudaMemcpyAsync(L.blobs + (size_t) s * L.stride, L.hblobs + (size_t) x * L.stride, L.L.bytes,
-                                       cudaMemcpyHostToDevice, st));
+                    h2d_from_host(L.blobs + (size_t) s * L.stride, L.hblobs + (size_t) x * L.stride, L.L.bytes, st);
                     --left;
                     ++hy_swaps;
                     changed = true;
@@ -2989,6 +3027,57 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, int hybrid
             return false;
         }
         m.expert_pack = std::move(opened);
+        // Bounded host pin pool for mapped-pack H2D (default 2 x 32 MiB). Not the full arena.
+        {
+            uint64_t try_bytes = strata::qwen35::ExpertPinPool::kDefaultSlotBytes;
+            uint8_t* slots[2] = {nullptr, nullptr};
+            bool got_cuda = false;
+            while (try_bytes >= (1ull << 20)) {
+                bool ok = true;
+                for (int i = 0; i < 2; ++i) {
+                    if (cudaHostAlloc((void**) &slots[i], try_bytes, cudaHostAllocDefault) != cudaSuccess) {
+                        (void) cudaGetLastError();
+                        ok = false;
+                        for (int j = 0; j < i; ++j) {
+                            cudaFreeHost(slots[j]);
+                            slots[j] = nullptr;
+                        }
+                        break;
+                    }
+                }
+                if (ok) {
+                    got_cuda = true;
+                    break;
+                }
+                try_bytes /= 2;
+            }
+            if (!got_cuda) {
+                try_bytes = strata::qwen35::ExpertPinPool::kDefaultSlotBytes;
+                slots[0] = (uint8_t*) std::malloc((size_t) try_bytes);
+                slots[1] = (uint8_t*) std::malloc((size_t) try_bytes);
+                if (!slots[0] || !slots[1]) {
+                    std::free(slots[0]);
+                    std::free(slots[1]);
+                    slots[0] = slots[1] = nullptr;
+                    std::fprintf(stderr, "strata-q36: mapped-pack host pin pool unavailable; H2D uses pageable mapped views\n");
+                } else {
+                    std::fprintf(stderr,
+                                 "strata-q36: mapped-pack cudaHostAlloc failed; pageable staging %llu MiB x2 "
+                                 "(not the full expert arena)\n",
+                                 (unsigned long long) (try_bytes >> 20));
+                }
+            }
+            if (slots[0] && slots[1]) {
+                m.pin_mem[0] = slots[0];
+                m.pin_mem[1] = slots[1];
+                m.pin_slot_bytes = try_bytes;
+                m.pin_cuda_host = got_cuda;
+                m.pin_pool = std::make_unique<strata::qwen35::ExpertPinPool>(slots, 2, try_bytes);
+                std::fprintf(stderr, "strata-q36: mapped-pack host pin pool %s %llu MiB x2 (%.2f MiB committed)\n",
+                             got_cuda ? "cudaHostAlloc" : "pageable", (unsigned long long) (try_bytes >> 20),
+                             (double) m.pin_pool->committed_bytes() / (1 << 20));
+            }
+        }
         strata::qwen35::q36_startup("expert_host_alloc", "end", (long long) ms_since(t0), (long long) ms_since(t0), nullptr);
     } else {
         pinned = cudaHostAlloc((void**) &arena, host, cudaHostAllocDefault) == cudaSuccess;
@@ -3037,7 +3126,10 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, int hybrid
         if (S > 0) {
             CK(cudaMalloc(&L.blobs, L.stride * (size_t) S + kMmqTail));
             CK(cudaMemset(L.blobs, 0, L.stride * (size_t) S + kMmqTail));
-            CK(cudaMemcpy(L.blobs, L.hblobs, L.stride * (size_t) S, cudaMemcpyHostToDevice));
+            if (mapped && m.pin_pool)
+                E.h2d_from_host(L.blobs, L.hblobs, L.stride * (size_t) S, E.st);
+            else
+                CK(cudaMemcpy(L.blobs, L.hblobs, L.stride * (size_t) S, cudaMemcpyHostToDevice));
         }
         Engine::Hy& H = E.hy[li];
         H.slot_of.assign((size_t) ne, -1);
@@ -3083,10 +3175,13 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, int hybrid
                      (long long) ne);
     else
     std::fprintf(stderr, "strata-q36: hybrid experts: %d of %lld per layer in VRAM (%.2f GiB), all %.2f GiB in %s host "
-                 "memory, the rest of a batch of <= %d rows on %d CPU threads, bigger prompt chunks streamed (%.2f GiB "
+                 "memory%s, the rest of a batch of <= %d rows on %d CPU threads, bigger prompt chunks streamed (%.2f GiB "
                  "staging); %.1f s\n", S, (long long) ne, (double) S * per_slot / (1 << 30), (double) host / (1 << 30),
-                 mapped ? "mapped file-backed" : pinned ? "pinned" : "pageable", E.hybrid_t,
-                 E.pool->workers() + (E.pool->host_works() ? 1 : 0),
+                 mapped ? "mapped file-backed" : pinned ? "pinned" : "pageable",
+                 mapped && m.pin_pool
+                     ? (m.pin_cuda_host ? " + cudaHost pin pool" : " + pageable pin pool")
+                     : "",
+                 E.hybrid_t, E.pool->workers() + (E.pool->host_works() ? 1 : 0),
                  (double) staging / (1 << 30), ms_since(t0) / 1000.0);
     strata::qwen35::q36_startup("expert_repack", "end", (long long) ms_since(t0), (long long) ms_since(t0), nullptr);
     return true;

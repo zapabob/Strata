@@ -73,6 +73,19 @@ int main() {
     CHECK(tiny.committed_bytes() == 4096);
     CHECK(tiny.begin_fill() == 0);
     CHECK(tiny.begin_fill() == -1);
+    CHECK(tiny.owns_buffers());
+
+    uint8_t ext_a[64] = {}, ext_b[64] = {};
+    uint8_t* ext[2] = {ext_a, ext_b};
+    ExpertPinPool borrowed(ext, 2, 64);
+    CHECK(!borrowed.owns_buffers());
+    CHECK(borrowed.slot_count() == 2);
+    CHECK(borrowed.slot_bytes() == 64);
+    CHECK(borrowed.data(0) == ext_a);
+    CHECK(borrowed.data(1) == ext_b);
+    CHECK(borrowed.begin_fill() == 0);
+    CHECK(borrowed.mark_h2d(0));
+    CHECK(borrowed.release(0));
 
     if (g_fails) {
         std::fprintf(stderr, "%d check(s) failed\n", g_fails);

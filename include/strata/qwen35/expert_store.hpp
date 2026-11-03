@@ -100,6 +100,8 @@ public:
     static constexpr uint64_t kDefaultSlotBytes = 32ull << 20;  // 32 MiB
 
     explicit ExpertPinPool(uint32_t slots = kDefaultSlots, uint64_t slot_bytes = kDefaultSlotBytes);
+    // Non-owning view of externally allocated buffers (e.g. cudaHostAlloc). Does not free them.
+    ExpertPinPool(uint8_t* const* external, uint32_t slots, uint64_t slot_bytes);
     ExpertPinPool(const ExpertPinPool&) = delete;
     ExpertPinPool& operator=(const ExpertPinPool&) = delete;
     ExpertPinPool(ExpertPinPool&&) noexcept;
@@ -109,6 +111,7 @@ public:
     uint32_t slot_count() const;
     uint64_t slot_bytes() const;
     uint64_t committed_bytes() const;
+    bool owns_buffers() const;
     PinSlotState state(int slot) const;
     uint8_t* data(int slot);
     const uint8_t* data(int slot) const;
