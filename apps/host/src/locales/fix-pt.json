@@ -1,5 +1,5 @@
 {
-  "fx01": "vai parar de funcionar e será removido.",
+"fx01": "vai parar de funcionar e será removido.",
   "fx02": "Baixado, mas não carregado. Abra Modelos para carregá-lo.",
   "fx03": "{0} linhas adicionadas, {1} removidas",
   "fx04": "{0} arquivos editados",
@@ -97,5 +97,9 @@
   "hakua_backend_TurboQuant": "TurboQuant",
   "hakua_backend_TURBO2": "TURBO2",
   "hakua_backend_TURBO3": "TURBO3",
-  "hakua_backend_TURBO4": "TURBO4"
+  "hakua_backend_TURBO4": "TURBO4",
+  "fx84": "O arquivo foi baixado. «Continuar» tenta a instalação de novo.",
+  "fx85": "Abra «Detalhes» para ver o motivo.",
+  "fxec1": "Há um motor mais recente para este computador. Seus modelos e configurações permanecem como estão.",
+  "fxec2": "Descarregue primeiro os modelos em execução."
 }

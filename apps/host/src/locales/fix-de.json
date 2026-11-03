@@ -1,5 +1,5 @@
 {
-  "fx01": "wird nicht mehr ausgeführt und entfernt.",
+"fx01": "wird nicht mehr ausgeführt und entfernt.",
   "fx02": "Heruntergeladen, aber nicht geladen. Öffne „Modelle“, um es zu laden.",
   "fx03": "{0} Zeilen hinzugefügt, {1} entfernt",
   "fx04": "{0} Dateien bearbeitet",
@@ -97,5 +97,9 @@
   "hakua_backend_TurboQuant": "TurboQuant",
   "hakua_backend_TURBO2": "TURBO2",
   "hakua_backend_TURBO3": "TURBO3",
-  "hakua_backend_TURBO4": "TURBO4"
+  "hakua_backend_TURBO4": "TURBO4",
+  "fx84": "Die Datei wurde heruntergeladen. „Weiter“ versucht die Installation erneut.",
+  "fx85": "Unter „Details“ steht der Grund.",
+  "fxec1": "Für diesen Computer gibt es eine neuere Engine. Ihre Modelle und Einstellungen bleiben unverändert.",
+  "fxec2": "Beenden Sie zuerst Ihre laufenden Modelle."
 }

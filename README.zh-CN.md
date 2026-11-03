@@ -48,7 +48,9 @@ PrismML 与 TurboQuant 是引擎内的独立可执行文件。[LOCAL_LLAMA_BACKE
 | GUI / Product | `0.4.0-preview.20261103.2` |
 | Engine / Control | `0.4.0`（CUDA sm_120） |
 | Hakua-memory | `0.3.5` |
-| 上游冻结 | `c62d5e3a` · 0.2.9 |
+| 上游冻结 | `ffa80d73` · 0.2.10 |
+
+App version in this preview tree: `0.4.0-preview.20261103.2`
 
 发布页：[v0.4.0-preview.20261103.2](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.2)。本标签的安装程序和 Qwen3.6 引擎包没有签名。`v0.4.0-preview.20261101.1` 的 Ed25519 更新源和已签名引擎没有被替换。应用本体的签名自动更新尚未验证，请用本安装程序更新。安装程序只更新应用，不含 CUDA 引擎。本标签的 Qwen3.6 包另行发布，没有图像读取器，`signature` 为 null。PrismML 与 TurboQuant 仍在已签名组件中。主线仍是 Qwen3.6-35B-A3B UD-Q4_K_XL、context 65536、FP32 KV、MTP 2。新路径为 opt-in。引擎不应用的设置会在启动前拒绝。private-cache 请求也会拒绝，不会为了启动而删掉。mapped expert pack 仅在启动明确要求且引擎 SHA-256 为 `512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046` 时启用。默认仍是原来的 host arena。本次构建的启动时间和 token 速度未测量。CUDA spill guard 未通过已登记的 baseline。32GB 内存的电脑可能在空闲物理内存放不下 legacy 18.75 GiB expert arena 加 reserve 时，于启动前拒绝 UD-Q4_K_XL。这不是“已装进 16GB VRAM”的测量。
 

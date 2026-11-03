@@ -1,5 +1,5 @@
 {
-  "fx01": "将停止运行并被移除。",
+"fx01": "将停止运行并被移除。",
   "fx02": "已下载，尚未加载。打开“模型”页面来加载它。",
   "fx03": "新增 {0} 行，删除 {1} 行",
   "fx04": "已编辑 {0} 个文件",
@@ -97,5 +97,9 @@
   "hakua_backend_TurboQuant": "TurboQuant",
   "hakua_backend_TURBO2": "TURBO2",
   "hakua_backend_TURBO3": "TURBO3",
-  "hakua_backend_TURBO4": "TURBO4"
+  "hakua_backend_TURBO4": "TURBO4",
+  "fx84": "文件已下载。点击“继续”将再次尝试安装。",
+  "fx85": "打开“详细信息”查看原因。",
+  "fxec1": "此电脑有更新的引擎可用。您的模型和设置保持不变。",
+  "fxec2": "请先卸载正在运行的模型。"
 }

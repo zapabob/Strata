@@ -48,7 +48,9 @@ Guide: [MEMORY_HARNESS.md](serve/MEMORY_HARNESS.md). Hermes SOUL/MEMORY operator
 | GUI / Product | `0.4.0-preview.20261103.2` |
 | Engine / Control | `0.4.0` (CUDA sm_120) |
 | Hakua-memory | `0.3.5` |
-| Upstream freeze | `c62d5e3a` · 0.2.9 |
+| Upstream freeze | `ffa80d73` · 0.2.10 |
+
+App version in this preview tree: `0.4.0-preview.20261103.2`
 
 Release page: [v0.4.0-preview.20261103.2](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.2). This tag’s installer and Qwen3.6 engine package are not signed. The Ed25519 feed and the signed engine on `v0.4.0-preview.20261101.1` were not replaced. Automatic signed app updates are not qualified; update the app with this installer.
 

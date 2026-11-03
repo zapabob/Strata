@@ -48,7 +48,9 @@ PrismML と TurboQuant はエンジン内の別実行ファイルです。[LOCAL
 | GUI / Product | `0.4.0-preview.20261103.2` |
 | Engine / Control | `0.4.0`（CUDA sm_120） |
 | Hakua-memory | `0.3.5` |
-| 上流固定 | `c62d5e3a` · 0.2.9 |
+| 上流固定 | `ffa80d73` · 0.2.10 |
+
+App version in this preview tree: `0.4.0-preview.20261103.2`
 
 リリース: [v0.4.0-preview.20261103.2](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.2)。このタグのインストーラーと Qwen3.6 エンジンパッケージに署名はありません。`v0.4.0-preview.20261101.1` の Ed25519 フィードと署名済みエンジンは差し替えていません。アプリ本体の署名付き自動更新は未検証で、更新はこのインストーラーで行います。
 

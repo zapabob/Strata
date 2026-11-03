@@ -1,5 +1,5 @@
 {
-  "fx01": "ne s’exécutera plus et sera retirée.",
+"fx01": "ne s’exécutera plus et sera retirée.",
   "fx02": "Téléchargé, mais pas chargé. Ouvrez Modèles pour le charger.",
   "fx03": "{0} lignes ajoutées, {1} supprimées",
   "fx04": "{0} fichiers modifiés",
@@ -97,5 +97,9 @@
   "hakua_backend_TurboQuant": "TurboQuant",
   "hakua_backend_TURBO2": "TURBO2",
   "hakua_backend_TURBO3": "TURBO3",
-  "hakua_backend_TURBO4": "TURBO4"
+  "hakua_backend_TURBO4": "TURBO4",
+  "fx84": "Le fichier est téléchargé. « Continuer » relance l’installation.",
+  "fx85": "Ouvrez « Détails » pour voir la raison.",
+  "fxec1": "Un moteur plus récent est disponible pour cet ordinateur. Vos modèles et vos réglages ne changent pas.",
+  "fxec2": "Déchargez d’abord vos modèles en cours d’exécution."
 }

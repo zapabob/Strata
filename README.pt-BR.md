@@ -48,7 +48,7 @@ Guia: [MEMORY_HARNESS.md](serve/MEMORY_HARNESS.md). Ferramentas Hermes SOUL/MEMO
 | GUI / Product | `0.4.0-preview.20261103.2` |
 | Engine / Control | `0.4.0` (CUDA sm_120) |
 | Hakua-memory | `0.3.5` |
-| Congelamento upstream | `c62d5e3a` · 0.2.9 |
+| Congelamento upstream | `ffa80d73` · 0.2.10 |
 
 Página da release: [v0.4.0-preview.20261103.2](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.2). O instalador e o pacote de engine Qwen3.6 desta tag não são assinados. O feed Ed25519 e a engine assinada de `v0.4.0-preview.20261101.1` permanecem. Atualizações automáticas assinadas do app não estão qualificadas; atualize com este instalador. O instalador não contém a engine CUDA. O pacote Qwen3.6 não tem leitor de imagem e `signature` é null. PrismML e TurboQuant ficam no componente assinado. A linha principal é Qwen3.6-35B-A3B UD-Q4_K_XL, contexto 65536, KV FP32, MTP 2. Caminhos novos são opt-in. Um ajuste não aplicado, ou um pedido de cache privado, é recusado antes da partida. O mapped expert pack só se for pedido e o SHA-256 da engine for `512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046`. A arena de host antiga continua o padrão. Tempo de partida e velocidade de tokens não foram medidos. O CUDA spill guard não passou na baseline revisada. Num PC de 32 GB, UD-Q4_K_XL pode ser recusado antes da partida se a RAM física livre não cobrir a arena legacy de 18,75 GiB mais a reserva. Isso não é uma medida de que cabe em 16 GB de VRAM.
 

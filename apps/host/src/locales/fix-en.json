@@ -1,5 +1,5 @@
 {
-  "fx01": "will stop running and be removed.",
+"fx01": "will stop running and be removed.",
   "fx02": "Downloaded, not loaded. Open Models to load it.",
   "fx03": "{0} lines added, {1} removed",
   "fx04": "Edited {0} files",
@@ -97,5 +97,9 @@
   "hakua_backend_TurboQuant": "TurboQuant",
   "hakua_backend_TURBO2": "TURBO2",
   "hakua_backend_TURBO3": "TURBO3",
-  "hakua_backend_TURBO4": "TURBO4"
+  "hakua_backend_TURBO4": "TURBO4",
+  "fx84": "The file was downloaded. Continue tries the install again.",
+  "fx85": "Open Details to see why.",
+  "fxec1": "A newer engine is available for this computer. Your models and settings stay as they are.",
+  "fxec2": "Unload your running models first."
 }
