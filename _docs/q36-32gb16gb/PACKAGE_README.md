@@ -36,6 +36,6 @@
 - T04 / T06 / T07 / T08 paired speed: **NOT_RUN**（偽速度なし）
 - Goal complete: **false**
 
-H: は FreeGB 約1→約14 へ安全回収済み（`evidence-2026-11-04-mapped-live/NOTES-04-12.md`）。詳細は `evidence-summary.json` と計画書 Status 表。
+H: は FreeGB 約1→約14（04:20 回収）のあと、05:11 再測で **約78.74**（`NOTES-05-10.md`）。`--help` の `--q36-expert-store` 省略は source で訂正（installed unsigned EXE は次回 rebuild まで未反映）。詳細は `evidence-summary.json` と計画書 Status 表。
 
 原本ログには個人pathが含まれるため、原本はZIPへ複製していません。元ファイルのSHAと原本行番号からユーザー手元で照合できます。

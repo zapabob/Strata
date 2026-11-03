@@ -1,0 +1,61 @@
+{
+    "ram_total_gb":  31.87,
+    "vram_free_mib":  869,
+    "reason":  "Hermes llama-server PIDs 22836/22944 still alive; GPU ~15182/16311 MiB used, ~869 MiB free (~96% util). DESIGN #6 forbids killing Hermes. Not enough VRAM for honest Q36 mapped-pack live.",
+    "hermes_process":  [
+                           {
+                               "start":  "2026-11-03T21:38:49.7005223+09:00",
+                               "paged_mb":  18624.9,
+                               "pid":  22836,
+                               "name":  "llama-server",
+                               "ws_mb":  5965.5
+                           },
+                           {
+                               "start":  "2026-11-03T21:37:08.4460771+09:00",
+                               "paged_mb":  11196.8,
+                               "pid":  22944,
+                               "name":  "llama-server",
+                               "ws_mb":  138.8
+                           }
+                       ],
+    "hermes_killed":  false,
+    "gpu":  "NVIDIA GeForce RTX 5060 Ti",
+    "c_free_gb":  3.02,
+    "binary_ascii_markers":  {
+                                 "q36-expert-store":  true,
+                                 "mapped-pack":  true,
+                                 "Q36_STARTUP":  true,
+                                 "pin pool":  true,
+                                 "ExpertPinPool":  false
+                             },
+    "hermes_llama_server_pids":  [
+                                     22836,
+                                     22944
+                                 ],
+    "help_documents_q36_expert_store":  false,
+    "captured_at":  "2026-11-04T05:13:11+09:00",
+    "mapped_live":  "BLOCKED",
+    "q36epk_bytes":  20127612928,
+    "gpu_util_percent":  96,
+    "vram_total_mib":  16311,
+    "model_gguf_bytes":  22853663008,
+    "model_gguf_present":  true,
+    "q36epk_present":  true,
+    "secondary_notes":  [
+                            "H: FreeGB now ~78.74 (stale docs said ~14.2 after 04:20 reclaim — updated this turn)",
+                            "C: FreeGB ~3.02 tight for npm/caches but not the live blocker",
+                            "RAM free ~9.45 GiB; Hermes WS ~5.7 GiB + large commit; mapped-pack skips 18.75 GiB arena but live still VRAM-blocked",
+                            "--help omits --q36-expert-store (family flag only after --native/--model qwen35moe switch); source honesty fix this turn"
+                        ],
+    "signed_engine_untouched":  true,
+    "ram_free_gb":  8.61,
+    "goal_complete":  false,
+    "h_free_gb":  78.74,
+    "vram_used_mib":  15182,
+    "t04_t06_t07_t08":  "NOT_RUN",
+    "purpose":  "preflight_blocker_before_mapped_pack_pin_pool_live",
+    "t03_chat_stop_restart":  "NOT_RUN",
+    "unsigned_engine_sha256":  "6fe110650940d0c19f09909d769393769650045e6bc6eab29ccc49734dbcab29",
+    "signed_engine_sha256":  "b5e4d5255a48882334b27ab643c22c9c1b54e4580f82b402176a9ca5661bf6f1",
+    "invented_speeds":  false
+}

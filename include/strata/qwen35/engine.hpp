@@ -7,7 +7,8 @@ namespace strata::qwen35 {
 
 /// The engine's command line (strata's own flag names where they mean the same thing: --native / --model,
 /// --max-context, --prefill / --chunk, --serve, --mtp N, --pool-workers, --tokens, --max-new, --no-token-graph; the
-/// family's own: --expert-vram, --expert-slots, --hybrid-rows, --cpu-threads).  Returns the process exit code.
+/// family's own: --expert-vram, --expert-slots, --hybrid-rows, --cpu-threads, --q36-expert-store legacy|mapped-pack).
+/// Returns the process exit code.
 int run(int argc, char** argv);
 
 }  // namespace strata::qwen35
