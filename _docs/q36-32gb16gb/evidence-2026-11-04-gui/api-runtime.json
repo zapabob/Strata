@@ -1,0 +1,27 @@
+﻿{
+    "revision":  0,
+    "mode":  "real",
+    "capabilities":  {
+                         "multipleModels":  false,
+                         "deviceAssignment":  false
+                     },
+    "defaultId":  null,
+    "instances":  [
+
+                  ],
+    "memory":  {
+                   "ramGb":  0,
+                   "budgetGb":  31.9,
+                   "reserveGb":  0,
+                   "totalGb":  31.9,
+                   "devices":  [
+                                   {
+                                       "id":  "GPU-41ca9d79-72ba-17a4-a836-51ff11f9851f",
+                                       "name":  "NVIDIA GeForce RTX 5060 Ti",
+                                       "usedGb":  0,
+                                       "budgetGb":  14.9
+                                   }
+                               ],
+                   "fits":  true
+               }
+}

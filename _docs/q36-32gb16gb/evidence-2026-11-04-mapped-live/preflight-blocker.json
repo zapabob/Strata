@@ -1,0 +1,74 @@
+{
+    "captured_at":  "2026-11-04T00:58:22+09:00",
+    "purpose":  "preflight_blocker_before_mapped_pack_pin_pool_live",
+    "resume_agent":  "Cursor-resume-after-1595747a",
+    "hardware":  {
+                     "gpu":  "RTX 5060 Ti 16GB",
+                     "ram_free_gb":  4.6,
+                     "ram_total_gb":  31.87
+                 },
+    "nvidia_smi_gpu":  "NVIDIA GeForce RTX 5060 Ti, 16311 MiB, 15594 MiB, 457 MiB, 98 %",
+    "compute_apps_csv":  [
+                             "pid, process_name, used_gpu_memory [MiB]",
+                             "10568, C:\\Windows\\System32\\ShellHost.exe, [N/A]",
+                             "11532, C:\\Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\CrossDeviceResume.exe, [N/A]",
+                             "10776, C:\\Windows\\explorer.exe, [N/A]",
+                             "12672, C:\\Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\SearchHost.exe, [N/A]",
+                             "12716, C:\\Windows\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\StartMenuExperienceHost.exe, [N/A]",
+                             "14468, C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\156.0.4314.58\\msedgewebview2.exe, [N/A]",
+                             "11684, C:\\Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\TextInputHost.exe, [N/A]",
+                             "4280, C:\\Users\\downl\\AppData\\Local\\Programs\\cursor\\Cursor.exe, [N/A]",
+                             "2180, C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe, [N/A]",
+                             "19724, C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\156.0.4314.58\\msedgewebview2.exe, [N/A]",
+                             "3616, C:\\Users\\downl\\AppData\\Local\\LINE\\bin\\current\\LINE.exe, [N/A]",
+                             "5204, C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\156.0.4314.58\\msedgewebview2.exe, [N/A]",
+                             "25760, C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\156.0.4314.58\\msedgewebview2.exe, [N/A]",
+                             "23324, H:\\Hermes\\DockerDesktop\\frontend\\Docker Desktop.exe, [N/A]",
+                             "27928, C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe, [N/A]",
+                             "22836, C:\\Users\\downl\\.hermes\\llama\\prism-b10826-c9c34bc\\bin\\llama-server.exe, [N/A]",
+                             "22944, C:\\Users\\downl\\.hermes\\llama\\prism-b10826-c9c34bc\\bin\\llama-server.exe, [N/A]",
+                             "16260, C:\\Users\\downl\\Documents\\New project\\hermes-agent\\apps\\desktop\\release\\win-unpacked\\Hermes.exe, [N/A]",
+                             "21064, C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.1027.6604.0_x64__2p2nqsd0c76g0\\app\\ChatGPT.exe, [N/A]",
+                             "8932, C:\\Windows\\SystemApps\\ShellExperienceHost_cw5n1h2txyewy\\ShellExperienceHost.exe, [N/A]",
+                             "14088, C:\\Windows\\System32\\ApplicationFrameHost.exe, [N/A]",
+                             "30420, C:\\Users\\downl\\AppData\\Local\\OpenAI\\Codex\\runtimes\\cua_node\\989c7523a11c09b9\\bin\\node_modules\\@oai\\sky\\bin\\windows\\swift\\x64\\codex-computer-use-swift.exe, [N/A]",
+                             "26876, C:\\Program Files\\WindowsApps\\Microsoft.WindowsStore_22609.1401.8.0_x64__8wekyb3d8bbwe\\WinStore.App.exe, [N/A]",
+                             "27368, C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\156.0.4314.58\\msedgewebview2.exe, [N/A]",
+                             "11076, C:\\Users\\downl\\AppData\\Local\\Cursor\\ComputerUse\\sidecar\\09a1b252e4d3f3198bebc7171dfc38ed8ec85a197a5fb329e5962d5893d6e489\\cursor-cua-sidecar.exe, [N/A]"
+                         ],
+    "hermes_llama_servers":  [
+                                 {
+                                     "pid":  22944,
+                                     "process":  "llama-server",
+                                     "start_time":  "\/Date(1793709428446)\/",
+                                     "path":  "C:\\Users\\downl\\.hermes\\llama\\prism-b10826-c9c34bc\\bin\\llama-server.exe",
+                                     "ws_mb":  383.9
+                                 },
+                                 {
+                                     "pid":  22836,
+                                     "process":  "llama-server",
+                                     "start_time":  "\/Date(1793709529700)\/",
+                                     "path":  "C:\\Users\\downl\\.hermes\\llama\\prism-b10826-c9c34bc\\bin\\llama-server.exe",
+                                     "ws_mb":  4584.5
+                                 }
+                             ],
+    "design_contract":  "Do not kill other apps inference servers (DESIGN non-negotiable #6)",
+    "decision":  "ABORT_mapped_pack_live_until_VRAM_and_RAM_headroom; record blocker; GUI/API refuse path captured without GPU load",
+    "gui":  {
+                "favorite_model_ui":  "Hf · PQ2_0",
+                "display_version":  "0.4.0-preview.20261103.5",
+                "q36_load_job_id":  "538f2458-3f79-4a1c-9ab9-14d413d71ecb",
+                "runtime_instances":  [
+
+                                      ],
+                "hakua_chatbot_enabled_marker":  true,
+                "host":  "http://127.0.0.1:47831",
+                "q36_load_outcome":  "refused_before_gpu_load (privacy/private-cache contract)",
+                "strata_desktop_pid":  15168
+            },
+    "unsigned_engine_sha256":  "6fe110650940d0c19f09909d769393769650045e6bc6eab29ccc49734dbcab29",
+    "signed_engine_sha256_do_not_overwrite":  "b5e4d5255a48882334b27ab643c22c9c1b54e4580f82b402176a9ca5661bf6f1",
+    "model":  "H:\\Strata\\models\\models\\qwen36-UD-Q4_K_XL\\Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf",
+    "pack":  "H:\\Strata\\models\\models\\qwen36-UD-Q4_K_XL\\Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf.q36epk",
+    "planned_command_when_clear":  "\u0026 \"C:\\Users\\downl\\AppData\\Local\\Strata\\components\\engine\\0.4.0-q36-windows-x86_64-cuda-cuda13\\strata.exe\" --native \"H:\\Strata\\models\\models\\qwen36-UD-Q4_K_XL\\Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf\" --max-context 65536 --prefill auto --mtp 2 --q36-expert-store mapped-pack --serve"
+}

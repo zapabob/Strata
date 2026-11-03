@@ -1,0 +1,39 @@
+{
+    "complete":  false,
+    "dismissed":  true,
+    "choices":  {
+                    "onboarding":  {
+                                       "step":  2,
+                                       "context":  32768,
+                                       "vision":  true,
+                                       "directory":  "",
+                                       "profile":  "work",
+                                       "installJobId":  "",
+                                       "tuneJobId":  "",
+                                       "calibrate":  true,
+                                       "manual":  false
+                                   }
+                },
+    "step":  2,
+    "flowVersion":  2,
+    "history":  [
+                    {
+                        "step":  2,
+                        "at":  "2026-10-27T10:20:27.784Z"
+                    },
+                    {
+                        "step":  2,
+                        "at":  "2026-10-27T10:20:28.267Z"
+                    },
+                    {
+                        "step":  2,
+                        "at":  "2026-10-27T10:20:29.654Z"
+                    }
+                ],
+    "app":  {
+                "version":  "0.4.0-preview.20261103.5",
+                "modelsDir":  "C:\\Users\\downl\\Documents\\Strata\\Models",
+                "dataDir":  "C:\\Users\\downl\\.strata\\data",
+                "modelsDirNotice":  ""
+            }
+}

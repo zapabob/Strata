@@ -1,0 +1,24 @@
+{
+    "gpu_load_attempted":  false,
+    "marker_path":  "C:\\Users\\downl\\AppData\\Local\\Programs\\Strata\\host\\hakua-chatbot.enabled",
+    "method":  "POST /api/native/operations kind=load model=qwen36-ud-q4_k_xl",
+    "hakua_chatbot_enabled":  true,
+    "display_version":  "0.4.0-preview.20261103.5",
+    "job":  {
+                "id":  "538f2458-3f79-4a1c-9ab9-14d413d71ecb",
+                "model":  "qwen36-ud-q4_k_xl",
+                "finishedAt":  "2026-11-03T15:57:49.884Z",
+                "startedAt":  "2026-11-03T15:57:40.832Z",
+                "kind":  "load",
+                "summary":  "Qwen3.6 has no tested prompt-cache isolation. Private cache flags were not removed to force a start.",
+                "error":  "Qwen3.6 has no tested prompt-cache isolation. Private cache flags were not removed to force a start.",
+                "state":  "error"
+            },
+    "captured_at":  "2026-11-04T00:59:00+09:00",
+    "hermes_pids":  [
+                        22836,
+                        22944
+                    ],
+    "note":  "Refuse completed in ~9s before engine GPU load. DESIGN #4 private-cache contract held. DESIGN #6 Hermes not killed.",
+    "hermes_untouched":  true
+}

@@ -1,0 +1,8 @@
+[shell] Strata desktop 0.4.0-preview.20261103.5 starting (pid 15168)
+[shell] System: windows 10.0.26300
+[host] strata host  ·  http://127.0.0.1:47831
+[host] hardware     ·  NVIDIA GeForce RTX 5060 Ti / cuda / 6 cores / 32 GB
+[host] inference    ·  llama.cpp
+[host] models dir   ·  C:\Users\downl\Documents\Strata\Models
+[host] workspace    ·  C:\Users\downl\Documents\Strata\Workspace
+[host] autostart    ·  loading Hf · PQ2_0

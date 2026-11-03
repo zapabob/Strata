@@ -1,0 +1,108 @@
+{
+    "probedAt":  "2026-11-03T15:55:58.261Z",
+    "host":  {
+                 "name":  "downl",
+                 "platform":  "Windows",
+                 "release":  "10.0.26300",
+                 "arch":  "x64",
+                 "app":  "v24.22.2"
+             },
+    "cpu":  {
+                "model":  "AMD Ryzen 5 4500 6-Core Processor",
+                "cores":  6,
+                "threads":  12,
+                "arch":  "x64",
+                "ghz":  3.59,
+                "processors":  [
+                                   {
+                                       "id":  "CPU0",
+                                       "socket":  "AM4",
+                                       "model":  "AMD Ryzen 5 4500 6-Core Processor",
+                                       "cores":  6,
+                                       "threads":  12,
+                                       "arch":  "x64",
+                                       "ghz":  3.6
+                                   }
+                               ],
+                "topologyKnown":  true
+            },
+    "processors":  [
+                       {
+                           "id":  "CPU0",
+                           "socket":  "AM4",
+                           "model":  "AMD Ryzen 5 4500 6-Core Processor",
+                           "cores":  6,
+                           "threads":  12,
+                           "arch":  "x64",
+                           "ghz":  3.6
+                       }
+                   ],
+    "memory":  {
+                   "totalGb":  31.9,
+                   "freeGb":  2.8,
+                   "usedGb":  29.1,
+                   "pressure":  "high"
+               },
+    "disk":  {
+                 "path":  "C:\\Users\\downl\\Documents\\Strata\\Models",
+                 "totalGb":  930,
+                 "freeGb":  21,
+                 "modelsDir":  "C:\\Users\\downl\\Documents\\Strata\\Models"
+             },
+    "gpus":  [
+                 {
+                     "id":  "GPU-41ca9d79-72ba-17a4-a836-51ff11f9851f",
+                     "index":  0,
+                     "sensorIndex":  0,
+                     "busId":  "00000000:01:00.0",
+                     "vendor":  "nvidia",
+                     "name":  "NVIDIA GeForce RTX 5060 Ti",
+                     "vramGb":  15.9,
+                     "unified":  false,
+                     "backend":  "cuda",
+                     "driver":  "621.01"
+                 }
+             ],
+    "accelerator":  {
+                        "backend":  "cuda",
+                        "label":  "NVIDIA GeForce RTX 5060 Ti",
+                        "usableVramGb":  15.9,
+                        "unified":  false
+                    },
+    "checks":  [
+                   {
+                       "id":  "gpu",
+                       "label":  "GPU and driver",
+                       "state":  "pass",
+                       "detail":  "Compatible GPU found",
+                       "value":  "NVIDIA GeForce RTX 5060 Ti · cuda"
+                   },
+                   {
+                       "id":  "memory",
+                       "label":  "System memory",
+                       "state":  "pass",
+                       "detail":  "Enough for the smallest model",
+                       "value":  "32 GB"
+                   },
+                   {
+                       "id":  "cpu",
+                       "label":  "CPU",
+                       "state":  "pass",
+                       "detail":  "Supported, slower prompt reading",
+                       "value":  "6 cores"
+                   },
+                   {
+                       "id":  "storage",
+                       "label":  "Free storage",
+                       "state":  "warn",
+                       "detail":  "Tight — pick the smallest variant",
+                       "value":  "21 GB free"
+                   }
+               ],
+    "verdict":  {
+                    "ok":  true,
+                    "headline":  "This computer can run Strata.",
+                    "detail":  "Free storage is a limit — Strata will pick a lighter model."
+                },
+    "recommendedVariantId":  "qwen3-30b-iq3xxs"
+}

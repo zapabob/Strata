@@ -1,0 +1,12 @@
+﻿started_at=2026-11-04T00:50:49.6476915+09:00
+pid=15168
+path=C:\Users\downl\AppData\Local\Programs\Strata\strata-desktop.exe
+display_version=0.4.0-preview.20261103.5
+file_version=0.4.0-preview.20261103.5
+host=http://127.0.0.1:47831
+hakua_chatbot.enabled=present
+autostart_log=loading Hf · PQ2_0
+runtime_instances=[]
+gui_interaction=dashboard focused on primary; model favorite Hf·PQ2_0; Settings About via API /api/setup app.version
+q36_load_refuse=job 538f2458... error private-cache isolation (see q36-load-refuse.json)
+mapped_live=BLOCKED VRAM by Hermes llama-server (see ../evidence-2026-11-04-mapped-live/preflight-blocker.json)
