@@ -49,8 +49,8 @@
     "general speedup",
     "CUDA kernel correctness of proposed changes"
   ],
-  "plan_execution_status": "PARTIAL_IMPL_MAPPED_LIVE_READY_T03_PASS_T04_PAIR_RECORDED_PREVIEW_6_SHIPPED_T06_REEVAL_BLOCKED_T07_T08_NOT_RUN",
-  "plan_execution_note": "Host contract, startup stages, mapped-pack+pin-pool, installer .6 shipped with allowlist honesty for 64226fde…. 2026-11-04T21:28+09:00 durable mapped-live READY with pin-pool (digest 64226fde…). T03 PASS. T04 observational warmup pair PAIR_RECORDED — adoption NOT_DECIDED. 2026-11-05 preview 0.4.0-preview.20261103.6 NSIS shipped (setup SHA-256 784d4f99…, /S /UPDATE DisplayVersion .6); signed b5e4d525… untouched; unsigned q36 component remains 64226fde…. 2026-11-05T01:32+09:00 T06 re-eval BLOCKED — no clear measurable opt-in scheduler/residency/gather candidate without inventing scope; T07/T08 similarly not clear; VRAM free 15044 MiB unused for fake T06; Hermes not killed. Historical timings above are not a new benchmark. Goal complete false.",
+  "plan_execution_status": "PARTIAL_IMPL_MAPPED_LIVE_READY_T03_PASS_T04_PAIR2_COMPOSITE_PREVIEW_6_SHIPPED_T06_T07_BLOCKED_T08_NOT_RUN_T09_PARTIAL",
+  "plan_execution_note": "Host contract, startup stages, mapped-pack+pin-pool, installer .6 shipped with allowlist honesty for 64226fde…. 2026-11-04T21:28+09:00 durable mapped-live READY with pin-pool (digest 64226fde…). T03 PASS. T04 pair1 PAIR_RECORDED (run-23-20). 2026-11-05T01:36–02:41 T04 pair2 harness PAIR_PARTIAL exit5 (armB cudaMalloc OOM) then armB_retry1 PASS → composite PAIR_RECORDED_WITH_ARM_B_RETRY; adoption still NOT_DECIDED. 2026-11-05 preview .6 shipped; signed b5e4d525… untouched. T06 BLOCKED (01:32). T07 BLOCKED_NO_HOTSPOT_PROFILE (02:53). T08 NOT_RUN optional. T09 PARTIAL. Hermes not killed. Goal complete false.",
   "session_2026_11_04": {
     "mapped_live": "BLOCKED",
     "mapped_live_reason": "Hermes llama-server PIDs 22836/22944 hold VRAM; free ~0.5-0.7 GiB; free RAM often <4 GiB",
@@ -366,5 +366,63 @@
     "t04_adoption": "NOT_DECIDED",
     "goal_complete": false,
     "notes": "evidence-2026-11-04-mapped-live/NOTES-01-32-t06-reeval.md"
+  },
+  "session_2026_11_05_0136_t04_pair2_recovery": {
+    "captured_at": "2026-11-05T02:53:00+09:00",
+    "task": "T04",
+    "kind": "observational_pair2_composite_after_PAIR_PARTIAL",
+    "result": "PAIR_RECORDED_WITH_ARM_B_RETRY",
+    "parent_harness_result": "PAIR_PARTIAL",
+    "parent_harness_exit_code": 5,
+    "gpu": "NVIDIA GeForce RTX 5060 Ti",
+    "vram_free_mib_preflight_01_35": 15015,
+    "vram_free_mib_at_recovery_02_53": 15129,
+    "unsigned_engine_sha256_verified": "64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7",
+    "hermes_killed": false,
+    "orphan_strata_reclaimed": false,
+    "orphan_strata_present": false,
+    "defaults_changed": false,
+    "invented_speeds": false,
+    "adoption": "NOT_DECIDED",
+    "goal_complete": false,
+    "armA_warmup": {
+      "result": "PASS",
+      "pid": 43040,
+      "load_request_to_ready_ms": 1282936.7,
+      "ready_to_first_t_ms": 11666.5,
+      "second_ttft_ms": 1060.8,
+      "warmup_wall_s_observed": 173.3,
+      "done_gen1": "DONE 7 15 11368.8 3474.9 stop 3 6 0 0 0 0 0 0.0 15 0",
+      "done_gen2": "DONE 7 15 984.2 670.4 stop 3 6 0 0 0 0 0 0.0 15 0"
+    },
+    "armB_no_warmup_attempt1": {
+      "result": "READY_FAIL",
+      "pid": 26420,
+      "failure": "cudaMalloc(&E.stage[b], max_layer + kMmqTail) failed: out of memory"
+    },
+    "armB_no_warmup_retry1": {
+      "result": "PASS",
+      "pid": 42132,
+      "load_request_to_ready_ms": 1439964.8,
+      "ready_to_first_t_ms": 25541.8,
+      "second_ttft_ms": 2627.3,
+      "done_gen1": "DONE 7 15 24832.5 14904.8 stop 3 6 0 0 0 0 0 0.0 15 0",
+      "done_gen2": "DONE 7 15 2588.7 2378.7 stop 3 6 0 0 0 0 0 0.0 15 0"
+    },
+    "honesty": {
+      "ready_faster_on_no_warmup": false,
+      "first_request_cost_moved": true,
+      "ready_to_first_t_armB_minus_armA_ms": 13875.3,
+      "second_ttft_armB_minus_armA_ms": 1566.5,
+      "pair_count_observational": 2
+    },
+    "t06": "BLOCKED_PRIOR",
+    "t07": "BLOCKED_NO_HOTSPOT_PROFILE",
+    "t08": "NOT_RUN_OPTIONAL",
+    "t09": "PARTIAL",
+    "run_dir": "evidence-2026-11-04-mapped-live/run-01-36-t04",
+    "composite_report": "evidence-2026-11-04-mapped-live/run-01-36-t04/t04-pair2-composite-report.json",
+    "notes": "evidence-2026-11-04-mapped-live/NOTES-02-53-t04-pair2-recovery.md",
+    "gate_notes": "evidence-2026-11-04-mapped-live/NOTES-02-53-t07-t08-t09-gate.md"
   }
 }

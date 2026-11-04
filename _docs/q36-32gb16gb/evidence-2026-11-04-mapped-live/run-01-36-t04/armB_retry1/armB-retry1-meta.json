@@ -1,0 +1,21 @@
+{
+  "task": "T04",
+  "kind": "armB_no_warmup_retry_after_cudaMalloc_OOM",
+  "parent_pair_dir": "run-01-36-t04",
+  "started_at": "2026-11-05T02:16:17+09:00",
+  "hermes_killed": false,
+  "invented_speeds": false,
+  "defaults_changed": false,
+  "goal_complete": false,
+  "adoption": "NOT_DECIDED",
+  "expect_sha256": "64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7",
+  "exe_sha256": "64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7",
+  "gpu_preflight": {
+    "name": "NVIDIA GeForce RTX 5060 Ti",
+    "vram_total_mib": 16311,
+    "vram_used_mib": 1007,
+    "vram_free_mib": 15044,
+    "gpu_util_percent": 7
+  },
+  "first_armB_failure": "cudaMalloc(&E.stage[b], max_layer + kMmqTail) failed: out of memory"
+}

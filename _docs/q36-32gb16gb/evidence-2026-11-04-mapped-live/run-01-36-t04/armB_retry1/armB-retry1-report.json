@@ -1,0 +1,127 @@
+{
+  "task": "T04",
+  "kind": "armB_no_warmup_retry_after_cudaMalloc_OOM",
+  "parent_pair_dir": "run-01-36-t04",
+  "started_at": "2026-11-05T02:16:17+09:00",
+  "hermes_killed": false,
+  "invented_speeds": false,
+  "defaults_changed": false,
+  "goal_complete": false,
+  "adoption": "NOT_DECIDED",
+  "expect_sha256": "64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7",
+  "exe_sha256": "64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7",
+  "gpu_preflight": {
+    "name": "NVIDIA GeForce RTX 5060 Ti",
+    "vram_total_mib": 16311,
+    "vram_used_mib": 1007,
+    "vram_free_mib": 15044,
+    "gpu_util_percent": 7
+  },
+  "first_armB_failure": "cudaMalloc(&E.stage[b], max_layer + kMmqTail) failed: out of memory",
+  "arm": {
+    "label": "armB_no_warmup_retry1",
+    "no_warmup": true,
+    "started_at": "2026-11-05T02:16:17+09:00",
+    "gpu_before": {
+      "name": "NVIDIA GeForce RTX 5060 Ti",
+      "vram_total_mib": 16311,
+      "vram_used_mib": 1006,
+      "vram_free_mib": 15045,
+      "gpu_util_percent": 8
+    },
+    "invented_speeds": false,
+    "defaults_changed": false,
+    "pid": 42132,
+    "argv": [
+      "C:\\Users\\downl\\AppData\\Local\\Strata\\components\\engine\\0.4.0-q36-windows-x86_64-cuda-cuda13\\strata.exe",
+      "--native",
+      "H:\\Strata\\models\\models\\qwen36-UD-Q4_K_XL\\Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf",
+      "--max-context",
+      "65536",
+      "--prefill",
+      "auto",
+      "--mtp",
+      "2",
+      "--q36-expert-store",
+      "mapped-pack",
+      "--no-warmup",
+      "--serve"
+    ],
+    "ready_ok": true,
+    "load_request_to_ready_ms": 1439964.8,
+    "ready_at": "2026-11-05T02:40:17+09:00",
+    "startup": {
+      "q36_startup_lines": [
+        "Q36_STARTUP schema=1 stage=dense_load state=end elapsed_ms=27734 stage_elapsed_ms=27734 error_code=null",
+        "Q36_STARTUP schema=1 stage=buffers state=end elapsed_ms=0 stage_elapsed_ms=0 error_code=null",
+        "Q36_STARTUP schema=1 stage=expert_host_alloc state=end elapsed_ms=1356378 stage_elapsed_ms=1356378 error_code=null",
+        "Q36_STARTUP schema=1 stage=expert_repack state=end elapsed_ms=1400097 stage_elapsed_ms=1400097 error_code=null"
+      ],
+      "pin_pool_lines": [
+        "strata-q36: mapped-pack host pin pool cudaHostAlloc 32 MiB x2 (64.00 MiB committed)",
+        "strata-q36: hybrid experts: 41 of 256 per layer in VRAM (3.00 GiB), all 18.75 GiB in mapped file-backed host memory + cudaHost pin pool, the rest of a batch of <= 128 rows on 6 CPU threads, bigger prompt chunks streamed (1.10 GiB staging); 1400.1 s"
+      ],
+      "warmup_related_lines": []
+    },
+    "gen1": {
+      "first_t_lines": [
+        "T 2610"
+      ],
+      "ready_to_first_t_ms": 25541.8,
+      "load_request_to_first_t_ms": 1465506.6,
+      "done_lines": [
+        "DONE 7 15 24832.5 14904.8 stop 3 6 0 0 0 0 0 0.0 15 0"
+      ],
+      "ready_to_first_done_ms": 14328.5,
+      "wall_gen_ms": 39870.5
+    },
+    "gen2": {
+      "first_t_lines": [
+        "T 2610"
+      ],
+      "second_ttft_ms": 2627.3,
+      "done_lines": [
+        "DONE 7 15 2588.7 2378.7 stop 3 6 0 0 0 0 0 0.0 15 0"
+      ],
+      "ready_to_second_done_ms": 2369.0,
+      "wall_gen_ms": 4996.3
+    },
+    "stop": {
+      "stop_sent": true,
+      "eof_closed": true,
+      "exited": true,
+      "wait_s": 6.258
+    },
+    "gpu_after": {
+      "name": "NVIDIA GeForce RTX 5060 Ti",
+      "vram_total_mib": 16311,
+      "vram_used_mib": 933,
+      "vram_free_mib": 15118,
+      "gpu_util_percent": 0
+    },
+    "ended_at": "2026-11-05T02:41:16+09:00",
+    "startup_after": {
+      "q36_startup_lines": [
+        "Q36_STARTUP schema=1 stage=dense_load state=end elapsed_ms=27734 stage_elapsed_ms=27734 error_code=null",
+        "Q36_STARTUP schema=1 stage=buffers state=end elapsed_ms=0 stage_elapsed_ms=0 error_code=null",
+        "Q36_STARTUP schema=1 stage=expert_host_alloc state=end elapsed_ms=1356378 stage_elapsed_ms=1356378 error_code=null",
+        "Q36_STARTUP schema=1 stage=expert_repack state=end elapsed_ms=1400097 stage_elapsed_ms=1400097 error_code=null"
+      ],
+      "pin_pool_lines": [
+        "strata-q36: mapped-pack host pin pool cudaHostAlloc 32 MiB x2 (64.00 MiB committed)",
+        "strata-q36: hybrid experts: 41 of 256 per layer in VRAM (3.00 GiB), all 18.75 GiB in mapped file-backed host memory + cudaHost pin pool, the rest of a batch of <= 128 rows on 6 CPU threads, bigger prompt chunks streamed (1.10 GiB staging); 1400.1 s"
+      ],
+      "warmup_related_lines": []
+    },
+    "result": "PASS"
+  },
+  "ended_at": "2026-11-05T02:41:16+09:00",
+  "gpu_final": {
+    "name": "NVIDIA GeForce RTX 5060 Ti",
+    "vram_total_mib": 16311,
+    "vram_used_mib": 925,
+    "vram_free_mib": 15126,
+    "gpu_util_percent": 0
+  },
+  "result": "PASS"
+}

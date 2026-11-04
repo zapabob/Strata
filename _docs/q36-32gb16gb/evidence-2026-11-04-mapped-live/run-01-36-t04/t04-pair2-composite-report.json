@@ -1,0 +1,103 @@
+{
+  "task": "T04",
+  "kind": "observational_paired_warmup_cost_movement_pair2_composite",
+  "pair_index": 2,
+  "parent_pair_dir": "run-01-36-t04",
+  "prior_pair1_dir": "run-23-20-t04",
+  "started_at": "2026-11-05T01:36:11+09:00",
+  "ended_at": "2026-11-05T02:41:16+09:00",
+  "recovered_at": "2026-11-05T02:53:00+09:00",
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 5060 Ti 16GB",
+    "ram_nominal_gb": 32,
+    "os": "Windows 11"
+  },
+  "contract": {
+    "model": "Qwen3.6-35B-A3B-UD-Q4_K_XL",
+    "max_context": 65536,
+    "prefill": "auto",
+    "mtp": 2,
+    "expert_store": "mapped-pack",
+    "kv": "FP32 engine default (not changed)",
+    "arms": ["warmup_default", "no_warmup"]
+  },
+  "hermes_killed": false,
+  "invented_speeds": false,
+  "defaults_changed": false,
+  "goal_complete": false,
+  "adoption": "NOT_DECIDED — n=2 observational pairs; do not change product defaults",
+  "expect_sha256": "64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7",
+  "exe_sha256": "64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7",
+  "honesty": {
+    "parent_harness_result": "PAIR_PARTIAL",
+    "parent_harness_exit_code": 5,
+    "armB_first_attempt": "READY_FAIL",
+    "armB_first_failure": "cudaMalloc(&E.stage[b], max_layer + kMmqTail) failed: out of memory",
+    "armB_first_failure_site": "q36_engine.cu:3163 after expert_host_alloc 879168 ms",
+    "armB_retry": "PASS",
+    "armB_comparison_source": "armB_retry1 (not the OOM attempt)",
+    "orphan_strata_at_recovery": "none",
+    "vram_free_mib_at_recovery": 15129,
+    "note": "Composite PAIR_RECORDED uses armA from parent run + successful armB_retry1 under identical contract. First armB OOM is kept as evidence, not erased."
+  },
+  "arms": {
+    "armA_warmup": {
+      "source": "t04-report.json arms.armA_warmup",
+      "result": "PASS",
+      "pid": 43040,
+      "load_request_to_ready_ms": 1282936.7,
+      "ready_to_first_t_ms": 11666.5,
+      "second_ttft_ms": 1060.8,
+      "expert_host_alloc_elapsed_ms": 1019291,
+      "warmup_wall_s_observed": 173.3,
+      "done_gen1": "DONE 7 15 11368.8 3474.9 stop 3 6 0 0 0 0 0 0.0 15 0",
+      "done_gen2": "DONE 7 15 984.2 670.4 stop 3 6 0 0 0 0 0 0.0 15 0"
+    },
+    "armB_no_warmup_attempt1_oom": {
+      "source": "t04-report.json arms.armB_no_warmup",
+      "result": "READY_FAIL",
+      "pid": 26420,
+      "load_request_to_ready_ms": 954135.3,
+      "ready_ok": false,
+      "failure": "cudaMalloc(&E.stage[b], max_layer + kMmqTail) failed: out of memory"
+    },
+    "armB_no_warmup": {
+      "source": "armB_retry1/armB-retry1-report.json arm",
+      "label": "armB_no_warmup_retry1",
+      "result": "PASS",
+      "pid": 42132,
+      "load_request_to_ready_ms": 1439964.8,
+      "ready_to_first_t_ms": 25541.8,
+      "second_ttft_ms": 2627.3,
+      "expert_host_alloc_elapsed_ms": 1356378,
+      "warmup_related_lines": [],
+      "done_gen1": "DONE 7 15 24832.5 14904.8 stop 3 6 0 0 0 0 0 0.0 15 0",
+      "done_gen2": "DONE 7 15 2588.7 2378.7 stop 3 6 0 0 0 0 0 0.0 15 0"
+    }
+  },
+  "paired_deltas_observational": {
+    "load_request_to_ready_ms": {
+      "armA_ms": 1282936.7,
+      "armB_ms": 1439964.8,
+      "armB_minus_armA_ms": 157028.1
+    },
+    "ready_to_first_t_ms": {
+      "armA_ms": 11666.5,
+      "armB_ms": 25541.8,
+      "armB_minus_armA_ms": 13875.3
+    },
+    "second_ttft_ms": {
+      "armA_ms": 1060.8,
+      "armB_ms": 2627.3,
+      "armB_minus_armA_ms": 1566.5
+    },
+    "note": "Same direction as pair1: no-warmup did not make READY faster; first-request latency worsened. Not an adoption warrant. n=2 still << n≥5."
+  },
+  "t07_t08_t09": {
+    "t06": "BLOCKED (prior NOTES-01-32; not reinvented)",
+    "t07": "BLOCKED_NO_HOTSPOT_PROFILE",
+    "t08": "NOT_RUN_OPTIONAL",
+    "t09": "PARTIAL_INSTALLER_ADVANCED_SPEED_QUALITY_OPEN"
+  },
+  "result": "PAIR_RECORDED_WITH_ARM_B_RETRY"
+}
