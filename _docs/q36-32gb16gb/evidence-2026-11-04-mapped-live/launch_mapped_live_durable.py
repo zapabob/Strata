@@ -3,7 +3,14 @@
 
 Does NOT kill Hermes or other inference (DESIGN #6).
 Refuses to start when free VRAM is below the threshold.
-Captures stderr/stdout to files and keeps stdin open for serve protocol.
+
+Durability contract (fixes 18:14 silent mid-load abort):
+- stdout/stderr go to OS files via Popen handle inheritance — NOT PIPE+threads.
+  PIPE buffers fill if a tee thread dies or the parent exits; that can stall or
+  abort the engine mid-load and drop Q36_STARTUP / pin-pool lines.
+- stdin stays an open PIPE held by this babysitter until STOP / Ctrl+C / child exit.
+  Closing stdin mid-load is treated as protocol EOF and must not happen by accident.
+- Marker detection tails the log files; never depends on PowerShell async handlers.
 """
 from __future__ import annotations
 
@@ -14,9 +21,15 @@ import os
 import re
 import subprocess
 import sys
+import threading
 import time
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
+
+try:
+    import psutil
+except ImportError:  # optional; PowerShell CIM fallback used when missing
+    psutil = None  # type: ignore[assignment]
 
 
 EXPECTED_SHA256 = "64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7"
@@ -32,9 +45,13 @@ DEFAULT_GGUF = Path(
     r"H:\Strata\models\models\qwen36-UD-Q4_K_XL\Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf"
 )
 
+READY_RE = re.compile(r"(?m)^READY\b")
+Q36_STARTUP_RE = re.compile(r"^Q36_STARTUP\b")
+PIN_POOL_RE = re.compile(r"mapped-pack host pin pool|pin pool", re.I)
+
 
 def jst_now() -> str:
-    # Fixed +09:00 stamp for evidence folders on this machine.
+    # Fixed local stamp for evidence folders on this machine.
     return datetime.now().astimezone().isoformat(timespec="seconds")
 
 
@@ -68,10 +85,7 @@ def nvidia_query() -> dict:
 
 
 def list_llama_servers() -> list[dict]:
-    try:
-        import psutil  # optional
-    except ImportError:
-        # Fallback: tasklist parse is brittle; use WMIC/CIM via PowerShell.
+    if psutil is None:
         ps = subprocess.run(
             [
                 "powershell",
@@ -114,6 +128,70 @@ def list_llama_servers() -> list[dict]:
     return procs
 
 
+def read_text_best_effort(path: Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return ""
+
+
+def collect_markers(stdout_text: str, stderr_text: str) -> dict:
+    q36_lines = [ln for ln in stderr_text.splitlines() if Q36_STARTUP_RE.search(ln)]
+    pin_lines = [ln for ln in stderr_text.splitlines() if PIN_POOL_RE.search(ln)]
+    ready = bool(READY_RE.search(stdout_text))
+    return {
+        "ready": ready,
+        "q36_startup_lines": q36_lines,
+        "pin_pool_lines": pin_lines,
+    }
+
+
+def stdin_keepalive(proc: subprocess.Popen[str], stop_event: threading.Event, note_path: Path) -> None:
+    """Hold stdin open; never write STOP unless stop_event is set for shutdown."""
+    note_path.write_text(
+        json.dumps(
+            {
+                "started_at": jst_now(),
+                "pid": proc.pid,
+                "mode": "hold_open_no_auto_stop",
+                "hermes_killed": False,
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    while not stop_event.wait(5.0):
+        if proc.poll() is not None:
+            break
+        # Touch note so operators can see babysitter is alive; do not write to child stdin.
+        try:
+            note_path.write_text(
+                json.dumps(
+                    {
+                        "heartbeat_at": jst_now(),
+                        "pid": proc.pid,
+                        "alive": proc.poll() is None,
+                        "mode": "hold_open_no_auto_stop",
+                        "hermes_killed": False,
+                    },
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+        except OSError:
+            pass
+
+
+def send_stop(proc: subprocess.Popen[str]) -> None:
+    if proc.stdin is None:
+        return
+    try:
+        proc.stdin.write("STOP\n")
+        proc.stdin.flush()
+    except (BrokenPipeError, OSError, ValueError):
+        pass
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--exe", type=Path, default=DEFAULT_EXE)
@@ -141,7 +219,16 @@ def main() -> int:
         "--ready-timeout-sec",
         type=int,
         default=1200,
-        help="Seconds to wait for READY on stdout before giving up (process kept).",
+        help="Seconds to wait for READY before recording timeout markers.",
+    )
+    ap.add_argument(
+        "--abandon-on-timeout",
+        action="store_true",
+        help=(
+            "If set, exit after ready-timeout even if child is still loading. "
+            "Default is to KEEP babysitting (stdin + log handles) so mid-load "
+            "abort from closed pipes cannot recur."
+        ),
     )
     args = ap.parse_args()
 
@@ -151,10 +238,11 @@ def main() -> int:
     stdout_path = out_dir / "stdout.log"
     meta_path = out_dir / "launch-meta.json"
     markers_path = out_dir / "markers.json"
+    stdin_note_path = out_dir / "stdin-keepalive.json"
 
     gpu = nvidia_query()
     hermes = list_llama_servers()
-    meta = {
+    meta: dict = {
         "started_at": jst_now(),
         "exe": str(args.exe),
         "gguf": str(args.gguf),
@@ -165,6 +253,11 @@ def main() -> int:
         "design6": "never kill foreign inference",
         "invented_speeds": False,
         "goal_complete": False,
+        "capture_mode": "os_file_redirect_stdout_stderr_plus_stdin_babysitter",
+        "root_cause_fix": (
+            "18:14 used async PIPE/tee that could drop logs and close stdin mid-load; "
+            "this launcher writes logs via OS file handles and holds stdin open."
+        ),
     }
 
     if not args.exe.is_file():
@@ -220,21 +313,25 @@ def main() -> int:
     meta["mapped_live"] = "RUNNING"
     meta_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
 
-    # Line-buffered-ish capture: unbuffered Python wrapping; engine may still block-buffer stderr.
     env = os.environ.copy()
     env.setdefault("TMP", r"H:\Strata\tmp-q36-mapped-live")
     env.setdefault("TEMP", env["TMP"])
     Path(env["TMP"]).mkdir(parents=True, exist_ok=True)
 
-    with stdout_path.open("w", encoding="utf-8", newline="\n") as so, stderr_path.open(
-        "w", encoding="utf-8", newline="\n"
-    ) as se:
-        # stderr unbuffered via child inheritance is best-effort; flush periodically by reading.
+    # OS-level file redirect: child writes survive parent thread death / GC.
+    # Keep these handles open for the entire babysit lifetime.
+    so = stdout_path.open("w", encoding="utf-8", newline="\n", buffering=1)
+    se = stderr_path.open("w", encoding="utf-8", newline="\n", buffering=1)
+    stop_event = threading.Event()
+    keepalive_thread: threading.Thread | None = None
+    proc: subprocess.Popen[str] | None = None
+
+    try:
         proc = subprocess.Popen(
             argv,
             stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stdout=so,
+            stderr=se,
             env=env,
             cwd=str(out_dir),
             text=True,
@@ -243,76 +340,45 @@ def main() -> int:
             bufsize=1,
         )
         (out_dir / "pid.txt").write_text(str(proc.pid), encoding="ascii")
-        print(f"launched pid={proc.pid}", flush=True)
+        print(f"launched pid={proc.pid} capture=os_file_redirect", flush=True)
 
-        q36_lines: list[str] = []
-        pin_lines: list[str] = []
+        assert proc.stdin is not None
+        keepalive_thread = threading.Thread(
+            target=stdin_keepalive,
+            args=(proc, stop_event, stdin_note_path),
+            name="stdin-keepalive",
+            daemon=False,
+        )
+        keepalive_thread.start()
+
         ready = False
         deadline = time.time() + args.ready_timeout_sec
+        timed_out = False
 
-        assert proc.stdout is not None and proc.stderr is not None and proc.stdin is not None
-
-        # Non-blocking-ish drain via threads.
-        import threading
-
-        def pump(stream, sink, bucket: list[str] | None, patterns: list[re.Pattern[str]] | None):
-            for line in iter(stream.readline, ""):
-                sink.write(line)
-                sink.flush()
-                if bucket is not None and patterns is not None:
-                    for pat in patterns:
-                        if pat.search(line):
-                            bucket.append(line.rstrip("\n"))
-                            break
-
-        t_out = threading.Thread(
-            target=pump,
-            args=(proc.stdout, so, None, None),
-            daemon=True,
-        )
-        t_err = threading.Thread(
-            target=pump,
-            args=(
-                proc.stderr,
-                se,
-                q36_lines,
-                [
-                    re.compile(r"Q36_STARTUP"),
-                    re.compile(r"mapped-pack host pin pool", re.I),
-                    re.compile(r"pageable", re.I),
-                ],
-            ),
-            daemon=True,
-        )
-        # Separate pin collector: reuse q36_lines then split.
-        t_out.start()
-        t_err.start()
-
-        while time.time() < deadline:
-            if proc.poll() is not None:
-                break
-            # READY is on stdout serve protocol.
-            # Also accept pin-pool evidence without READY if startup stages completed.
-            text_stdout = stdout_path.read_text(encoding="utf-8", errors="replace")
-            text_stderr = stderr_path.read_text(encoding="utf-8", errors="replace")
-            if re.search(r"(?m)^READY\b", text_stdout):
+        while True:
+            stdout_text = read_text_best_effort(stdout_path)
+            stderr_text = read_text_best_effort(stderr_path)
+            marks = collect_markers(stdout_text, stderr_text)
+            if marks["ready"]:
                 ready = True
                 break
-            if "mapped-pack host pin pool" in text_stderr and "Q36_STARTUP" in text_stderr:
-                # Keep waiting for READY until timeout; markers already useful.
+            if proc.poll() is not None:
+                break
+            if time.time() >= deadline:
+                timed_out = True
+                break
+            time.sleep(2.0)
+            # Encourage disk visibility of child writes on Windows.
+            try:
+                so.flush()
+                se.flush()
+            except OSError:
                 pass
-            time.sleep(2)
 
-        pin_lines = [
-            ln
-            for ln in stderr_path.read_text(encoding="utf-8", errors="replace").splitlines()
-            if "mapped-pack host pin pool" in ln or "pin pool" in ln.lower()
-        ]
-        q36_lines = [
-            ln
-            for ln in stderr_path.read_text(encoding="utf-8", errors="replace").splitlines()
-            if ln.startswith("Q36_STARTUP")
-        ]
+        stdout_text = read_text_best_effort(stdout_path)
+        stderr_text = read_text_best_effort(stderr_path)
+        marks = collect_markers(stdout_text, stderr_text)
+        ready = bool(marks["ready"] or ready)
 
         markers = {
             "captured_at": jst_now(),
@@ -320,41 +386,98 @@ def main() -> int:
             "alive": proc.poll() is None,
             "exit_code": proc.poll(),
             "ready": ready,
-            "q36_startup_lines": q36_lines,
-            "pin_pool_lines": pin_lines,
+            "timed_out": timed_out,
+            "q36_startup_lines": marks["q36_startup_lines"],
+            "pin_pool_lines": marks["pin_pool_lines"],
             "gpu_after": nvidia_query(),
             "hermes_killed": False,
+            "capture_mode": meta["capture_mode"],
+            "stdin_closed": False,
         }
         markers_path.write_text(json.dumps(markers, indent=2), encoding="utf-8")
 
-        meta["mapped_live"] = "READY" if ready else ("RUNNING" if proc.poll() is None else "EXITED")
+        if ready:
+            meta["mapped_live"] = "READY"
+        elif proc.poll() is None:
+            meta["mapped_live"] = "RUNNING_TIMEOUT" if timed_out else "RUNNING"
+        else:
+            meta["mapped_live"] = "EXITED"
         meta["markers"] = markers
         meta_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
-
         print(json.dumps(markers, indent=2), flush=True)
 
-        # Leave process running with stdin open if READY (caller may chat via another attach).
-        # This launcher exits but keeps child alive only if we intentionally detach.
-        # For evidence integrity, if READY, send STOP after a short idle so T03 can be a separate scripted run.
-        # Default: keep alive; user/agent continues with the held process.
         if ready:
-            print("READY — leaving process running; stdin held until this script exits.", flush=True)
-            print("Send STOP on stdin by terminating this launcher with Ctrl+C after tests.", flush=True)
-            try:
-                while proc.poll() is None:
-                    time.sleep(5)
-            except KeyboardInterrupt:
-                try:
-                    proc.stdin.write("STOP\n")
-                    proc.stdin.flush()
-                except Exception:
-                    pass
-                proc.wait(timeout=60)
+            print(
+                "READY — babysitting with stdin held open; Ctrl+C sends STOP.",
+                flush=True,
+            )
+        elif proc.poll() is None and timed_out and not args.abandon_on_timeout:
+            print(
+                "not READY within timeout; KEEP babysitting (stdin+log handles open) "
+                "to avoid mid-load pipe abort. Use --abandon-on-timeout to exit early.",
+                flush=True,
+            )
+        elif proc.poll() is None and args.abandon_on_timeout:
+            print(
+                "not READY within timeout; abandon-on-timeout set — leaving child "
+                "alive but parent will exit (stdin may close; prefer default babysit).",
+                flush=True,
+            )
+            return 5
         else:
-            # If not ready and still alive, leave it for manual inspection but close our wait.
-            print("not READY within timeout; process left as-is (not killed).", flush=True)
+            print("child exited before READY; see stderr.log", flush=True)
+            return 5
 
-    return 0 if ready else 5
+        try:
+            while proc.poll() is None:
+                time.sleep(5.0)
+                # Periodic marker refresh while babysitting (pin-pool may arrive late).
+                stdout_text = read_text_best_effort(stdout_path)
+                stderr_text = read_text_best_effort(stderr_path)
+                marks = collect_markers(stdout_text, stderr_text)
+                markers.update(
+                    {
+                        "captured_at": jst_now(),
+                        "alive": True,
+                        "ready": marks["ready"] or ready,
+                        "q36_startup_lines": marks["q36_startup_lines"],
+                        "pin_pool_lines": marks["pin_pool_lines"],
+                        "gpu_after": nvidia_query(),
+                    }
+                )
+                markers_path.write_text(json.dumps(markers, indent=2), encoding="utf-8")
+                if marks["ready"] and meta.get("mapped_live") != "READY":
+                    ready = True
+                    meta["mapped_live"] = "READY"
+                    meta["markers"] = markers
+                    meta_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
+                    print("READY observed during babysit.", flush=True)
+        except KeyboardInterrupt:
+            print("Ctrl+C — sending STOP on stdin (Hermes untouched).", flush=True)
+            send_stop(proc)
+            try:
+                proc.wait(timeout=60)
+            except subprocess.TimeoutExpired:
+                print("STOP wait timed out; child left as-is (not force-killed).", flush=True)
+
+        return 0 if ready else 5
+    finally:
+        stop_event.set()
+        if keepalive_thread is not None:
+            keepalive_thread.join(timeout=2.0)
+        # Close log handles only after babysit ends. Closing earlier can abort child writes.
+        try:
+            so.flush()
+            se.flush()
+        except OSError:
+            pass
+        so.close()
+        se.close()
+        if proc is not None and proc.stdin is not None and not proc.stdin.closed:
+            try:
+                proc.stdin.close()
+            except OSError:
+                pass
 
 
 if __name__ == "__main__":
