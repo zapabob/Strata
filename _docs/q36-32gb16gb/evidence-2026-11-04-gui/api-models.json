@@ -1,0 +1,431 @@
+{
+    "mode":  "real",
+    "current":  "local-e7d83e78598be18b75bf0498",
+    "loaded":  null,
+    "variants":  [
+                     {
+                         "id":  "qwen2.5-0.5b-q4km",
+                         "name":  "Starter",
+                         "family":  "Qwen2.5-0.5B-Instruct",
+                         "quant":  "Q4_K_M",
+                         "label":  "Starter · 0.5B Q4_K_M",
+                         "params":  "0.5B",
+                         "blurb":  "Runs on almost anything — the fastest way to see the whole loop",
+                         "role":  "option",
+                         "tier":  "starter",
+                         "ramClass":  {
+                                          "minGb":  8,
+                                          "maxGb":  12,
+                                          "label":  "8 GB RAM class"
+                                      },
+                         "diskGb":  0.49,
+                         "downloadGb":  0.49,
+                         "contextMax":  32768,
+                         "layerCount":  24,
+                         "experts":  0,
+                         "kvKbPerToken":  6,
+                         "hasDraft":  false,
+                         "kvModes":  [
+                                         "INT8",
+                                         "FP16"
+                                     ],
+                         "tags":  [
+                                      "starter",
+                                      "smallest"
+                                  ],
+                         "minMemoryGb":  8,
+                         "source":  {
+                                        "repo":  "Qwen/Qwen2.5-0.5B-Instruct-GGUF",
+                                        "file":  "qwen2.5-0.5b-instruct-q4_k_m.gguf",
+                                        "bytes":  491400032
+                                    },
+                         "catalog":  {
+                                         "family":  "Qwen",
+                                         "version":  "Qwen2.5-0.5B-Instruct",
+                                         "purpose":  "General text and conversation",
+                                         "capabilities":  [
+                                                              "Text"
+                                                          ],
+                                         "agentApproved":  false,
+                                         "balancedRank":  10,
+                                         "review":  "Capability review pending"
+                                     },
+                         "state":  "available",
+                         "downloadUrl":  "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf?download=true"
+                     },
+                     {
+                         "id":  "qwen3-coder-30b-iq1m",
+                         "name":  "Coder",
+                         "family":  "Qwen3-Coder-30B-A3B-Instruct",
+                         "quant":  "UD-IQ1_M",
+                         "label":  "Coder · IQ1_M",
+                         "params":  "30B",
+                         "blurb":  "Best when memory is limited and coding is the priority",
+                         "role":  "option",
+                         "tier":  "coding",
+                         "ramClass":  {
+                                          "minGb":  24,
+                                          "maxGb":  32,
+                                          "label":  "32 GB RAM class"
+                                      },
+                         "diskGb":  9.6,
+                         "downloadGb":  9.6,
+                         "contextMax":  262144,
+                         "layerCount":  48,
+                         "experts":  128,
+                         "kvKbPerToken":  48,
+                         "hasDraft":  true,
+                         "kvModes":  [
+                                         "INT8",
+                                         "FP16"
+                                     ],
+                         "tags":  [
+                                      "coding"
+                                  ],
+                         "minMemoryGb":  24,
+                         "source":  {
+                                        "repo":  "unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF",
+                                        "file":  "Qwen3-Coder-30B-A3B-Instruct-UD-IQ1_M.gguf",
+                                        "bytes":  9630000000
+                                    },
+                         "catalog":  {
+                                         "family":  "Qwen Coder",
+                                         "version":  "Qwen3-Coder-30B-A3B-Instruct",
+                                         "purpose":  "Coding-focused instruction model",
+                                         "capabilities":  [
+                                                              "Text",
+                                                              "Code"
+                                                          ],
+                                         "agentApproved":  false,
+                                         "balancedRank":  5,
+                                         "review":  "Capability review pending"
+                                     },
+                         "state":  "available",
+                         "downloadUrl":  "https://huggingface.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF/resolve/main/Qwen3-Coder-30B-A3B-Instruct-UD-IQ1_M.gguf?download=true"
+                     },
+                     {
+                         "id":  "qwen3-30b-q2",
+                         "name":  "Qwen",
+                         "family":  "Qwen3-30B-A3B",
+                         "quant":  "Q2_K",
+                         "label":  "Qwen · Q2_K",
+                         "params":  "30B",
+                         "blurb":  "Fastest full-model choice",
+                         "role":  "option",
+                         "tier":  "fast",
+                         "ramClass":  {
+                                          "minGb":  40,
+                                          "maxGb":  48,
+                                          "label":  "48 GB RAM class"
+                                      },
+                         "diskGb":  11.3,
+                         "downloadGb":  11.3,
+                         "contextMax":  131072,
+                         "layerCount":  48,
+                         "experts":  128,
+                         "kvKbPerToken":  48,
+                         "hasDraft":  true,
+                         "kvModes":  [
+                                         "INT8",
+                                         "FP16"
+                                     ],
+                         "tags":  [
+                                      "fastest"
+                                  ],
+                         "minMemoryGb":  40,
+                         "source":  {
+                                        "repo":  "unsloth/Qwen3-30B-A3B-GGUF",
+                                        "file":  "Qwen3-30B-A3B-Q2_K.gguf",
+                                        "bytes":  11260000000
+                                    },
+                         "catalog":  {
+                                         "family":  "Qwen",
+                                         "version":  "Qwen3-30B-A3B",
+                                         "purpose":  "General text and conversation",
+                                         "capabilities":  [
+                                                              "Text"
+                                                          ],
+                                         "agentApproved":  false,
+                                         "balancedRank":  5,
+                                         "review":  "Capability review pending"
+                                     },
+                         "state":  "available",
+                         "downloadUrl":  "https://huggingface.co/unsloth/Qwen3-30B-A3B-GGUF/resolve/main/Qwen3-30B-A3B-Q2_K.gguf?download=true"
+                     },
+                     {
+                         "id":  "qwen3-30b-iq2m",
+                         "name":  "Qwen",
+                         "family":  "Qwen3-30B-A3B",
+                         "quant":  "UD-IQ2_M",
+                         "label":  "Qwen · IQ2_M",
+                         "params":  "30B",
+                         "blurb":  "Balanced quality and speed",
+                         "role":  "best-fit",
+                         "tier":  "balanced",
+                         "ramClass":  {
+                                          "minGb":  44,
+                                          "maxGb":  48,
+                                          "label":  "48 GB RAM class"
+                                      },
+                         "diskGb":  10.9,
+                         "downloadGb":  10.9,
+                         "contextMax":  131072,
+                         "layerCount":  48,
+                         "experts":  128,
+                         "kvKbPerToken":  48,
+                         "hasDraft":  true,
+                         "kvModes":  [
+                                         "INT8",
+                                         "FP16"
+                                     ],
+                         "tags":  [
+                                      "balanced",
+                                      "recommended"
+                                  ],
+                         "minMemoryGb":  44,
+                         "source":  {
+                                        "repo":  "unsloth/Qwen3-30B-A3B-GGUF",
+                                        "file":  "Qwen3-30B-A3B-UD-IQ2_M.gguf",
+                                        "bytes":  10870000000
+                                    },
+                         "catalog":  {
+                                         "family":  "Qwen",
+                                         "version":  "Qwen3-30B-A3B",
+                                         "purpose":  "General text and conversation",
+                                         "capabilities":  [
+                                                              "Text"
+                                                          ],
+                                         "agentApproved":  false,
+                                         "balancedRank":  1,
+                                         "review":  "Capability review pending"
+                                     },
+                         "state":  "available",
+                         "downloadUrl":  "https://huggingface.co/unsloth/Qwen3-30B-A3B-GGUF/resolve/main/Qwen3-30B-A3B-UD-IQ2_M.gguf?download=true"
+                     },
+                     {
+                         "id":  "qwen3-30b-iq3xxs",
+                         "name":  "Qwen",
+                         "family":  "Qwen3-30B-A3B",
+                         "quant":  "UD-IQ3_XXS",
+                         "label":  "Qwen · IQ3_XXS",
+                         "params":  "30B",
+                         "blurb":  "More quality, more memory, slower output",
+                         "role":  "option",
+                         "tier":  "quality",
+                         "ramClass":  {
+                                          "minGb":  60,
+                                          "maxGb":  64,
+                                          "label":  "60–64 GB RAM class"
+                                      },
+                         "diskGb":  12.9,
+                         "downloadGb":  12.9,
+                         "contextMax":  131072,
+                         "layerCount":  48,
+                         "experts":  128,
+                         "kvKbPerToken":  48,
+                         "hasDraft":  true,
+                         "kvModes":  [
+                                         "INT8",
+                                         "FP16"
+                                     ],
+                         "tags":  [
+                                      "quality"
+                                  ],
+                         "minMemoryGb":  60,
+                         "source":  {
+                                        "repo":  "unsloth/Qwen3-30B-A3B-GGUF",
+                                        "file":  "Qwen3-30B-A3B-UD-IQ3_XXS.gguf",
+                                        "bytes":  12890000000
+                                    },
+                         "catalog":  {
+                                         "family":  "Qwen",
+                                         "version":  "Qwen3-30B-A3B",
+                                         "purpose":  "General text and conversation",
+                                         "capabilities":  [
+                                                              "Text"
+                                                          ],
+                                         "agentApproved":  false,
+                                         "balancedRank":  5,
+                                         "review":  "Capability review pending"
+                                     },
+                         "state":  "available",
+                         "downloadUrl":  "https://huggingface.co/unsloth/Qwen3-30B-A3B-GGUF/resolve/main/Qwen3-30B-A3B-UD-IQ3_XXS.gguf?download=true"
+                     },
+                     {
+                         "id":  "local-b8713368fa829e8457cc6169",
+                         "name":  "DeepSeek V4 Pro Qwen3.5 9B UNCENSORED Heretic",
+                         "family":  "Local models",
+                         "quant":  "Q6_K",
+                         "label":  "DeepSeek V4 Pro Qwen3.5 9B UNCENSORED Heretic · Q6_K",
+                         "params":  "9.0B",
+                         "blurb":  "Local model. Engine compatibility is checked when loading.",
+                         "role":  "option",
+                         "tier":  "local",
+                         "ramClass":  {
+                                          "minGb":  8.853846818208694,
+                                          "maxGb":  12.853846818208694,
+                                          "label":  "From GGUF metadata"
+                                      },
+                         "diskGb":  6.8538468182086945,
+                         "downloadGb":  0,
+                         "contextMax":  262144,
+                         "layerCount":  33,
+                         "experts":  0,
+                         "kvKbPerToken":  66,
+                         "hasDraft":  false,
+                         "kvModes":  [
+                                         "INT8",
+                                         "FP16"
+                                     ],
+                         "tags":  [
+                                      "local"
+                                  ],
+                         "source":  {
+                                        "repo":  "local",
+                                        "file":  "DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic.i1-Q6_K.gguf",
+                                        "bytes":  7359261984
+                                    },
+                         "local":  {
+                                       "path":  "C:\\Users\\downl\\Downloads\\新しいフォルダー\\DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic.i1-Q6_K.gguf",
+                                       "files":  [
+                                                     {
+                                                         "path":  "C:\\Users\\downl\\Downloads\\新しいフォルダー\\DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic.i1-Q6_K.gguf",
+                                                         "bytes":  7359261984,
+                                                         "mtimeMs":  1793629621773.19,
+                                                         "ctimeMs":  1793636881540.7236
+                                                     }
+                                                 ],
+                                       "architecture":  "qwen35",
+                                       "hasChatTemplate":  true,
+                                       "contextLength":  262144,
+                                       "keyLength":  256,
+                                       "valueLength":  256,
+                                       "shards":  1,
+                                       "metadataSignature":  "53a01bee1d80c80d14fbe9d5fc714dfd3bd8e92ac6c899c0e82d68c13eb43a7d",
+                                       "nFullAttention":  null,
+                                       "nRecurrent":  null,
+                                       "fullAttentionInterval":  4,
+                                       "memoryConfidence":  "low"
+                                   },
+                         "memoryPlan":  {
+                                            "attentionKvGiB":  null,
+                                            "nFullAttention":  null,
+                                            "nRecurrent":  null,
+                                            "confidence":  "low",
+                                            "fits":  null
+                                        },
+                         "importedAt":  "2026-11-02T16:28:44.365Z",
+                         "catalog":  {
+                                         "family":  "Qwen",
+                                         "version":  "Local models",
+                                         "purpose":  "General text and conversation",
+                                         "capabilities":  [
+                                                              "Text"
+                                                          ],
+                                         "agentApproved":  false,
+                                         "balancedRank":  5,
+                                         "review":  "Capability review pending"
+                                     },
+                         "state":  "error",
+                         "error":  "The local file is missing or has changed. Use a local model again to reconnect it."
+                     },
+                     {
+                         "id":  "local-e7d83e78598be18b75bf0498",
+                         "name":  "Hf",
+                         "family":  "Local models",
+                         "quant":  "PQ2_0",
+                         "label":  "Hf · PQ2_0",
+                         "params":  "26.9B",
+                         "blurb":  "Local model. Engine compatibility is checked when loading.",
+                         "role":  "option",
+                         "tier":  "local",
+                         "ramClass":  {
+                                          "minGb":  8.711267799139023,
+                                          "maxGb":  12.711267799139023,
+                                          "label":  "From GGUF metadata"
+                                      },
+                         "diskGb":  6.71,
+                         "downloadGb":  0,
+                         "contextMax":  262144,
+                         "layerCount":  64,
+                         "experts":  0,
+                         "kvKbPerToken":  32,
+                         "hasDraft":  false,
+                         "kvModes":  [
+                                         "INT8",
+                                         "FP16"
+                                     ],
+                         "tags":  [
+                                      "local"
+                                  ],
+                         "source":  {
+                                        "repo":  "local",
+                                        "file":  "Hikari-LoRA-fixed-scale-PQ2_0.gguf",
+                                        "bytes":  7206168928
+                                    },
+                         "local":  {
+                                       "path":  "C:\\Users\\downl\\Desktop\\SO8T\\gguf_models\\zapabobouj\\Hikari-Bonsai-27B-Nimble-LoRA-GGUF\\Hikari-LoRA-fixed-scale-PQ2_0.gguf",
+                                       "files":  [
+                                                     {
+                                                         "path":  "C:\\Users\\downl\\Desktop\\SO8T\\gguf_models\\zapabobouj\\Hikari-Bonsai-27B-Nimble-LoRA-GGUF\\Hikari-LoRA-fixed-scale-PQ2_0.gguf",
+                                                         "bytes":  7206168928,
+                                                         "mtimeMs":  1792587773814.2805,
+                                                         "ctimeMs":  1793059566707.195
+                                                     }
+                                                 ],
+                                       "architecture":  "qwen35",
+                                       "hasChatTemplate":  true,
+                                       "contextLength":  262144,
+                                       "keyLength":  256,
+                                       "valueLength":  256,
+                                       "shards":  1,
+                                       "metadataSignature":  "bc617eb5f5b02285973c7ad89ee33d83a67062b0214ba8d33c96553942817c30",
+                                       "nFullAttention":  16,
+                                       "nRecurrent":  48,
+                                       "fullAttentionInterval":  4,
+                                       "memoryConfidence":  "high"
+                                   },
+                         "memoryPlan":  {
+                                            "attentionKvGiB":  4.25,
+                                            "nFullAttention":  16,
+                                            "nRecurrent":  48,
+                                            "confidence":  "high",
+                                            "fits":  null
+                                        },
+                         "importedAt":  "2026-11-01T20:06:10.459Z",
+                         "catalog":  {
+                                         "family":  "Qwen",
+                                         "version":  "Local models",
+                                         "purpose":  "General text and conversation",
+                                         "capabilities":  [
+                                                              "Text"
+                                                          ],
+                                         "agentApproved":  false,
+                                         "balancedRank":  5,
+                                         "review":  "Capability review pending"
+                                     },
+                         "state":  "installed",
+                         "installedAt":  "2026-11-01T20:06:10.459Z"
+                     }
+                 ],
+    "downloads":  {
+                      "active":  0,
+                      "queued":  0,
+                      "totalGbToday":  6.71
+                  },
+    "disk":  {
+                 "modelsDir":  "C:\\Users\\downl\\Documents\\Strata\\Models",
+                 "usedGb":  6.71,
+                 "freeGb":  21
+             },
+    "engine":  {
+                   "status":  "error",
+                   "binary":  {
+                                  "path":  "C:\\Users\\downl\\AppData\\Local\\Strata\\components\\engine\\0.4.0-windows-x86_64-cuda-cuda13\\local-backends\\prism\\llama-server.exe",
+                                  "source":  "PrismML",
+                                  "version":  "PrismML 0.4.0 · 73bfe6cc"
+                              },
+                   "port":  8080,
+                   "modelId":  "local-e7d83e78598be18b75bf0498"
+               }
+}
