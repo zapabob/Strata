@@ -7,7 +7,7 @@
 - Related audit: `_docs/2026-11-04_strata-official-q36-softness-audit{Cursor}.md`
 - Related issues filed earlier: [#5021](https://github.com/Niko1221/Strata/issues/5021), [#5022](https://github.com/Niko1221/Strata/issues/5022), [#5023](https://github.com/Niko1221/Strata/issues/5023) (all OPEN as of 2026-11-04)
 - Goal complete: **false** (no UpdateGoal complete)
-- Upstream `gh pr create`: **not performed**
+- Upstream `gh pr create`: **PR-1 opened** — https://github.com/Niko1221/Strata/pull/5216 (`pr/q36-refuse-unsupported-serve-flags` → `Niko1221/Strata:main`, head `zapabob`, commit `3b7241f4`, based on `upstream/main` `ffa80d73`). PR-2 not opened.
 
 ## Recommendation
 
