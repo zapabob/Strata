@@ -1,0 +1,21 @@
+strata-q36: H:\Strata\models\models\qwen36-UD-Q4_K_XL\Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf: 753 tensors (layout checked), 4.40 GiB on the GPU in 23.5 s (the routed experts are placed after the engine's buffers)
+Q36_STARTUP schema=1 stage=dense_load state=end elapsed_ms=23518 stage_elapsed_ms=23518 error_code=null
+strata: K-quant prompt kernels from C:\Users\downl\AppData\Local\Strata\components\engine\0.4.0-q36-windows-x86_64-cuda-cuda13\strata_kq.dll (STRATA_MMQ_KQ=1)
+strata-q36: prompt experts on MMQ (int8)
+strata-q36: context 65536 cells, prompt chunk 2048, MTP block loaded, 4.90 GiB of VRAM free
+Q36_STARTUP schema=1 stage=buffers state=end elapsed_ms=0 stage_elapsed_ms=0 error_code=null
+strata-q36: hotspot profile ON (STRATA_Q36_HOTSPOT_PROFILE); diagnostic syncs enabled; hardware_counters=null until Nsight
+strata-q36: mapped-pack host pin pool cudaHostAlloc 32 MiB x2 (64.00 MiB committed)
+Q36_STARTUP schema=1 stage=expert_host_alloc state=end elapsed_ms=1068948 stage_elapsed_ms=1068948 error_code=null
+strata-q36: hybrid experts: 41 of 256 per layer in VRAM (3.00 GiB), all 18.75 GiB in mapped file-backed host memory + cudaHost pin pool, the rest of a batch of <= 128 rows on 6 CPU threads, bigger prompt chunks streamed (1.10 GiB staging); 1078.3 s
+Q36_STARTUP schema=1 stage=expert_repack state=end elapsed_ms=1078301 stage_elapsed_ms=1078301 error_code=null
+Q36_STARTUP schema=1 stage=warmup_prefill state=begin elapsed_ms=0 stage_elapsed_ms=0 error_code=null
+Q36_STARTUP schema=1 stage=warmup_prefill state=end elapsed_ms=185741 stage_elapsed_ms=185741 error_code=null
+Q36_STARTUP schema=1 stage=warmup_decode state=begin elapsed_ms=189449 stage_elapsed_ms=0 error_code=null
+Q36_STARTUP schema=1 stage=warmup_decode state=end elapsed_ms=189665 stage_elapsed_ms=215 error_code=null
+Q36_STARTUP schema=1 stage=warmup_spec state=begin elapsed_ms=189665 stage_elapsed_ms=0 error_code=null
+Q36_STARTUP schema=1 stage=warmup_spec state=end elapsed_ms=190245 stage_elapsed_ms=580 error_code=null
+Q36_HOTSPOT schema=1 phase=warmup layers_gdn=120 layers_attn=44 gdn_host_ms=5936.797 attn_host_ms=444.887 moe_gpu_host_ms=66.592 moe_cpu_ms=4090.766 stream_copy_wait_ms=10.455 stream_mmq_ms=606.926 stream_h2d_bytes=20127436800 stream_d2d_bytes=0 hy_cpu=3631 hy_gpu=617 hy_swaps=0 rebalance_h2d_bytes=0 hardware_counters=null note=diagnostic_sync
+strata-q36: warmed up in 190.2 s (one prompt chunk, a decode step, a speculative step)
+Q36_HOTSPOT schema=1 phase=shutdown layers_gdn=0 layers_attn=0 gdn_host_ms=0.000 attn_host_ms=0.000 moe_gpu_host_ms=0.000 moe_cpu_ms=0.000 stream_copy_wait_ms=0.000 stream_mmq_ms=0.000 stream_h2d_bytes=0 stream_d2d_bytes=0 hy_cpu=0 hy_gpu=0 hy_swaps=0 rebalance_h2d_bytes=0 hardware_counters=null note=diagnostic_sync
+strata-q36: hybrid experts: 0 of 0 batch entries on the GPU (0.0%), 0 on the CPU pool in 0 ms, 0 slot replacements
