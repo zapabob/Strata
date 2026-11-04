@@ -102,19 +102,35 @@ def patch_product_constant(path: Path, version: str) -> None:
 def patch_fork_readme(path: Path, version: str) -> None:
     text = path.read_text(encoding="utf-8")
     # Accept prose ("tree: `ver`") or fork-notes table ("tree | `ver`").
+    # Rewritten Hakua READMEs may omit this line; skip those instead of aborting sync.
     new, count = re.subn(
         r"(App version in this preview tree\s*[:|]\s*`)[^`]+(`)",
         rf"\g<1>{version}\2",
         text,
         count=1,
     )
+    if count == 0:
+        print(f"skip {path.name}: no fork-notes app version line")
+        return
     if count != 1:
-        raise SystemExit(f"{path}: fork notes app version line missing")
+        raise SystemExit(f"{path}: expected 0 or 1 fork-notes match, got {count}")
     path.write_text(new, encoding="utf-8", newline="\n")
 
 
 def patch_agents(path: Path, version: str, engine: str, metal: str) -> None:
     text = path.read_text(encoding="utf-8")
+    # Prefer a surgical product/engine/Metal swap so longer Hakua banners stay intact.
+    # Some banners say "(Metal source X-metal)"; keep the "source " wording.
+    new, count = re.subn(
+        r"^(Hakua product version )[^\s,]+(, engine )[^\s,]+( \(Metal (?:source )?)[^)]+(\))",
+        rf"\g<1>{version}\g<2>{engine}\g<3>{metal}\g<4>",
+        text,
+        count=1,
+        flags=re.M,
+    )
+    if count == 1:
+        path.write_text(new, encoding="utf-8", newline="\n")
+        return
     banner = (
         f"Hakua product version {version}, engine {engine} "
         f"(Metal {metal}). Upstream Niko1221 docs in this file still describe "
@@ -255,11 +271,13 @@ def check() -> int:
         "host/package.json",
         "host/package-lock.json",
         "PRODUCT_VERSION",
-        "README.md[fork]",
         "full_installer.nsi[FileVersion]",
     ):
         if rows[key] != product:
             mismatches.append((key, rows[key], product))
+    # Rewritten READMEs may omit the fork-notes line; only enforce when present.
+    if rows["README.md[fork]"] and rows["README.md[fork]"] != product:
+        mismatches.append(("README.md[fork]", rows["README.md[fork]"], product))
     folder = f"Strata-{product}"
     if rows["full_windows.programs_folder"] != folder:
         mismatches.append(("full_windows.programs_folder", rows["full_windows.programs_folder"], folder))
