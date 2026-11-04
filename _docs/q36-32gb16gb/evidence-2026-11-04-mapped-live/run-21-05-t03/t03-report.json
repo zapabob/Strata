@@ -56,30 +56,30 @@
     "pre_restart_gpu": {
       "name": "NVIDIA GeForce RTX 5060 Ti",
       "vram_total_mib": 16311,
-      "vram_used_mib": 3353,
-      "vram_free_mib": 12698,
-      "gpu_util_percent": 4
+      "vram_used_mib": 863,
+      "vram_free_mib": 15188,
+      "gpu_util_percent": 6
     },
     "launch2_ready": {
-      "ok": false,
-      "pid": 31368,
+      "ok": true,
+      "pid": 37524,
       "gpu": {
         "name": "NVIDIA GeForce RTX 5060 Ti",
         "vram_total_mib": 16311,
-        "vram_used_mib": 760,
-        "vram_free_mib": 15291,
-        "gpu_util_percent": 1
+        "vram_used_mib": 15506,
+        "vram_free_mib": 545,
+        "gpu_util_percent": 4
       },
-      "at": "2026-11-04T22:17:25+09:00",
+      "at": "2026-11-04T22:52:29+09:00",
       "pid_reused": false,
       "pin_pool_lines": [
         "strata-q36: mapped-pack host pin pool cudaHostAlloc 32 MiB x2 (64.00 MiB committed)",
-        "strata-q36: hybrid experts: 41 of 256 per layer in VRAM (3.00 GiB), all 18.75 GiB in mapped file-backed host memory + cudaHost pin pool, the rest of a batch of <= 128 rows on 6 CPU threads, bigger prompt chunks streamed (1.10 GiB staging); 1361.9 s"
+        "strata-q36: hybrid experts: 41 of 256 per layer in VRAM (3.00 GiB), all 18.75 GiB in mapped file-backed host memory + cudaHost pin pool, the rest of a batch of <= 128 rows on 6 CPU threads, bigger prompt chunks streamed (1.10 GiB staging); 1224.0 s"
       ]
     }
   },
   "exe_sha256": "64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7",
-  "result": "PARTIAL",
-  "launch2_only_started_at": "2026-11-04T21:53:17+09:00",
-  "finished_at": "2026-11-04T22:17:25+09:00"
+  "result": "PASS",
+  "launch2_only_started_at": "2026-11-04T22:25:39+09:00",
+  "finished_at": "2026-11-04T22:53:50+09:00"
 }

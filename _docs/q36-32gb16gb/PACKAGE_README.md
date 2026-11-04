@@ -31,9 +31,9 @@
 
 実装は別セッションで進み、installer `.5` / mapped-pack+pin-pool / Host契約などは存在する。
 
-- mapped-pack live: **READY**（21:05–21:28; digest `64226fde…`; pin-pool `32 MiB x2`; `NOTES-21-05.md` / `run-21-05/`）
-- T03 chat: **PASS**（GEN→DONE 7 tokens）。T03 stop/restart: **PARTIAL**（restart が `warmup_prefill` で exit `0xC0000409`）。`run-21-05-t03/`
-- T04 / T06 / T07 / T08 paired speed: **NOT_RUN**（偽速度なし）
+- mapped-pack live: **READY**（21:05–21:28; digest `64226fde…`; pin-pool `cudaHostAlloc 32 MiB x2`; `NOTES-21-05.md` / `run-21-05/`）
+- T03 chat→stop→restart: **PASS**（`run-21-05-t03/t03-report.json` result PASS; launch1 GEN/DONE; launch2 READY pid 37524 ≠ launch1; pin-pool again）。STOP alone does not exit serve — stdin close required（script fixed）。
+- T04 / T06 / T07 / T08 paired speed: **NOT_RUN**（偽速度なし。DONE 行の tok/s は protocol 観測であり T04 合格を主張しない）
 - Goal complete: **false**
 - 製品 next-preview ship: 本ターンは live 優先で **deferred**
 

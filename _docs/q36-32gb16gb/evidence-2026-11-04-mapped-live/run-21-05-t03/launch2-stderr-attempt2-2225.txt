@@ -1,0 +1,6 @@
+strata-q36: H:\Strata\models\models\qwen36-UD-Q4_K_XL\Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf: 753 tensors (layout checked), 4.40 GiB on the GPU in 27.2 s (the routed experts are placed after the engine's buffers)
+Q36_STARTUP schema=1 stage=dense_load state=end elapsed_ms=27223 stage_elapsed_ms=27223 error_code=null
+strata: K-quant prompt kernels from C:\Users\downl\AppData\Local\Strata\components\engine\0.4.0-q36-windows-x86_64-cuda-cuda13\strata_kq.dll (STRATA_MMQ_KQ=1)
+strata-q36: prompt experts on MMQ (int8)
+strata-q36: context 65536 cells, prompt chunk 2048, MTP block loaded, 4.91 GiB of VRAM free
+Q36_STARTUP schema=1 stage=buffers state=end elapsed_ms=0 stage_elapsed_ms=0 error_code=null

@@ -1,0 +1,21 @@
+﻿[
+  {
+    "Pid": 4024,
+    "Name": "strata.exe",
+    "Status": "killed",
+    "Note": "mapped-pack qwen36-UD-Q4; Stop-Process succeeded (taskkill race reported gone)",
+    "CmdSnippet": "strata.exe --native ...\\qwen36-UD-Q4_K_XL... --q36-expert-store mapped-pack --serve"
+  },
+  {
+    "Pid": 28188,
+    "Name": "py.exe",
+    "Status": "killed",
+    "CmdSnippet": "py -3 t03_launch2_only.py"
+  },
+  {
+    "Pid": 22204,
+    "Name": "python.exe",
+    "Status": "already_gone",
+    "CmdSnippet": "python.exe t03_launch2_only.py"
+  }
+]

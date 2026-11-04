@@ -1,0 +1,2 @@
+﻿index, name, memory.used [MiB], memory.free [MiB], memory.total [MiB], utilization.gpu [%]
+0, NVIDIA GeForce RTX 5060 Ti, 895 MiB, 15156 MiB, 16311 MiB, 5 %

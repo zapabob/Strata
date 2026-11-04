@@ -1,0 +1,5 @@
+launch2 pid=37524
+{
+  "result": "PASS",
+  "restart_ready": true
+}

@@ -1,0 +1,15 @@
+{
+  "captured_at": "2026-11-04T22:25:39+09:00",
+  "vram_used_mib": 869,
+  "vram_free_mib": 15182,
+  "vram_total_mib": 16311,
+  "strata_count": 0,
+  "killed": [
+    {"pid": 4024, "name": "strata.exe", "status": "killed", "note": "mapped-pack qwen36-UD-Q4; Stop-Process succeeded (taskkill race)"},
+    {"pid": 28188, "name": "py.exe", "status": "killed", "note": "t03_launch2_only.py babysitter"},
+    {"pid": 22204, "name": "python.exe", "status": "already_gone", "note": "t03_launch2_only.py worker"}
+  ],
+  "hermes_touched": false,
+  "gate_min_free_mib": 12000,
+  "gate": "GO"
+}

@@ -38,10 +38,12 @@ Observed stage timings are load evidence only — **not** a T04/T06 paired speed
 |------|--------|
 | launch1 READY | **PASS** (pid 18132, ~21:48:57) |
 | GEN chat | **PASS** — `DONE 7 15 3104.9 910.4 stop…`; 7× `T` lines |
-| STOP then exit | **PARTIAL** — `STOP` alone does not exit idle serve loop; process exited after parent closed stdin (EOF). Script later fixed to `STOP` + stdin EOF. |
-| launch2 restart READY | **FAIL** — pid 31820 crashed during `warmup_prefill` begin; exit **3221226505** (`0xC0000409`). Pin-pool + expert_repack lines were captured before crash. |
+| STOP then exit | **PASS** after script fix — `STOP` alone does not exit idle serve; need stdin EOF. First attempt left resident until owned-child cleanup. |
+| launch2 attempt1 | **FAIL** — died in `warmup_prefill` (Cursor shell kill / orphan conflict). Logs: `launch2-*-attempt1.log`. Pin-pool was already printed. |
+| orphan cleanup 22:24 | **PASS** — killed leftover mapped-pack `strata.exe` **4024** + babysitter `py` **28188** (`python` **22204** already gone). Hermes untouched. Free **15182 MiB**. Evidence: `cleanup-killed-pids.json`, `preflight-go-cleanup-22-24.json`. |
+| launch2 clean retry | **PASS** — pid **37524**, READY **22:52:29+09:00**, pin-pool again, warmup_prefill end **334239 ms**, `pid_reused=false`. STOP+stdin EOF cleared strata (free **~15148 MiB**). `t03-report.json` **result=PASS** at **22:53:50+09:00**. |
 
-T04 / T06 / T07 / T08 paired measurements: **NOT_RUN** (no fake speeds). Installer ship: **deferred** (live evidence secured first).
+T04 / T06 / T07 / T08 paired measurements: **NOT_RUN** (no fake speeds; DONE tok/s is protocol observation only). Installer ship: **deferred**.
 
 ## Status
 
@@ -49,8 +51,7 @@ T04 / T06 / T07 / T08 paired measurements: **NOT_RUN** (no fake speeds). Install
 |------|--------|
 | mapped-live pin-pool log | **PASS** |
 | mapped-live READY | **PASS** |
-| T03 chat | **PASS** |
-| T03 stop/restart | **PARTIAL** (restart crash) |
+| T03 chat→stop→restart | **PASS** |
 | T04–T08 | **NOT_RUN** |
 | invented speeds | **false** |
 | Hermes killed | **false** |
@@ -59,6 +60,8 @@ T04 / T06 / T07 / T08 paired measurements: **NOT_RUN** (no fake speeds). Install
 ## Evidence paths
 
 - `run-21-05/` (+ `*-ready-snapshot.*`)
-- `run-21-05-t03/` (`t03-report.json`, `launch1-*`, `launch2-*`)
+- `run-21-05-t03/` (`t03-report.json`, `t03-final-status.json`, `launch1-*`, `launch2-*`, `launch2-*-ready-pass.txt`)
+- `cleanup-killed-pids.json`, `preflight-go-cleanup-22-24.json`, `nvidia-smi-*-cleanup-22-24.*`, `nvidia-smi-*-after-launch2-pass-22-55.*`
 - `nvidia-smi-*-21-05.*`
 - this NOTES
+- impl log: `_docs/2026-11-04_q36-mapped-live-orphan-cleanup-launch2-pass{Cursor}.md`

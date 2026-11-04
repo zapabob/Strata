@@ -1,19 +1,36 @@
 {
-  "at": "2026-11-04T22:17:26+09:00",
-  "pid": 31820,
-  "ready": false,
-  "exit_code": 3221226505,
+  "at": "2026-11-04T22:52:29+09:00",
+  "pid": 37524,
+  "ready": true,
+  "exit_code": 0,
   "pin_pool_lines": [
     "strata-q36: mapped-pack host pin pool cudaHostAlloc 32 MiB x2 (64.00 MiB committed)",
-    "strata-q36: hybrid experts: 41 of 256 per layer in VRAM (3.00 GiB), all 18.75 GiB in mapped file-backed host memory + cudaHost pin pool, the rest of a batch of <= 128 rows on 6 CPU threads, bigger prompt chunks streamed (1.10 GiB staging); 1361.9 s"
+    "strata-q36: hybrid experts: 41 of 256 per layer in VRAM (3.00 GiB), all 18.75 GiB in mapped file-backed host memory + cudaHost pin pool, the rest of a batch of <= 128 rows on 6 CPU threads, bigger prompt chunks streamed (1.10 GiB staging); 1224.0 s"
   ],
   "q36_startup_lines": [
-    "Q36_STARTUP schema=1 stage=dense_load state=end elapsed_ms=36695 stage_elapsed_ms=36695 error_code=null",
+    "Q36_STARTUP schema=1 stage=dense_load state=end elapsed_ms=30669 stage_elapsed_ms=30669 error_code=null",
     "Q36_STARTUP schema=1 stage=buffers state=end elapsed_ms=0 stage_elapsed_ms=0 error_code=null",
-    "Q36_STARTUP schema=1 stage=expert_host_alloc state=end elapsed_ms=1152632 stage_elapsed_ms=1152632 error_code=null",
-    "Q36_STARTUP schema=1 stage=expert_repack state=end elapsed_ms=1361910 stage_elapsed_ms=1361910 error_code=null",
-    "Q36_STARTUP schema=1 stage=warmup_prefill state=begin elapsed_ms=0 stage_elapsed_ms=0 error_code=null"
+    "Q36_STARTUP schema=1 stage=expert_host_alloc state=end elapsed_ms=1219344 stage_elapsed_ms=1219344 error_code=null",
+    "Q36_STARTUP schema=1 stage=expert_repack state=end elapsed_ms=1224008 stage_elapsed_ms=1224008 error_code=null",
+    "Q36_STARTUP schema=1 stage=warmup_prefill state=begin elapsed_ms=0 stage_elapsed_ms=0 error_code=null",
+    "Q36_STARTUP schema=1 stage=warmup_prefill state=end elapsed_ms=334239 stage_elapsed_ms=334239 error_code=null",
+    "Q36_STARTUP schema=1 stage=warmup_decode state=begin elapsed_ms=340052 stage_elapsed_ms=0 error_code=null",
+    "Q36_STARTUP schema=1 stage=warmup_decode state=end elapsed_ms=340803 stage_elapsed_ms=751 error_code=null",
+    "Q36_STARTUP schema=1 stage=warmup_spec state=begin elapsed_ms=340804 stage_elapsed_ms=0 error_code=null",
+    "Q36_STARTUP schema=1 stage=warmup_spec state=end elapsed_ms=341573 stage_elapsed_ms=769 error_code=null"
   ],
+  "warmup_note": "warmed up in 341.6 s",
+  "stdout_ready_line": "READY 65536 stop",
   "pid_reused_vs_launch1": false,
-  "hermes_killed": false
+  "stop_after_ready": "STOP + stdin EOF; strata exited; no leftover strata.exe; VRAM free ~15148 MiB at 22:55:14+09:00",
+  "hermes_killed": false,
+  "cleanup_before_retry": {
+    "killed": [
+      {"pid": 4024, "name": "strata.exe", "status": "killed"},
+      {"pid": 28188, "name": "py.exe", "status": "killed", "note": "t03_launch2_only.py"},
+      {"pid": 22204, "name": "python.exe", "status": "already_gone"}
+    ],
+    "preflight_free_mib": 15182,
+    "gate": "GO"
+  }
 }
