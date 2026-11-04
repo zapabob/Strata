@@ -25,7 +25,8 @@
   "invented_speeds": false,
   "defaults_changed": false,
   "goal_complete": false,
-  "adoption": "NOT_DECIDED — n=2 observational pairs; do not change product defaults",
+  "adoption": "KEEP_DEFAULT",
+  "adoption_notes": "2026-11-05T02:58+09:00 — KEEP_DEFAULT on n=2 same-direction evidence; see NOTES-02-58-t04-keep-default.md. Bounded policy still NOT_IMPLEMENTED.",
   "expect_sha256": "64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7",
   "exe_sha256": "64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7",
   "honesty": {
@@ -91,13 +92,14 @@
       "armB_ms": 2627.3,
       "armB_minus_armA_ms": 1566.5
     },
-    "note": "Same direction as pair1: no-warmup did not make READY faster; first-request latency worsened. Not an adoption warrant. n=2 still << n≥5."
+    "note": "Same direction as pair1: no-warmup did not make READY faster; first-request latency worsened. n=2 << n≥5 for new-policy ADOPT, but sufficient for KEEP_DEFAULT (see NOTES-02-58-t04-keep-default)."
   },
   "t07_t08_t09": {
     "t06": "BLOCKED (prior NOTES-01-32; not reinvented)",
     "t07": "BLOCKED_NO_HOTSPOT_PROFILE",
-    "t08": "NOT_RUN_OPTIONAL",
-    "t09": "PARTIAL_INSTALLER_ADVANCED_SPEED_QUALITY_OPEN"
+    "t08_refuse_before_serve": "PASS (NOTES-02-58-t08-refuse-gate)",
+    "t08_measured_fp16_arm": "NOT_RUN_OPTIONAL",
+    "t09": "PARTIAL_MATRIX_SEALED (GATE_MATRIX_SECTION7.md)"
   },
   "result": "PAIR_RECORDED_WITH_ARM_B_RETRY"
 }

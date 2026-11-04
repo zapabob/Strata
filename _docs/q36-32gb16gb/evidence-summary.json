@@ -49,8 +49,8 @@
     "general speedup",
     "CUDA kernel correctness of proposed changes"
   ],
-  "plan_execution_status": "PARTIAL_IMPL_MAPPED_LIVE_READY_T03_PASS_T04_PAIR2_COMPOSITE_PREVIEW_6_SHIPPED_T06_T07_BLOCKED_T08_NOT_RUN_T09_PARTIAL",
-  "plan_execution_note": "Host contract, startup stages, mapped-pack+pin-pool, installer .6 shipped with allowlist honesty for 64226fde…. 2026-11-04T21:28+09:00 durable mapped-live READY with pin-pool (digest 64226fde…). T03 PASS. T04 pair1 PAIR_RECORDED (run-23-20). 2026-11-05T01:36–02:41 T04 pair2 harness PAIR_PARTIAL exit5 (armB cudaMalloc OOM) then armB_retry1 PASS → composite PAIR_RECORDED_WITH_ARM_B_RETRY; adoption still NOT_DECIDED. 2026-11-05 preview .6 shipped; signed b5e4d525… untouched. T06 BLOCKED (01:32). T07 BLOCKED_NO_HOTSPOT_PROFILE (02:53). T08 NOT_RUN optional. T09 PARTIAL. Hermes not killed. Goal complete false.",
+  "plan_execution_status": "PARTIAL_IMPL_MAPPED_LIVE_READY_T03_PASS_T04_KEEP_DEFAULT_PREVIEW_6_SHIPPED_T06_T07_BLOCKED_T08_REFUSE_PASS_MEASURED_NOT_RUN_T09_PARTIAL",
+  "plan_execution_note": "Host contract, startup stages, mapped-pack+pin-pool, installer .6 shipped with allowlist honesty for 64226fde…. mapped-live READY + T03 PASS. T04 pair×2 → KEEP_DEFAULT (NOTES-02-58-t04-keep-default; no default change). T06 BLOCKED. T07 BLOCKED_NO_HOTSPOT_PROFILE. T08 refuse-before-serve PASS + measured FP16 NOT_RUN (NOTES-02-58-t08-refuse-gate). T09 PARTIAL with GATE_MATRIX_SECTION7 sealed. Hermes not killed. Goal complete false.",
   "session_2026_11_04": {
     "mapped_live": "BLOCKED",
     "mapped_live_reason": "Hermes llama-server PIDs 22836/22944 hold VRAM; free ~0.5-0.7 GiB; free RAM often <4 GiB",
@@ -383,7 +383,7 @@
     "orphan_strata_present": false,
     "defaults_changed": false,
     "invented_speeds": false,
-    "adoption": "NOT_DECIDED",
+    "adoption": "KEEP_DEFAULT_SUPERSEDED_AT_0258",
     "goal_complete": false,
     "armA_warmup": {
       "result": "PASS",
@@ -424,5 +424,29 @@
     "composite_report": "evidence-2026-11-04-mapped-live/run-01-36-t04/t04-pair2-composite-report.json",
     "notes": "evidence-2026-11-04-mapped-live/NOTES-02-53-t04-pair2-recovery.md",
     "gate_notes": "evidence-2026-11-04-mapped-live/NOTES-02-53-t07-t08-t09-gate.md"
+  },
+  "session_2026_11_05_0258_t04_keep_default_t08_t09": {
+    "captured_at": "2026-11-05T02:58:00+09:00",
+    "path_taken": "evidence_decision_plus_refuse_test_no_live_pair",
+    "tip_before": "c2242cd3",
+    "gpu": "NVIDIA GeForce RTX 5060 Ti",
+    "vram_free_mib": 15190,
+    "hermes_killed": false,
+    "hermes_exe_observed": true,
+    "t04_adoption": "KEEP_DEFAULT",
+    "t04_bounded_policy": "NOT_IMPLEMENTED",
+    "t04_defaults_changed": false,
+    "t04_decision_notes": "evidence-2026-11-04-mapped-live/NOTES-02-58-t04-keep-default.md",
+    "t06": "BLOCKED_PRIOR",
+    "t07": "BLOCKED_NO_HOTSPOT_PROFILE",
+    "t08_refuse_before_serve": "PASS",
+    "t08_measured_fp16_arm": "NOT_RUN",
+    "t08_notes": "evidence-2026-11-04-mapped-live/NOTES-02-58-t08-refuse-gate.md",
+    "t09": "PARTIAL",
+    "t09_gate_matrix": "GATE_MATRIX_SECTION7.md",
+    "invented_speeds": false,
+    "invented_t06_scheduler": false,
+    "invented_t07_hotspot_profile": false,
+    "goal_complete": false
   }
 }

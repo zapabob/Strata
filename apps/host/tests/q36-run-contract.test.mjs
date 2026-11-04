@@ -85,6 +85,35 @@ test('an explicit unsupported setting stops the launch and is not called applied
   assert.equal(bounded.error.code, 'unsupported_setting');
 });
 
+test('T08 refuse-before-serve: non-FP32 KV is not started (measured FP16 arm stays NOT_RUN)', () => {
+  for (const storage of ['fp16', 'int8', 'q4_0', 'k8v4']) {
+    const denied = prepareQ36Launch({
+      args: ['--max-context', '65536'],
+      requested: { persistentKv: storage },
+    });
+    assert.equal(denied.ok, false, storage);
+    assert.equal(denied.error.code, 'unsupported_setting');
+    assert.match(denied.error.message, /FP32 KV/);
+    assert.equal(denied.argv, undefined);
+  }
+  for (const value of ['fp16', 'int8']) {
+    const denied = prepareQ36Launch({
+      args: ['--max-context', '65536', '--kv', value],
+      userArgs: ['--kv', value],
+    });
+    assert.equal(denied.ok, false, `--kv ${value}`);
+    assert.equal(denied.error.code, 'unsupported_setting');
+    assert.match(denied.error.message, /not applied/);
+    assert.equal(denied.argv, undefined);
+  }
+  const fp32 = prepareQ36Launch({
+    args: ['--max-context', '65536'],
+    requested: { persistentKv: 'fp32' },
+  });
+  assert.equal(fp32.ok, true);
+  assert.equal(fp32.contract.effective.persistentKv, 'fp32');
+});
+
 test('the engine digest is read from the file, and a missing file is not an allowlisted digest', () => {
   const dir = mkdtempSync(join(tmpdir(), 'q36-sha-'));
   try {
