@@ -61,3 +61,9 @@ Key timings: armA load→READY 1480524 ms; armB 1705414 ms; READY→first T 1360
 
 - T06–T08 は別ゲート（VRAM≥12 GiB、Hermes 非殺）で計画。必要なら同日リピートで stage 正規化。
 - 製品デフォルトは触らない。
+
+## 追記（親からの進捗確認 00:21+）
+
+- `9b56549a` は T03 完了済み（`turn_ended` success）。再起動不要。
+- T04 shell `756900` は `PAIR_RECORDED` / exit 0 で完了済みを再確認。strata 残骸なし、free ~14820 MiB。
+- T06 は engine 候補+RED 前提のため本 turn では起動しない。

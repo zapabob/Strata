@@ -288,6 +288,7 @@
     "t06_t07_t08": "NOT_RUN",
     "run_dir": "evidence-2026-11-04-mapped-live/run-23-20-t04",
     "notes": "evidence-2026-11-04-mapped-live/NOTES-23-20-t04.md",
-    "monitor_handoff": "prior monitor 7b40159f stalled; takeover polled armB until PAIR_RECORDED; no abort; Hermes untouched"
+    "monitor_handoff": "prior monitor 7b40159f stalled; takeover polled armB until PAIR_RECORDED; no abort; Hermes untouched; UI card 9b56549a (T03 clean retry) already success at 23:00 — ignore, not a redo",
+    "t06_not_started_reason": "T06 needs engine scheduler/code candidate + RED tests; not a second observational pair. VRAM free after T04 ~14820 MiB."
   }
 }
