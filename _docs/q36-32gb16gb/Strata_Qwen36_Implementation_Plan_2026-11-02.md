@@ -10,7 +10,7 @@
 
 **Spec:** 同梱 `DESIGN.md`。先に読むこと。数値証跡は `evidence-summary.json`、根拠は本書末尾。
 
-**Status:** **PARTIAL_IMPL / mapped-live READY / T03 PASS / T04 pair×1 OBS / T06–T08 NOT_RUN**。Host契約・startup stage・mapped-pack+pin-pool・installer `.5`・GPU live READY+pin-pool・T03・T04 observational pair まで。T04 は **採用判断なし**（偽速度禁止・既定変更禁止）。完了宣言しない。
+**Status:** **PARTIAL_IMPL / mapped-live READY / T03 PASS / T04 pair×1 OBS / preview `.6` shipped / T06–T08 NOT_RUN**。Host契約・startup stage・mapped-pack+pin-pool・installer `.6`（allowlist `64226fde…`）・GPU live READY+pin-pool・T03・T04 observational pair まで。T04 は **採用判断なし**（偽速度禁止・既定変更禁止）。完了宣言しない。
 
 | Gate / task | 2026-11-05 時点 | 注記 |
 |---|---|---|
@@ -19,9 +19,9 @@
 | T03 chat → stop → restart | **PASS** | `run-21-05-t03` / `NOTES-21-05`（STOP+EOF 必須） |
 | mapped-pack live (UD-Q4_K_XL / ctx65536 / MTP2) | **READY** | 21:28 `64226fde…` pin-pool 32MiB×2; `NOTES-21-05` / `run-21-05` |
 | T04 paired warmup cost | **PAIR_RECORDED×1** | warmup vs `--no-warmup`; `NOTES-23-20-t04`; **not adopted** |
-| T06 / T07 / T08 paired speed | **NOT_RUN** | 候補 arm 未実施 |
+| T06 / T07 / T08 paired speed | **NOT_RUN** | 候補 arm 未実施（`.6` ship 優先） |
 | H: disk for live/release | FreeGB **~78+** | C: ~3GB は npm 注意のみ |
-| `--help` / `--q36-expert-store` | source + **local EXE** 反映 | ローカル `64226fde…`; 製品 `.5` はまだ `6fe11065…`（次インストーラ待ち） |
+| `--help` / `--q36-expert-store` | source + **local EXE** 反映 | ローカル `64226fde…`; 製品 `.6` allowlist は `64226fde…` 主導（署名 `b5e4d525…` 非接触） |
 | Goal complete | **false** | UpdateGoal complete しない |
 
 **基準日:** 2026-11-02 JST  

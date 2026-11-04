@@ -6,8 +6,8 @@ Strata 上の Hakua チャットボット。Windows プレビューとして、H
 
 ## 導入（Windows プレビュー）
 
-1. [setup EXE](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.5/Strata_0.4.0-preview.20261103.5_x64-setup.exe) を取得します。
-2. 実行前に [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.5/SHA256SUMS.txt) と照合します。Windows のコード署名はありません。setup EXE の SHA-256 は `090a28ca44dd18508c6a85a6fdef15904c910b9a1758717b6a2382480d35c272`（114,984,071 bytes）です。
+1. [setup EXE](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.6/Strata_0.4.0-preview.20261103.6_x64-setup.exe) を取得します。
+2. 実行前に [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.6/SHA256SUMS.txt) と照合します。Windows のコード署名はありません。setup EXE の SHA-256 は `784d4f992443a43076e7de8dbcdc624b35d95e97e13b716ea9de0e13a1baeac9`（113,075,186 bytes）です。
 3. すでに入っている場合はトレイから「Strata を終了」で完全終了してから EXE を実行します。
 4. 初回は準備画面で署名付きエンジンの導入を選ぶか、同じリリースの `.tar.gz` を取り込みます。その後モデルフォルダーを選んで読み込みます。
 
@@ -45,18 +45,18 @@ PrismML と TurboQuant はエンジン内の別実行ファイルです。[LOCAL
 
 | | |
 | --- | --- |
-| GUI / Product | `0.4.0-preview.20261103.5` |
+| GUI / Product | `0.4.0-preview.20261103.6` |
 | Engine / Control | `0.4.0`（CUDA sm_120） |
 | Hakua-memory | `0.3.5` |
 | 上流固定 | `ffa80d73` · 0.2.10 |
 
-App version in this preview tree: `0.4.0-preview.20261103.5`
+App version in this preview tree: `0.4.0-preview.20261103.6`
 
-リリース: [v0.4.0-preview.20261103.5](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.5)。このタグのインストーラーと Qwen3.6 エンジンパッケージに署名はありません。`v0.4.0-preview.20261101.1` の Ed25519 フィードと署名済みエンジンは差し替えていません。アプリ本体の署名付き自動更新は未検証で、更新はこのインストーラーで行います。
+リリース: [v0.4.0-preview.20261103.6](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.6)。このタグのインストーラーと Qwen3.6 エンジンパッケージに署名はありません。`v0.4.0-preview.20261101.1` の Ed25519 フィードと署名済みエンジンは差し替えていません。アプリ本体の署名付き自動更新は未検証で、更新はこのインストーラーで行います。
 
 インストーラーはアプリだけを更新します。CUDA エンジンは入りません。このタグの Qwen3.6 パッケージは別配布で、画像リーダーは無く、`signature` は null です。PrismML と TurboQuant は `v0.4.0-preview.20261101.1` の署名済みコンポーネントに残しています。
 
-本線は Qwen3.6-35B-A3B UD-Q4_K_XL、context 65536、FP32 KV、MTP 2、prefill auto のままです。新しい経路は opt-in です。エンジンが適用しない設定は起動前に拒否します。private-cache の要求も拒否し、起動させるために外しません。mapped expert pack は、起動がそれを要求し、エンジン SHA-256 が `6fe110650940d0c19f09909d769393769650045e6bc6eab29ccc49734dbcab29`、`dd53df07789e0fefcb87e33acab54f5bfe1faf312ef6bad515924736b715c5b5`、または `512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046` のときだけです。古いダイジェストも許可したままです。既定は従来の host arena です。このビルドの起動時間とトークン速度は未計測です。CUDA spill guard は登録済み baseline に対して不合格です。32GB の PC では、空き物理 RAM が legacy の 18.75 GiB expert arena と reserve を満たさないとき、UD-Q4_K_XL を起動前に拒否できます。それは 16GB VRAM に収まった測定ではありません。
+本線は Qwen3.6-35B-A3B UD-Q4_K_XL、context 65536、FP32 KV、MTP 2、prefill auto のままです。新しい経路は opt-in です。エンジンが適用しない設定は起動前に拒否します。private-cache の要求も拒否し、起動させるために外しません。mapped expert pack は、起動がそれを要求し、エンジン SHA-256 が `64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7`, `6fe110650940d0c19f09909d769393769650045e6bc6eab29ccc49734dbcab29`、`dd53df07789e0fefcb87e33acab54f5bfe1faf312ef6bad515924736b715c5b5`、または `512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046` のときだけです。古いダイジェストも許可したままです。既定は従来の host arena です。このビルドの起動時間とトークン速度は未計測です。CUDA spill guard は登録済み baseline に対して不合格です。32GB の PC では、空き物理 RAM が legacy の 18.75 GiB expert arena と reserve を満たさないとき、UD-Q4_K_XL を起動前に拒否できます。それは 16GB VRAM に収まった測定ではありません。
 
 ## 制限（測定したプレビュー）
 

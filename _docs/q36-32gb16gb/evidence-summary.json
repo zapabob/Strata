@@ -26,7 +26,7 @@
     "prefill_effective": 2048,
     "mtp_requested": 2,
     "dense_load_seconds": 28.6,
-    "expert_placement_seconds": 266.0,
+    "expert_placement_seconds": 266,
     "warmup_seconds": 306.6,
     "sum_of_three_timed_regions_seconds": 601.2,
     "total_wall_seconds": null,
@@ -34,7 +34,7 @@
     "expert_count_per_layer": 256,
     "slot_capacity_ratio": 0.16015625,
     "route_hit_rate": null,
-    "expert_gpu_gib": 3.0,
+    "expert_gpu_gib": 3,
     "host_expert_gib": 18.75,
     "host_memory_kind": "pageable",
     "gpu_staging_gib": 1.1,
@@ -49,8 +49,8 @@
     "general speedup",
     "CUDA kernel correctness of proposed changes"
   ],
-  "plan_execution_status": "PARTIAL_IMPL_MAPPED_LIVE_READY_T03_PASS_T04_PAIR_RECORDED_T06_T08_NOT_RUN",
-  "plan_execution_note": "Host contract, startup stages, mapped-pack+pin-pool, installer .5 shipped. 2026-11-04T21:28+09:00 durable mapped-live READY with pin-pool cudaHostAlloc 32MiB x2 (digest 64226fde…). T03 chat/stop/restart PASS at 2026-11-04T22:53:50+09:00 (run-21-05-t03). T04 observational warmup pair PAIR_RECORDED at 2026-11-05T00:16:57+09:00 (run-23-20-t04) — READY was slower on --no-warmup due to longer expert_host_alloc; READY→first T rose ~20.5s (cost moved, not a product win). T06/T07/T08 paired speed NOT_RUN. Historical timings above are not a new benchmark. Goal complete false. Adoption NOT_DECIDED. Next-preview ship deferred.",
+  "plan_execution_status": "PARTIAL_IMPL_MAPPED_LIVE_READY_T03_PASS_T04_PAIR_RECORDED_PREVIEW_6_SHIPPED_T06_T08_NOT_RUN",
+  "plan_execution_note": "Host contract, startup stages, mapped-pack+pin-pool, installer .6 shipped with allowlist honesty for 64226fde…. 2026-11-04T21:28+09:00 durable mapped-live READY with pin-pool (digest 64226fde…). T03 PASS. T04 observational warmup pair PAIR_RECORDED — adoption NOT_DECIDED. 2026-11-05 preview 0.4.0-preview.20261103.6 NSIS shipped (setup SHA-256 784d4f99…, /S /UPDATE DisplayVersion .6); signed b5e4d525… untouched; unsigned q36 component remains 64226fde…. T06/T07/T08 paired speed NOT_RUN (no clear T06 scheduler candidate). Historical timings above are not a new benchmark. Goal complete false.",
   "session_2026_11_04": {
     "mapped_live": "BLOCKED",
     "mapped_live_reason": "Hermes llama-server PIDs 22836/22944 hold VRAM; free ~0.5-0.7 GiB; free RAM often <4 GiB",
@@ -71,7 +71,10 @@
     "gpu_util_percent": 96,
     "ram_free_gb": 6.82,
     "ram_total_gb": 31.87,
-    "hermes_llama_server_pids": [22836, 22944],
+    "hermes_llama_server_pids": [
+      22836,
+      22944
+    ],
     "hermes_killed": false,
     "mapped_live": "BLOCKED",
     "t03_chat_stop_restart": "NOT_RUN",
@@ -94,7 +97,10 @@
     "gpu_util_percent": 97,
     "ram_free_gb": 7.61,
     "ram_total_gb": 31.87,
-    "hermes_llama_server_pids": [22836, 22944],
+    "hermes_llama_server_pids": [
+      22836,
+      22944
+    ],
     "hermes_killed": false,
     "mapped_live": "BLOCKED",
     "t03_chat_stop_restart": "NOT_RUN",
@@ -123,9 +129,15 @@
     "gpu_util_percent": 96,
     "ram_free_gb": 9.45,
     "ram_total_gb": 31.87,
-    "hermes_llama_server_pids": [22836, 22944],
+    "hermes_llama_server_pids": [
+      22836,
+      22944
+    ],
     "hermes_killed": false,
-    "hermes_ws_mb_approx": [5665.2, 138.7],
+    "hermes_ws_mb_approx": [
+      5665.2,
+      138.7
+    ],
     "mapped_live": "BLOCKED",
     "t03_chat_stop_restart": "NOT_RUN",
     "t04_t06_t07_t08": "NOT_RUN",
@@ -156,7 +168,9 @@
     "ram_free_gb_after_abort": 7.52,
     "h_free_gb": 75.56,
     "c_free_gb": 17.67,
-    "hermes_llama_server_pids": [14572],
+    "hermes_llama_server_pids": [
+      14572
+    ],
     "hermes_model": "Hikari-LoRA-fixed-scale-PQ2_0",
     "hermes_n_ctx": 98304,
     "hermes_killed": false,
@@ -189,7 +203,10 @@
     "gpu_util_percent": 6,
     "ram_free_gb": 4.94,
     "ram_total_gb": 31.87,
-    "hermes_llama_server_pids": [3108, 19816],
+    "hermes_llama_server_pids": [
+      3108,
+      19816
+    ],
     "hermes_killed": false,
     "prior_pid_14572": "not_seen_this_turn",
     "unsigned_engine_sha256_verified": "64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7",
@@ -258,9 +275,9 @@
     "armA_warmup": {
       "result": "PASS",
       "pid": 13252,
-      "load_request_to_ready_ms": 1480524.0,
+      "load_request_to_ready_ms": 1480524,
       "ready_to_first_t_ms": 13603.8,
-      "second_ttft_ms": 787.0,
+      "second_ttft_ms": 787,
       "expert_host_alloc_elapsed_ms": 1157970,
       "warmup_wall_s_observed": 222.2,
       "done_gen1": "DONE 7 15 13459.8 4983.2 stop 3 6 0 0 0 0 0 0.0 15 0",
@@ -290,5 +307,29 @@
     "notes": "evidence-2026-11-04-mapped-live/NOTES-23-20-t04.md",
     "monitor_handoff": "prior monitor 7b40159f stalled; takeover polled armB until PAIR_RECORDED; no abort; Hermes untouched; UI card 9b56549a (T03 clean retry) already success at 23:00 — ignore, not a redo",
     "t06_not_started_reason": "T06 needs engine scheduler/code candidate + RED tests; not a second observational pair. VRAM free after T04 ~14820 MiB."
+  },
+  "session_2026_11_05_0128_preview6_ship": {
+    "captured_at": "2026-11-05T01:28:30+09:00",
+    "path_taken": "ship_not_t06",
+    "t06_blocked_reason": "No clear measurable T06 scheduler/code candidate + RED tests; plan T06 is transfer/residency optimization, not a second observational pair. VRAM free was ~14.8 GiB.",
+    "product_version": "0.4.0-preview.20261103.6",
+    "setup_exe": "Strata_0.4.0-preview.20261103.6_x64-setup.exe",
+    "setup_sha256": "784d4f992443a43076e7de8dbcdc624b35d95e97e13b716ea9de0e13a1baeac9",
+    "setup_bytes": 113075186,
+    "install_exit": 0,
+    "display_version": "0.4.0-preview.20261103.6",
+    "installed_host_version": "0.4.0-preview.20261103.6",
+    "unsigned_engine_sha256_verified": "64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7",
+    "signed_engine_sha256": "b5e4d5255a48882334b27ab643c22c9c1b54e4580f82b402176a9ca5661bf6f1",
+    "signed_engine_untouched": true,
+    "release_url": "https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.6",
+    "latest_false": true,
+    "github_latest_remains": "v0.4.0-preview.20261101.1",
+    "t04_adoption": "NOT_DECIDED",
+    "t06_t07_t08": "NOT_RUN",
+    "invented_speeds": false,
+    "hermes_killed": false,
+    "goal_complete": false,
+    "notes": "evidence-2026-11-04-mapped-live/NOTES-01-28-preview6-ship.md"
   }
 }

@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Hakua product version 0.4.0-preview.20261103.5, engine 0.4.0 (Metal source 0.4.0-metal); Windows x64 CUDA sm_120 preview; measured checks and limits are in docs/HAKUA_RELEASE.md. Integrated upstream Niko1221 0.2.10 at ffa80d73 (upstream engine 0.1.56, taken as source; this fork's engine package stays 0.4.0). Upstream reference: the public model families are DeepSeekV4.1-Flash-1017,
+Hakua product version 0.4.0-preview.20261103.6, engine 0.4.0 (Metal source 0.4.0-metal); Windows x64 CUDA sm_120 preview; measured checks and limits are in docs/HAKUA_RELEASE.md. Integrated upstream Niko1221 0.2.10 at ffa80d73 (upstream engine 0.1.56, taken as source; this fork's engine package stays 0.4.0). Upstream reference: the public model families are DeepSeekV4.1-Flash-1017,
 Qwen3.8-Flash-Next and Qwen3.6-35B-A3B. DeepSeek V4.1-Flash runs in the app and in the Terminal
 (`strata launch --family deepseek41 --model ist-das-2.00bpw`; sets in
 [docs/MODELS.md](docs/MODELS.md#deepseek-v41-flash)). Read **[docs/AI_REFERENCE.md](docs/AI_REFERENCE.md)** for model availability, APIs, hardware limits and
@@ -13,7 +13,7 @@ existing executable defaults may differ, so inspect the plan and choose the fami
 
 ## Installing this Hakua fork
 
-For a Hakua Windows request, use [docs/HAKUA_INSTALL.md](docs/HAKUA_INSTALL.md) and the [fork release](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.5): `Strata_0.4.0-preview.20261103.5_x64-setup.exe` (no matching 7z on this tag). The app includes private Node/Python, Control 0.4.0 and Hakua-memory 0.3.5. The separate signed Windows CUDA component (native engine 0.4.0, PrismML/PQ2_0, TurboQuant) remains the one published on `v0.4.0-preview.20261101.1`; install it from the preparation screen or import the matching component file. Do not substitute an upstream installer for this Hakua fork. Consult [docs/HAKUA_RELEASE.md](docs/HAKUA_RELEASE.md) for measured qualification and publication status.
+For a Hakua Windows request, use [docs/HAKUA_INSTALL.md](docs/HAKUA_INSTALL.md) and the [fork release](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.6): `Strata_0.4.0-preview.20261103.6_x64-setup.exe` (no matching 7z on this tag). The app includes private Node/Python, Control 0.4.0 and Hakua-memory 0.3.5. The separate signed Windows CUDA component (native engine 0.4.0, PrismML/PQ2_0, TurboQuant) remains the one published on `v0.4.0-preview.20261101.1`; install it from the preparation screen or import the matching component file. Do not substitute an upstream installer for this Hakua fork. Consult [docs/HAKUA_RELEASE.md](docs/HAKUA_RELEASE.md) for measured qualification and publication status.
 
 The model-family overview above is upstream reference. This fork Windows preview has no native image input or separate native DeepSeek engine. See docs/HAKUA_RELEASE.md for the measured paths and limits.
 
