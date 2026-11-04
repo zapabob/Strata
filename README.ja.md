@@ -8,10 +8,10 @@ Strata 上の Hakua チャットボット。このリポジトリは **zapabob H
 
 ## 導入（Windows プレビュー）
 
-現行の公開アプリタグ: **[v0.4.0-preview.20261103.6](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.6)**。このタグの公開物は setup EXE と `SHA256SUMS.txt` のみです（対応する 7z はありません）。
+現行の公開アプリタグ: **[v0.4.0-preview.20261103.7](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.7)**。このタグの公開物は setup EXE と `SHA256SUMS.txt` のみです（対応する 7z はありません）。
 
-1. [`Strata_0.4.0-preview.20261103.6_x64-setup.exe`](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.6/Strata_0.4.0-preview.20261103.6_x64-setup.exe) を取得します。
-2. 実行前に [`SHA256SUMS.txt`](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.6/SHA256SUMS.txt) と照合します。Windows のコード署名はありません。setup EXE の SHA-256 は `784d4f992443a43076e7de8dbcdc624b35d95e97e13b716ea9de0e13a1baeac9`（113,075,186 bytes）です。
+1. [`Strata_0.4.0-preview.20261103.7_x64-setup.exe`](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.7/Strata_0.4.0-preview.20261103.7_x64-setup.exe) を取得します。
+2. 実行前に [`SHA256SUMS.txt`](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.7/SHA256SUMS.txt) と照合します。Windows のコード署名はありません。setup EXE の SHA-256 は `5e8b8fff82b6e63dea48bf5c1907950911700c9bf30673444e5d2489a87c0336`（113,064,953 bytes）です。
 3. すでに入っている場合はトレイから「Strata を終了」で完全終了してから EXE を実行します。導入済みなら `/S /UPDATE` で更新できます。
 4. インストーラーはアプリを更新します。CUDA エンジンは入りません。導入後は下表のとおり、準備画面またはファイル取り込みで GPU 実行環境を入れます。
 
@@ -23,11 +23,11 @@ Strata 上の Hakua チャットボット。このリポジトリは **zapabob H
 
 | コンポーネント | 場所 | 署名 | 識別子 |
 | --- | --- | --- | --- |
-| `.6` のアプリインストーラー | このタグ | Windows コード署名なし。アプリの Ed25519 自動更新でもない | 上記 setup SHA-256 `784d4f99…` |
-| 署名付き CUDA（ネイティブ + PrismML + TurboQuant） | 引き続き [v0.4.0-preview.20261101.1](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261101.1) | 同タグで公開された Ed25519 フィード／コンポーネント | ネイティブエンジン digest `b5e4d5255a48882334b27ab643c22c9c1b54e4580f82b402176a9ca5661bf6f1` — `.6` アプリタグでは **未変更** |
-| `.6` の Qwen3.6 並列パッケージ | 別配布の未署名コンポーネント（`0.4.0-q36-…`） | `signature` は null。画像リーダーなし | 実機確認済み `strata.exe` SHA-256 `64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7`（古い許可 digest は下表） |
+| `.7` のアプリインストーラー | このタグ | Windows コード署名なし。アプリの Ed25519 自動更新でもない | 上記 setup SHA-256 `5e8b8fff…` |
+| 署名付き CUDA（ネイティブ + PrismML + TurboQuant） | 引き続き [v0.4.0-preview.20261101.1](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261101.1) | 同タグで公開された Ed25519 フィード／コンポーネント | ネイティブエンジン digest `b5e4d5255a48882334b27ab643c22c9c1b54e4580f82b402176a9ca5661bf6f1` — `.7` アプリタグでは **未変更** |
+| `.7` の Qwen3.6 並列パッケージ | 別配布の未署名コンポーネント（`0.4.0-q36-…`） | `signature` は null。画像リーダーなし | hotspot-profile `strata.exe` SHA-256 `907341c74d5a9f26c784e4aaad3460e376d4cabd84635c5d032879c59b08d150`（`native-build.json` `cd235fdf812d43c45e0a0881073bee97483c5aa50c65bbefb877bd1e8e8dbd8b`。古い許可 digest は下表） |
 
-PrismML と TurboQuant は署名済み `.20261101.1` コンポーネントに残ります。`.6` リリースはそれらのファイルを差し替えません。
+PrismML と TurboQuant は署名済み `.20261101.1` コンポーネントに残ります。`.7` リリースはそれらのファイルを差し替えません。
 
 ## インストーラーに入るもの
 
@@ -61,12 +61,12 @@ PrismML と TurboQuant は署名付きエンジン内の別実行ファイルで
 
 | | |
 | --- | --- |
-| GUI / Product | `0.4.0-preview.20261103.6` |
+| GUI / Product | `0.4.0-preview.20261103.7` |
 | Engine / Control | `0.4.0`（CUDA sm_120） |
 | Hakua-memory | `0.3.5` |
 | 上流固定 | `ffa80d73` · 0.2.10 |
 
-リリース: [v0.4.0-preview.20261103.6](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.6)。このタグのインストーラーと Qwen3.6 エンジンパッケージに署名はありません。`v0.4.0-preview.20261101.1` の Ed25519 フィードと署名済みエンジンは差し替えていません。アプリ更新はこのインストーラーで行います。
+リリース: [v0.4.0-preview.20261103.7](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.7)。このタグのインストーラーと Qwen3.6 エンジンパッケージに署名はありません。`v0.4.0-preview.20261101.1` の Ed25519 フィードと署名済みエンジンは差し替えていません。アプリ更新はこのインストーラーで行います。
 
 ## Qwen3.6（32 GB RAM / 16 GB VRAM）
 
@@ -74,12 +74,13 @@ PrismML と TurboQuant は署名付きエンジン内の別実行ファイルで
 
 mapped expert pack は、起動がそれを要求し、解決した `strata.exe` の SHA-256 が次のいずれかであるときだけです。
 
+- `907341c74d5a9f26c784e4aaad3460e376d4cabd84635c5d032879c59b08d150`（未署名 Q36 hotspot-profile。T07 プロファイル取得 PASS）
 - `64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7`（未署名 Q36 help-honesty 再ビルド。mapped-live READY を記録）
 - `6fe110650940d0c19f09909d769393769650045e6bc6eab29ccc49734dbcab29`
 - `dd53df07789e0fefcb87e33acab54f5bfe1faf312ef6bad515924736b715c5b5`
 - `512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046`（古い digest。引き続き許可）
 
-モデル設定に書いた digest ではフラグは開きません。既定は従来の host arena です。T04 採用は **NOT_DECIDED** です。対比較速 T06 / T07 / T08 は **未実施** です。このビルドの起動時間とトークン速度は、観測メモ以上の主張をしません。CUDA spill guard は登録済み baseline に対して不合格です。
+モデル設定に書いた digest ではフラグは開きません。既定は従来の host arena です。T04 採用は **KEEP_DEFAULT** です（bounded policy NOT_RUN）。T06 スケジューラは **BLOCKED** のままです。T07 hotspot **プロファイル**取得は PASS、kernel opt-in は NOT_RUN です。T08 は refuse PASS / 測定 FP16 NOT_RUN です。このビルドの起動時間とトークン速度は、観測メモ以上の主張をしません。CUDA spill guard は登録済み baseline に対して不合格です。
 
 32GB の PC では、空き物理 RAM が legacy の 18.75 GiB expert arena と reserve を満たさないとき、UD-Q4_K_XL を起動前に拒否できます。それは 16GB VRAM に収まった測定ではありません。
 
@@ -100,4 +101,4 @@ npm --prefix apps/host run typecheck
 
 [Models](docs/MODELS.md) · [Build](packaging/README.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Issues](https://github.com/zapabob/Strata/issues)
 
-MIT の Strata フォークです。Hakua-memory とモデル重みは個別ライセンスで、原作者と上流のクレジットを残します。約 480 KB の制御ベクトルは既定 OFF、[Qwen Community License 1.0](data/experimental-speed-projection/LICENSE) です。
+MIT Strata フォーク。Hakua-memory とモデル重みは各自のライセンス。クレジットは原著者と上流に帰属します。任意の約 480 KB control vector は既定オフ（[Qwen Community License 1.0](data/experimental-speed-projection/LICENSE)）。

@@ -13,7 +13,7 @@ existing executable defaults may differ, so inspect the plan and choose the fami
 
 ## Installing this Hakua fork
 
-For a Hakua Windows request, use [docs/HAKUA_INSTALL.md](docs/HAKUA_INSTALL.md) and the [fork release](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.6): `Strata_0.4.0-preview.20261103.6_x64-setup.exe` (no matching 7z on this tag). The app includes private Node/Python, Control 0.4.0 and Hakua-memory 0.3.5. The separate signed Windows CUDA component (native engine 0.4.0, PrismML/PQ2_0, TurboQuant) remains the one published on `v0.4.0-preview.20261101.1`; install it from the preparation screen or import the matching component file. Do not substitute an upstream installer for this Hakua fork. Consult [docs/HAKUA_RELEASE.md](docs/HAKUA_RELEASE.md) for measured qualification and publication status.
+For a Hakua Windows request, use [docs/HAKUA_INSTALL.md](docs/HAKUA_INSTALL.md) and the [fork release](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.7): `Strata_0.4.0-preview.20261103.7_x64-setup.exe` (no matching 7z on this tag). The app includes private Node/Python, Control 0.4.0 and Hakua-memory 0.3.5. The separate signed Windows CUDA component (native engine 0.4.0, PrismML/PQ2_0, TurboQuant) remains the one published on `v0.4.0-preview.20261101.1`; install it from the preparation screen or import the matching component file. Do not substitute an upstream installer for this Hakua fork. Consult [docs/HAKUA_RELEASE.md](docs/HAKUA_RELEASE.md) for measured qualification and publication status.
 
 The model-family overview above is upstream reference. This fork Windows preview has no native image input or separate native DeepSeek engine. See docs/HAKUA_RELEASE.md for the measured paths and limits.
 

@@ -6,8 +6,8 @@ Czatbot Hakua na Stracie. Ten fork oferuje podgląd Windows z Hakua memory i oso
 
 ## Instalacja (podgląd Windows)
 
-1. Pobierz [EXE instalatora](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.6/Strata_0.4.0-preview.20261103.6_x64-setup.exe).
-2. Porównaj z [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.6/SHA256SUMS.txt) przed uruchomieniem. Brak podpisu kodu Windows. SHA-256 EXE: `784d4f992443a43076e7de8dbcdc624b35d95e97e13b716ea9de0e13a1baeac9` (113 075 186 bajtów).
+1. Pobierz [EXE instalatora](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.7/Strata_0.4.0-preview.20261103.7_x64-setup.exe).
+2. Porównaj z [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.7/SHA256SUMS.txt) przed uruchomieniem. Brak podpisu kodu Windows. SHA-256 EXE: `5e8b8fff82b6e63dea48bf5c1907950911700c9bf30673444e5d2489a87c0336` (113 064 953 bajtów).
 3. Jeśli Strata jest już zainstalowana, całkowicie ją zamknij (zasobnik → Quit Strata) i uruchom EXE.
 4. Instalator aktualizuje aplikację. Nie zawiera silnika CUDA. Pakiet Qwen3.6 tego tagu jest osobny, bez czytnika obrazów i bez podpisu Ed25519 (`signature` to null). Podpisany silnik z [v0.4.0-preview.20261101.1](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261101.1) nadal trzyma PrismML i TurboQuant (digest `b5e4d5255a48882334b27ab643c22c9c1b54e4580f82b402176a9ca5661bf6f1`, nietknięty). To wydanie nie zastępuje tych plików.
 
@@ -45,12 +45,12 @@ Przewodnik: [MEMORY_HARNESS.md](serve/MEMORY_HARNESS.md). Narzędzia Hermes SOUL
 
 | | |
 | --- | --- |
-| GUI / Product | `0.4.0-preview.20261103.6` |
+| GUI / Product | `0.4.0-preview.20261103.7` |
 | Engine / Control | `0.4.0` (CUDA sm_120) |
 | Hakua-memory | `0.3.5` |
 | Zamrożenie upstream | `ffa80d73` · 0.2.10 |
 
-Strona wydania: [v0.4.0-preview.20261103.6](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.6). Instalator i pakiet silnika Qwen3.6 tego tagu nie są podpisane. Feed Ed25519 i podpisany silnik z `v0.4.0-preview.20261101.1` pozostają. Automatyczne podpisane aktualizacje aplikacji nie są kwalifikowane; aktualizuj tym instalatorem. Instalator nie zawiera silnika CUDA. Pakiet Qwen3.6 nie ma czytnika obrazów, a `signature` jest null. PrismML i TurboQuant zostają w podpisanym komponencie. Linia główna: Qwen3.6-35B-A3B UD-Q4_K_XL, kontekst 65536, KV FP32, MTP 2, prefill auto. Nowe ścieżki są opt-in. Ustawienie, którego silnik nie stosuje, oraz żądanie private-cache są odrzucane przed startem. Mapped expert pack tylko na żądanie i gdy SHA-256 silnika to `64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7`, `6fe110650940d0c19f09909d769393769650045e6bc6eab29ccc49734dbcab29`, `dd53df07789e0fefcb87e33acab54f5bfe1faf312ef6bad515924736b715c5b5` albo `512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046`. Starszy skrót zostaje dozwolony. Domyślna zostaje dawna arena hosta. Adopcja T04 to NOT_DECIDED. Sparowane pomiary prędkości T06/T07/T08 nie były uruchamiane. Czas startu i prędkość tokenów nie są zmierzone. CUDA spill guard nie przeszedł przejrzanej baseline. Na PC z 32 GB UD-Q4_K_XL może zostać odrzucony przed startem, gdy wolny fizyczny RAM nie mieści legacy areny 18,75 GiB plus rezerwy. To nie jest pomiar, że model mieści się w 16 GB VRAM.
+Strona wydania: [v0.4.0-preview.20261103.7](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.7). Instalator i pakiet silnika Qwen3.6 tego tagu nie są podpisane. Feed Ed25519 i podpisany silnik z `v0.4.0-preview.20261101.1` pozostają. Automatyczne podpisane aktualizacje aplikacji nie są kwalifikowane; aktualizuj tym instalatorem. Instalator nie zawiera silnika CUDA. Pakiet Qwen3.6 nie ma czytnika obrazów, a `signature` jest null. PrismML i TurboQuant zostają w podpisanym komponencie. Linia główna: Qwen3.6-35B-A3B UD-Q4_K_XL, kontekst 65536, KV FP32, MTP 2, prefill auto. Nowe ścieżki są opt-in. Ustawienie, którego silnik nie stosuje, oraz żądanie private-cache są odrzucane przed startem. Mapped expert pack tylko na żądanie i gdy SHA-256 silnika to `907341c74d5a9f26c784e4aaad3460e376d4cabd84635c5d032879c59b08d150`, `64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7`, `6fe110650940d0c19f09909d769393769650045e6bc6eab29ccc49734dbcab29`, `dd53df07789e0fefcb87e33acab54f5bfe1faf312ef6bad515924736b715c5b5` albo `512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046`. Starszy skrót zostaje dozwolony. Domyślna zostaje dawna arena hosta. Adopcja T04 to NOT_DECIDED. Sparowane pomiary prędkości T06/T07/T08 nie były uruchamiane. Czas startu i prędkość tokenów nie są zmierzone. CUDA spill guard nie przeszedł przejrzanej baseline. Na PC z 32 GB UD-Q4_K_XL może zostać odrzucony przed startem, gdy wolny fizyczny RAM nie mieści legacy areny 18,75 GiB plus rezerwy. To nie jest pomiar, że model mieści się w 16 GB VRAM.
 
 ## Ograniczenia (zmierzony podgląd)
 

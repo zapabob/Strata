@@ -1,19 +1,19 @@
 # Hakua Windows release qualification
 
-## Current product: 0.4.0-preview.20261103.6
+## Current product: 0.4.0-preview.20261103.7
 
-Product tag: **0.4.0-preview.20261103.6**. Use the explicit release page, not GitHub `/releases/latest`.
+Product tag: **0.4.0-preview.20261103.7**. Use the explicit release page, not GitHub `/releases/latest`.
 
-- Release URL: [v0.4.0-preview.20261103.6](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.6). Published with `gh release create --latest=false`. GitHub’s latest pointer stays [v0.4.0-preview.20261101.1](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261101.1).
-- App assets on this tag: setup EXE and `SHA256SUMS.txt` only (no matching 7z). Setup EXE SHA-256 `784d4f992443a43076e7de8dbcdc624b35d95e97e13b716ea9de0e13a1baeac9`, 113075186 bytes. The installer has no Windows code signature.
-- Local silent install `/S /UPDATE` exited 0; DisplayVersion `0.4.0-preview.20261103.6`; InstallLocation `C:\Users\downl\AppData\Local\Programs\Strata`.
-- Unsigned Qwen3.6 side-by-side component: `0.4.0-q36-windows-x86_64-cuda-cuda13` (no picture reader; `signature` is null). Live-proven `strata.exe` SHA-256 `64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7`. This is not a signed package.
+- Release URL: [v0.4.0-preview.20261103.7](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.7). Published with `gh release create --latest=false`. GitHub’s latest pointer stays [v0.4.0-preview.20261101.1](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261101.1).
+- App assets on this tag: setup EXE and `SHA256SUMS.txt` only (no matching 7z). Setup EXE SHA-256 `5e8b8fff82b6e63dea48bf5c1907950911700c9bf30673444e5d2489a87c0336`, 113064953 bytes. The installer has no Windows code signature.
+- Local silent install `/S` exited 0 after a clean Programs\Strata folder; DisplayVersion `0.4.0-preview.20261103.7`; InstallLocation `C:\Users\downl\AppData\Local\Programs\Strata`. ProductVersion on `strata-desktop.exe` matches `.7`.
+- Unsigned Qwen3.6 side-by-side component: `0.4.0-q36-windows-x86_64-cuda-cuda13` (no picture reader; `signature` is null). Hotspot-profile `strata.exe` SHA-256 `907341c74d5a9f26c784e4aaad3460e376d4cabd84635c5d032879c59b08d150`. Bundle `native-build.json` SHA-256 `cd235fdf812d43c45e0a0881073bee97483c5aa50c65bbefb877bd1e8e8dbd8b` (metadata entry, not the engine entrypoint). This is not a signed package.
 - Mapped-pack stays off unless the launch asks for it. Allowed resolved `strata.exe` digests: `907341c74d5a9f26c784e4aaad3460e376d4cabd84635c5d032879c59b08d150` (hotspot-profile opt-in rebuild; T07 capture PASS), `64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7` (help-honesty rebuild; mapped-live READY + T03 PASS + T04 observational pair recorded), `6fe110650940d0c19f09909d769393769650045e6bc6eab29ccc49734dbcab29` (pin-pool wire), `dd53df07789e0fefcb87e33acab54f5bfe1faf312ef6bad515924736b715c5b5`, and the older `512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046`. Older digests stay allowed. A digest in model settings does not unlock the flag.
 - Signed CUDA component digest `b5e4d5255a48882334b27ab643c22c9c1b54e4580f82b402176a9ca5661bf6f1` on **v0.4.0-preview.20261101.1** was not overwritten. PrismML and TurboQuant stay in that signed component.
 - Defaults recorded for this line: legacy host arena; context 65536; FP32 KV; MTP 2; prefill auto.
 - T04 adoption is KEEP_DEFAULT (bounded policy NOT_RUN). T06 scheduler still BLOCKED. T07 hotspot **profile** captured (`STRATA_Q36_HOTSPOT_PROFILE`; dominant host bucket gdn); kernel opt-in NOT_RUN. T08 refuse PASS / measured FP16 NOT_RUN. Startup time and token speed claims are not made beyond recorded observational notes. The CUDA spill guard did not pass the reviewed baseline.
 
-Install steps: [HAKUA_INSTALL.md](HAKUA_INSTALL.md). The detailed measured publication below for **0.4.0-preview.20261101.1** is not a measurement of this 20261103.6 app build.
+Install steps: [HAKUA_INSTALL.md](HAKUA_INSTALL.md). The detailed measured publication below for **0.4.0-preview.20261101.1** is not a measurement of this 20261103.7 app build.
 
 ## Historical measured record: 0.4.0-preview.20261101.1
 
@@ -70,7 +70,7 @@ GitHub CI is NOT_RUN. Real workflow dispatches returned HTTP422, Actions disable
 
 ## Historical measured record: 0.3.3-preview.20261030.1
 
-The following sections preserve the earlier package's evidence. Their installer hashes, test counts and GUI observations apply to 0.3.3 only. They are not measurements of 0.4.0-preview.20261103.6 or 0.4.0-preview.20261101.1.
+The following sections preserve the earlier package's evidence. Their installer hashes, test counts and GUI observations apply to 0.3.3 only. They are not measurements of 0.4.0-preview.20261103.7, 0.4.0-preview.20261103.6 or 0.4.0-preview.20261101.1.
 
 GUI/Product: **0.3.3-preview.20261030.1**. Native engine/Control: **0.3.3**. Hakua-memory: **0.3.5**.
 

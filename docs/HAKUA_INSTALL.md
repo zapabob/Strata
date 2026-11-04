@@ -1,6 +1,6 @@
 # Install Hakua / Strata on Windows
 
-GUI/Product `0.4.0-preview.20261103.6` · native engine/Control `0.4.0` · Hakua-memory `0.3.5`. The app installer on this tag has no Windows code signature. Its Qwen3.6 engine package is separate, has no picture reader, and is not Ed25519-signed (`signature` is null). PrismML and TurboQuant stay in the signed component from `v0.4.0-preview.20261101.1`. Startup time and token speed for this build were not measured. The CUDA spill guard did not pass the reviewed baseline.
+GUI/Product `0.4.0-preview.20261103.7` · native engine/Control `0.4.0` · Hakua-memory `0.3.5`. The app installer on this tag has no Windows code signature. Its Qwen3.6 engine package is separate, has no picture reader, and is not Ed25519-signed (`signature` is null). PrismML and TurboQuant stay in the signed component from `v0.4.0-preview.20261101.1`. Startup time and token speed for this build were not measured. The CUDA spill guard did not pass the reviewed baseline.
 
 Use this fork's 0.4.0 preview packages below. See the [qualification record](HAKUA_RELEASE.md) for exact tests and supported limits.
 
@@ -8,7 +8,7 @@ Check the [qualification record](HAKUA_RELEASE.md) for publication status and me
 
 ## Start
 
-Download the [setup EXE](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.6/Strata_0.4.0-preview.20261103.6_x64-setup.exe). Compare the file with [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.6/SHA256SUMS.txt). SHA-256 `784d4f992443a43076e7de8dbcdc624b35d95e97e13b716ea9de0e13a1baeac9`, 113075186 bytes. The installer has no Windows code signature. Mapped expert pack stays off unless the launch asks for it and the resolved `strata.exe` SHA-256 is `64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7`, `6fe110650940d0c19f09909d769393769650045e6bc6eab29ccc49734dbcab29`, `dd53df07789e0fefcb87e33acab54f5bfe1faf312ef6bad515924736b715c5b5`, or `512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046`. The older digest stays allowed. A local help-honesty rebuild `64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7` is the unsigned Qwen3.6 component digest for this .6 preview (side-by-side 0.4.0-q36-…); older digests stay allowed. A digest written in model settings does not unlock it. The legacy host arena stays the default. The main line stays context 65536, FP32 KV, MTP 2, prefill auto.
+Download the [setup EXE](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.7/Strata_0.4.0-preview.20261103.7_x64-setup.exe). Compare the file with [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.7/SHA256SUMS.txt). SHA-256 `5e8b8fff82b6e63dea48bf5c1907950911700c9bf30673444e5d2489a87c0336`, 113064953 bytes. The installer has no Windows code signature. Mapped expert pack stays off unless the launch asks for it and the resolved `strata.exe` SHA-256 is `907341c74d5a9f26c784e4aaad3460e376d4cabd84635c5d032879c59b08d150`, `64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7`, `6fe110650940d0c19f09909d769393769650045e6bc6eab29ccc49734dbcab29`, `dd53df07789e0fefcb87e33acab54f5bfe1faf312ef6bad515924736b715c5b5`, or `512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046`. The older digest stays allowed. A local help-honesty rebuild `64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7` is the unsigned Qwen3.6 component digest for this .6 preview (side-by-side 0.4.0-q36-…); older digests stay allowed. A digest written in model settings does not unlock it. The legacy host arena stays the default. The main line stays context 65536, FP32 KV, MTP 2, prefill auto.
 
 Close the running app and unload models before updating. Back up the app's data directory first. Run the installer for your Windows account. Keep enough free disk space for extraction and model files; when C: is short of space, save the download and choose an installation directory on a drive with room.
 
@@ -37,7 +37,7 @@ $installTemp = 'H:\Hakua-install-temp'
 New-Item -ItemType Directory -Path $installTemp -Force | Out-Null
 $env:TEMP = $installTemp
 $env:TMP = $installTemp
-Start-Process -FilePath (Join-Path $PWD 'Strata_0.4.0-preview.20261103.6_x64-setup.exe') -Wait
+Start-Process -FilePath (Join-Path $PWD 'Strata_0.4.0-preview.20261103.7_x64-setup.exe') -Wait
 ```
 
 ## 日本語の導入手順
