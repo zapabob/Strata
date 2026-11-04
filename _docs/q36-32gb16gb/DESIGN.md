@@ -2,8 +2,8 @@
 
 作成日: 2026-11-02 JST  
 対象: `zapabob/Strata`、Windows native、Qwen3.6-35B-A3B UD-Q4_K_XL  
-状態: **mapped-live READY + pin-pool 取得済み。T03 PASS。T04 observational pair×1 記録（採用判断なし・既定変更なし）。preview `.6` 出荷（allowlist `64226fde…` 正直化；署名 `b5e4d525…` 非接触）。T06–T08 paired 未実施。完了宣言しない。**  
-最終出荷: 2026-11-05 01:28 JST — `0.4.0-preview.20261103.6` NSIS（setup SHA-256 `784d4f99…`）；詳細は `NOTES-01-28-preview6-ship.md`。最終対測定: 2026-11-04 23:20–2026-11-05 00:17 JST — T04 **PAIR_RECORDED**（digest `64226fde…`）。Hermes 未殺。  
+状態: **mapped-live READY + pin-pool 取得済み。T03 PASS。T04 observational pair×1 記録（採用判断なし・既定変更なし）。preview `.6` 出荷（allowlist `64226fde…` 正直化；署名 `b5e4d525…` 非接触）。T06 再評価 BLOCKED（測れる opt-in 候補なし・偽実装なし）。T07–T08 paired 未実施。完了宣言しない。**  
+最終出荷: 2026-11-05 01:28 JST — `0.4.0-preview.20261103.6` NSIS（setup SHA-256 `784d4f99…`）；詳細は `NOTES-01-28-preview6-ship.md`。最終対測定: 2026-11-04 23:20–2026-11-05 00:17 JST — T04 **PAIR_RECORDED**（digest `64226fde…`）。T06 再評価: 2026-11-05 01:32 JST — `NOTES-01-32-t06-reeval.md`。Hermes 未殺。  
 対になる作業計画: `Strata_Qwen36_Implementation_Plan_2026-11-02.md`
 
 ## 1. 目的と対象

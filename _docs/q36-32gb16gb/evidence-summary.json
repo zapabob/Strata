@@ -49,8 +49,8 @@
     "general speedup",
     "CUDA kernel correctness of proposed changes"
   ],
-  "plan_execution_status": "PARTIAL_IMPL_MAPPED_LIVE_READY_T03_PASS_T04_PAIR_RECORDED_PREVIEW_6_SHIPPED_T06_T08_NOT_RUN",
-  "plan_execution_note": "Host contract, startup stages, mapped-pack+pin-pool, installer .6 shipped with allowlist honesty for 64226fde…. 2026-11-04T21:28+09:00 durable mapped-live READY with pin-pool (digest 64226fde…). T03 PASS. T04 observational warmup pair PAIR_RECORDED — adoption NOT_DECIDED. 2026-11-05 preview 0.4.0-preview.20261103.6 NSIS shipped (setup SHA-256 784d4f99…, /S /UPDATE DisplayVersion .6); signed b5e4d525… untouched; unsigned q36 component remains 64226fde…. T06/T07/T08 paired speed NOT_RUN (no clear T06 scheduler candidate). Historical timings above are not a new benchmark. Goal complete false.",
+  "plan_execution_status": "PARTIAL_IMPL_MAPPED_LIVE_READY_T03_PASS_T04_PAIR_RECORDED_PREVIEW_6_SHIPPED_T06_REEVAL_BLOCKED_T07_T08_NOT_RUN",
+  "plan_execution_note": "Host contract, startup stages, mapped-pack+pin-pool, installer .6 shipped with allowlist honesty for 64226fde…. 2026-11-04T21:28+09:00 durable mapped-live READY with pin-pool (digest 64226fde…). T03 PASS. T04 observational warmup pair PAIR_RECORDED — adoption NOT_DECIDED. 2026-11-05 preview 0.4.0-preview.20261103.6 NSIS shipped (setup SHA-256 784d4f99…, /S /UPDATE DisplayVersion .6); signed b5e4d525… untouched; unsigned q36 component remains 64226fde…. 2026-11-05T01:32+09:00 T06 re-eval BLOCKED — no clear measurable opt-in scheduler/residency/gather candidate without inventing scope; T07/T08 similarly not clear; VRAM free 15044 MiB unused for fake T06; Hermes not killed. Historical timings above are not a new benchmark. Goal complete false.",
   "session_2026_11_04": {
     "mapped_live": "BLOCKED",
     "mapped_live_reason": "Hermes llama-server PIDs 22836/22944 hold VRAM; free ~0.5-0.7 GiB; free RAM often <4 GiB",
@@ -331,5 +331,40 @@
     "hermes_killed": false,
     "goal_complete": false,
     "notes": "evidence-2026-11-04-mapped-live/NOTES-01-28-preview6-ship.md"
+  },
+  "session_2026_11_05_0132_t06_reeval": {
+    "captured_at": "2026-11-05T01:32:40+09:00",
+    "task": "T06",
+    "kind": "candidate_hunt_static_reeval",
+    "result": "BLOCKED_NO_CLEAR_CANDIDATE",
+    "path_taken": "evidence_only",
+    "gpu": "NVIDIA GeForce RTX 5060 Ti",
+    "vram_total_mib": 16311,
+    "vram_free_mib": 15044,
+    "vram_used_for_t06_pair": false,
+    "tip_commit": "0f6d15ab483b93da281e2300b394f47af7ad3209",
+    "unsigned_engine_sha256": "64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7",
+    "signed_engine_sha256": "b5e4d5255a48882334b27ab643c22c9c1b54e4580f82b402176a9ca5661bf6f1",
+    "signed_engine_untouched": true,
+    "code_changed": false,
+    "red_tests_added": false,
+    "paired_measurement": "NOT_RUN",
+    "defaults_changed": false,
+    "invented_speeds": false,
+    "hermes_killed": false,
+    "hermes_pids_observed": [8024, 26248, 26680, 26836, 27640],
+    "rejected_near_misses": [
+      "STRATA_Q36_STREAM_ALL observational pair (not a new scheduler candidate)",
+      "CLI wrap of existing 2*n_slots whole-layer heuristic without new policy",
+      "selected-expert gather without measured D_full vs D_selected profile",
+      "cost-aware rebalance without measured CPU/GPU/H2D costs",
+      "T07 hotspot without profile",
+      "T08 FP16 KV not similarly clear small opt-in"
+    ],
+    "t07": "NOT_RUN",
+    "t08": "NOT_RUN",
+    "t04_adoption": "NOT_DECIDED",
+    "goal_complete": false,
+    "notes": "evidence-2026-11-04-mapped-live/NOTES-01-32-t06-reeval.md"
   }
 }
