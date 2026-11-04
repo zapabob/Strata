@@ -2,8 +2,8 @@
 
 作成日: 2026-11-02 JST  
 対象: `zapabob/Strata`、Windows native、Qwen3.6-35B-A3B UD-Q4_K_XL  
-状態: **mapped-live READY + pin-pool 取得済み。T03 chat→stop→restart PASS。T04–T08 paired speed 未実施。完了宣言しない。**  
-最終再測定: 2026-11-04 21:05–22:53 JST — free ~14972 MiB で durable mapped-live **READY**（digest `64226fde…`; pin-pool `cudaHostAlloc 32 MiB x2`）。T03 report **PASS**（launch2 pid 37524）。Hermes 未殺。詳細は `NOTES-21-05.md`。  
+状態: **mapped-live READY + pin-pool 取得済み。T03 PASS。T04 observational pair×1 記録（採用判断なし・既定変更なし）。T06–T08 paired 未実施。完了宣言しない。**  
+最終再測定: 2026-11-04 23:20–2026-11-05 00:17 JST — free ~14962 MiB で T04 warmup vs `--no-warmup` **PAIR_RECORDED**（digest `64226fde…`; mapped-pack; ctx 65536; MTP 2）。Hermes 未殺。詳細は `NOTES-23-20-t04.md`（先行 READY/T03 は `NOTES-21-05.md`）。  
 対になる作業計画: `Strata_Qwen36_Implementation_Plan_2026-11-02.md`
 
 ## 1. 目的と対象

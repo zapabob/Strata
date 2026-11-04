@@ -43,7 +43,7 @@ Observed stage timings are load evidence only — **not** a T04/T06 paired speed
 | orphan cleanup 22:24 | **PASS** — killed leftover mapped-pack `strata.exe` **4024** + babysitter `py` **28188** (`python` **22204** already gone). Hermes untouched. Free **15182 MiB**. Evidence: `cleanup-killed-pids.json`, `preflight-go-cleanup-22-24.json`. |
 | launch2 clean retry | **PASS** — pid **37524**, READY **22:52:29+09:00**, pin-pool again, warmup_prefill end **334239 ms**, `pid_reused=false`. STOP+stdin EOF cleared strata (free **~15148 MiB**). `t03-report.json` **result=PASS** at **22:53:50+09:00**. |
 
-T04 / T06 / T07 / T08 paired measurements: **NOT_RUN** (no fake speeds; DONE tok/s is protocol observation only). Installer ship: **deferred**.
+T04 observational warmup pair: later **PAIR_RECORDED** — see `NOTES-23-20-t04.md` / `run-23-20-t04/`. T06 / T07 / T08 paired speed: **still NOT_RUN** (no fake speeds; DONE tok/s is protocol observation only). Installer ship: **deferred**.
 
 ## Status
 
@@ -52,7 +52,8 @@ T04 / T06 / T07 / T08 paired measurements: **NOT_RUN** (no fake speeds; DONE tok
 | mapped-live pin-pool log | **PASS** |
 | mapped-live READY | **PASS** |
 | T03 chat→stop→restart | **PASS** |
-| T04–T08 | **NOT_RUN** |
+| T04 warmup pair | **PAIR_RECORDED** (`NOTES-23-20-t04.md`) |
+| T06–T08 | **NOT_RUN** |
 | invented speeds | **false** |
 | Hermes killed | **false** |
 | goal complete | **false** |

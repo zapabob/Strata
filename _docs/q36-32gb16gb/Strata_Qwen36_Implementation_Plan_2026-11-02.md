@@ -10,15 +10,16 @@
 
 **Spec:** 同梱 `DESIGN.md`。先に読むこと。数値証跡は `evidence-summary.json`、根拠は本書末尾。
 
-**Status:** **PARTIAL_IMPL / mapped-live READY / T03 PARTIAL / T04–T08 NOT_RUN**。Host契約・startup stage・mapped-pack+pin-pool・installer `.5`・GPU live READY+pin-pool ログまで取得。T03 restart と paired 速度は **未完了**（偽速度禁止）。完了宣言しない。
+**Status:** **PARTIAL_IMPL / mapped-live READY / T03 PASS / T04 pair×1 OBS / T06–T08 NOT_RUN**。Host契約・startup stage・mapped-pack+pin-pool・installer `.5`・GPU live READY+pin-pool・T03・T04 observational pair まで。T04 は **採用判断なし**（偽速度禁止・既定変更禁止）。完了宣言しない。
 
-| Gate / task | 2026-11-04 時点 | 注記 |
+| Gate / task | 2026-11-05 時点 | 注記 |
 |---|---|---|
 | Host Q36 node tests | PASS 19/19 | 2026-11-04 help rebuild 後も 19/19; TMP/npm-cache は H: |
 | T03 GUI refuse (private-cache) | PARTIAL | chatbot on; 強制解除なし |
-| T03 chat → stop → restart | **PARTIAL** | GEN PASS; restart `0xC0000409` at warmup_prefill (`NOTES-21-05`) |
+| T03 chat → stop → restart | **PASS** | `run-21-05-t03` / `NOTES-21-05`（STOP+EOF 必須） |
 | mapped-pack live (UD-Q4_K_XL / ctx65536 / MTP2) | **READY** | 21:28 `64226fde…` pin-pool 32MiB×2; `NOTES-21-05` / `run-21-05` |
-| T04 / T06 / T07 / T08 paired speed | **NOT_RUN** | live 前提が未達 |
+| T04 paired warmup cost | **PAIR_RECORDED×1** | warmup vs `--no-warmup`; `NOTES-23-20-t04`; **not adopted** |
+| T06 / T07 / T08 paired speed | **NOT_RUN** | 候補 arm 未実施 |
 | H: disk for live/release | FreeGB **~78+** | C: ~3GB は npm 注意のみ |
 | `--help` / `--q36-expert-store` | source + **local EXE** 反映 | ローカル `64226fde…`; 製品 `.5` はまだ `6fe11065…`（次インストーラ待ち） |
 | Goal complete | **false** | UpdateGoal complete しない |

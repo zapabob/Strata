@@ -1,0 +1,15 @@
+[
+  "C:\\Users\\downl\\AppData\\Local\\Strata\\components\\engine\\0.4.0-q36-windows-x86_64-cuda-cuda13\\strata.exe",
+  "--native",
+  "H:\\Strata\\models\\models\\qwen36-UD-Q4_K_XL\\Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf",
+  "--max-context",
+  "65536",
+  "--prefill",
+  "auto",
+  "--mtp",
+  "2",
+  "--q36-expert-store",
+  "mapped-pack",
+  "--no-warmup",
+  "--serve"
+]

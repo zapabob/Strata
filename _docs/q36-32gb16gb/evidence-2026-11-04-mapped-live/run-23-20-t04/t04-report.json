@@ -1,0 +1,300 @@
+{
+  "task": "T04",
+  "kind": "observational_paired_warmup_cost_movement",
+  "started_at": "2026-11-04T23:20:26+09:00",
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 5060 Ti 16GB",
+    "ram_nominal_gb": 32,
+    "os": "Windows 11"
+  },
+  "contract": {
+    "model": "Qwen3.6-35B-A3B-UD-Q4_K_XL",
+    "max_context": 65536,
+    "prefill": "auto",
+    "mtp": 2,
+    "expert_store": "mapped-pack",
+    "kv": "FP32 engine default (not changed)",
+    "arms": [
+      "warmup_default",
+      "no_warmup"
+    ]
+  },
+  "hermes_killed": false,
+  "invented_speeds": false,
+  "defaults_changed": false,
+  "goal_complete": false,
+  "adoption": "NOT_DECIDED \u2014 measurement only; do not change product defaults from one pair",
+  "expect_sha256": "64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7",
+  "gpu_preflight": {
+    "name": "NVIDIA GeForce RTX 5060 Ti",
+    "vram_total_mib": 16311,
+    "vram_used_mib": 1025,
+    "vram_free_mib": 15026,
+    "gpu_util_percent": 4
+  },
+  "arms": {
+    "armA_warmup": {
+      "label": "armA_warmup",
+      "no_warmup": false,
+      "started_at": "2026-11-04T23:20:27+09:00",
+      "gpu_before": {
+        "name": "NVIDIA GeForce RTX 5060 Ti",
+        "vram_total_mib": 16311,
+        "vram_used_mib": 1025,
+        "vram_free_mib": 15026,
+        "gpu_util_percent": 4
+      },
+      "invented_speeds": false,
+      "defaults_changed": false,
+      "pid": 13252,
+      "argv": [
+        "C:\\Users\\downl\\AppData\\Local\\Strata\\components\\engine\\0.4.0-q36-windows-x86_64-cuda-cuda13\\strata.exe",
+        "--native",
+        "H:\\Strata\\models\\models\\qwen36-UD-Q4_K_XL\\Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf",
+        "--max-context",
+        "65536",
+        "--prefill",
+        "auto",
+        "--mtp",
+        "2",
+        "--q36-expert-store",
+        "mapped-pack",
+        "--serve"
+      ],
+      "ready_ok": true,
+      "load_request_to_ready_ms": 1480524.0,
+      "ready_at": "2026-11-04T23:45:08+09:00",
+      "startup": {
+        "q36_startup_lines": [
+          "Q36_STARTUP schema=1 stage=dense_load state=end elapsed_ms=52194 stage_elapsed_ms=52194 error_code=null",
+          "Q36_STARTUP schema=1 stage=buffers state=end elapsed_ms=0 stage_elapsed_ms=0 error_code=null",
+          "Q36_STARTUP schema=1 stage=expert_host_alloc state=end elapsed_ms=1157970 stage_elapsed_ms=1157970 error_code=null",
+          "Q36_STARTUP schema=1 stage=expert_repack state=end elapsed_ms=1184121 stage_elapsed_ms=1184121 error_code=null",
+          "Q36_STARTUP schema=1 stage=warmup_prefill state=begin elapsed_ms=0 stage_elapsed_ms=0 error_code=null",
+          "Q36_STARTUP schema=1 stage=warmup_prefill state=end elapsed_ms=213648 stage_elapsed_ms=213648 error_code=null",
+          "Q36_STARTUP schema=1 stage=warmup_decode state=begin elapsed_ms=220582 stage_elapsed_ms=0 error_code=null",
+          "Q36_STARTUP schema=1 stage=warmup_decode state=end elapsed_ms=221281 stage_elapsed_ms=698 error_code=null",
+          "Q36_STARTUP schema=1 stage=warmup_spec state=begin elapsed_ms=221281 stage_elapsed_ms=0 error_code=null",
+          "Q36_STARTUP schema=1 stage=warmup_spec state=end elapsed_ms=222166 stage_elapsed_ms=885 error_code=null"
+        ],
+        "pin_pool_lines": [
+          "strata-q36: mapped-pack host pin pool cudaHostAlloc 32 MiB x2 (64.00 MiB committed)",
+          "strata-q36: hybrid experts: 41 of 256 per layer in VRAM (3.00 GiB), all 18.75 GiB in mapped file-backed host memory + cudaHost pin pool, the rest of a batch of <= 128 rows on 6 CPU threads, bigger prompt chunks streamed (1.10 GiB staging); 1184.1 s"
+        ],
+        "warmup_related_lines": [
+          "Q36_STARTUP schema=1 stage=warmup_prefill state=begin elapsed_ms=0 stage_elapsed_ms=0 error_code=null",
+          "Q36_STARTUP schema=1 stage=warmup_prefill state=end elapsed_ms=213648 stage_elapsed_ms=213648 error_code=null",
+          "Q36_STARTUP schema=1 stage=warmup_decode state=begin elapsed_ms=220582 stage_elapsed_ms=0 error_code=null",
+          "Q36_STARTUP schema=1 stage=warmup_decode state=end elapsed_ms=221281 stage_elapsed_ms=698 error_code=null",
+          "Q36_STARTUP schema=1 stage=warmup_spec state=begin elapsed_ms=221281 stage_elapsed_ms=0 error_code=null",
+          "Q36_STARTUP schema=1 stage=warmup_spec state=end elapsed_ms=222166 stage_elapsed_ms=885 error_code=null",
+          "strata-q36: warmed up in 222.2 s (one prompt chunk, a decode step, a speculative step)"
+        ]
+      },
+      "gen1": {
+        "first_t_lines": [
+          "T 2610"
+        ],
+        "ready_to_first_t_ms": 13603.8,
+        "load_request_to_first_t_ms": 1494127.8,
+        "done_lines": [
+          "DONE 7 15 13459.8 4983.2 stop 3 6 0 0 0 0 0 0.0 15 0"
+        ],
+        "ready_to_first_done_ms": 5069.4,
+        "wall_gen_ms": 18697.7
+      },
+      "gen2": {
+        "first_t_lines": [
+          "T 2610",
+          "T 525",
+          "T 264"
+        ],
+        "second_ttft_ms": 787.0,
+        "done_lines": [
+          "DONE 7 15 584.0 937.9 stop 3 6 0 0 0 0 0 0.0 15 0"
+        ],
+        "ready_to_second_done_ms": 827.9,
+        "wall_gen_ms": 1615.0
+      },
+      "stop": {
+        "stop_sent": true,
+        "eof_closed": true,
+        "exited": true,
+        "wait_s": 27.939
+      },
+      "gpu_after": {
+        "name": "NVIDIA GeForce RTX 5060 Ti",
+        "vram_total_mib": 16311,
+        "vram_used_mib": 1296,
+        "vram_free_mib": 14755,
+        "gpu_util_percent": 7
+      },
+      "ended_at": "2026-11-04T23:46:05+09:00",
+      "startup_after": {
+        "q36_startup_lines": [
+          "Q36_STARTUP schema=1 stage=dense_load state=end elapsed_ms=52194 stage_elapsed_ms=52194 error_code=null",
+          "Q36_STARTUP schema=1 stage=buffers state=end elapsed_ms=0 stage_elapsed_ms=0 error_code=null",
+          "Q36_STARTUP schema=1 stage=expert_host_alloc state=end elapsed_ms=1157970 stage_elapsed_ms=1157970 error_code=null",
+          "Q36_STARTUP schema=1 stage=expert_repack state=end elapsed_ms=1184121 stage_elapsed_ms=1184121 error_code=null",
+          "Q36_STARTUP schema=1 stage=warmup_prefill state=begin elapsed_ms=0 stage_elapsed_ms=0 error_code=null",
+          "Q36_STARTUP schema=1 stage=warmup_prefill state=end elapsed_ms=213648 stage_elapsed_ms=213648 error_code=null",
+          "Q36_STARTUP schema=1 stage=warmup_decode state=begin elapsed_ms=220582 stage_elapsed_ms=0 error_code=null",
+          "Q36_STARTUP schema=1 stage=warmup_decode state=end elapsed_ms=221281 stage_elapsed_ms=698 error_code=null",
+          "Q36_STARTUP schema=1 stage=warmup_spec state=begin elapsed_ms=221281 stage_elapsed_ms=0 error_code=null",
+          "Q36_STARTUP schema=1 stage=warmup_spec state=end elapsed_ms=222166 stage_elapsed_ms=885 error_code=null"
+        ],
+        "pin_pool_lines": [
+          "strata-q36: mapped-pack host pin pool cudaHostAlloc 32 MiB x2 (64.00 MiB committed)",
+          "strata-q36: hybrid experts: 41 of 256 per layer in VRAM (3.00 GiB), all 18.75 GiB in mapped file-backed host memory + cudaHost pin pool, the rest of a batch of <= 128 rows on 6 CPU threads, bigger prompt chunks streamed (1.10 GiB staging); 1184.1 s"
+        ],
+        "warmup_related_lines": [
+          "Q36_STARTUP schema=1 stage=warmup_prefill state=begin elapsed_ms=0 stage_elapsed_ms=0 error_code=null",
+          "Q36_STARTUP schema=1 stage=warmup_prefill state=end elapsed_ms=213648 stage_elapsed_ms=213648 error_code=null",
+          "Q36_STARTUP schema=1 stage=warmup_decode state=begin elapsed_ms=220582 stage_elapsed_ms=0 error_code=null",
+          "Q36_STARTUP schema=1 stage=warmup_decode state=end elapsed_ms=221281 stage_elapsed_ms=698 error_code=null",
+          "Q36_STARTUP schema=1 stage=warmup_spec state=begin elapsed_ms=221281 stage_elapsed_ms=0 error_code=null",
+          "Q36_STARTUP schema=1 stage=warmup_spec state=end elapsed_ms=222166 stage_elapsed_ms=885 error_code=null",
+          "strata-q36: warmed up in 222.2 s (one prompt chunk, a decode step, a speculative step)"
+        ]
+      },
+      "result": "PASS"
+    },
+    "armB_no_warmup": {
+      "label": "armB_no_warmup",
+      "no_warmup": true,
+      "started_at": "2026-11-04T23:46:06+09:00",
+      "gpu_before": {
+        "name": "NVIDIA GeForce RTX 5060 Ti",
+        "vram_total_mib": 16311,
+        "vram_used_mib": 1286,
+        "vram_free_mib": 14765,
+        "gpu_util_percent": 7
+      },
+      "invented_speeds": false,
+      "defaults_changed": false,
+      "pid": 41008,
+      "argv": [
+        "C:\\Users\\downl\\AppData\\Local\\Strata\\components\\engine\\0.4.0-q36-windows-x86_64-cuda-cuda13\\strata.exe",
+        "--native",
+        "H:\\Strata\\models\\models\\qwen36-UD-Q4_K_XL\\Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf",
+        "--max-context",
+        "65536",
+        "--prefill",
+        "auto",
+        "--mtp",
+        "2",
+        "--q36-expert-store",
+        "mapped-pack",
+        "--no-warmup",
+        "--serve"
+      ],
+      "ready_ok": true,
+      "load_request_to_ready_ms": 1705414.1,
+      "ready_at": "2026-11-05T00:14:32+09:00",
+      "startup": {
+        "q36_startup_lines": [
+          "Q36_STARTUP schema=1 stage=dense_load state=end elapsed_ms=43413 stage_elapsed_ms=43413 error_code=null",
+          "Q36_STARTUP schema=1 stage=buffers state=end elapsed_ms=0 stage_elapsed_ms=0 error_code=null",
+          "Q36_STARTUP schema=1 stage=expert_host_alloc state=end elapsed_ms=1608911 stage_elapsed_ms=1608911 error_code=null",
+          "Q36_STARTUP schema=1 stage=expert_repack state=end elapsed_ms=1623686 stage_elapsed_ms=1623686 error_code=null"
+        ],
+        "pin_pool_lines": [
+          "strata-q36: mapped-pack host pin pool cudaHostAlloc 32 MiB x2 (64.00 MiB committed)",
+          "strata-q36: hybrid experts: 41 of 256 per layer in VRAM (3.00 GiB), all 18.75 GiB in mapped file-backed host memory + cudaHost pin pool, the rest of a batch of <= 128 rows on 6 CPU threads, bigger prompt chunks streamed (1.10 GiB staging); 1623.7 s"
+        ],
+        "warmup_related_lines": []
+      },
+      "gen1": {
+        "first_t_lines": [
+          "T 2610"
+        ],
+        "ready_to_first_t_ms": 34108.1,
+        "load_request_to_first_t_ms": 1739522.3,
+        "done_lines": [
+          "DONE 7 15 33739.6 11914.4 stop 3 6 0 0 0 0 0 0.0 15 0"
+        ],
+        "ready_to_first_done_ms": 11974.4,
+        "wall_gen_ms": 46089.0
+      },
+      "gen2": {
+        "first_t_lines": [
+          "T 2610"
+        ],
+        "second_ttft_ms": 1638.7,
+        "done_lines": [
+          "DONE 7 15 1338.0 1395.4 stop 3 6 0 0 0 0 0 0.0 15 0"
+        ],
+        "ready_to_second_done_ms": 1273.2,
+        "wall_gen_ms": 2912.1
+      },
+      "stop": {
+        "stop_sent": true,
+        "eof_closed": true,
+        "exited": true,
+        "wait_s": 87.095
+      },
+      "gpu_after": {
+        "name": "NVIDIA GeForce RTX 5060 Ti",
+        "vram_total_mib": 16311,
+        "vram_used_mib": 1185,
+        "vram_free_mib": 14866,
+        "gpu_util_percent": 9
+      },
+      "ended_at": "2026-11-05T00:16:57+09:00",
+      "startup_after": {
+        "q36_startup_lines": [
+          "Q36_STARTUP schema=1 stage=dense_load state=end elapsed_ms=43413 stage_elapsed_ms=43413 error_code=null",
+          "Q36_STARTUP schema=1 stage=buffers state=end elapsed_ms=0 stage_elapsed_ms=0 error_code=null",
+          "Q36_STARTUP schema=1 stage=expert_host_alloc state=end elapsed_ms=1608911 stage_elapsed_ms=1608911 error_code=null",
+          "Q36_STARTUP schema=1 stage=expert_repack state=end elapsed_ms=1623686 stage_elapsed_ms=1623686 error_code=null"
+        ],
+        "pin_pool_lines": [
+          "strata-q36: mapped-pack host pin pool cudaHostAlloc 32 MiB x2 (64.00 MiB committed)",
+          "strata-q36: hybrid experts: 41 of 256 per layer in VRAM (3.00 GiB), all 18.75 GiB in mapped file-backed host memory + cudaHost pin pool, the rest of a batch of <= 128 rows on 6 CPU threads, bigger prompt chunks streamed (1.10 GiB staging); 1623.7 s"
+        ],
+        "warmup_related_lines": []
+      },
+      "result": "PASS"
+    }
+  },
+  "exe_sha256": "64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7",
+  "between_arms_gpu": {
+    "name": "NVIDIA GeForce RTX 5060 Ti",
+    "vram_total_mib": 16311,
+    "vram_used_mib": 1298,
+    "vram_free_mib": 14753,
+    "gpu_util_percent": 7
+  },
+  "ended_at": "2026-11-05T00:16:57+09:00",
+  "gpu_final": {
+    "name": "NVIDIA GeForce RTX 5060 Ti",
+    "vram_total_mib": 16311,
+    "vram_used_mib": 1186,
+    "vram_free_mib": 14865,
+    "gpu_util_percent": 9
+  },
+  "result": "PAIR_RECORDED",
+  "paired_deltas_observational": {
+    "load_request_to_ready_ms": {
+      "armA_ms": 1480524.0,
+      "armB_ms": 1705414.1,
+      "armB_minus_armA_ms": 224890.1
+    },
+    "ready_to_first_t_ms": {
+      "armA_ms": 13603.8,
+      "armB_ms": 34108.1,
+      "armB_minus_armA_ms": 20504.3
+    },
+    "load_request_to_first_t_ms": {
+      "armA_ms": 1494127.8,
+      "armB_ms": 1739522.3,
+      "armB_minus_armA_ms": 245394.5
+    },
+    "second_ttft_ms": {
+      "armA_ms": 787.0,
+      "armB_ms": 1638.7,
+      "armB_minus_armA_ms": 851.7
+    },
+    "note": "Positive armB_minus_armA on ready_to_first_t with faster READY suggests warmup cost moved to first request \u2014 not a product win."
+  }
+}
