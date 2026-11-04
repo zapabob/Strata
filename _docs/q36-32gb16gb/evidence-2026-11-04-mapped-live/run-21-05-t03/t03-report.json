@@ -1,0 +1,85 @@
+{
+  "started_at": "2026-11-04T21:30:59+09:00",
+  "hermes_killed": false,
+  "invented_speeds": false,
+  "goal_complete": false,
+  "expect_sha256": "64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7",
+  "gpu_preflight": {
+    "name": "NVIDIA GeForce RTX 5060 Ti",
+    "vram_total_mib": 16311,
+    "vram_used_mib": 522,
+    "vram_free_mib": 15529,
+    "gpu_util_percent": 2
+  },
+  "phases": {
+    "launch1_ready": {
+      "ok": true,
+      "pid": 18132,
+      "gpu": {
+        "name": "NVIDIA GeForce RTX 5060 Ti",
+        "vram_total_mib": 16311,
+        "vram_used_mib": 15512,
+        "vram_free_mib": 539,
+        "gpu_util_percent": 4
+      },
+      "at": "2026-11-04T21:48:57+09:00"
+    },
+    "gen": {
+      "line": "GEN 16 248045,872,198,77091,198,2610,525,264,3465,13,151645,198,248045,77091,198",
+      "sent_at": "2026-11-04T21:48:57+09:00",
+      "done_or_err": [
+        "DONE 7 15 3104.9 910.4 stop 3 6 0 0 0 0 0 0.0 15 0"
+      ],
+      "gpu": {
+        "name": "NVIDIA GeForce RTX 5060 Ti",
+        "vram_total_mib": 16311,
+        "vram_used_mib": 15497,
+        "vram_free_mib": 554,
+        "gpu_util_percent": 12
+      },
+      "finished_at": "2026-11-04T21:49:02+09:00",
+      "t_token_lines": 7,
+      "ok": true
+    },
+    "stop1": {
+      "sent_at": "2026-11-04T21:49:02+09:00",
+      "exit_code": null,
+      "gpu_after": {
+        "name": "NVIDIA GeForce RTX 5060 Ti",
+        "vram_total_mib": 16311,
+        "vram_used_mib": 15585,
+        "vram_free_mib": 466,
+        "gpu_util_percent": 3
+      },
+      "at": "2026-11-04T21:52:02+09:00"
+    },
+    "pre_restart_gpu": {
+      "name": "NVIDIA GeForce RTX 5060 Ti",
+      "vram_total_mib": 16311,
+      "vram_used_mib": 3353,
+      "vram_free_mib": 12698,
+      "gpu_util_percent": 4
+    },
+    "launch2_ready": {
+      "ok": false,
+      "pid": 31368,
+      "gpu": {
+        "name": "NVIDIA GeForce RTX 5060 Ti",
+        "vram_total_mib": 16311,
+        "vram_used_mib": 760,
+        "vram_free_mib": 15291,
+        "gpu_util_percent": 1
+      },
+      "at": "2026-11-04T22:17:25+09:00",
+      "pid_reused": false,
+      "pin_pool_lines": [
+        "strata-q36: mapped-pack host pin pool cudaHostAlloc 32 MiB x2 (64.00 MiB committed)",
+        "strata-q36: hybrid experts: 41 of 256 per layer in VRAM (3.00 GiB), all 18.75 GiB in mapped file-backed host memory + cudaHost pin pool, the rest of a batch of <= 128 rows on 6 CPU threads, bigger prompt chunks streamed (1.10 GiB staging); 1361.9 s"
+      ]
+    }
+  },
+  "exe_sha256": "64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7",
+  "result": "PARTIAL",
+  "launch2_only_started_at": "2026-11-04T21:53:17+09:00",
+  "finished_at": "2026-11-04T22:17:25+09:00"
+}

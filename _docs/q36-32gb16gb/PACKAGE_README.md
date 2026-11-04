@@ -29,13 +29,14 @@
 
 ## 2026-11-04 実行状況（正直ラベル）
 
-実装は別セッションで進み、installer `.5` / mapped-pack+pin-pool / Host契約などは存在する。ただし次は **未完了のまま**:
+実装は別セッションで進み、installer `.5` / mapped-pack+pin-pool / Host契約などは存在する。
 
-- mapped-pack live: **BLOCKED**（18:21: 部分ロード後 Hermes Hikari が VRAM 再占有; DESIGN #6 で未殺。Q36_STARTUP/pin-pool ログ未取得）
-- T03 chat/stop/restart: **NOT_RUN**
+- mapped-pack live: **READY**（21:05–21:28; digest `64226fde…`; pin-pool `32 MiB x2`; `NOTES-21-05.md` / `run-21-05/`）
+- T03 chat: **PASS**（GEN→DONE 7 tokens）。T03 stop/restart: **PARTIAL**（restart が `warmup_prefill` で exit `0xC0000409`）。`run-21-05-t03/`
 - T04 / T06 / T07 / T08 paired speed: **NOT_RUN**（偽速度なし）
 - Goal complete: **false**
+- 製品 next-preview ship: 本ターンは live 優先で **deferred**
 
-18:13 は free ~15 GiB で GO → 未署名 `64226fde…` mapped-pack がロード開始（VRAM ~15.9 GiB）したがログパイプ失敗。abort 後 free ~5.4 GiB。耐久ランチャー `launch_mapped_live_durable.py` 追加（ゲート dry-run exit 4）。署名 `b5e4d525…` 非接触。製品 `.5` 未再出荷。`NOTES-18-21.md`。
+以前の BLOCKED 経緯（18:21 Hermes VRAM / パイプ失敗、20:56 gate）は `NOTES-18-21.md` / `NOTES-20-56.md` に残す。署名 `b5e4d525…` 非接触。
 
 原本ログには個人pathが含まれるため、原本はZIPへ複製していません。元ファイルのSHAと原本行番号からユーザー手元で照合できます。

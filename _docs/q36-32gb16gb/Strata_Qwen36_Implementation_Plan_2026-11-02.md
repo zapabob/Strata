@@ -10,14 +10,14 @@
 
 **Spec:** 同梱 `DESIGN.md`。先に読むこと。数値証跡は `evidence-summary.json`、根拠は本書末尾。
 
-**Status:** **PARTIAL_IMPL / GPU mapped-live BLOCKED / T04–T08 NOT_RUN**。Host契約・startup stage・mapped-pack+pin-pool・installer `.5` までは実装済。Windows GPU の mapped-pack live と paired 速度は **未実行**（偽速度禁止）。完了宣言しない。
+**Status:** **PARTIAL_IMPL / mapped-live READY / T03 PARTIAL / T04–T08 NOT_RUN**。Host契約・startup stage・mapped-pack+pin-pool・installer `.5`・GPU live READY+pin-pool ログまで取得。T03 restart と paired 速度は **未完了**（偽速度禁止）。完了宣言しない。
 
 | Gate / task | 2026-11-04 時点 | 注記 |
 |---|---|---|
 | Host Q36 node tests | PASS 19/19 | 2026-11-04 help rebuild 後も 19/19; TMP/npm-cache は H: |
 | T03 GUI refuse (private-cache) | PARTIAL | chatbot on; 強制解除なし |
-| T03 chat → stop → restart | **NOT_RUN** | Q36 serve 未成立 |
-| mapped-pack live (UD-Q4_K_XL / ctx65536 / MTP2) | **BLOCKED** | 18:13 部分ロード後 Hermes Hikari(PID14572) が VRAM 再占有; pin-pool ログ未取得; DESIGN #6 未殺（18:21: free ~5396 MiB） |
+| T03 chat → stop → restart | **PARTIAL** | GEN PASS; restart `0xC0000409` at warmup_prefill (`NOTES-21-05`) |
+| mapped-pack live (UD-Q4_K_XL / ctx65536 / MTP2) | **READY** | 21:28 `64226fde…` pin-pool 32MiB×2; `NOTES-21-05` / `run-21-05` |
 | T04 / T06 / T07 / T08 paired speed | **NOT_RUN** | live 前提が未達 |
 | H: disk for live/release | FreeGB **~78+** | C: ~3GB は npm 注意のみ |
 | `--help` / `--q36-expert-store` | source + **local EXE** 反映 | ローカル `64226fde…`; 製品 `.5` はまだ `6fe11065…`（次インストーラ待ち） |

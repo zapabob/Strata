@@ -1,0 +1,21 @@
+{
+  "captured_at": "2026-11-04T22:18:02+09:00",
+  "result": "PARTIAL",
+  "chat": "PASS",
+  "stop_note": "STOP alone leaves serve resident; stdin EOF required for exit (observed).",
+  "restart": "FAIL",
+  "restart_exit_code": 3221226505,
+  "restart_hex": "0xC0000409",
+  "restart_last_stage": "warmup_prefill begin",
+  "launch1_pid": 18132,
+  "launch2_pid": 31820,
+  "pid_reused": false,
+  "hermes_killed": false,
+  "invented_speeds": false,
+  "goal_complete": false,
+  "evidence": {
+    "t03_report": "t03-report.json",
+    "launch2_ready": "launch2-ready.json",
+    "notes": "../NOTES-21-05.md"
+  }
+}

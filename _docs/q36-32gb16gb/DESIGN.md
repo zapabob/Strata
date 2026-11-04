@@ -2,8 +2,8 @@
 
 作成日: 2026-11-02 JST  
 対象: `zapabob/Strata`、Windows native、Qwen3.6-35B-A3B UD-Q4_K_XL  
-状態: **部分実装あり。GPU mapped-live pin-pool ログ / paired speed は未完了。完了宣言しない。**  
-最終再測定: 2026-11-04 18:21 JST — 当初 free ~15446 MiB で mapped-pack 部分ロード開始（VRAM ~15912）したが stderr 未捕捉で abort。その後 Hermes Hikari 27B (n_ctx 98304, PID 14572) が VRAM を保持し free ~5396 MiB → **BLOCKED**（DESIGN #6 未殺）。digest `64226fde…` 検証済み。詳細は `NOTES-18-21.md`。  
+状態: **mapped-live READY + pin-pool ログ取得済み。T03 restart / paired speed は未完了。完了宣言しない。**  
+最終再測定: 2026-11-04 21:05–22:18 JST — free ~14972 MiB で durable mapped-live **READY**（digest `64226fde…`; pin-pool `cudaHostAlloc 32 MiB x2`）。T03 GEN PASS、restart は `warmup_prefill` で `0xC0000409`。Hermes 未殺。詳細は `NOTES-21-05.md`。  
 対になる作業計画: `Strata_Qwen36_Implementation_Plan_2026-11-02.md`
 
 ## 1. 目的と対象
