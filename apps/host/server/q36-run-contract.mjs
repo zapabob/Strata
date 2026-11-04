@@ -31,6 +31,8 @@ export const Q36_MAPPED_PACK_DIGESTS = new Set([
   '6fe110650940d0c19f09909d769393769650045e6bc6eab29ccc49734dbcab29',
   // 2026-11-04 help-honesty rebuild (--q36-expert-store in --help); .6 unsigned Q36 component / live-proven
   '64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7',
+  // 2026-11-05 opt-in STRATA_Q36_HOTSPOT_PROFILE (T07 capture path); unsigned q36 side-by-side
+  '907341c74d5a9f26c784e4aaad3460e376d4cabd84635c5d032879c59b08d150',
 ]);
 export const Q36_ENGINE_DEFAULT_CONTEXT = 32768;
 export const Q36_KV_BYTES_PER_CELL_PER_SEQ = 45056n;

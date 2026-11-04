@@ -49,8 +49,8 @@
     "general speedup",
     "CUDA kernel correctness of proposed changes"
   ],
-  "plan_execution_status": "PARTIAL_IMPL_MAPPED_LIVE_READY_T03_PASS_T04_KEEP_DEFAULT_PREVIEW_6_SHIPPED_T06_T07_BLOCKED_T08_REFUSE_PASS_MEASURED_NOT_RUN_T09_PARTIAL",
-  "plan_execution_note": "Host contract, startup stages, mapped-pack+pin-pool, installer .6 shipped with allowlist honesty for 64226fde…. mapped-live READY + T03 PASS. T04 pair×2 → KEEP_DEFAULT (NOTES-02-58-t04-keep-default; no default change). T06 BLOCKED. T07 BLOCKED_NO_HOTSPOT_PROFILE. T08 refuse-before-serve PASS + measured FP16 NOT_RUN (NOTES-02-58-t08-refuse-gate). T09 PARTIAL with GATE_MATRIX_SECTION7 sealed. Hermes not killed. Goal complete false.",
+  "plan_execution_status": "PARTIAL_IMPL_MAPPED_LIVE_READY_T03_PASS_T04_KEEP_DEFAULT_PREVIEW_6_SHIPPED_T06_BLOCKED_T07_PROFILE_PASS_KERNEL_NOT_RUN_T08_REFUSE_PASS_MEASURED_NOT_RUN_T09_PARTIAL",
+  "plan_execution_note": "Host contract, startup stages, mapped-pack+pin-pool, installer .6 shipped. mapped-live READY + T03 PASS. T04 pair×2 → KEEP_DEFAULT. T06 scheduler BLOCKED (transfer/CPU inputs now in Q36_HOTSPOT). T07 profile PASS via STRATA_Q36_HOTSPOT_PROFILE (NOTES-03-54; digest 907341c7…; dominant=gdn); kernel opt-in NOT_RUN. T08 refuse-before-serve PASS + measured FP16 NOT_RUN. T09 PARTIAL. WHAT_UNBLOCKS.md lists next file-level patches. Hermes not killed. Goal complete false.",
   "session_2026_11_04": {
     "mapped_live": "BLOCKED",
     "mapped_live_reason": "Hermes llama-server PIDs 22836/22944 hold VRAM; free ~0.5-0.7 GiB; free RAM often <4 GiB",

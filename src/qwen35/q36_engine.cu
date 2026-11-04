@@ -28,6 +28,7 @@
 #include "strata/qwen35/engine.hpp"
 #include "strata/qwen35/sampling.hpp"
 #include "strata/qwen35/expert_store.hpp"
+#include "strata/qwen35/hotspot_trace.hpp"
 #include "strata/qwen35/startup_trace.hpp"
 #include "q36_kernels.cuh"
 #if defined(STRATA_Q36_CPU_POOL)
@@ -1278,6 +1279,22 @@ struct Engine {
     int stream_pos = 0;
     long long hy_cpu = 0, hy_gpu = 0, hy_swaps = 0;   // entries computed on the CPU / GPU, slot replacements
     double hy_cpu_ms = 0;
+    // STRATA_Q36_HOTSPOT_PROFILE=1: diagnostic host+event timings (may sync). Default path leaves these at 0.
+    bool hotspot_on = false;
+    long long hs_layers_gdn = 0, hs_layers_attn = 0;
+    double hs_gdn_ms = 0, hs_attn_ms = 0, hs_moe_gpu_ms = 0, hs_stream_wait_ms = 0, hs_stream_mmq_ms = 0;
+    long long hs_stream_h2d = 0, hs_stream_d2d = 0, hs_rebalance_h2d = 0;
+    void hotspot_reset() {
+        hs_layers_gdn = hs_layers_attn = 0;
+        hs_gdn_ms = hs_attn_ms = hs_moe_gpu_ms = hs_stream_wait_ms = hs_stream_mmq_ms = 0;
+        hs_stream_h2d = hs_stream_d2d = hs_rebalance_h2d = 0;
+    }
+    void hotspot_emit(const char* phase) {
+        if (!hotspot_on) return;
+        strata::qwen35::q36_hotspot_summary(phase, hs_layers_gdn, hs_layers_attn, hs_gdn_ms, hs_attn_ms, hs_moe_gpu_ms,
+                                            hy_cpu_ms, hs_stream_wait_ms, hs_stream_mmq_ms, hs_stream_h2d, hs_stream_d2d,
+                                            hy_cpu, hy_gpu, hy_swaps, hs_rebalance_h2d, "diagnostic_sync");
+    }
     // decode / verify rows: their routing is counted once the rows are kept (commit), so a verify window's rejected
     // drafts never move the slots; the slots follow the counts at every kRebalanceEvery-th position exactly (a
     // window never steps over one), so plain and speculative decoding see the same slot tables at every position
@@ -1898,6 +1915,7 @@ struct Engine {
         const int C = (int) g.ssm_conv_channels;
         const int H = (int) g.n_head, HKV = (int) g.n_head_kv, HD = (int) g.head_dim;
         if (!L.attn) {
+            const auto hs_t0 = hotspot_on ? Clock::now() : Clock::time_point{};
             float* qkv_b = verify ? v_qkv[li] : qkv;
             float* hc_b = verify ? v_hc[li] : hc;
             float* al_b = verify ? v_alpha[li] : alpha;
@@ -1938,7 +1956,13 @@ struct Engine {
                 }
             }
             mm(L.ssm_out, gdn_y, y, T);
+            if (hotspot_on) {
+                CK(cudaStreamSynchronize(st));
+                hs_gdn_ms += ms_since(hs_t0);
+                ++hs_layers_gdn;
+            }
         } else {
+            const auto hs_t0 = hotspot_on ? Clock::now() : Clock::time_point{};
             prep_in(T);
             apply(L.wq, xq, qg, T);
             apply(L.wk, xq, kx, T);
@@ -2010,6 +2034,11 @@ struct Engine {
                 }
             }
             mm(L.wo, att, y, T);
+            if (hotspot_on) {
+                CK(cudaStreamSynchronize(st));
+                hs_attn_ms += ms_since(hs_t0);
+                ++hs_layers_attn;
+            }
         }
         add_rms_post(L, T);
         // routed experts (one token: the router and the shared expert's gate in one product, the gate its last row)
@@ -2045,6 +2074,7 @@ struct Engine {
                 for (int x = 0; x < ne; ++x) hy[li].score[(size_t) x] += h_cnt[li * g.n_expert + x];
             const int64_t maxr = hpin[10];
             const uint8_t* wbase = lhy(li) ? stream_take((int) li) : L.blobs;
+            const auto hs_mmq = hotspot_on ? Clock::now() : Clock::time_point{};
             MMQ::quantize(h, ent_tok, mq_x, L.L.gu_type, N, N, n_ent, st);
             MMQ::Product gu;
             gu.w = wbase; gu.type = L.L.gu_type; gu.w_rows = 2 * FF; gu.w_cols = N; gu.expert_bytes = L.stride;
@@ -2058,13 +2088,22 @@ struct Engine {
             dn.expert_bytes = L.stride; dn.n = ne; dn.xq = mq_hq; dn.bounds = rbounds; dn.ids = ident;
             dn.total_rows = n_ent; dn.max_rows = maxr; dn.dst = eparts; dn.ld_dst = N;
             mctx->run(dn, st);
+            if (hotspot_on) {
+                CK(cudaStreamSynchronize(st));
+                hs_stream_mmq_ms += ms_since(hs_mmq);
+            }
             if (lhy(li)) stream_done();
             prow = rinv;
         } else {
+            const auto hs_moe = hotspot_on ? Clock::now() : Clock::time_point{};
             group_entries(L, nullptr, T);
             if (!xq_post) quant(h, N, T, xq);   // the experts' and the shared expert's input
             K::native_expert_grouped(L.L, grp_ptr, grp_start, n_groups, ent_dst, ent_tok,
                                      std::min<int64_t>(n_ent, g.n_expert), n_ent, xq, escr, eparts, st);
+            if (hotspot_on) {
+                CK(cudaStreamSynchronize(st));
+                hs_moe_gpu_ms += ms_since(hs_moe);
+            }
         }
         // the shared expert, scaled by sigmoid(w . h)
         if (T > kGemmT) k_to_f16<<<grid1((int64_t) N * T), kThreads, 0, st>>>(h, x16, (int64_t) N * T);
@@ -2230,7 +2269,9 @@ struct Engine {
         // fewer than half the experts resident (a 12 GB card): the one whole-layer copy is faster than many small ones
         // (RTX 3060, UD-Q4_K_XL at 37 of 256: pp2048 1970 whole vs 1540 in runs)
         if (all || 2 * L.n_slots < ne) {
-            h2d_from_host(stage[b], L.hblobs, L.stride * (size_t) ne, cst);
+            const size_t n = L.stride * (size_t) ne;
+            h2d_from_host(stage[b], L.hblobs, n, cst);
+            if (hotspot_on) hs_stream_h2d += (long long) n;
         } else {
             for (int x = 0; x < ne;) {
                 const bool dev = H.slot_of[(size_t) x] >= 0;
@@ -2240,11 +2281,14 @@ struct Engine {
                 else
                     while (y < ne && H.slot_of[(size_t) y] < 0) ++y;
                 const size_t n = (size_t) (y - x) * L.stride;
-                if (dev)
+                if (dev) {
                     CK(cudaMemcpyAsync(stage[b] + (size_t) x * L.stride, L.blobs + (size_t) H.slot_of[(size_t) x] * L.stride,
                                        n, cudaMemcpyDeviceToDevice, cst));
-                else
+                    if (hotspot_on) hs_stream_d2d += (long long) n;
+                } else {
                     h2d_from_host(stage[b] + (size_t) x * L.stride, L.hblobs + (size_t) x * L.stride, n, cst);
+                    if (hotspot_on) hs_stream_h2d += (long long) n;
+                }
                 x = y;
             }
         }
@@ -2256,6 +2300,11 @@ struct Engine {
             std::exit(1);
         }
         const int b = stream_pos % 2;
+        if (hotspot_on) {
+            const auto tw = Clock::now();
+            CK(cudaEventSynchronize(ev_copy[b]));
+            hs_stream_wait_ms += ms_since(tw);
+        }
         CK(cudaStreamWaitEvent(st, ev_copy[b], 0));
         return stage[b];
     }
@@ -2268,6 +2317,7 @@ struct Engine {
 
     /// The GPU half of a hybrid MoE: the routing to the host, the resident experts' entries grouped and run.
     void moe_hybrid_gpu(const Layer& L, size_t li, int T) {
+        const auto hs_t0 = hotspot_on ? Clock::now() : Clock::time_point{};
         const auto& g = m->g;
         const int N = (int) g.n_embd, Kp = (int) m->top_k;
         const int64_t n_ent = (int64_t) T * Kp;
@@ -2278,6 +2328,10 @@ struct Engine {
         if (!xq_post) quant(h, N, T, xq);   // the experts' and the shared expert's input
         K::native_expert_grouped(L.L, grp_ptr, grp_start, n_groups, ent_dst, ent_tok,
                                  std::min<int64_t>(n_ent, g.n_expert), n_ent, xq, escr, eparts, st);
+        if (hotspot_on) {
+            CK(cudaStreamSynchronize(st));
+            hs_moe_gpu_ms += ms_since(hs_t0);
+        }
     }
     /// The CPU half: the entries without a slot on the pool (ggml-cpu's arithmetic for the layer's formats), their
     /// rows uploaded and merged into the entries' rows.
@@ -2375,6 +2429,7 @@ struct Engine {
                     H.slot_of[(size_t) x] = s;
                     H.exp_in_slot[(size_t) s] = x;
                     h2d_from_host(L.blobs + (size_t) s * L.stride, L.hblobs + (size_t) x * L.stride, L.L.bytes, st);
+                    if (hotspot_on) hs_rebalance_h2d += (long long) L.L.bytes;
                     --left;
                     ++hy_swaps;
                     changed = true;
@@ -2802,6 +2857,7 @@ struct Engine {
     void warmup() {
         const auto t0 = Clock::now();
         warming = true;
+        hotspot_reset();
         const int32_t filler = 198;   // a newline: any token works
         // #4708: the prompt chunk may equal or exceed the context (--context 2048 with a 2048-token chunk): warm only cells that
         // exist, and start the small-prompt, decode and speculative probes in a fresh sequence instead of appending past the cache.
@@ -2826,9 +2882,11 @@ struct Engine {
         }
         CK(cudaStreamSynchronize(st));
         warming = false;
+        hotspot_emit("warmup");
         for (Hy& H : hy) std::fill(H.score.begin(), H.score.end(), 0.0);
         hy_cpu = hy_gpu = hy_swaps = 0;
         hy_cpu_ms = 0;
+        hotspot_reset();
         reset();
         std::fprintf(stderr, "strata-q36: warmed up in %.1f s (one prompt chunk, a decode step%s)\n",
                      ms_since(t0) / 1000.0, mtp_d > 0 ? ", a speculative step" : "");
@@ -2853,6 +2911,10 @@ struct Engine {
 bool place_experts(Model& m, Engine& E, double vram_gib, int threads, int hybrid_t, int slots, std::string& err,
                    const std::string& expert_store, const std::string& model_path) {
     const auto t0 = Clock::now();
+    E.hotspot_on = strata::qwen35::q36_hotspot_enabled();
+    if (E.hotspot_on)
+        std::fprintf(stderr, "strata-q36: hotspot profile ON (STRATA_Q36_HOTSPOT_PROFILE); diagnostic syncs enabled; "
+                     "hardware_counters=null until Nsight\n");
     const auto& g = m.g;
     const int64_t ne = g.n_expert;
     std::vector<Layer*> all;
@@ -4048,6 +4110,7 @@ int strata::qwen35::run(int argc, char** argv) {
             if (E.verify_k)
                 for (const auto& kv : E.v_by)
                     std::fprintf(stderr, "strata-q36 VERIFY   %s: %lld mismatches\n", kv.first.c_str(), kv.second);
+            E.hotspot_emit("shutdown");
             if (!E.m->hybrid) return;
             const long long n = E.hy_cpu + E.hy_gpu;
             std::fprintf(stderr, "strata-q36: hybrid experts: %lld of %lld batch entries on the GPU (%.1f%%), %lld on the "

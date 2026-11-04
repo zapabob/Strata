@@ -1,7 +1,7 @@
 # §7 / plan acceptance gate matrix — sealed snapshot
 
-Captured: **2026-11-05 02:58 JST**  
-Tip before this turn’s commit: `c2242cd3`  
+Captured: **2026-11-05 03:54 JST** (T07 profile append)  
+Tip before this turn’s commit: `0a7d0f2a`  
 Goal complete: **false** (do not UpdateGoal complete)  
 Hermes killed: **false**  
 Invented speeds: **false**
@@ -31,8 +31,9 @@ Statuses are only PASSED / FAILED / SKIPPED / NOT_RUN / BLOCKED / PARTIAL as jus
 | T04 observational warmup vs `--no-warmup` | PASSED (obs×2) | pair1 `PAIR_RECORDED`; pair2 `PAIR_RECORDED_WITH_ARM_B_RETRY` |
 | T04 product default change | KEEP_DEFAULT | `NOTES-02-58-t04-keep-default.md` — no measured win for skipping warmup |
 | T04 bounded warmup policy ADOPT | NOT_RUN | policy not implemented; n≥5 + RED fixtures open |
-| T06 transfer/residency scheduler | BLOCKED | `NOTES-01-32-t06-reeval` — no clear measurable candidate |
-| T07 CUDA hotspot opt-in | BLOCKED_NO_HOTSPOT_PROFILE | `NOTES-02-53-t07-t08-t09-gate` — no invent profile |
+| T06 transfer/residency scheduler | BLOCKED | scheduler not implemented; H2D/CPU inputs now in `NOTES-03-54-t07-hotspot-profile` |
+| T07 hotspot profile capture | PASSED | `STRATA_Q36_HOTSPOT_PROFILE`; `run-hotspot-03-32`; dominant host bucket=gdn; HW counters null |
+| T07 CUDA hotspot opt-in | NOT_RUN | profile present; do not invent kernel PR without RED+paired |
 | T08 refuse non-FP32 KV before serve | PASSED | `NOTES-02-58-t08-refuse-gate.md` + Host unit test |
 | T08 measured FP16 KV quality/speed arm | NOT_RUN | optional; out of required order |
 | 30% load→first_useful_token median claim | NOT_RUN | proposal target only; not achieved |
@@ -57,10 +58,11 @@ Statuses are only PASSED / FAILED / SKIPPED / NOT_RUN / BLOCKED / PARTIAL as jus
 
 Still open before any goal-complete claim:
 
-1. T06–T07 blocked (real candidates / hotspot profile required — do not invent)
-2. T08 measured FP16 arm optional and NOT_RUN (refuse gate alone ≠ full T08 PR)
-3. T04 bounded policy still unimplemented (KEEP_DEFAULT ≠ ADOPT bounded)
-4. Signed engine re-pin of unsigned q36 digest if product wants signed path
-5. Remote CI NOT_RUN
+1. T06 scheduler still BLOCKED (use hotspot transfer/CPU inputs; do not invent weights)
+2. T07 kernel opt-in NOT_RUN (profile PASS; next = GDN behind fallback — see `WHAT_UNBLOCKS.md`)
+3. T08 measured FP16 arm optional and NOT_RUN (refuse gate alone ≠ full T08 PR)
+4. T04 bounded policy still unimplemented (KEEP_DEFAULT ≠ ADOPT bounded; n≥5 not faked)
+5. Signed engine re-pin of unsigned q36 digest if product wants signed path
+6. Remote CI NOT_RUN
 
 **T09 overall: PARTIAL** (docs/GUI/installer/refuse/E2E core advanced; speed research gates open).

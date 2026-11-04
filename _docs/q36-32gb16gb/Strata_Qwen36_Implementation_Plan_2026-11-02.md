@@ -10,7 +10,7 @@
 
 **Spec:** 同梱 `DESIGN.md`。先に読むこと。数値証跡は `evidence-summary.json`、根拠は本書末尾。
 
-**Status:** **PARTIAL_IMPL / mapped-live READY / T03 PASS / T04 pair×2 OBS → KEEP_DEFAULT / preview `.6` shipped / T06–T07 BLOCKED / T08 refuse PASS + measured NOT_RUN / T09 PARTIAL**。Host契約・startup stage・mapped-pack+pin-pool・installer `.6`（allowlist `64226fde…`）・GPU live READY+pin-pool・T03・T04 observational ×2 まで。T04 は **KEEP_DEFAULT**（`--no-warmup` 既定化しない；bounded policy 未実装）。T06/T07 は測れる候補なし（偽実装禁止）。T08 は起動前拒否のみ PASS。完了宣言しない。
+**Status:** **PARTIAL_IMPL / mapped-live READY / T03 PASS / T04 KEEP_DEFAULT / preview `.6` shipped / T06 scheduler BLOCKED / T07 profile PASS + kernel opt NOT_RUN / T08 refuse PASS + measured NOT_RUN / T09 PARTIAL**。Host契約・startup stage・mapped-pack+pin-pool・installer `.6`・GPU live READY+pin-pool・T03・T04 observational ×2・T07 `STRATA_Q36_HOTSPOT_PROFILE` 1回キャプチャ（`907341c7…`）まで。T04 は **KEEP_DEFAULT**。T06 はスケジューラ未実装（計測入力は hotspot 行）。T07 kernel 最適化は未着手。T08 は起動前拒否のみ PASS。完了宣言しない。
 
 | Gate / task | 2026-11-05 時点 | 注記 |
 |---|---|---|
@@ -19,7 +19,7 @@
 | T03 chat → stop → restart | **PASS** | `run-21-05-t03` / `NOTES-21-05`（STOP+EOF 必須） |
 | mapped-pack live (UD-Q4_K_XL / ctx65536 / MTP2) | **READY** | 21:28 `64226fde…` pin-pool 32MiB×2; `NOTES-21-05` / `run-21-05` |
 | T04 paired warmup cost | **PAIR_RECORDED×2** → **KEEP_DEFAULT** | `NOTES-02-58-t04-keep-default`; pair2 composite after armB OOM retry |
-| T06 / T07 | **BLOCKED** | T06: `NOTES-01-32-t06-reeval`; T07: no hotspot profile |
+| T06 / T07 | T06 **BLOCKED** / T07 profile **PASS** | T06: `NOTES-01-32-t06-reeval`; T07 profile: `NOTES-03-54-t07-hotspot-profile`; kernel opt NOT_RUN |
 | T08 FP16 KV | **refuse PASS / measured NOT_RUN** | `NOTES-02-58-t08-refuse-gate` |
 | T09 / §7 matrix | **PARTIAL (matrix sealed)** | `GATE_MATRIX_SECTION7.md` |
 | H: disk for live/release | FreeGB **~78+** | C: ~3GB は npm 注意のみ |

@@ -2,8 +2,8 @@
 
 作成日: 2026-11-02 JST  
 対象: `zapabob/Strata`、Windows native、Qwen3.6-35B-A3B UD-Q4_K_XL  
-状態: **mapped-live READY + pin-pool。T03 PASS。T04 pair×2 OBS → adoption KEEP_DEFAULT（既定warmup維持・既定変更なし）。preview `.6` 出荷（allowlist `64226fde…`；署名 `b5e4d525…` 非接触）。T06 BLOCKED。T07 BLOCKED_NO_HOTSPOT_PROFILE。T08 refuse-before-serve PASS / measured FP16 NOT_RUN。T09 PARTIAL（§7 matrix sealed）。完了宣言しない。**
-最終出荷: 2026-11-05 01:28 JST — `0.4.0-preview.20261103.6` NSIS（setup SHA-256 `784d4f99…`）；詳細は `NOTES-01-28-preview6-ship.md`。最終対測定: T04 pair1 23:20 / pair2 composite 01:36–02:41；adoption `NOTES-02-58-t04-keep-default.md`。T08 refuse `NOTES-02-58-t08-refuse-gate.md`。§7 `GATE_MATRIX_SECTION7.md`。Hermes 未殺。
+状態: **mapped-live READY + pin-pool。T03 PASS。T04 pair×2 OBS → adoption KEEP_DEFAULT（既定warmup維持・既定変更なし）。preview `.6` 出荷（allowlist に `907341c7…`/`64226fde…`；署名 `b5e4d525…` 非接触）。T06 scheduler BLOCKED（転送/CPU 計測入力は hotspot 行で取得）。T07 profile PASS（dominant=gdn；kernel opt-in NOT_RUN）。T08 refuse-before-serve PASS / measured FP16 NOT_RUN。T09 PARTIAL。完了宣言しない。**
+最終出荷: 2026-11-05 01:28 JST — `0.4.0-preview.20261103.6` NSIS（setup SHA-256 `784d4f99…`）；詳細は `NOTES-01-28-preview6-ship.md`。最終対測定: T04 pair1 23:20 / pair2 composite 01:36–02:41；adoption `NOTES-02-58-t04-keep-default.md`。T08 refuse `NOTES-02-58-t08-refuse-gate.md`。T07 profile `NOTES-03-54-t07-hotspot-profile.md` / `run-hotspot-03-32`。§7 `GATE_MATRIX_SECTION7.md`。次パッチ `WHAT_UNBLOCKS.md`。Hermes 未殺。
 対になる作業計画: `Strata_Qwen36_Implementation_Plan_2026-11-02.md`
 
 ## 1. 目的と対象
