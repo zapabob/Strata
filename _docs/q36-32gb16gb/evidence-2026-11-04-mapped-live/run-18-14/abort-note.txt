@@ -1,0 +1,1 @@
+﻿aborted_for_log_capture reason=stderr_and_stdin_lost hermes_killed=false

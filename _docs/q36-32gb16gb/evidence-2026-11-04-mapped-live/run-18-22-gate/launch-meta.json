@@ -1,0 +1,27 @@
+{
+  "started_at": "2026-11-04T18:22:05+09:00",
+  "exe": "C:\\Users\\downl\\AppData\\Local\\Strata\\components\\engine\\0.4.0-q36-windows-x86_64-cuda-cuda13\\strata.exe",
+  "gguf": "H:\\Strata\\models\\models\\qwen36-UD-Q4_K_XL\\Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf",
+  "min_free_mib": 12000,
+  "gpu_preflight": {
+    "name": "NVIDIA GeForce RTX 5060 Ti",
+    "vram_total_mib": 16311,
+    "vram_used_mib": 10652,
+    "vram_free_mib": 5399,
+    "gpu_util_percent": 4
+  },
+  "hermes_llama_servers": [
+    {
+      "pid": 14572,
+      "path": "C:\\Users\\downl\\.hermes\\llama\\prism-b10826-c9c34bc\\bin\\llama-server.exe",
+      "ws_mb": 4420.1
+    }
+  ],
+  "hermes_killed": false,
+  "design6": "never kill foreign inference",
+  "invented_speeds": false,
+  "goal_complete": false,
+  "exe_sha256": "64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7",
+  "mapped_live": "BLOCKED",
+  "reason": "free VRAM 5399 MiB < min 12000; Hermes/other inference still present (1 llama-server). Not killing (DESIGN #6)."
+}

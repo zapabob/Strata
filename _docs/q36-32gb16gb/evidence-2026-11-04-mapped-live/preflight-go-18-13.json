@@ -1,0 +1,38 @@
+﻿{
+    "purpose":  "preflight_before_mapped_pack_pin_pool_live",
+    "captured_at":  "2026-11-04T18:13:54+09:00",
+    "mapped_live":  "GO",
+    "goal_complete":  false,
+    "invented_speeds":  false,
+    "hermes_killed":  false,
+    "hermes_llama_server_pids":  [
+                                     14572
+                                 ],
+    "hermes_process":  [
+                           {
+                               "pid":  14572,
+                               "name":  "llama-server.exe",
+                               "path":  "C:\\Users\\downl\\.hermes\\llama\\prism-b10826-c9c34bc\\bin\\llama-server.exe",
+                               "ws_mb":  398.7,
+                               "start":  "\/Date(1793783438517)\/"
+                           }
+                       ],
+    "vram_total_mib":  16311,
+    "vram_used_mib":  865,
+    "vram_free_mib":  15446,
+    "ram_total_gb":  31.87,
+    "ram_free_gb":  10.57,
+    "h_free_gb":  76.2,
+    "c_free_gb":  17.68,
+    "unsigned_engine_sha256":  "64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7",
+    "signed_engine_sha256":  "b5e4d5255a48882334b27ab643c22c9c1b54e4580f82b402176a9ca5661bf6f1",
+    "signed_engine_untouched":  true,
+    "model_gguf_present":  true,
+    "model_gguf_bytes":  22853663008,
+    "q36epk_present":  true,
+    "q36epk_bytes":  20127612928,
+    "q36epk_path":  "H:\\Strata\\models\\models\\qwen36-UD-Q4_K_XL\\Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf.q36epk",
+    "design6_note":  "Hermes llama-server PID 14572 still present but GPU total only ~865 MiB used; prior heavy PIDs 22836/22944 exited. Not killing Hermes.",
+    "t03_chat_stop_restart":  "NOT_RUN",
+    "t04_t06_t07_t08":  "NOT_RUN"
+}

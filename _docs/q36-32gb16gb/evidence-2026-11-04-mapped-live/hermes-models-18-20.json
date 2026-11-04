@@ -1,0 +1,56 @@
+﻿{
+    "models":  [
+                   {
+                       "name":  "Hikari-LoRA-fixed-scale-PQ2_0",
+                       "model":  "Hikari-LoRA-fixed-scale-PQ2_0",
+                       "modified_at":  "",
+                       "size":  "",
+                       "digest":  "",
+                       "type":  "model",
+                       "description":  "",
+                       "tags":  [
+                                    ""
+                                ],
+                       "capabilities":  [
+                                            "completion"
+                                        ],
+                       "parameters":  "",
+                       "details":  {
+                                       "parent_model":  "",
+                                       "format":  "gguf",
+                                       "family":  "",
+                                       "families":  [
+                                                        ""
+                                                    ],
+                                       "parameter_size":  "",
+                                       "quantization_level":  ""
+                                   }
+                   }
+               ],
+    "object":  "list",
+    "data":  [
+                 {
+                     "id":  "Hikari-LoRA-fixed-scale-PQ2_0",
+                     "aliases":  [
+                                     "Hikari-LoRA-fixed-scale-PQ2_0",
+                                     "qwen3.8-27b-abliterated-mtp"
+                                 ],
+                     "tags":  [
+
+                              ],
+                     "object":  "model",
+                     "created":  1793784027,
+                     "owned_by":  "llamacpp",
+                     "meta":  {
+                                  "vocab_type":  true,
+                                  "n_vocab":  248320,
+                                  "n_ctx":  98304,
+                                  "n_ctx_train":  262144,
+                                  "n_embd":  5120,
+                                  "n_params":  26895998464,
+                                  "size":  7195047936,
+                                  "ftype":  "PQ2_0 - 2.13 bpw (group 128)"
+                              }
+                 }
+             ]
+}

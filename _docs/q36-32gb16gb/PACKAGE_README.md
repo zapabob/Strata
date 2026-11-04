@@ -31,11 +31,11 @@
 
 実装は別セッションで進み、installer `.5` / mapped-pack+pin-pool / Host契約などは存在する。ただし次は **未完了のまま**:
 
-- mapped-pack live: **BLOCKED**（Hermes VRAM、DESIGN #6 で未殺）
+- mapped-pack live: **BLOCKED**（18:21: 部分ロード後 Hermes Hikari が VRAM 再占有; DESIGN #6 で未殺。Q36_STARTUP/pin-pool ログ未取得）
 - T03 chat/stop/restart: **NOT_RUN**
 - T04 / T06 / T07 / T08 paired speed: **NOT_RUN**（偽速度なし）
 - Goal complete: **false**
 
-H: FreeGB は回収後も十分（05:22 再測 ~77+）。ローカル未署名 q36 を help 正直化込みで再ビルドし digest `64226fde…` を `0.4.0-q36-…` にだけ入れた（署名 `b5e4d525…` 非接触）。製品 `.5` インストーラは未再出荷（`NOTES-05-22-rebuild.md`）。mapped-live は Hermes VRAM で **BLOCKED** のまま。
+18:13 は free ~15 GiB で GO → 未署名 `64226fde…` mapped-pack がロード開始（VRAM ~15.9 GiB）したがログパイプ失敗。abort 後 free ~5.4 GiB。耐久ランチャー `launch_mapped_live_durable.py` 追加（ゲート dry-run exit 4）。署名 `b5e4d525…` 非接触。製品 `.5` 未再出荷。`NOTES-18-21.md`。
 
 原本ログには個人pathが含まれるため、原本はZIPへ複製していません。元ファイルのSHAと原本行番号からユーザー手元で照合できます。

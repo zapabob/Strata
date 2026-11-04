@@ -17,7 +17,7 @@
 | Host Q36 node tests | PASS 19/19 | 2026-11-04 help rebuild 後も 19/19; TMP/npm-cache は H: |
 | T03 GUI refuse (private-cache) | PARTIAL | chatbot on; 強制解除なし |
 | T03 chat → stop → restart | **NOT_RUN** | Q36 serve 未成立 |
-| mapped-pack live (UD-Q4_K_XL / ctx65536 / MTP2) | **BLOCKED** | Hermes llama-server が VRAM 占有; DESIGN #6 で未殺（05:22: free ~873 MiB） |
+| mapped-pack live (UD-Q4_K_XL / ctx65536 / MTP2) | **BLOCKED** | 18:13 部分ロード後 Hermes Hikari(PID14572) が VRAM 再占有; pin-pool ログ未取得; DESIGN #6 未殺（18:21: free ~5396 MiB） |
 | T04 / T06 / T07 / T08 paired speed | **NOT_RUN** | live 前提が未達 |
 | H: disk for live/release | FreeGB **~78+** | C: ~3GB は npm 注意のみ |
 | `--help` / `--q36-expert-store` | source + **local EXE** 反映 | ローカル `64226fde…`; 製品 `.5` はまだ `6fe11065…`（次インストーラ待ち） |
