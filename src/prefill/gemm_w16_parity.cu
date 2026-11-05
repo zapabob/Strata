@@ -98,7 +98,11 @@ int main() {
         for (const int64_t T : Ts) {
             std::vector<uint8_t> out[2];
             for (int on = 0; on < 2; ++on) {
+#if defined(_WIN32)
+                _putenv_s("STRATA_PF_W16_CACHE_MIB", on ? "auto" : "0");
+#else
                 setenv("STRATA_PF_W16_CACHE_MIB", on ? "auto" : "0", 1);
+#endif
                 strata::prefill::Gemm gemm;          // a fresh one reads the variable at its first native()
                 std::string err;
                 if (!gemm.init(st, scratch_elems, err)) { std::printf("FAIL: %s\n", err.c_str()); return 1; }

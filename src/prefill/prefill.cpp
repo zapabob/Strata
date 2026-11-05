@@ -4415,6 +4415,8 @@ bool Prefill::run_impl(const int64_t* tokens, int64_t n, int64_t pos0, std::stri
                             }
                         }
                     }
+                    const int64_t ld_a = pf_pad() && T >= std::max<int64_t>(pf_switch_min_t(), 64) ? ZV + ZV_PAD : 0;
+                    bool gated = false;
 #if defined(STRATA_WITH_NATIVE_CACHE)
                     if (st.native) {
                         if (!st.native->attend(m.q,m.attn,m.sel_ids,m.steps_dev,size_t(T),size_t(m.cap),
@@ -4429,8 +4431,7 @@ bool Prefill::run_impl(const int64_t* tokens, int64_t n, int64_t pos0, std::stri
                     // decode kernel, 32 queries at a time (K8V4 runs the tensor kernel's mode 3: INT8 K,
                     // V dequantized from its q4_0 blocks to fp16 at gather)
                     static const bool old_attn = std::getenv("STRATA_PROMPT_ATTN_OLD") != nullptr;
-                    const int64_t ld_a = pf_pad() && T >= std::max<int64_t>(pf_switch_min_t(), 64) ? ZV + ZV_PAD : 0;
-                    const bool gated = !old_attn && !st.kv_rot && !st.kv_hybrid && qsa_fuse_gate() &&
+                    gated = !old_attn && !st.kv_rot && !st.kv_hybrid && qsa_fuse_gate() &&
                                        strata::kernels::qsa_prompt_attn_batch_gated(m.q, pools, m.sel_ids, m.steps_dev, m.cap, s, m.Qf,
                                                                                     m.attn_h, ld_a > 0 ? ld_a : ZV, T, m.cs);
                     {
