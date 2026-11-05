@@ -28,7 +28,7 @@ import type { ImageModelChoice, RuntimeModels, RuntimeModel } from '../lib/types
 import { useNative, nativeSettled, subscribeNative } from '../lib/native';
 import { NativeModels } from '../components/NativeModels';
 import { NativeLocalModel } from '../components/NativeLocalModel';
-import { parseLocation } from '../lib/router';
+import { navigate, parseLocation } from '../lib/router';
 type Issue = {
     level: 'error' | 'warn';
     message: string;
@@ -36,20 +36,23 @@ type Issue = {
 type RunStage = 'idle' | 'checking' | 'loading' | 'ready';
 export function ModelRunScreen() {
     const native = useNative();
+    const library = useStore(s => s.library);
     const settled = useSyncExternalStore(subscribeNative, nativeSettled);
     const location = parseLocation(window.location.hash), entry = location.param;
+    const localId = entry === 'local' ? location.query.get('variant') : null;
+    const savedLocal = !!localId && !!library?.variants.some(v => v.id === localId && v.local);
     const [other, setOther] = useState(entry === 'local' || entry === 'local-import'), [importFirst, setImportFirst] = useState(entry === 'local-import');
     const [llamaPath, setLlamaPath] = useState<string | null>(null);
     const [llamaBackend, setLlamaBackend] = useState<string | undefined>(undefined);
     // Before the engine's answer arrives the page would show the bundled Starter and then jump to the installed model (#3740): show a neutral placeholder instead.
-    if (!native && !settled)
+    if ((!native && !settled) || (localId && !library))
         return <div className="main__body"><div className="wrap stack" role="status" aria-label={tr("Loading…")}><div className="skel" style={{ height: 20, width: '60%' }}/><div className="skel" style={{ height: 20, width: '80%' }}/><div className="skel" style={{ height: 20, width: '70%' }}/></div></div>;
     // Fork: keep llama.cpp alternative path picker (F11 / local GGUF).
-    if (native && other && llamaPath === null)
+    if (native && other && llamaPath === null && !savedLocal)
         return <NativeLocalModel onBack={() => { setOther(false); setImportFirst(false); }} onAlternative={(path, backend) => { setLlamaPath(path); setLlamaBackend(backend); }}/>;
-    if (native && !other)
+    if (native && !other && !savedLocal)
         return <NativeModels onOtherModels={() => setOther(true)} onImport={() => { setImportFirst(true); setOther(true); }}/>;
-    return <><LegacyModelRunScreen importFirst={importFirst || llamaPath !== null} importPath={llamaPath ?? undefined} preferredBackend={llamaBackend} initialVariant={location.query.get('variant') ?? undefined}/>{tr(other ? <button className="st-btn native-return" onClick={() => { setLlamaPath(null); setLlamaBackend(undefined); setOther(false); }}>{tr("Back")}</button> : null)}</>;
+    return <><LegacyModelRunScreen importFirst={!savedLocal && (importFirst || llamaPath !== null)} importPath={llamaPath ?? undefined} preferredBackend={llamaBackend} initialVariant={location.query.get('variant') ?? undefined}/>{tr(other || savedLocal ? <button className="st-btn native-return" onClick={() => { setLlamaPath(null); setLlamaBackend(undefined); setOther(false); navigate('models'); }}>{tr("Back")}</button> : null)}</>;
 }
 function LegacyModelRunScreen({ importFirst = false, importPath, preferredBackend, initialVariant }: {
     importFirst?: boolean;
@@ -531,7 +534,7 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
       {tr(selectedProfile && profileChanged ? <button role="menuitem" className="menu__item run-settings-action" onClick={() => { setProfileMenu(false); chooseProfile(selectedProfile.id); }}><span className="run-settings-icon"><Icon name="refresh" size={18}/></span>{tr("Restore saved settings")}</button> : null)}
     </FloatingMenu> : null)}
     <Dialog open={libraryOpen} className="run-library-dialog" title={tr("Manage models")} onClose={() => setLibraryOpen(false)}><ModelsScreen embedded familyOverride={model.family} selectedVariant={model.id} contextOverride={ctx} onChoose={id => { chooseModel(id); setLibraryOpen(false); }}/></Dialog>
-    <LocalModelImport open={localModelOpen} directory={library.disk.modelsDir} initialPath={importPath} onClose={() => setLocalModelOpen(false)} onChoose={id => chooseModel(id, preferredBackend)}/>
+    <LocalModelImport open={localModelOpen} directory={library.disk.modelsDir} initialPath={importPath} onClose={() => setLocalModelOpen(false)} onChoose={id => { chooseModel(id, preferredBackend); navigate('models', 'local', { variant: id }); }}/>
     <Dialog open={profileOpen} compact title={tr(updateExisting ? 'Update saved settings' : 'Save settings')} onClose={() => !pending && setProfileOpen(false)} actions={<><Btn disabled={pending} onClick={() => setProfileOpen(false)}>{tr("Cancel")}</Btn><Btn variant="primary" disabled={!profileName.trim() || pending || imagePending || invalid} onClick={() => void storeProfile()}>{tr(pending ? 'Saving…' : updateExisting ? 'Update settings' : 'Save settings')}</Btn></>}><div className="run-save-profile"><label className="input-field"><span>{tr("Name")}</span><input className="st-input" aria-label={tr("Settings name")} maxLength={64} value={profileName} onChange={e => setProfileName(e.target.value)}/></label><p className="small muted">{tr(model.name)} · {tr(ctx / 1024)}{tr("K \u00B7 ")}{tr(use === 'full' ? 'Maximum performance' : 'Room for other apps')}</p><label className="run-default-choice"><input type="checkbox" checked={makeDefault} onChange={e => setMakeDefault(e.target.checked)}/><span>{tr("Use by default for this model")}<small>{tr("On this computer. Restore it whenever you open Models.")}</small></span></label>{tr(profileError ? <ErrorNotice message={profileError}/> : null)}</div></Dialog>
     <DemoTest open={testOpen} onClose={() => setTestOpen(false)} experience={experience}/>
     <Dialog open={discardOpen} compact title={tr("Restore saved settings?")} onClose={() => setDiscardOpen(false)} actions={<><Btn onClick={() => setDiscardOpen(false)}>{tr("Keep editing")}</Btn><Btn onClick={() => { setConfigDraft(null); void chooseImage(imageModels?.applied ?? 'off'); setActiveProfile('current'); setIssues([]); setDiscardOpen(false); }}>{tr("Restore settings")}</Btn></>}><p>{tr("Replace this draft with the settings last saved to the engine.")}</p></Dialog>

@@ -90,7 +90,7 @@ export function NativeLocalModel({ onBack, onAlternative }: { onBack: () => void
       <p><strong>{tr(version ? catalogVersionLabel(version) : selection?.model ?? '')}</strong> · {tr(selection?.model ?? '')}</p>
       <p className="small muted">{tr("{0} files · {1}", [checked.preview.file_count, sizeGb(checked.preview.total_bytes / 1024 ** 3)])}</p>
       {tr(checked.preview.messages?.map(m => <p className="small muted" key={m}>{tr(m)}</p>))}
-      <div className="native-model-actions"><Btn variant="primary" icon="models" disabled={pending || !!active} onClick={() => void prepare()}>{tr(pending ? 'Checking…' : 'Prepare and load')}</Btn></div>
+      <div className="native-model-actions"><Btn variant="primary" icon="models" disabled={pending || !!active} onClick={() => void prepare()}>{tr(pending ? 'Checking…' : 'Prepare and load')}</Btn>{tr(selection?.family === 'qwen36' ? <Btn disabled={pending || !!active} onClick={() => onAlternative(checked!.path, 'PrismML')}>{tr("Try with llama-server")}</Btn> : null)}</div>
      </> : strataEngine ? <>
       <h2 className="h3">{tr("Ready for Strata")}</h2>
       <p className="small muted">{tr("These files use {0}. Strata starts them with its bundled {0} engine — same Models screen, same chat, tools and web search. No separate pack preparation.", [strataEngine])}</p>
