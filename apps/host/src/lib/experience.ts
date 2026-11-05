@@ -24,6 +24,7 @@ export interface Execution {
     kv: string;
     placement: string;
     threads: number;
+    cpuMoeLayers?: number;
 }
 export interface SpeedEvidence {
     source: 'estimated' | 'measured';
@@ -64,10 +65,11 @@ export const DEFAULT_EXECUTION: Execution = { context: 32768, batch: 2048, kv: '
 export const RECOMMENDED_CONTEXT_TOKENS = 128 * 1024;
 export function contextTokens(value: string) { return value === 'recommended' ? RECOMMENDED_CONTEXT_TOKENS : Number.parseInt(value, 10) * 1024; }
 export function execution(values: Record<string, unknown> = {}, context = 32768): Execution {
-    return { context, batch: Number(values['perf.batch'] ?? 2048), kv: String(values['ctx.kvMode'] ?? 'INT8'), placement: String(values['gpu.layers'] ?? 'Automatic'), threads: Number(values['perf.threads'] ?? 8) };
+    const cpuMoeLayers = Number(values['gpu.cpuMoeLayers'] ?? 0);
+    return { context, batch: Number(values['perf.batch'] ?? 2048), kv: String(values['ctx.kvMode'] ?? 'INT8'), placement: String(values['gpu.layers'] ?? 'Automatic'), threads: Number(values['perf.threads'] ?? 8), ...(cpuMoeLayers > 0 ? { cpuMoeLayers } : {}) };
 }
 export function hardwareKey(hw: Hardware | null) { return hw ? `${hw.cpu.model}|${hw.gpus.map(g => g.name).join('+')}|${hw.memory.totalGb}` : 'unknown'; }
-export function configKey(v: ModelVariant, c: Execution) { return `${v.id}|${c.context}|${c.batch}|${c.kv}|${c.placement}|${c.threads}`; }
+export function configKey(v: ModelVariant, c: Execution) { return `${v.id}|${c.context}|${c.batch}|${c.kv}|${c.placement}|${c.threads}${c.cpuMoeLayers ? `|cpu-moe:${c.cpuMoeLayers}` : ''}`; }
 export function metadata(v: ModelVariant) {
     return v.catalog ?? { family: v.family.split('-')[0], version: v.family, purpose: v.blurb, capabilities: ['Text'], agentApproved: false, balancedRank: 999, review: 'Not reviewed for agent tasks' };
 }
@@ -82,7 +84,8 @@ export function estimate(v: ModelVariant | undefined, hw: Hardware | null, confi
     if (Number.isFinite(config.context) && config.context > 0) {
         const cpu = hw?.accelerator.backend === 'cpu' || config.placement === 'CPU only';
         const unified = !!hw?.accelerator.unified;
-        const placementKnown = cpu || unified || ['Automatic', 'All layers'].includes(config.placement);
+        const splitExperts = v.experts > 0 && (config.cpuMoeLayers ?? 0) > 0;
+        const placementKnown = cpu || unified || (!splitExperts && ['Automatic', 'All layers'].includes(config.placement));
         const budget = !hw ? null : cpu || unified ? hw.memory.totalGb * .72 : hw.accelerator.usableVramGb;
         const kv = typeof v.kvKbPerToken === 'number' && Number.isFinite(v.kvKbPerToken) && v.kvKbPerToken > 0 ? v.kvKbPerToken : null;
         const cache = (kv ?? 64) * config.context / 1024 ** 2 * (config.kv === 'FP16' ? 2 : config.kv === 'Q4_0' ? .5 : 1);

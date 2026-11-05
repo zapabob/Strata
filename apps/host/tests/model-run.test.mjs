@@ -65,6 +65,7 @@ test('multi-GPU planning retains individual budgets and respects CPU-only and un
   assert.equal(plan.devices.length,2);assert.equal(plan.budget,24+21.6+10.8);assert.equal(plan.ssd,0);
   const cpu=memory.planMemory({...experience,config:{placement:'CPU only'}},discrete,'shared');assert.equal(cpu.gpu,0);assert.equal(cpu.devices.length,0);assert.equal(cpu.budget,24);
   assert.equal(memory.planMemory({...experience,config:{placement:'Half'}},discrete,'shared'),null);
+  assert.equal(memory.planMemory({...experience,config:{placement:'Automatic',cpuMoeLayers:28},memory:{...experience.memory,placementKnown:false}},discrete,'shared'),null);
 });
 test('illustrative spill penalties never modify or impersonate measured performance',()=>{
   const plan=memory.planMemory(experience,hardware,'shared');

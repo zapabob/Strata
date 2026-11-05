@@ -31,7 +31,7 @@ export function planMemory(experience: Experience, hardware: Hardware | null, us
   }));
   const gpuBudget = devices.reduce((sum, g) => sum + g.budget, 0);
   // Explicit partial offload needs layer sizes, which this catalog does not expose.
-  if (!unified && !cpuOnly && !['Automatic', 'All layers'].includes(experience.config.placement)) return null;
+  if (!unified && !cpuOnly && (m.placementKnown === false || !['Automatic', 'All layers'].includes(experience.config.placement))) return null;
   const budget = ramBudget + gpuBudget;
   const context = m.cache * Math.max(1, parallel);
   const total = m.weights + context + m.runtime;

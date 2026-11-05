@@ -133,7 +133,7 @@ export function TuningDials({ config, saved = config, contextMax, batchSupported
     showBatch?: boolean;
     exactEntry?: boolean;
 }) {
-    const contexts = [4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576].filter(v => v <= contextMax).map(value => ({ value, label: `${value / 1024}K` }));
+    const contexts = [4096, 8192, 16384, 32768, 65536, 98304, 131072, 262144, 524288, 1048576].filter(v => v <= contextMax).map(value => ({ value, label: `${value / 1024}K` }));
     const recommended = Math.min(RECOMMENDED_CONTEXT_TOKENS, contexts.at(-1)?.value ?? 4096);
     return <div className="tuning-dials">
     {tr(showContext ? contexts.length ? <Dial exactEntry={exactEntry} label={tr("Context")} hint={tr("More text uses more memory.")} values={contexts} value={config.context} saved={saved.context} recommended={recommended} onChange={context => onChange({ context })}/> : <p>{tr("No supported context length.")}</p> : null)}

@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { build } from 'esbuild';
 const result=await build({entryPoints:[fileURLToPath(new URL('../src/lib/experience.ts',import.meta.url))],bundle:true,write:false,platform:'node',format:'esm'});
 const code=result.outputFiles[0].text;
-const { estimate, recommend, configKey, hardwareKey, groupVariants, DEFAULT_EXECUTION: config } = await import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`);
+const { estimate, execution, recommend, configKey, hardwareKey, groupVariants, DEFAULT_EXECUTION: config } = await import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`);
 const versionCode=(await build({entryPoints:[fileURLToPath(new URL('../src/lib/model-versions.ts',import.meta.url))],bundle:true,write:false,platform:'node',format:'esm'})).outputFiles[0].text;
 const { versionFit }=await import(`data:text/javascript;base64,${Buffer.from(versionCode).toString('base64')}`);
 const hw = { cpu: { model: 'Fixture CPU' }, gpus: [{ name: 'Fixture GPU' }], memory: { totalGb: 32 }, accelerator: { unified: true, backend: 'metal', usableVramGb: 24 } };
@@ -37,6 +37,21 @@ test('incomplete local KV metadata uses provisional memory without claiming a co
   const fit=versionFit(partial,hw,config.context);
   assert.equal(fit.needed,base.diskGb+result.memory.cache+1.2);
   assert.equal(fit.zone,'unknown');
+});
+
+test('CPU MoE placement does not claim all weights must fit VRAM or reuse unrelated speed evidence', () => {
+  const model={...base,diskGb:22,experts:256,contextMax:131072};
+  const discrete={...hw,accelerator:{unified:false,backend:'cuda',usableVramGb:14.5}};
+  const ordinary=execution({},131072),split=execution({'gpu.cpuMoeLayers':28},131072);
+  assert.deepEqual(execution({'gpu.cpuMoeLayers':0},131072),ordinary);
+  assert.equal(estimate(model,discrete,ordinary).fit,'too-large');
+  const actual=estimate(model,discrete,split);
+  assert.equal(actual.fit,'unknown');assert.equal(actual.memory.placementKnown,false);
+  assert.equal(actual.memory.budget,null);assert.equal(actual.memory.remaining,null);
+  assert.notEqual(configKey(model,ordinary),configKey(model,split));
+  assert.equal(estimate({...model,contextMax:65536},discrete,split).fit,'unsupported');
+  assert.equal(estimate({...model,experts:0},discrete,split).fit,'too-large');
+  assert.equal(estimate(model,hw,split).memory.placementKnown,true);
 });
 test('agent capability gating beats raw reading speed; output speed selects Performance', () => {
   const fast = measured({ ...base, id: 'fast' }, 900, 150);
