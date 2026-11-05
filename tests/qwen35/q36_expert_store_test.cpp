@@ -215,6 +215,43 @@ int main() {
         for (uint8_t byte : staged) CHECK(byte == 0xcd);
     }
 
+#if defined(_WIN32)
+    if (pack) {
+        // Restored mtimes, changed geometry and active writers must not turn
+        // the local NTFS receipt into permission to accept changed weights.
+        const std::string path = pack->path();
+        CHECK(expert_pack_verify(path, model.string(), &req.layers, kQ36ExpertTail, true).empty());
+        const bool cache_supported = fs::exists(path + ".verified");
+        CHECK(expert_pack_verify(path, model.string(), &req.layers, kQ36ExpertTail, true).empty());
+        CHECK(strata::qwen35::expert_pack_last_verification_cached() == cache_supported);
+        auto wrong_geometry = req.layers;
+        wrong_geometry[0].layout.n_embd++;
+        CHECK(!expert_pack_verify(path, model.string(), &wrong_geometry, kQ36ExpertTail, true).empty());
+        CHECK(!strata::qwen35::expert_pack_last_verification_cached());
+        CHECK(!expert_pack_verify(path, model.string(), &req.layers, kQ36ExpertTail + 1, true).empty());
+        _putenv_s("STRATA_Q36_VERIFY_PACK", "1");
+        CHECK(expert_pack_verify(path, model.string(), &req.layers, kQ36ExpertTail, true).empty());
+        CHECK(!strata::qwen35::expert_pack_last_verification_cached());
+        _putenv_s("STRATA_Q36_VERIFY_PACK", "");
+        const auto old_time = fs::last_write_time(model);
+        write_bytes(model, "abd", 3);
+        fs::last_write_time(model, old_time);
+        CHECK(expert_pack_verify(path, model.string(), &req.layers, kQ36ExpertTail, true).find("not for this model") != std::string::npos);
+        write_bytes(model, abc, 3);
+        CHECK(expert_pack_verify(path, model.string(), &req.layers, kQ36ExpertTail, true).empty());
+        write_bytes(path + ".verified", "invalid receipt", 15);
+        CHECK(expert_pack_verify(path, model.string(), &req.layers, kQ36ExpertTail, true).empty());
+        CHECK(!strata::qwen35::expert_pack_last_verification_cached());
+        CHECK(expert_pack_verify(path, model.string(), &req.layers, kQ36ExpertTail, true).empty());
+        HANDLE writer = CreateFileW(model.c_str(), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                                    nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+        CHECK(writer != INVALID_HANDLE_VALUE);
+        CHECK(expert_pack_verify(path, model.string(), &req.layers, kQ36ExpertTail, true).empty());
+        CHECK(!strata::qwen35::expert_pack_last_verification_cached());
+        if (writer != INVALID_HANDLE_VALUE) CloseHandle(writer);
+    }
+#endif
+
     // Cross buffered-read chunk boundaries and expert boundaries. The expected
     // bytes are assembled from the source tensors, not read from the mapping.
     PackBuildRequest staged_req = req;
@@ -282,6 +319,7 @@ int main() {
 
     if (pack) {
         std::fstream bad(pack->path(), std::ios::binary | std::ios::in | std::ios::out);
+        const auto pack_time = fs::last_write_time(pack->path());
         bad.seekg((std::streamoff) kExpertPackPayloadOffsetField);
         uint64_t payload_at = 0;
         bad.read(reinterpret_cast<char*>(&payload_at), 8);
@@ -293,8 +331,10 @@ int main() {
         bad.seekp((std::streamoff) payload_at);
         bad.write(&flip, 1);
         bad.close();
-        const std::string mismatch = expert_pack_verify(pack->path(), model.string(), &req.layers, kQ36ExpertTail);
+        fs::last_write_time(pack->path(), pack_time);
+        const std::string mismatch = expert_pack_verify(pack->path(), model.string(), &req.layers, kQ36ExpertTail, true);
         CHECK(mismatch.find("hash") != std::string::npos);
+        CHECK(!strata::qwen35::expert_pack_last_verification_cached());
     }
     pack.reset();
     reused.reset();

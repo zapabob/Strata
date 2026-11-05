@@ -92,7 +92,11 @@ std::unique_ptr<MappedExpertPack> open_or_build_expert_pack(const PackBuildReque
 
 // Empty string means the file matches the model and, when expected is set, that geometry.
 std::string expert_pack_verify(const std::string& pack_path, const std::string& model_path,
-                               const std::vector<PackLayer>* expected, uint64_t tail);
+                               const std::vector<PackLayer>* expected, uint64_t tail, bool reuse_verified = false);
+// Reuse is supported only with read-locked NTFS file identities and USNs.
+// The default above always hashes every byte; STRATA_Q36_VERIFY_PACK=1 also
+// forces full verification on the engine path. Geometry is checked every time.
+bool expert_pack_last_verification_cached();
 
 std::string expert_pack_sha256_file(const std::string& path, std::string& err);
 uint64_t expert_pack_last_scratch_bytes();

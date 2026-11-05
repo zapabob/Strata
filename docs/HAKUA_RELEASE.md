@@ -1,5 +1,48 @@
 # Hakua Windows release qualification
 
+## Startup repair candidate: 0.5.1
+
+This candidate is not published. Product, Control and native CUDA source are
+`0.5.1`; the published download remains `0.5.0` below. Metal source and the
+independent PrismML, TurboQuant and Hakua-memory packages retain their versions.
+
+The Host now starts without loading the remembered or newly discovered model.
+The selected model and library remain saved; **Load** starts the chosen model.
+Two real-Host regression scenarios pass. A local hotfix in the installed 0.5.0
+app was checked through its actual WebView2 with Playwright: ten seconds of
+startup remained unloaded and stopped, with no page errors or registry changes.
+This hotfix is not an installed 0.5.1 release package.
+
+The native candidate reports model and expert-pack verification progress. Its
+Windows sequential verification uses bounded aligned I/O where supported. After
+a complete SHA-256 and CRC check, unchanged NTFS files can reuse a local receipt
+protected with Windows DPAPI. File identity, size, change time and USN must match;
+the header and tensor geometry are still checked. Missing, changed or invalid
+receipts fall back to full verification. `STRATA_Q36_VERIFY_PACK=1` forces the
+full check. Model files and expert packs are retained.
+
+CPU expert-store and transfer-lifetime tests pass, including changed content
+with restored modification timestamps, invalid receipts, geometry mismatch and
+an active writer. Real-model verification, native startup, cache isolation and
+the final installer are still pending. These CPU results do not qualify a 98K
+or 131K context window.
+
+CUDA 13.5 evaluation is separate from the startup repair. The opt-in
+`tools/bench_cuda135.cu` measures the existing transfer modes and FP16/BF16 GEMMs
+with bounded allocations and numerical checks. It requires CUDA 13.5 and
+`sm_120`. No faster default or CUDA 13.5 product qualification is claimed until
+the measurements and native-model checks pass.
+
+The first library-only comparison passed six serial runs (three per cuBLAS
+version) on the RTX 5060 Ti, driver 621.01. Both sides used the same CUDA 13.5.37
+benchmark executable; only the cuBLAS DLLs changed from toolkit 13.3 to 13.5.
+For N=4096, K=2048, median FP16 T=32 time changed from 0.027806 to 0.018528 ms;
+BF16 T=1 changed from 0.043107 to 0.026534 ms. FP16 T=1 regressed from 0.027714
+to 0.031571 ms. Eight 1 MiB host-to-device copies took about 1.26--1.27 ms
+across the three transfer modes. Numerical fixtures and byte comparisons passed.
+These are small synthetic measurements, not model throughput or a compiler A/B
+comparison. They do not justify enabling every new path by default.
+
 ## Windows release: 0.5.0
 
 Publication policy: release 0.5.0 with the known limits recorded below. Native

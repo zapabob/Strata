@@ -8,7 +8,7 @@
 # below refuses anything older: silently building for a pre-Ampere arch would produce a binary that runs
 # and is wrong about its own performance, which is the worst of both outcomes.
 cmake_minimum_required(VERSION 3.24)
-project(strata VERSION 0.5.0 LANGUAGES CXX)
+project(strata VERSION 0.5.1 LANGUAGES CXX)
 # EXPERIMENTAL: the Intel Arc engine, the SYCL port in sycl/ (PR #423; icpx + oneMKL, docs/INTEL_ARC.md). It is its
 # own project that takes the unported sources from src/; with this on, nothing below is configured.
 option(STRATA_ENABLE_SYCL "EXPERIMENTAL: build the Intel Arc (SYCL) engine from sycl/ - docs/INTEL_ARC.md" OFF)
@@ -350,8 +350,8 @@ if(STRATA_BUILD_TESTS)
   add_executable(q36_transfer_lifetime_test tests/qwen35/q36_transfer_lifetime_test.cpp src/qwen35/expert_store.cpp)
   target_include_directories(q36_transfer_lifetime_test PRIVATE include)
   if(WIN32)
-    target_link_libraries(q36_expert_store_test PRIVATE bcrypt)
-    target_link_libraries(q36_transfer_lifetime_test PRIVATE bcrypt)
+    target_link_libraries(q36_expert_store_test PRIVATE bcrypt crypt32)
+    target_link_libraries(q36_transfer_lifetime_test PRIVATE bcrypt crypt32)
   endif()
   add_test(NAME q36_transfer_lifetime_test COMMAND q36_transfer_lifetime_test)
   add_executable(logit_bias_test src/core/logit_bias_test.cpp)
@@ -963,7 +963,7 @@ if(STRATA_ENABLE_CUDA OR STRATA_ENABLE_HIP)
   target_include_directories(strata_qwen35 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include PRIVATE ${_strata_gpu_include_directories})
   target_link_libraries(strata_qwen35 PRIVATE strata_prefill strata_kernels strata_warnings ${_strata_gpu_runtime_target})
   if(WIN32)
-    target_link_libraries(strata_qwen35 PRIVATE bcrypt)
+    target_link_libraries(strata_qwen35 PRIVATE bcrypt crypt32)
   endif()
   if(STRATA_NATIVE_EXPERTS)
     # the hybrid mode (experts that do not all fit in VRAM): the CPU expert pool on ggml-cpu's arithmetic

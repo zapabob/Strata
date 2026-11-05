@@ -1,5 +1,7 @@
 # Strata · Hakua
 
+此源码正在准备0.5.1（`Strata-0.5.1-windows-x64-setup.exe`），包含手动加载模型和Qwen3.6启动修复。候选版本尚未发布，也尚未通过实际模型启动验证。下方已发布的下载仍为0.5.0。
+
 在本机运行模型、聊天和工具，并可选用 Hakua 记忆。这是 [zapabob](https://github.com/zapabob/Strata) 维护的 [Niko1221/Strata](https://github.com/Niko1221/Strata) 分支。
 
 [English](README.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [Deutsch](README.de.md) · [Français](README.fr.md) · [Español](README.es.md) · [Português](README.pt-BR.md) · [Polski](README.pl.md)

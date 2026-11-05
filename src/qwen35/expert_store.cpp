@@ -1,6 +1,10 @@
 ﻿#include "strata/qwen35/expert_store.hpp"
 
+#include "strata/qwen35/startup_trace.hpp"
 #include <algorithm>
+#include <chrono>
+#include <cstdlib>
+#include <cwchar>
 #include <array>
 #include <cstdio>
 #include <cstring>
@@ -13,6 +17,9 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
+#include <winioctl.h>
+#include <wincrypt.h>
+#include <dpapi.h>
 #include <bcrypt.h>
 #else
 #include <errno.h>
@@ -28,6 +35,7 @@ namespace strata::qwen35 {
 namespace {
 
 uint64_t g_scratch_bytes = 0;
+bool g_verification_cached = false;
 
 void put_u32(uint8_t* p, uint32_t v) {
     p[0] = (uint8_t) v;
@@ -333,6 +341,9 @@ struct MappedView {
 #if defined(_WIN32)
     HANDLE file = INVALID_HANDLE_VALUE;
     HANDLE mapping = nullptr;
+    HANDLE direct_file = INVALID_HANDLE_VALUE;
+    uint8_t* direct_buffer = nullptr;
+    DWORD sector_bytes = 0;
 #else
     int fd = -1;
 #endif
@@ -344,6 +355,11 @@ struct MappedView {
         if (data) UnmapViewOfFile(data);
         if (mapping) CloseHandle(mapping);
         if (file != INVALID_HANDLE_VALUE) CloseHandle(file);
+        if (direct_file != INVALID_HANDLE_VALUE) CloseHandle(direct_file);
+        if (direct_buffer) VirtualFree(direct_buffer, 0, MEM_RELEASE);
+        direct_file = INVALID_HANDLE_VALUE;
+        direct_buffer = nullptr;
+        sector_bytes = 0;
         data = nullptr;
         mapping = nullptr;
         file = INVALID_HANDLE_VALUE;
@@ -378,6 +394,36 @@ struct MappedView {
         }
         size = (uint64_t) sz.QuadPart;
         if (size == 0) return true;
+        if (sequential) {
+            // Full verification is a one-pass scan, not inference. Buffered
+            // ReadFile can populate the system cache with both weight files
+            // while CUDA already owns host memory. Keep one aligned MiB for
+            // this scan; inference continues to use the existing mapped cache.
+            FILE_STORAGE_INFO storage{};
+            if (GetFileInformationByHandleEx(file, FileStorageInfo, &storage, sizeof(storage))) {
+                const DWORD alignment = std::max(storage.LogicalBytesPerSector, storage.PhysicalBytesPerSectorForAtomicity);
+                if (alignment && alignment <= 65536 && (alignment & (alignment - 1)) == 0) {
+                    direct_file = CreateFileW(w.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                                              nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_NO_BUFFERING, nullptr);
+                    if (direct_file != INVALID_HANDLE_VALUE) {
+                        BY_HANDLE_FILE_INFORMATION original{}, direct{};
+                        if (!GetFileInformationByHandle(file, &original) || !GetFileInformationByHandle(direct_file, &direct) ||
+                            original.dwVolumeSerialNumber != direct.dwVolumeSerialNumber || original.nFileIndexHigh != direct.nFileIndexHigh ||
+                            original.nFileIndexLow != direct.nFileIndexLow) {
+                            err = "expert pack file changed while opening the verification reader";
+                            close();
+                            return false;
+                        }
+                        direct_buffer = static_cast<uint8_t*>(VirtualAlloc(nullptr, 1u << 20, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE));
+                        if (direct_buffer) {
+                            sector_bytes = alignment;
+                            std::fprintf(stderr, "strata-q36: full-file verification uses bounded direct I/O (%lu-byte alignment)\n", (unsigned long) sector_bytes);
+                        }
+                        else { CloseHandle(direct_file); direct_file = INVALID_HANDLE_VALUE; }
+                    }
+                }
+            }
+        }
         mapping = CreateFileMappingW(file, nullptr, PAGE_READONLY, 0, 0, nullptr);
         if (!mapping) {
             err = "expert pack could not be mapped";
@@ -424,14 +470,19 @@ struct MappedView {
         if (offset > size || n > size - offset || (n && !dst)) return false;
 #if defined(_WIN32)
         while (n) {
-            const DWORD take = (DWORD) std::min<size_t>(n, 1u << 20);
+            DWORD take = (DWORD) std::min<size_t>(n, 1u << 20);
+            // Unaligned records and short tails use the buffered handle. No
+            // padding is included in the hash of a non-sector-sized GGUF.
+            const bool direct = direct_buffer && offset % sector_bytes == 0 && take >= sector_bytes;
+            if (direct) take -= take % sector_bytes;
             DWORD got = 0;
             // This is a synchronous handle. Supplying the offset on each read
             // avoids a shared seek/read cursor race between staging callers.
             OVERLAPPED at{};
             at.Offset = (DWORD) offset;
             at.OffsetHigh = (DWORD) (offset >> 32);
-            if (!ReadFile(file, dst, take, &got, &at) || got == 0) return false;
+            if (!ReadFile(direct ? direct_file : file, direct ? direct_buffer : dst, take, &got, &at) || got == 0) return false;
+            if (direct) std::memcpy(dst, direct_buffer, got);
             dst += got; n -= got; offset += got;
         }
 #else
@@ -554,20 +605,146 @@ private:
 };
 #endif
 
-bool hash_file(const std::string& path, uint8_t out[32], std::string& err) {
+bool hash_file(const std::string& path, uint8_t out[32], std::string& err, bool report_progress = false) {
     MappedView view;
     if (!view.open(path, err, true)) return false;
     Sha256 sha;
     std::vector<uint8_t> buffer(1u << 20);
+    const auto start = std::chrono::steady_clock::now();
+    auto last = start;
     for (uint64_t at = 0; at < view.size;) {
         const size_t take = (size_t) std::min<uint64_t>(buffer.size(), view.size - at);
         if (!view.read(at, buffer.data(), take)) { err = "model hash read failed"; return false; }
         sha.update(buffer.data(), take);
         at += take;
+        if (report_progress) {
+            const auto now = std::chrono::steady_clock::now();
+            if (now - last >= std::chrono::seconds(2)) {
+                const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
+                q36_startup("expert_model_verify", "progress", ms, ms, nullptr);
+                last = now;
+            }
+        }
     }
     if (!sha.final(out)) { err = "expert pack SHA-256 failed"; return false; }
     return true;
 }
+
+struct VerificationProgress {
+    const char* stage;
+    std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point last = start;
+    bool finished = false;
+    explicit VerificationProgress(const char* name) : stage(name) { q36_startup(stage, "begin", 0, 0, nullptr); }
+    void tick() {
+        const auto now = std::chrono::steady_clock::now();
+        if (now - last < std::chrono::seconds(2)) return;
+        const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
+        q36_startup(stage, "progress", ms, ms, nullptr);
+        last = now;
+    }
+    void end() {
+        const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count();
+        q36_startup(stage, "end", ms, ms, nullptr);
+        finished = true;
+    }
+    ~VerificationProgress() {
+        if (!finished) q36_startup(stage, "error", 0, 0, "pack_verification_failed");
+    }
+};
+
+// A local verification receipt is an optimisation for unchanged files, not a
+// publisher signature. Only NTFS files with a readable change journal qualify.
+// Read locks exclude writers/deletion while checking the receipt and hashing.
+// Size/mtime alone are insufficient: restored timestamps must invalidate reuse.
+struct VerificationCache {
+    std::string path;
+    std::array<uint8_t, 136> identity{};
+    bool available = false;
+#if defined(_WIN32)
+    HANDLE model = INVALID_HANDLE_VALUE, pack = INVALID_HANDLE_VALUE;
+    static bool fingerprint(HANDLE file, uint8_t* out) {
+        if (file == INVALID_HANDLE_VALUE) return false;
+        wchar_t filesystem[32]{};
+        if (!GetVolumeInformationByHandleW(file, nullptr, 0, nullptr, nullptr, nullptr, filesystem, 32) ||
+            std::wcscmp(filesystem, L"NTFS") != 0) return false;
+        FILE_ID_INFO id{};
+        FILE_BASIC_INFO basic{};
+        LARGE_INTEGER size{};
+        alignas(USN_RECORD_V2) uint8_t journal[4096]{};
+        DWORD got = 0;
+        if (!GetFileInformationByHandleEx(file, FileIdInfo, &id, sizeof(id)) ||
+            !GetFileInformationByHandleEx(file, FileBasicInfo, &basic, sizeof(basic)) || !GetFileSizeEx(file, &size) ||
+            !DeviceIoControl(file, FSCTL_READ_FILE_USN_DATA, nullptr, 0, journal, sizeof(journal), &got, nullptr) ||
+            got < sizeof(USN_RECORD_V2)) return false;
+        const auto* usn = reinterpret_cast<const USN_RECORD_V2*>(journal);
+        if (usn->MajorVersion != 2 || usn->Usn <= 0 || basic.ChangeTime.QuadPart <= 0 || size.QuadPart < 0) return false;
+        put_u64(out, id.VolumeSerialNumber);
+        std::memcpy(out + 8, id.FileId.Identifier, 16);
+        put_u64(out + 24, (uint64_t) size.QuadPart);
+        put_u64(out + 32, (uint64_t) basic.CreationTime.QuadPart);
+        put_u64(out + 40, (uint64_t) basic.LastWriteTime.QuadPart);
+        put_u64(out + 48, (uint64_t) basic.ChangeTime.QuadPart);
+        put_u64(out + 56, (uint64_t) usn->Usn);
+        return true;
+    }
+#endif
+    VerificationCache(const std::string& model_path, const std::string& pack_path, bool enabled) : path(pack_path + ".verified") {
+#if defined(_WIN32)
+        if (!enabled) return;
+        const auto a = widen(model_path), b = widen(pack_path);
+        if (a.empty() || b.empty()) return;
+        model = CreateFileW(a.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+        pack = CreateFileW(b.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+        std::memcpy(identity.data(), "Q36VC2\0", 8);
+        available = fingerprint(model, identity.data() + 8) && fingerprint(pack, identity.data() + 72);
+#else
+        (void) model_path; (void) enabled;
+#endif
+    }
+    bool matches() const {
+#if defined(_WIN32)
+        if (!available) return false;
+        const char* force = std::getenv("STRATA_Q36_VERIFY_PACK");
+        if (force && std::strcmp(force, "1") == 0) return false;
+        MappedView receipt;
+        std::string ignored;
+        if (!receipt.open(path, ignored) || !receipt.size || receipt.size > 4096) return false;
+        DATA_BLOB sealed{(DWORD) receipt.size, const_cast<BYTE*>(receipt.data)}, plain{};
+        if (!CryptUnprotectData(&sealed, nullptr, nullptr, nullptr, nullptr, CRYPTPROTECT_UI_FORBIDDEN, &plain)) return false;
+        const bool same = plain.cbData == identity.size() && std::memcmp(plain.pbData, identity.data(), identity.size()) == 0;
+        LocalFree(plain.pbData);
+        return same;
+#else
+        return false;
+#endif
+    }
+    void publish() const {
+#if defined(_WIN32)
+        if (!available) return;
+        auto current = identity;
+        if (!fingerprint(model, current.data() + 8) || !fingerprint(pack, current.data() + 72) || current != identity) return;
+        // A downloaded or another user's receipt cannot grant a cache hit.
+        // DPAPI binds this integrity-protected record to the current account.
+        DATA_BLOB plain{(DWORD) identity.size(), const_cast<BYTE*>(identity.data())}, sealed{};
+        if (!CryptProtectData(&plain, L"Strata Qwen3.6 verification", nullptr, nullptr, nullptr, CRYPTPROTECT_UI_FORBIDDEN, &sealed)) return;
+        const std::string temp = path + "." + std::to_string(GetCurrentProcessId()) + "." + std::to_string(GetTickCount64()) + ".tmp";
+        BinaryWriter writer;
+        std::string ignored;
+        const bool ok = writer.open(temp, ignored) && writer.write(sealed.pbData, sealed.cbData) && writer.flush();
+        LocalFree(sealed.pbData);
+        writer.close();
+        if (ok) rename_over(temp, path);
+        remove_file(temp);
+#endif
+    }
+    ~VerificationCache() {
+#if defined(_WIN32)
+        if (model != INVALID_HANDLE_VALUE) CloseHandle(model);
+        if (pack != INVALID_HANDLE_VALUE) CloseHandle(pack);
+#endif
+    }
+};
 
 struct HeldLock {
     std::string path;
@@ -763,9 +940,13 @@ std::string expert_pack_sha256_file(const std::string& path, std::string& err) {
 }
 
 uint64_t expert_pack_last_scratch_bytes() { return g_scratch_bytes; }
+bool expert_pack_last_verification_cached() { return g_verification_cached; }
 
 std::string expert_pack_verify(const std::string& pack_path, const std::string& model_path,
-                               const std::vector<PackLayer>* expected, uint64_t tail) {
+                               const std::vector<PackLayer>* expected, uint64_t tail, bool reuse_verified) {
+    g_verification_cached = false;
+    VerificationCache cache(model_path, pack_path, reuse_verified);
+    const bool cached = cache.matches();
     std::string err;
     MappedView view;
     if (!view.open(pack_path, err, true)) return err;
@@ -776,8 +957,12 @@ std::string expert_pack_verify(const std::string& pack_path, const std::string& 
     if (version != kExpertPackVersion) return "expert pack version is not supported";
     if (!read_u32(view.data, view.size, 12, endian) || endian != 1) return "expert pack endian is not supported";
     uint8_t model_sha[32];
-    if (!hash_file(model_path, model_sha, err)) return err.empty() ? "model file could not be hashed" : err;
-    if (std::memcmp(view.data + 16, model_sha, 32) != 0) return "expert pack is not for this model file";
+    VerificationProgress model_progress("expert_model_verify");
+    if (!cached) {
+        if (!hash_file(model_path, model_sha, err, true)) return err.empty() ? "model file could not be hashed" : err;
+        if (std::memcmp(view.data + 16, model_sha, 32) != 0) return "expert pack is not for this model file";
+    }
+    model_progress.end();
     if (!read_u32(view.data, view.size, 48, n_layers) || n_layers == 0 || n_layers > 256) return "expert pack layer count is not supported";
     uint64_t file_tail = 0, payload_offset = 0, payload_bytes = 0;
     if (!read_u64(view.data, view.size, 56, file_tail) || file_tail != tail) return "expert pack tail does not match";
@@ -789,6 +974,7 @@ std::string expert_pack_verify(const std::string& pack_path, const std::string& 
     const uint64_t header = kExpertPackPrefixBytes + (uint64_t) n_layers * kExpertPackRecordBytes;
     if (payload_offset < header || (payload_offset & (kExpertPackAlign - 1)) != 0) return "expert pack payload is not aligned";
     Sha256 payload_hash;
+    VerificationProgress payload_progress("expert_pack_verify");
     std::vector<uint8_t> verify_buffer(1u << 20);
     bool checksum_mismatch = false;
     if (expected && expected->size() != n_layers) return "expert pack layer count does not match this model";
@@ -815,14 +1001,15 @@ std::string expert_pack_verify(const std::string& pack_path, const std::string& 
         // SHA-256 and each layer's CRC cover the same bytes in one sequential
         // pass. A 20-GiB pack must not be read twice on a 32-GiB machine.
         uint32_t actual_crc = 0;
-        for (uint64_t at = 0; at < layer_bytes;) {
+        for (uint64_t at = 0; !cached && at < layer_bytes;) {
             const size_t take = (size_t) std::min<uint64_t>(verify_buffer.size(), layer_bytes - at);
             if (!view.read(cursor + at, verify_buffer.data(), take)) return "expert pack payload read failed";
             payload_hash.update(verify_buffer.data(), take);
             actual_crc = crc32_update(actual_crc, verify_buffer.data(), take);
             at += take;
+            payload_progress.tick();
         }
-        checksum_mismatch = checksum_mismatch || actual_crc != crc;
+        checksum_mismatch = checksum_mismatch || (!cached && actual_crc != crc);
         if (expected) {
             const ExpertBlobLayout& want = (*expected)[i].layout;
             const ExpertSource& src = (*expected)[i].source;
@@ -837,9 +1024,13 @@ std::string expert_pack_verify(const std::string& pack_path, const std::string& 
     }
     if (cursor != view.size) return "expert pack has bytes after the last layer";
     uint8_t payload_sha[32];
-    if (!payload_hash.final(payload_sha)) return "expert pack SHA-256 failed";
-    if (std::memcmp(view.data + 80, payload_sha, 32) != 0) return "expert pack payload hash does not match";
+    if (!cached && !payload_hash.final(payload_sha)) return "expert pack SHA-256 failed";
+    if (!cached && std::memcmp(view.data + 80, payload_sha, 32) != 0) return "expert pack payload hash does not match";
     if (checksum_mismatch) return "expert pack layer checksum does not match";
+    payload_progress.end();
+    if (cached) std::fprintf(stderr, "strata-q36: reusing full expert-pack verification (unchanged read-locked NTFS files and USNs)\n");
+    else cache.publish();
+    g_verification_cached = cached;
     return {};
 }
 
@@ -850,7 +1041,7 @@ std::unique_ptr<MappedExpertPack> open_or_build_expert_pack(const PackBuildReque
     uint64_t payload_bytes = 0, payload_offset = 0;
     if (!plan_layers(req, plans, payload_bytes, payload_offset, err)) return nullptr;
     const std::string final_path = pack_path_for(req.model_path);
-    const std::string reason = expert_pack_verify(final_path, req.model_path, &req.layers, req.tail);
+    const std::string reason = expert_pack_verify(final_path, req.model_path, &req.layers, req.tail, true);
     if (reason.empty()) {
         auto pack = std::unique_ptr<MappedExpertPack>(new MappedExpertPack());
         pack->impl_.reset(new MappedExpertPack::Impl());
@@ -994,7 +1185,7 @@ std::unique_ptr<MappedExpertPack> open_or_build_expert_pack(const PackBuildReque
         err = "expert pack could not be published. The full host arena was not allocated.";
         return nullptr;
     }
-    const std::string published = expert_pack_verify(final_path, req.model_path, &req.layers, req.tail);
+    const std::string published = expert_pack_verify(final_path, req.model_path, &req.layers, req.tail, true);
     if (!published.empty()) {
         rename_over(final_path, rejected_path_for(final_path));
         err = published;

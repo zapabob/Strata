@@ -1,5 +1,7 @@
 # Strata · Hakua
 
+Ten kod przygotowuje wersję 0.5.1 (`Strata-0.5.1-windows-x64-setup.exe`): ręczne ładowanie modeli i poprawki uruchamiania Qwen3.6. Wersja kandydująca nie jest jeszcze opublikowana, a uruchamianie rzeczywistego modelu nie zostało potwierdzone. Poniższy opublikowany plik pozostaje w wersji 0.5.0.
+
 Lokalne modele, czat, narzędzia i opcjonalna pamięć Hakua. To [fork zapabob](https://github.com/zapabob/Strata) projektu [Niko1221/Strata](https://github.com/Niko1221/Strata).
 
 [English](README.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [Deutsch](README.de.md) · [Français](README.fr.md) · [Español](README.es.md) · [Português](README.pt-BR.md) · [Polski](README.pl.md)

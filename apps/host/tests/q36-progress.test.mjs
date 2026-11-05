@@ -43,6 +43,17 @@ test('an engine-log chunk moves loading to warming to ready, and an error stays'
   assert.doesNotMatch(failed.sentence, /Warming/);
 });
 
+test('full-file verification remains visible as loading before expert allocation', () => {
+  let state = null;
+  for (const [stage, label] of [['expert_model_verify', 'model file'], ['expert_pack_verify', 'expert cache']]) {
+    const line = `Q36_STARTUP schema=1 stage=${stage} state=progress elapsed_ms=2500 stage_elapsed_ms=2500 error_code=null\n`;
+    state = pushEngineLogChunk(state ?? { pending: '', startup: null, phase: null, sentence: null }, line);
+    assert.equal(state.phase, 'loading');
+    assert.equal(state.startup.stage, stage);
+    assert.match(state.sentence, new RegExp(label));
+  }
+});
+
 test('UD-Q4_K_XL legacy placement is refused when free RAM cannot hold the measured arena', () => {
   const low = admitQ36LegacyPhysical({
     modelName: 'Qwen3.6-35B-A3B-UD-Q4_K_XL',

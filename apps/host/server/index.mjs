@@ -294,30 +294,8 @@ function runtimeState(){
   return runtimeModels.state();
 }
 
-const startupModelId = process.env.STRATA_REAL_ENGINE === '1' ? (store.get().loaded ?? store.get().current) : null;
-if (startupModelId) {
-  monitor.setModel(startupModelId);
-  const lastId = startupModelId;
-  setTimeout(() => {
-    const v = variant(lastId);
-    if (!v || !models.isOnDisk(lastId)) return;
-    console.log(`autostart    ·  loading ${v.label}`);
-    void models
-      .load(lastId, {
-        hardware: boot,
-        config: { beginner: store.get().beginner, expert: engine.params(), serving: store.get().serving },
-        onPhase: async (phase, id) => {
-          if (phase === 'loading') await monitor.beginLoading(id);
-          if (phase === 'ready') {
-            await monitor.setModel(id);
-            engine.markRunning(boot.accelerator.backend);
-            hub.send('engine', await engine.config());
-          }
-        },
-      })
-      .catch((err) => console.error('autostart failed:', err.message));
-  }, 700);
-}
+// A remembered selection is not a request to allocate RAM/VRAM. Keep the
+// library and its selection; only an explicit load action starts an engine.
 const backend = await detectBackend({ force: true });
 
 console.log(`strata host  ·  http://${HOST}:${PORT}`);

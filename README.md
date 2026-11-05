@@ -1,5 +1,7 @@
 # Hakua / Strata
 
+The source tree prepares 0.5.1 (`Strata-0.5.1-windows-x64-setup.exe`): manual model loading and Qwen3.6 startup fixes. This candidate is not published or qualified for real-model startup yet. The published download below remains 0.5.0.
+
 Run local language models in a Windows desktop app, with chat, model controls,
 tools and optional Hakua memory. This is the [zapabob fork](https://github.com/zapabob/Strata)
 of [Niko1221/Strata](https://github.com/Niko1221/Strata).

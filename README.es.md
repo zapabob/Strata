@@ -1,5 +1,7 @@
 # Strata · Hakua
 
+Este código prepara 0.5.1 (`Strata-0.5.1-windows-x64-setup.exe`), con carga manual de modelos y correcciones del inicio de Qwen3.6. Esta versión candidata aún no está publicada ni tiene el inicio con un modelo real validado. La descarga publicada de abajo sigue siendo 0.5.0.
+
 Modelos locales, chat, herramientas y memoria Hakua opcional. Este es el [fork de zapabob](https://github.com/zapabob/Strata) de [Niko1221/Strata](https://github.com/Niko1221/Strata).
 
 [English](README.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [Deutsch](README.de.md) · [Français](README.fr.md) · [Español](README.es.md) · [Português](README.pt-BR.md) · [Polski](README.pl.md)

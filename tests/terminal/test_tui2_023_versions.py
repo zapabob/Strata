@@ -25,8 +25,8 @@ class VersionBump(unittest.TestCase):
         # Integrated upstream Niko1221 ships 0.2.11; do not treat those installer names as this fork's product version.
         product = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
         self.assertEqual(strata_cli.PRODUCT_VERSION, product)
-        self.assertEqual(strata_cli.version(), "0.5.0")
-        self.assertEqual(first("CMakeLists.txt", r"^project\(strata VERSION ([0-9.]+) "), "0.5.0")
+        self.assertEqual(strata_cli.version(), "0.5.1")
+        self.assertEqual(first("CMakeLists.txt", r"^project\(strata VERSION ([0-9.]+) "), "0.5.1")
         self.assertIn('STRATA_VERSION="0.5.0-metal"', (ROOT / "metal" / "CMakeLists.txt").read_text(encoding="utf-8"))
 
     def test_all_app_version_sources_agree(self):
@@ -46,7 +46,7 @@ class VersionBump(unittest.TestCase):
         product = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
         agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
         self.assertIn(f"Hakua product version {product}", agents)
-        self.assertIn("engine 0.5.0", agents)
+        self.assertIn("engine 0.5.1", agents)
         for name in ("README.md", "README.de.md", "README.es.md", "README.fr.md", "README.ja.md", "README.pl.md", "README.pt-BR.md", "README.zh-CN.md"):
             text = (ROOT / name).read_text(encoding="utf-8")
             # Every fork README links to this product, rather than an upstream installer.
@@ -57,7 +57,7 @@ class VersionBump(unittest.TestCase):
         product = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
         done = subprocess.run([sys.executable, str(ROOT / "strata.py"), "--version"], capture_output=True, text=True, cwd=str(ROOT),
                               env={**os.environ, "STRATA_NO_HANDOVER": "1"})
-        self.assertTrue(done.stdout.startswith(f"strata {product} (build 0.5.0;"), done.stdout)
+        self.assertTrue(done.stdout.startswith(f"strata {product} (build 0.5.1;"), done.stdout)
 
 
 class UpdateFromTheLastRelease(test_updater.UpdaterCase):

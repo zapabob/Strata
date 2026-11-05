@@ -1,7 +1,7 @@
 /** Q36_STARTUP lines from strata-q36. A later progress line does not clear an error. */
 
 const STAGES = new Set([
-  'identity', 'dense_load', 'buffers', 'expert_host_alloc', 'expert_repack', 'expert_upload',
+  'identity', 'dense_load', 'buffers', 'expert_model_verify', 'expert_pack_verify', 'expert_host_alloc', 'expert_repack', 'expert_upload',
   'warmup_prefill', 'warmup_decode', 'warmup_spec', 'engine_ready',
 ]);
 const STATES = new Set(['begin', 'progress', 'end', 'error', 'cancelled']);
@@ -9,6 +9,8 @@ const STATES = new Set(['begin', 'progress', 'end', 'error', 'cancelled']);
 const SENTENCE = {
   dense_load: 'Loading weights onto the GPU',
   buffers: 'Preparing the context',
+  expert_model_verify: 'Verifying the model file',
+  expert_pack_verify: 'Verifying the expert cache',
   expert_host_alloc: 'Allocating expert memory',
   expert_repack: 'Arranging experts',
   expert_upload: 'Copying experts to the GPU',
