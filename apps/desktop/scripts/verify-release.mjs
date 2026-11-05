@@ -13,6 +13,8 @@ const read=path=>readFileSync(path,'utf8').replace(/^\uFEFF/,'');
 const json=path=>JSON.parse(read(path));
 const product=read(join(root,'VERSION')).trim();
 const engine=/project\(strata VERSION ([\d.]+)/.exec(read(join(root,'CMakeLists.txt')))?.[1];
+const controlVersion=read(join(root,'CONTROL_VERSION')).trim();
+if(!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(controlVersion))throw new Error('Invalid Control release version');
 verifyHost(join(root,'apps/host'));
 const uiBuild=json(join(root,'apps/host/dist/release-build.json'));
 if(uiBuild.recipe?.nodeVersion!=='24.22.2'||uiBuild.recipe?.publicPackage!==true||uiBuild.recipe?.publicAssetCommit!=='03f11e2d6adc319ea21e9a1d5820a99cd3767257')throw new Error('Rebuild with the public-package assets and system-font policy');
@@ -44,7 +46,7 @@ if(JSON.stringify(noticeRecord.microsoftSources)!==JSON.stringify(json(join(root
 if(JSON.stringify(noticeRecord.qwenSource)!==JSON.stringify(vectorProvenance.license)||sha256(join(notices,'Qwen-Community-License-1.0.txt'))!==qwenLicenseHash)throw new Error('Missing or changed Qwen notice');
 if(sha256(join(notices,'README.md'))!==sha256(join(root,'packaging/hakua-third-party-notices.md')))throw new Error('Stale third-party notice index');
 const bundle=json(join(control,'BUNDLE.json'));
-if(bundle.version!==engine || read(join(control,'VERSION')).trim()!==engine) throw new Error('Stale Control engine version');
+if(bundle.version!==controlVersion || read(join(control,'VERSION')).trim()!==controlVersion) throw new Error('Stale Control package version');
 if(bundle.installed?.['hakua-memory']!=='0.3.5') throw new Error('Missing locked Hakua-memory runtime');
 const py=process.platform==='win32'?join(control,'python/python.exe'):join(control,'python/bin/python3');
 const probe=spawnSync(py,['-I','-c',"import importlib.metadata as m; from hakua_memory.ebbinghaus.store import EbbinghausMemoryStore; from hakua_memory.composite import CompositeMemory; assert m.version('hakua-memory') == '0.3.5'"],{encoding:'utf8',timeout:30000,windowsHide:true});
@@ -79,4 +81,4 @@ if(process.platform==='win32') {
  const run=spawnSync(join(folder,manifest.entrypoint),['--version'],{encoding:'utf8',timeout:15000,windowsHide:true});
  if(run.error || run.status!==0 || !run.stdout.includes(engine)) throw new Error('Bundled executable version does not match engine manifest');
 }
-console.log(`Release payload verified: Hakua ${product}, engine ${engine}`);
+console.log(`Release payload verified: Hakua ${product}, engine ${engine}, Control ${controlVersion}`);

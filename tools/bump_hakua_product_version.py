@@ -4,8 +4,8 @@
 Canonical source: repository-root ``VERSION`` (one line, Semantic Versioning
 2.0.0, for example ``0.4.1-beta.1``).
 
-Engine / Control build numbers stay in CMakeLists.txt (and Metal
-STRATA_VERSION) and are intentionally not rewritten here.
+Engine build numbers stay in CMakeLists.txt (and Metal STRATA_VERSION).
+CONTROL_VERSION owns the Control package version. Neither is rewritten here.
 
 Usage:
   py -3 tools/bump_hakua_product_version.py                 # use VERSION as-is; sync others

@@ -504,6 +504,12 @@ def main() -> int:
 
 def _source_version() -> str:
     """The version the source reports, so the artifact name cannot disagree with the code."""
+    control = ROOT / "CONTROL_VERSION"
+    if control.is_file():
+        version = control.read_text(encoding="utf-8").strip()
+        if not re.fullmatch(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)", version):
+            raise ValueError("CONTROL_VERSION must be a three-part release version")
+        return version
     text = (ROOT / "CMakeLists.txt").read_text(encoding="utf-8", errors="replace")
     # `project(strata VERSION 0.1.44.1 LANGUAGES C CXX ...)` - the version is a dotted run of numbers and must be
     # read as one. Taking "everything after VERSION" yields "0.1.44.1.LANGUAGES.CXX".

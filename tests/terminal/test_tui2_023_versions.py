@@ -21,11 +21,11 @@ def first(path, pattern):
 
 class VersionBump(unittest.TestCase):
     def test_product_and_engine_versions_are_independent(self):
-        # Product follows VERSION; native/Control is 0.4.1; unchanged Metal stays 0.4.0-metal.
+        # Product follows VERSION; Control 0.4.2 keeps native 0.4.1 and Metal 0.4.0-metal unchanged.
         # Integrated upstream Niko1221 ships 0.2.8; do not treat those installer names as this fork's product version.
         product = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
         self.assertEqual(strata_cli.PRODUCT_VERSION, product)
-        self.assertEqual(strata_cli.version(), "0.4.1")
+        self.assertEqual(strata_cli.version(), "0.4.2")
         self.assertEqual(first("CMakeLists.txt", r"^project\(strata VERSION ([0-9.]+) "), "0.4.1")
         self.assertIn('STRATA_VERSION="0.4.0-metal"', (ROOT / "metal" / "CMakeLists.txt").read_text(encoding="utf-8"))
 
@@ -57,7 +57,7 @@ class VersionBump(unittest.TestCase):
         product = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
         done = subprocess.run([sys.executable, str(ROOT / "strata.py"), "--version"], capture_output=True, text=True, cwd=str(ROOT),
                               env={**os.environ, "STRATA_NO_HANDOVER": "1"})
-        self.assertTrue(done.stdout.startswith(f"strata {product} (build 0.4.1;"), done.stdout)
+        self.assertTrue(done.stdout.startswith(f"strata {product} (build 0.4.2;"), done.stdout)
 
 
 class UpdateFromTheLastRelease(test_updater.UpdaterCase):
