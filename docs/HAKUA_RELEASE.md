@@ -23,9 +23,25 @@ full check. Model files and expert packs are retained.
 
 CPU expert-store and transfer-lifetime tests pass, including changed content
 with restored modification timestamps, invalid receipts, geometry mismatch and
-an active writer. Real-model verification, native startup, cache isolation and
-the final installer are still pending. These CPU results do not qualify a 98K
-or 131K context window.
+an active writer. Full verification of the real UD-Q4_K_XL model and its expert
+pack passed in 380.320 seconds; reusing the unchanged, DPAPI-protected receipt
+took 0.004 seconds in the same CPU probe. These timings measure verification,
+not application startup. The earlier 720-second probe timeout remains recorded.
+The source-bound Windows CUDA 13.3 build completed. Eight CUDA/kernel/cache
+parity tests passed on the RTX 5060 Ti 16 GB, driver 621.01. The real
+UD-Q4_K_XL model reached READY in 41.250 seconds with a 4096-cell context,
+five expert slots per layer, a 512-row prefill chunk and MTP depth 2. The
+unchanged-file verification receipt was reused. Six short requests passed:
+first owner, same-owner prefix reuse, a different owner, missing owner,
+decode cancellation, and clearing after cancellation. The same-owner request
+reused four tokens; the other requests reused none. These used four or five
+synthetic input token IDs, not a full 4096-token prompt or a quality benchmark.
+The lowest sampled available RAM across packaging and qualification was
+4.48 GiB, above the unchanged 3 GiB floor. The runtime hashes and model/pack
+sizes and modification timestamps matched before and after the trial.
+
+The final installer and installed-package check are still pending. These
+results do not qualify a 98K or 131K context window, FP16 KV, or CUDA 13.5.
 
 CUDA 13.5 evaluation is separate from the startup repair. The opt-in
 `tools/bench_cuda135.cu` measures the existing transfer modes and FP16/BF16 GEMMs

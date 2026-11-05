@@ -27,6 +27,8 @@ export const Q36_CAPABILITY_REVISION = 'q36-argv-private-cache-1';
  * H:\Strata\releases\hakua040-native-sync-20261103\Release\strata.exe.
  * An older binary is not listed. Legacy placement stays the default. */
 export const Q36_MAPPED_PACK_DIGESTS = new Set([
+  // 0.5.1 sm_120: source-bound mapped-pack verification with protected unchanged-file receipts.
+  'e75716a9d5deb6289e87741d42e7003ba82b7696f6121d5203e615d9fe596a96',
   // 0.5.0 sm_120: source-bound upstream integration; mapped-pack ABI and CRC checks retained.
   '28c4dc3991fa05b900fa956c351720121088d9041202d6acefd9b7af2749370e',
   // 0.4.1 sm_120: source-bound slicing-by-eight CRC; unchanged verified pack bytes.

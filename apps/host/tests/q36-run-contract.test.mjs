@@ -146,6 +146,7 @@ test('the recorded sm_120 engine digests are the mapped-pack allowlist, and lega
     '907341c74d5a9f26c784e4aaad3460e376d4cabd84635c5d032879c59b08d150',
     'c86b5d36e5371d8276bc73d553d2be0149a674ccc74541fa51d7eb88a2ab55a0',
     'dd53df07789e0fefcb87e33acab54f5bfe1faf312ef6bad515924736b715c5b5',
+    'e75716a9d5deb6289e87741d42e7003ba82b7696f6121d5203e615d9fe596a96',
     'e79b9791bdfdacd1e5f20324b8e80978af287cc1dc464d22231da8819de0f7fc',
   ].sort());
   for (const sha of listed) assert.match(sha, /^[0-9a-f]{64}$/);
