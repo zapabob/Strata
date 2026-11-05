@@ -209,6 +209,30 @@ profile, verified every file and selected engine 0.4.1. With no model registered
 in that profile, the import test ran `--version` only; it is distinct from the
 18-request native test. It did not change the production component selection.
 
+A later attempt used the normal C-drive component store and the installed
+Control's real one-token startup check. Its diagnostic context was 4,096 and its
+startup limit was eight minutes. The Qwen3.6 model was still loading when that
+limit expired. The installer did not switch engines: the active component stays
+0.4.0, the saved 131,072 configuration is unchanged, and the existing GGUF and
+expert pack retain their sizes and modification times. No resource-pressure
+abort occurred; minimum available RAM was 7,929,376,768 bytes. The complete owned
+test tree ended, and Hermes returned to the identical Hikari command line and
+98,304 context. The interruption-to-restoration interval was about 11 minutes
+25 seconds. This failed normal startup is separate from the earlier short
+native protocol tests and binary-only import.
+
+The startup verification reads the full 22,853,663,008-byte GGUF and validates
+the full 20,127,612,928-byte expert pack. The revised CRC implementation keeps that
+coverage and the existing IEEE CRC32 format, but processes eight bytes per
+iteration. On the Ryzen 5 4500, six alternating 64 MiB samples had median CRC
+times of 131.17 ms before and 31.74 ms after, about 4.1 times faster
+for this checksum calculation. 16,390 comparison cases and a known CRC vector
+passed. The implementation's pack-format, corruption, reuse, bounded-read and
+transfer-lifetime CPU tests pass, including independent bitwise CRC checks.
+Core/C++ static analysis passes. Whole-model startup speed and native inference
+with this checksum change have not yet been measured. Model and KV precision,
+context capacity and all hash checks remain unchanged.
+
 GitHub Actions returned `Actions has been disabled for this repository` when
 the validation branch was dispatched. The exact source head had no workflow
 runs on the later check, despite the permissions API reporting enabled. This
