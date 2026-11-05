@@ -6,7 +6,7 @@ Modelos locais, chat, ferramentas e memória Hakua opcional. Este é o [fork de 
 
 ## Versão para Windows
 
-Versão candidata: a publicação aguarda as [verificações restantes](docs/HAKUA_RELEASE.md). Os links de download abaixo estão preparados para a publicação.
+A versão 0.5.0 tem uma limitação conhecida na inicialização do Qwen3.6 nativo: o teste com contexto de 4K não atingiu READY em seis minutos; as solicitações de isolamento de cache privado não foram executadas. Leia os [resultados e limites](docs/HAKUA_RELEASE.md) antes de instalar.
 
 Esta versão se destina ao Windows x64 CUDA sm_120. As verificações locais usaram uma RTX 5060 Ti com 16 GB de VRAM e 32 GB de RAM. Leia os [resultados e limites restantes](docs/HAKUA_RELEASE.md) antes de instalar.
 

@@ -6,7 +6,7 @@ Lokale Modelle, Chat, Werkzeuge und optionale Hakua-Erinnerungen. Dies ist der [
 
 ## Windows-Veröffentlichung
 
-Release-Kandidat: Die Veröffentlichung wartet auf die [verbleibenden Prüfungen](docs/HAKUA_RELEASE.md). Die Downloadlinks unten sind für die Veröffentlichung vorbereitet.
+Version 0.5.0 hat eine bekannte Einschränkung beim Start von nativem Qwen3.6: Der 4K-Test erreichte READY nicht innerhalb von sechs Minuten; Anfragen zur privaten Cache-Isolation wurden nicht ausgeführt. Lies vor der Installation die [Testergebnisse und Grenzen](docs/HAKUA_RELEASE.md).
 
 Diese Version ist für Windows x64 CUDA sm_120 bestimmt. Die lokalen Prüfungen liefen auf einer RTX 5060 Ti mit 16 GB VRAM und 32 GB RAM. Lies vor der Installation die [Prüfergebnisse und verbleibenden Grenzen](docs/HAKUA_RELEASE.md).
 

@@ -1,15 +1,17 @@
 # Hakua Windows release qualification
 
-## Windows release candidate: 0.5.0
+## Windows release: 0.5.0
 
-Publication status: pending the checks below. No 0.5.0 tag or release has been
-published at this point. The prepared 0.4.1 packaging-only candidate was
-superseded before publication by this upstream integration.
+Publication policy: release 0.5.0 with the known limits recorded below. Native
+Qwen3.6 startup is not qualified: the first 4K trial stopped for RAM pressure;
+the second did not reach READY within six minutes. No private-cache requests ran.
+Publishing this version does not change those failed or NOT_RUN results. The
+prepared 0.4.1 packaging-only candidate was superseded by this integration.
 
 Product, native CUDA engine and Control are independently versioned as `0.5.0`.
-The immutable release tag will be `v0.5.0`; `latest` will point to the same commit,
-and GitHub Latest will select this release after publication. Existing published
-assets remain unchanged. Metal source is `0.5.0-metal`, with no newly qualified
+The immutable release tag is `v0.5.0`; `latest` identifies the same commit.
+The [release page](https://github.com/zapabob/Strata/releases/tag/v0.5.0) records
+publication and public-download verification. Existing historical assets remain unchanged. Metal source is `0.5.0-metal`, with no newly qualified
 Metal package. PrismML/TurboQuant remain `0.4.0`; Hakua-memory remains `0.3.5`.
 
 Official source is fixed at `9f7d977d220e9fdf2ec53cf2620cdadac1cfb24e`, including
@@ -80,7 +82,7 @@ retains PrismML/TurboQuant 0.4.0 binary identities and their original provenance
 | Explicitly authorised second trial | CUDA parity again passed 5/5 in 96.06 s. The same native Qwen3.6 configuration did not return READY within the 360-second startup deadline, so it was stopped. RAM did not trigger the stop: available RAM began at 10.10 GiB and stayed at or above 5.96 GiB in the recorded samples. None of the six cache requests ran. This separates a startup timeout from the first trial's RAM-pressure abort; it does not identify the exact slow operation. |
 | Second-trial telemetry and restoration | The native process reached 4.61 GiB working set and 9.06 GiB private bytes; these process-level figures do not identify individual allocations. The Job ended with zero active processes, runtime file hashes were unchanged, and model/pack size and modification time were unchanged. Exact original runtime settings and healthy listener were restored in about 9 min 23 s after the stop. Resource floors were unchanged in both trials. |
 | Local component/feed signatures and tar.7z readback | PASS: the component and feed verify against the pinned signing key. All 10 tar members were streamed back from the 7z and matched their input size and SHA-256. Twelve separate public assets are prepared locally. This does not activate or publish the feed. |
-| Anonymous public downloads | NOT_RUN: no 0.5.0 release has been published. Fresh CUDA parity passed twice, but neither real-model startup/cache gate passed. The release and Latest promotion remain blocked. |
+| Anonymous public downloads | Performed after publication; consult the release page for the final download/signature result. The tagged source records pre-publication checks and does not claim that a future download has passed. Native startup and cache qualification remain unsuccessful regardless of publication. |
 
 Read-only comparison found `src/qwen35/expert_store.cpp` and
 `src/qwen35/q36_engine.cu` byte-identical to the preceding fork checkpoint
@@ -102,8 +104,8 @@ CUDA component, Control ZIP, signed feed, install scripts, checksums and INSTALL
 Models, personal data and signing keys are excluded. Windows app updates remain
 manual: neither Authenticode nor a Tauri app updater signature is claimed.
 
-The locally verified tar.7z is 1,645,063,888 bytes, SHA-256
-`0d42f77eea664db9468735748375d9a45a69bdd93d422f3d083a673cd9482303`.
+The locally verified tar.7z is 1,645,068,517 bytes, SHA-256
+`4f58d543134c95512fc38f8fa5f9f43dd6e40878c571794587924a72535a8fe1`.
 The engine tar.gz is 1,466,966,308 bytes, SHA-256
 `531b2b311af907c5e32fa276789522f94ac75dcea5490af708d39bebf3004d90`.
 The Control ZIP is 73,419,032 bytes, SHA-256

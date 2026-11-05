@@ -4,7 +4,9 @@ Product `0.5.0` uses native engine `0.5.0`, Control `0.5.0` and Hakua-memory `0.
 PrismML and TurboQuant retain their independently verified `0.4.0` runtime packages.
 This is a Windows x64 CUDA sm_120 release, tested on an RTX 5060 Ti with 16 GB VRAM and
 32 GB system RAM. See the [release record](HAKUA_RELEASE.md) for publication status,
-exact tests and limits. A successful short request does not qualify a full context window.
+exact tests and limits. Native Qwen3.6 did not reach READY within the six-minute
+4K startup trial; its private-cache requests did not run. Do not treat this release
+as a verified native Qwen3.6 startup or full-context-window result.
 
 ## Install or update
 
@@ -87,6 +89,9 @@ Windows release. Other GPUs, HIP, SYCL, Linux and Metal need their own builds an
 
 ## 日本語の導入手順
 
+ネイティブQwen3.6は4K設定でも6分以内に起動完了せず、会話キャッシュ分離の
+実機要求は未実施です。この制限を確認してから導入してください。
+
 `0.5.0`のsetup EXEとチェックサムを取得します。更新前にモデルをアンロードし、
 トレイのStrataも終了してから、一度だけインストーラーを実行してください。
 Cドライブに入れる場合は、導入先を`%LOCALAPPDATA%\Programs\Strata`に指定します。
@@ -100,7 +105,7 @@ Cドライブに入れる場合は、導入先を`%LOCALAPPDATA%\Programs\Strata
 
 一括で取得する場合は`Strata-0.5.0-windows-x64.tar.7z`を使います。7z、tarの順で展開すると、
 同じNSISインストーラー、署名付きエンジン、Control、配信情報、導入スクリプト、説明書が
-入っています。モデルや個人データは含まれません。公開前の候補か、公開済みの版かは
+入っています。モデルや個人データは含まれません。検証済みの範囲と既知の制限は
 [リリース記録](HAKUA_RELEASE.md)で確認してください。
 
 取得済みGGUFは「ローカルGGUFを使用」で選択します。分割GGUFは一つを選ぶと一式を確認します。

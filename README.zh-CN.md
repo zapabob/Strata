@@ -6,7 +6,7 @@
 
 ## Windows 版本
 
-当前为发布候选版，须完成[剩余验证](docs/HAKUA_RELEASE.md)后才能发布。以下下载链接为发布预先准备。
+0.5.0 存在已知的原生 Qwen3.6 启动限制：4K 上下文测试未能在六分钟内达到 READY 状态，未执行私有缓存隔离请求。安装前请阅读[测试结果与限制](docs/HAKUA_RELEASE.md)。
 
 此版本面向 Windows x64 CUDA sm_120，已在 RTX 5060 Ti（16 GB 显存）和 32 GB 内存的电脑上进行本地检查。安装前请阅读[验证结果与剩余限制](docs/HAKUA_RELEASE.md)。
 

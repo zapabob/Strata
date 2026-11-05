@@ -6,7 +6,7 @@ Modèles locaux, discussion, outils et mémoire Hakua facultative. Il s’agit d
 
 ## Version Windows
 
-Version candidate : la publication attend les [vérifications restantes](docs/HAKUA_RELEASE.md). Les liens de téléchargement ci-dessous sont préparés pour la publication.
+La version 0.5.0 présente une limitation connue au démarrage de Qwen3.6 natif : le test avec un contexte de 4K n’a pas atteint READY en six minutes ; les requêtes d’isolation du cache privé n’ont pas été exécutées. Consultez les [résultats et limites](docs/HAKUA_RELEASE.md) avant l’installation.
 
 Cette version vise Windows x64 CUDA sm_120. Les vérifications locales ont utilisé une RTX 5060 Ti avec 16 Go de VRAM et 32 Go de RAM. Consultez les [résultats et limites restantes](docs/HAKUA_RELEASE.md) avant l’installation.
 
