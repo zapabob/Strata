@@ -92,8 +92,9 @@ cancellation, errors or five idle minutes clear the private cache. Requests
 without a conversation ID do not reuse cached state. The Host’s two pre-start refusal branches have been removed. The server checks
 the running engine’s INFO capability before accepting private-cache requests,
 including compatible local builds. Initially it serves one request at a time, with
-shared prompt and conversation caches disabled. Its mapped expert pack and
-experimental kernels remain opt-in, with binary-hash checks. The legacy host
+shared prompt and conversation caches disabled. Its mapped expert pack remains
+opt-in and checks an executable-digest allowlist. Experimental kernel switches
+are separately opt-in. The legacy host
 arena can need about 18.7 GiB plus a reserve; 32 GB total RAM does not guarantee
 a successful start. Consult the release record for measurements and open checks.
 TurboQuant K modes remain unavailable after failed real-model quality checks.

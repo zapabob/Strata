@@ -36,9 +36,13 @@ without the engine. An engine update downloads only the package for that PC's GP
 |---|---|---|
 | Engine package (per platform / backend / variant) | Control's component updater: download with resume, verify, install beside the old one, test-start, switch | the feed key (Ed25519) |
 | Control (Python runtime, `strata_control`, CLI, server) | the same updater: staged beside the running one, run once, then `components/control/active.json` points at it | the feed key |
-| The desktop app | Tauri's signed updater in the shell, reached by the host through a token-protected loopback bridge | the Tauri updater key (minisign) |
+| The Hakua Windows desktop app | Download the NSIS installer from the release and run it manually | No app signature is claimed for 0.5.0 |
+| Optional signed desktop updater (reference architecture) | Tauri's signed updater in the shell, reached by the host through a token-protected loopback bridge | a separate Tauri updater key (minisign) |
 
-Two separate private keys, both kept by the owner, neither in git, neither the same as Apple/Windows code signing:
+The signed desktop-updater examples below describe the optional reference architecture.
+They do not mean that this fork publishes an app entry or `latest.json`. That path needs
+a matching Tauri signing key and a separately qualified app package. The two key roles
+are distinct; neither private key belongs in git or replaces Apple/Windows code signing:
 
 * **feed key**: Ed25519, signs `strata-feed.json` and every engine package manifest.
 * **Tauri updater key**: minisign (what `tauri signer generate` makes), signs the app installers.
@@ -212,15 +216,20 @@ a platform with no line gets "this release has no Terminal for <platform>". Uplo
 
 **Linux ARM64 (DGX Spark) has its own feed file.** A Control up to 0.1.52 refuses a feed that names a platform it does not know (`the feed's control entry names an unknown platform`), so the `linux-aarch64` entries are not in `strata-feed.json`, which every released client reads. They are in `strata-feed-linux-aarch64.json` (+ `.sig`, same format, same key, its own `sequence`, aarch64 entries only), uploaded to the same release. A Linux ARM64 Terminal reads that file by default, from a folder or a release address (`strata_control.feed.feed_name()`); a source that names its own `.json` file is used as given. Until every client skips unknown platforms, each release must publish both files, and the aarch64 file's sequence must never go down.
 
-The feed is hosted as the files of a GitHub release of `Niko1221/Strata`. The built-in address is
-`https://github.com/Niko1221/Strata/releases/latest/download` (`strata_cli/update_cmd.py` `DEFAULT_FEED` adds `/strata-feed.json`; `install.sh`
-and `install.ps1` use the folder). GitHub assets are flat, so build the packages with `--url-prefix ""` and upload every file of the release folder
-as an asset: `strata-feed.json`, `strata-feed.json.sig`, `install-manifest.txt`, `install.sh`, `install.ps1`, the engine and Control archives and the
-app installer with `latest.json` (the Tauri updater endpoint). `STRATA_FEED` (installers) and `--feed` / `STRATA_UPDATE_FEED` (`strata update`) override the
-address. Nothing in this tree uploads anything.
+This fork hosts its feed as GitHub release assets in `zapabob/Strata`. The built-in address is
+`https://github.com/zapabob/Strata/releases/latest/download` (`strata_cli/update_cmd.py` `DEFAULT_FEED` adds `/strata-feed.json`; `install.sh`
+and `install.ps1` use the folder). GitHub assets are flat. Upload `strata-feed.json`,
+`strata-feed.json.sig`, `install-manifest.txt`, `install.sh`, `install.ps1`, the engine and
+Control archives and the manual NSIS installer. Package URLs in the signed feed use the
+immutable `v0.5.0` release path. `STRATA_FEED` (installers) and `--feed` /
+`STRATA_UPDATE_FEED` (`strata update`) override the feed address.
 
-Publish as a normal release (latest): a pre-release is not found by `latest/download`, so the installers, `strata update` and the app updater would get a 404. The `latest` release must carry every file listed above, so a later hotfix release repeats them all. The app updater reads
-`https://github.com/Niko1221/Strata/releases/latest/download/latest.json`.
+Publish the selected release as a normal GitHub Latest release; `latest/download` does
+not select a prerelease. A later hotfix selected as Latest must include the complete
+component feed and its assets. The configured optional Tauri endpoint is
+`https://github.com/zapabob/Strata/releases/latest/download/latest.json`, but this fork
+does not publish that file or an app feed entry for 0.5.0. Users update the desktop app
+with the NSIS installer. Upstream `Niko1221/Strata` packages and signing keys are separate.
 
 ## Testing locally
 
