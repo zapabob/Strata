@@ -75,7 +75,8 @@ retains PrismML/TurboQuant 0.4.0 binary identities and their original provenance
 | NSIS extraction and production self-tests | PASS: the payload matches the build sources and staged private runtimes; 13/13 production self-tests passed. The shell differs from the unbundled build only at Tauri's documented UNK-to-NSS bundle marker. |
 | Packaged WebView2 with Playwright | 15/15 passed on the exact extracted NSIS shell, using an isolated profile. Existing Qwen3.6, Hikari and both Swift shards kept their original paths and reported zero model-download bytes; repeated import retained the same identity. Hikari displayed its name/PQ2_0, 96K/128K and CPU MoE settings survived save/reload, three viewport widths had no horizontal overflow, and four navigation routes worked. No page or console errors were recorded. No model inference was started. |
 | Fresh CUDA parity and bounded native Qwen3.6 inference | Pending exclusive GPU access. No 0.5.0 inference result is inferred from the prior release. |
-| Component signature, tar.7z readback and anonymous public downloads | Pending. Publication remains gated on the remaining package and GPU checks. |
+| Local component/feed signatures and tar.7z readback | PASS: the component and feed verify against the pinned signing key. All 10 tar members were streamed back from the 7z and matched their input size and SHA-256. Twelve separate public assets are prepared locally. This does not activate or publish the feed. |
+| Anonymous public downloads | NOT_RUN: no 0.5.0 release has been published. Publication remains gated on fresh GPU qualification and the completed runtime restoration record. |
 
 The packaged local-model settings screen opened in 235 ms in this single check,
 while unrelated native discovery was still pending. This measures screen access,
@@ -83,10 +84,17 @@ not model loading, prefill or token generation. The extracted-package test does
 not replace the user's normal installation or establish an NSIS upgrade result.
 
 The setup uses `Strata-0.5.0-windows-x64-setup.exe` (NSIS). The real tar then 7z
-archive `Strata-0.5.0-windows-x64.tar.7z` will contain the identical EXE, signed
+archive `Strata-0.5.0-windows-x64.tar.7z` contains the identical EXE, signed
 CUDA component, Control ZIP, signed feed, install scripts, checksums and INSTALL.md.
 Models, personal data and signing keys are excluded. Windows app updates remain
 manual: neither Authenticode nor a Tauri app updater signature is claimed.
+
+The locally verified tar.7z is 1,645,063,888 bytes, SHA-256
+`0d42f77eea664db9468735748375d9a45a69bdd93d422f3d083a673cd9482303`.
+The engine tar.gz is 1,466,966,308 bytes, SHA-256
+`531b2b311af907c5e32fa276789522f94ac75dcea5490af708d39bebf3004d90`.
+The Control ZIP is 73,419,032 bytes, SHA-256
+`01ee730bc5e496ccf91e2a147e9cb36dc3123acd283fb9234667649d7fc6f705`.
 
 ### Qualification limits
 
