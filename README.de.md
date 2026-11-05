@@ -4,18 +4,20 @@ Lokale Modelle, Chat, Werkzeuge und optionale Hakua-Erinnerungen. Dies ist der [
 
 [English](README.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [Deutsch](README.de.md) · [Français](README.fr.md) · [Español](README.es.md) · [Português](README.pt-BR.md) · [Polski](README.pl.md)
 
-## Windows-Vorschau
+## Windows-Veröffentlichung
 
-Diese Beta ist für Windows x64 CUDA sm_120 bestimmt. Die lokalen Prüfungen liefen auf einer RTX 5060 Ti mit 16 GB VRAM und 32 GB RAM. Lies vor der Installation die [Prüfergebnisse und verbleibenden Grenzen](docs/HAKUA_RELEASE.md).
+Diese Version ist für Windows x64 CUDA sm_120 bestimmt. Die lokalen Prüfungen liefen auf einer RTX 5060 Ti mit 16 GB VRAM und 32 GB RAM. Lies vor der Installation die [Prüfergebnisse und verbleibenden Grenzen](docs/HAKUA_RELEASE.md).
 
-**0.4.1-beta.1** ist eine manuell installierte Vorschau ohne Windows-Codesignatur. [Release](https://github.com/zapabob/Strata/releases/tag/v0.4.1-beta.1) · [Installationsanleitung](docs/HAKUA_INSTALL.md) · [Prüfungen und Grenzen](docs/HAKUA_RELEASE.md).
+**0.4.1** ist eine manuell installierte Version ohne Windows-Codesignatur. [Release](https://github.com/zapabob/Strata/releases/tag/v0.4.1) · [Installationsanleitung](docs/HAKUA_INSTALL.md) · [Prüfungen und Grenzen](docs/HAKUA_RELEASE.md).
 
-1. Lade den [Installer](https://github.com/zapabob/Strata/releases/download/v0.4.1-beta.1/Strata_0.4.1-beta.1_x64-setup.exe) herunter und vergleiche seine Prüfsumme mit [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.1-beta.1/SHA256SUMS.txt).
+1. Lade den [Installer](https://github.com/zapabob/Strata/releases/download/v0.4.1/Strata-0.4.1-windows-x64-setup.exe) herunter und vergleiche seine Prüfsumme mit [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.1/SHA256SUMS.txt).
 2. Beende Strata einschließlich des Symbols im Infobereich und starte den Installer. Modelle und persönliche Daten gehören außerhalb des Programmordners.
-3. Lade `strata-engine-0.4.1-windows-x86_64-cuda-cuda13.tar.gz` aus dieser Beta-Veröffentlichung und importiere die Datei im Vorbereitungsbildschirm. Der latest-Feed bietet weiterhin die ältere Engine an.
+3. Installiere die signierte CUDA-Komponente im Vorbereitungsbildschirm über den latest-Feed oder die enthaltene Datei `strata-engine-0.4.1-windows-x86_64-cuda-cuda13.tar.gz`.
 4. Wähle ein passendes Modell oder **Use a local GGUF** für vorhandene Dateien. Node und Python sind enthalten; ein Systeminterpreter oder Compiler ist nicht nötig.
 
-Die Versionen folgen [SemVer 2.0.0](https://semver.org/): App `0.4.1-beta.1`, native Engine/Control `0.4.1`; unveränderte PrismML-/TurboQuant-Laufzeiten bleiben `0.4.0`. Der übliche Programmordner ist `%LOCALAPPDATA%\Programs\Strata` auf C:, unabhängig vom Modellordner. Eine bestehende Installation kann einen anderen Speicherort behalten.
+Die Versionen folgen [SemVer 2.0.0](https://semver.org/): App `0.4.1`, native Engine `0.4.1`; Control `0.4.2`; unveränderte PrismML-/TurboQuant-Laufzeiten bleiben `0.4.0`. Der übliche Programmordner ist `%LOCALAPPDATA%\Programs\Strata` auf C:, unabhängig vom Modellordner. Eine bestehende Installation kann einen anderen Speicherort behalten.
+
+Das [tar.7z-Paket](https://github.com/zapabob/Strata/releases/download/v0.4.1/Strata-0.4.1-windows-x64.tar.7z) enthält denselben NSIS-Installer, die signierte CUDA-Komponente, Control, Prüfsummen und eine Installationsanleitung. Modelle und persönliche Daten sind nicht enthalten. Veröffentlicht wird mit `v0.4.1`, dem Tag-Alias `latest` und GitHub Latest.
 
 ## Vorhandene Modelle verwenden
 
@@ -37,9 +39,9 @@ Die beiden Ablehnungszweige vor dem Start im Host wurden entfernt. Der Server pr
 
 ## Komponenten und Grenzen
 
-Desktop/Host: `0.4.1-beta.1`; native Engine/Control: `0.4.1`; Node: `24.22.2`; CPython: `3.12.15`; Hakua-memory: `0.3.5`. Upstream-Referenz: `ffa80d73` / `0.2.10`.
+Desktop/Host: `0.4.1`; native Engine: `0.4.1`; Control `0.4.2`; Node: `24.22.2`; CPython: `3.12.15`; Hakua-memory: `0.3.5`. Upstream-Referenz: `ffa80d73` / `0.2.10`.
 
-Die separate CUDA-Komponente enthält die native Engine 0.4.1 und die unveränderten PrismML-/TurboQuant-Laufzeiten 0.4.0. Manifest und passender Beta-Feed sind mit dem Komponentenschlüssel dieses Forks signiert und geprüft. Die installierte Engine bestand den Qwen3.6-Starttest mit einem erzeugten Token bei 4.096 Kontextplätzen; die gespeicherte Einstellung von 131.072 blieb erhalten. Das bestätigt keine native Generierung über das volle Kontextfenster. Importiere die passende Datei dieser Beta; der stabile Feed behält sein bisheriges Paket. Die Komponentensignatur ist von der Windows-Codesignatur der App getrennt. Kennungen und Messungen stehen im [Release-Protokoll](docs/HAKUA_RELEASE.md).
+Native Engine: `0.4.1`; Control: `0.4.2`. Der signierte stabile Feed enthält dieselbe CUDA-Komponente, die den installierten Qwen3.6-Starttest mit einem Token und 4096 Kontext bestand. Die gespeicherte Einstellung 131072 blieb erhalten; die native Generierung über das volle Kontextfenster ist nicht qualifiziert. App-Updates erfolgen manuell. Siehe [Prüfungen](docs/HAKUA_RELEASE.md).
 
 Die Windows-x64-Prüfungen beziehen sich auf RTX 5060 Ti, CUDA sm_120 und 32 GB RAM. Andere GPUs und Betriebssysteme, native Bildeingabe und eine separate native DeepSeek-Engine sind nicht qualifiziert. Die alte Qwen3.6-Host-Arena kann etwa 18,7 GiB plus Reserve verlangen; 32 GB RAM garantieren keinen Start. Ein kurzer erfolgreicher Test bei 131.072 Kontext-Token bestätigt keine vollständige Kontextauslastung oder Qualität. TurboQuant-K-Modi bleiben nach fehlgeschlagenen Qualitätstests deaktiviert. Spin(8), Triality, Query-v3 und Bonsai sind optionale Experimente. Geschwindigkeit und Ressourcenbedarf hängen vom Modell und Computer ab.
 

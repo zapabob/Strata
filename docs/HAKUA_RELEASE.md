@@ -1,5 +1,31 @@
 # Hakua Windows release qualification
 
+## Windows release: 0.4.1
+
+Product/tag: `0.4.1` / `v0.4.1`. The `latest` tag is an additional alias;
+GitHub Latest selects this release once publication is verified. The NSIS setup
+uses the upstream filename style, `Strata-0.4.1-windows-x64-setup.exe`.
+`Strata-0.4.1-windows-x64.tar.7z` collects the identical EXE, signed CUDA archive,
+Control ZIP, signed stable feed, install scripts, checksums and INSTALL.md.
+Models, personal data and signing keys are excluded. Windows app updates remain
+manual; no Tauri app updater signature or `latest.json` is claimed.
+
+Native engine `0.4.1` is the unchanged archive from the beta below, SHA256
+`d305c6e2f9f367a8ca1d09052daa1e09134d5802a4fead261d1923c4d86dbfa0`.
+Control advances to `0.4.2` because its product label and independent package
+version lookup changed. Its Python interpreter and locked dependencies are reused
+unchanged. `CONTROL_VERSION` now owns the Control identity; CMake still owns
+the native engine identity. Older published archives are not replaced.
+
+The desktop release requires its own NSIS payload and isolated shell checks.
+Publication and final archive checks are recorded here after they complete.
+This packaging release does not extend the native full-window qualification.
+Swift 98K remains unqualified. The historical GPU measurements below retain
+their original binary, model and context scope. No new GPU trial is needed for
+this repackaging, and the restored Hermes runtime remains in service.
+
+## Previous beta qualification
+
 ## Windows beta: 0.4.1-beta.1
 
 Product/tag: `0.4.1-beta.1` / `v0.4.1-beta.1`. Native engine and Control are

@@ -4,18 +4,20 @@ Modelos locales, chat, herramientas y memoria Hakua opcional. Este es el [fork d
 
 [English](README.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [Deutsch](README.de.md) · [Français](README.fr.md) · [Español](README.es.md) · [Português](README.pt-BR.md) · [Polski](README.pl.md)
 
-## Versión preliminar para Windows
+## Versión para Windows
 
-Esta beta está destinada a Windows x64 CUDA sm_120. Las comprobaciones locales se realizaron con una RTX 5060 Ti de 16 GB de VRAM y 32 GB de RAM. Consulta los [resultados y límites pendientes](docs/HAKUA_RELEASE.md) antes de instalar.
+Esta versión está destinada a Windows x64 CUDA sm_120. Las comprobaciones locales se realizaron con una RTX 5060 Ti de 16 GB de VRAM y 32 GB de RAM. Consulta los [resultados y límites pendientes](docs/HAKUA_RELEASE.md) antes de instalar.
 
-**0.4.1-beta.1** se actualiza manualmente y no tiene firma de código de Windows. [Versión](https://github.com/zapabob/Strata/releases/tag/v0.4.1-beta.1) · [Instalación](docs/HAKUA_INSTALL.md) · [Pruebas y límites](docs/HAKUA_RELEASE.md).
+**0.4.1** se actualiza manualmente y no tiene firma de código de Windows. [Versión](https://github.com/zapabob/Strata/releases/tag/v0.4.1) · [Instalación](docs/HAKUA_INSTALL.md) · [Pruebas y límites](docs/HAKUA_RELEASE.md).
 
-1. Descarga el [instalador](https://github.com/zapabob/Strata/releases/download/v0.4.1-beta.1/Strata_0.4.1-beta.1_x64-setup.exe) y compara su suma con [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.1-beta.1/SHA256SUMS.txt).
+1. Descarga el [instalador](https://github.com/zapabob/Strata/releases/download/v0.4.1/Strata-0.4.1-windows-x64-setup.exe) y compara su suma con [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.1/SHA256SUMS.txt).
 2. Cierra Strata, incluido el icono de la bandeja, y ejecuta el instalador. Guarda modelos y datos personales fuera de la carpeta de la aplicación.
-3. Descarga `strata-engine-0.4.1-windows-x86_64-cuda-cuda13.tar.gz` de esta versión beta e impórtalo desde la pantalla de preparación. El canal latest conserva el motor anterior.
+3. Instala el componente CUDA firmado desde la pantalla de preparación mediante el canal latest o el archivo incluido `strata-engine-0.4.1-windows-x86_64-cuda-cuda13.tar.gz`.
 4. Elige un modelo adecuado o **Use a local GGUF** para archivos existentes. Node y Python están incluidos; no necesitas un intérprete del sistema ni un compilador.
 
-Las versiones siguen [SemVer 2.0.0](https://semver.org/): aplicación `0.4.1-beta.1`, motor nativo/Control `0.4.1`; los entornos PrismML/TurboQuant sin cambios mantienen `0.4.0`. La ubicación habitual de la aplicación es `%LOCALAPPDATA%\Programs\Strata` en C:, independiente de los modelos. Una instalación previa puede conservar otra ubicación.
+Las versiones siguen [SemVer 2.0.0](https://semver.org/): aplicación `0.4.1`, motor nativo `0.4.1`; Control `0.4.2`; los entornos PrismML/TurboQuant sin cambios mantienen `0.4.0`. La ubicación habitual de la aplicación es `%LOCALAPPDATA%\Programs\Strata` en C:, independiente de los modelos. Una instalación previa puede conservar otra ubicación.
+
+El [paquete tar.7z](https://github.com/zapabob/Strata/releases/download/v0.4.1/Strata-0.4.1-windows-x64.tar.7z) incluye el mismo instalador NSIS, el componente CUDA firmado, Control, las sumas de comprobación y las instrucciones. No incluye modelos ni datos personales. Se publica con `v0.4.1`, el alias de etiqueta `latest` y GitHub Latest.
 
 ## Reutilizar archivos existentes
 
@@ -37,9 +39,9 @@ Abre **Hakua memory** en la barra lateral. Leer y guardar requieren consentimien
 
 ## Componentes y límites
 
-Aplicación/Host: `0.4.1-beta.1`; motor nativo/Control: `0.4.1`; Node: `24.22.2`; CPython: `3.12.15`; Hakua-memory: `0.3.5`. Referencia upstream: `ffa80d73` / `0.2.10`.
+Aplicación/Host: `0.4.1`; motor nativo: `0.4.1`; Control `0.4.2`; Node: `24.22.2`; CPython: `3.12.15`; Hakua-memory: `0.3.5`. Referencia upstream: `ffa80d73` / `0.2.10`.
 
-El componente CUDA separado contiene el motor nativo 0.4.1 y los entornos PrismML/TurboQuant 0.4.0 sin cambios. Su manifiesto y el canal beta correspondiente están firmados y verificados con la clave de componentes de este fork. El motor instalado superó la comprobación de arranque de Qwen3.6 generando un token con capacidad de contexto de 4.096; se conservó el ajuste guardado de 131.072. Esto no valida la generación nativa con toda la ventana de contexto. Importa el archivo correspondiente a esta beta; el canal estable conserva su paquete anterior. La firma del componente es distinta de la firma de código Windows de la aplicación. Los identificadores y las mediciones están en el [registro de versión](docs/HAKUA_RELEASE.md).
+Motor nativo: `0.4.1`; Control: `0.4.2`. El canal estable firmado ofrece el componente CUDA que superó la prueba instalada de Qwen3.6 con un token y capacidad de contexto de 4096. Se mantuvo el ajuste guardado de 131072; la generación nativa con toda la ventana sigue sin validar. La aplicación se actualiza manualmente. Consulta las [pruebas](docs/HAKUA_RELEASE.md).
 
 Las pruebas Windows x64 corresponden a RTX 5060 Ti, CUDA sm_120 y 32 GB de RAM. No califican otros GPU o sistemas, entrada nativa de imágenes ni un motor nativo DeepSeek independiente. La asignación heredada en RAM de Qwen3.6 puede exigir unos 18,7 GiB más reserva; 32 GB no garantizan el arranque. Una respuesta corta con 131.072 tokens de contexto no valida toda la ventana ni su calidad. Los modos K de TurboQuant siguen desactivados tras fallar pruebas de calidad. Spin(8), Triality, Query-v3 y Bonsai son experimentos opcionales. El rendimiento y los recursos necesarios dependen del modelo y del equipo.
 

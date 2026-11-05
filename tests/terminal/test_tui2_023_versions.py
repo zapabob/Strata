@@ -50,7 +50,7 @@ class VersionBump(unittest.TestCase):
         for name in ("README.md", "README.de.md", "README.es.md", "README.fr.md", "README.ja.md", "README.pl.md", "README.pt-BR.md", "README.zh-CN.md"):
             text = (ROOT / name).read_text(encoding="utf-8")
             # Every fork README links to this product, rather than an upstream installer.
-            self.assertIn(f"Strata_{product}_x64-setup.exe", text, name)
+            self.assertIn(f"Strata-{product}-windows-x64-setup.exe", text, name)
             self.assertNotIn("Strata-0.2.2-", text, name)
 
     def test_version_prints_the_product_and_the_build(self):

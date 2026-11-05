@@ -1,15 +1,15 @@
 # Install Hakua / Strata on Windows
 
-Product `0.4.1-beta.1` uses native engine/Control `0.4.1` and Hakua-memory `0.3.5`.
+Product `0.4.1` uses native engine `0.4.1`, Control `0.4.2` and Hakua-memory `0.3.5`.
 PrismML and TurboQuant retain their independently verified `0.4.0` runtime packages.
-This is a Windows x64 CUDA sm_120 beta, tested on an RTX 5060 Ti with 16 GB VRAM and
+This is a Windows x64 CUDA sm_120 release, tested on an RTX 5060 Ti with 16 GB VRAM and
 32 GB system RAM. See the [release record](HAKUA_RELEASE.md) for publication status,
 exact tests and limits. A successful short request does not qualify a full context window.
 
 ## Install or update
 
-Download the [Windows setup EXE](https://github.com/zapabob/Strata/releases/download/v0.4.1-beta.1/Strata_0.4.1-beta.1_x64-setup.exe)
-and compare it with [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.1-beta.1/SHA256SUMS.txt).
+Download the [Windows setup EXE](https://github.com/zapabob/Strata/releases/download/v0.4.1/Strata-0.4.1-windows-x64-setup.exe)
+and compare it with [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.1/SHA256SUMS.txt).
 The desktop installer has no Windows code signature. Component signatures and checksums
 are separate checks; they are not Windows executable signing.
 
@@ -24,13 +24,18 @@ Models, chats and memory have their own data locations; changing the application
 folder does not move them. Leave existing model files where they are and select
 that model folder in Strata. System Node, Python, pip and compilers are not required.
 
-GPU runtimes are separate from the app. For this beta, download the matching
-`strata-engine-0.4.1-windows-x86_64-cuda-cuda13.tar.gz` from the
-[beta release](https://github.com/zapabob/Strata/releases/tag/v0.4.1-beta.1) and import
-it from the preparation screen. The app checks the component signature and all file
-hashes before activating it. The normal latest feed still serves its earlier signed
-release; installing the app alone does not upgrade that native engine. Keep the older
-component available for rollback. The signed `0.4.0` release files are not replaced.
+GPU runtimes are separate from the NSIS app. The signed stable feed supplies
+`strata-engine-0.4.1-windows-x86_64-cuda-cuda13.tar.gz`; it can also be downloaded
+from the [release](https://github.com/zapabob/Strata/releases/tag/v0.4.1) and imported
+on the preparation screen. The app checks the signature and file hashes before
+activation. Previous releases remain available for rollback.
+
+For one download, use [Strata-0.4.1-windows-x64.tar.7z](https://github.com/zapabob/Strata/releases/download/v0.4.1/Strata-0.4.1-windows-x64.tar.7z).
+Extract the 7z, then the tar. The folder contains the same setup EXE, signed CUDA
+component, Control ZIP, feed, install scripts and INSTALL.md. Check the outer
+SHA256SUMS.txt before extraction, and BUNDLE-SHA256SUMS.txt inside. Models and
+personal data are not included. The app and component can be installed from these
+files; WebView2 first-time setup may still require internet access if it is absent.
 
 ## Existing models and caches
 
@@ -78,11 +83,11 @@ memory can restart the owned server with authentication and shared caches disabl
 finish active requests first. See the [memory guide](../serve/MEMORY_HARNESS.md).
 
 Native image input and the separate DeepSeek native engine are not included in this
-Windows beta. Other GPUs, HIP, SYCL, Linux and Metal need their own builds and tests.
+Windows release. Other GPUs, HIP, SYCL, Linux and Metal need their own builds and tests.
 
 ## 日本語の導入手順
 
-`0.4.1-beta.1`のsetup EXEとチェックサムを取得します。更新前にモデルをアンロードし、
+`0.4.1`のsetup EXEとチェックサムを取得します。更新前にモデルをアンロードし、
 トレイのStrataも終了してから、一度だけインストーラーを実行してください。
 Cドライブに入れる場合は、導入先を`%LOCALAPPDATA%\Programs\Strata`に指定します。
 以前Hドライブを選んだ環境では、その場所が引き継がれることがあります。

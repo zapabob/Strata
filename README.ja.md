@@ -7,25 +7,27 @@
 
 [English](README.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [Deutsch](README.de.md) · [Français](README.fr.md) · [Español](README.es.md) · [Português](README.pt-BR.md) · [Polski](README.pl.md)
 
-## Windowsプレビューの導入
+## Windows版の導入
 
-Windows x64 CUDA sm_120向けのベータ版です。RTX 5060 Ti（VRAM 16GB）・RAM 32GBの実機で確認しました。導入前に[検証結果と残っている制限](docs/HAKUA_RELEASE.md)をご覧ください。
+Windows x64 CUDA sm_120向けのリリースです。RTX 5060 Ti（VRAM 16GB）・RAM 32GBの実機で確認しました。導入前に[検証結果と残っている制限](docs/HAKUA_RELEASE.md)をご覧ください。
 
-製品バージョンは **0.4.1-beta.1** です。配布物はsetup EXEとチェックサムです。
-Windowsコード署名のない、手動更新用のプレビュー版です。
+製品バージョンは **0.4.1** です。配布物はsetup EXEとチェックサムです。
+Windowsコード署名のない、手動更新用のリリースです。
 
-1. [Windowsインストーラー](https://github.com/zapabob/Strata/releases/download/v0.4.1-beta.1/Strata_0.4.1-beta.1_x64-setup.exe)を取得し、
-   [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.1-beta.1/SHA256SUMS.txt)と照合します。
+1. [Windowsインストーラー](https://github.com/zapabob/Strata/releases/download/v0.4.1/Strata-0.4.1-windows-x64-setup.exe)を取得し、
+   [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.1/SHA256SUMS.txt)と照合します。
 2. 導入済みの場合はトレイも含めてStrataを終了してから実行します。
    モデルと個人データはアプリのインストール先とは別の場所に保存してください。
-3. このベータのリリースページから`strata-engine-0.4.1-windows-x86_64-cuda-cuda13.tar.gz`を取得し、準備画面で読み込みます。latest配信先は以前のエンジンを維持しています。専用Node・Pythonを同梱しているため、別途の導入やpip、コンパイラーは不要です。
+3. 準備画面から署名済みCUDAコンポーネントを導入します。latest配信先、または同梱の`strata-engine-0.4.1-windows-x86_64-cuda-cuda13.tar.gz`を使用できます。専用Node・Pythonを同梱しているため、別途の導入やpip、コンパイラーは不要です。
 4. PCに収まるモデルを選びます。手元のGGUFは「ローカルGGUFを使用」から選択できます。
 
 詳しい手順は[導入ガイド](docs/HAKUA_INSTALL.md)、検証条件は[リリース記録](docs/HAKUA_RELEASE.md)、
-配布物は[リリースページ](https://github.com/zapabob/Strata/releases/tag/v0.4.1-beta.1)をご覧ください。
+配布物は[リリースページ](https://github.com/zapabob/Strata/releases/tag/v0.4.1)をご覧ください。
 このフォーク専用のインストーラーとコンポーネント配信先を使用します。
 
-バージョンは[SemVer 2.0.0](https://semver.org/)に従い、アプリが`0.4.1-beta.1`、ネイティブエンジン／Controlが`0.4.1`です。変更のないPrismML／TurboQuantは`0.4.0`のままです。通常のアプリ導入先はCドライブの`%LOCALAPPDATA%\Programs\Strata`で、モデルの保存先とは別です。既存環境では以前の導入先を引き継ぐ場合があります。
+バージョンは[SemVer 2.0.0](https://semver.org/)に従い、アプリが`0.4.1`、ネイティブエンジンが`0.4.1`、Controlが`0.4.2`です。変更のないPrismML／TurboQuantは`0.4.0`のままです。通常のアプリ導入先はCドライブの`%LOCALAPPDATA%\Programs\Strata`で、モデルの保存先とは別です。既存環境では以前の導入先を引き継ぐ場合があります。
+
+NSISインストーラーは、署名済みCUDAコンポーネント、Control、チェックサム、導入手順と一緒に[tar.7z一括パッケージ](https://github.com/zapabob/Strata/releases/download/v0.4.1/Strata-0.4.1-windows-x64.tar.7z)にも収録します。モデルの重みや個人データは含みません。公開には`v0.4.1`、同じコミットを指す`latest`タグ、GitHubのLatest指定を使用します。
 
 ## すでにあるモデルを使う
 
@@ -57,14 +59,15 @@ GGUF内の名前が`Hf`などの一般的な値なら、識別できるようフ
 
 | 構成 | バージョン・配布先 |
 | --- | --- |
-| GUI / Host | `0.4.1-beta.1` |
-| ネイティブエンジン / Control | `0.4.1` |
+| GUI / Host | `0.4.1` |
+| ネイティブエンジン | `0.4.1` |
+| Control | `0.4.2` |
 | 専用ランタイム | Node `24.22.2`、CPython `3.12.15` |
 | Hakua-memory | `0.3.5` |
 | CUDA / PrismML / TurboQuantの配布候補 | [リリース状況](docs/HAKUA_RELEASE.md) |
 | 参照した上流ソース | `ffa80d73`、上流`0.2.10` |
 
-別配布のCUDAコンポーネントには、ネイティブエンジン0.4.1と変更のないPrismML／TurboQuant 0.4.0が含まれます。マニフェストと対応するベータ用フィードは、このフォークのコンポーネント鍵で署名・検証済みです。導入済みエンジンは、コンテキスト4,096でQwen3.6の1トークン生成による起動確認に成功しました。保存済みの131,072設定は維持していますが、ネイティブエンジンでの全長生成を確認した結果ではありません。このベータの対応ファイルをインポートしてください。安定版フィードは以前のパッケージを維持します。コンポーネント署名とWindowsアプリのコード署名は別です。識別情報と実測値は[リリース記録](docs/HAKUA_RELEASE.md)に掲載しています。
+ネイティブエンジンは`0.4.1`、Controlは`0.4.2`です。署名済みstableフィードは、導入済み環境でQwen3.6の短い生成を確認したものと同じCUDAコンポーネントを配布します。確認時のコンテキスト容量は4,096で、保存済みの131,072設定は維持しました。ネイティブでの全文入力は未検証です。Windowsアプリの更新は手動です。[検証記録](docs/HAKUA_RELEASE.md)をご覧ください。
 
 対応モデルを読み込んだ後、サイドバーのHakuaメモリーを開きます。
 記憶の読み取りと保存は、それぞれの発言で個別に選択します。

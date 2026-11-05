@@ -180,7 +180,7 @@ It compiles the production cleanup macros into isolated fixtures. It checks upgr
 
 ### Hakua Windows release layout
 
-The Hakua app EXE contains its private Node/Python runtimes, Control, Hakua-memory and Harness. Publish the signed GPU engine component separately. The outer 7z contains the identical setup EXE, INSTALL.md and its checksum. Full inference models and personal profiles are excluded.
+The Hakua app EXE contains its private Node/Python runtimes, Control, Hakua-memory and Harness. Publish the signed GPU engine component separately. The outer tar.7z contains the identical NSIS setup EXE, signed CUDA component, Control ZIP, signed stable feed, install scripts, INSTALL.md and internal checksums. Read it back and verify every member before publication. Full inference models and personal profiles are excluded.
 
 For GitHub Release assets, use Windows Control ZIP with `packaging/feed_tool.py pack-control` and the options `--format zip --url-prefix=`. Use `--url-prefix=` for `pack-engine` too. This empty prefix puts package URLs beside strata-feed.json; the tool defaults control/ and engine/ do not describe this flat asset layout. Generate the matching install-manifest.txt for the ZIP Control package. Verify the signed feed, package sizes/hashes and anonymous latest/download URLs after publication.
 

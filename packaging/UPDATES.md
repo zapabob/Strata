@@ -7,18 +7,21 @@ It covers the three updated parts, the feed format, what a PC checks, and the re
 
 Hakua product releases follow [Semantic Versioning 2.0.0](https://semver.org/).
 Use `MAJOR.MINOR.PATCH`, with `-alpha.N`, `-beta.N` or `-rc.N` for prereleases.
-The current migration is `0.4.1-beta.1`; its tag is `v0.4.1-beta.1` and its
-Windows installer is `Strata_0.4.1-beta.1_x64-setup.exe` (the Tauri naming convention).
-Keep release dates in the release notes. Do not replace a published version's assets.
-The old date-based tags remain available under their original names.
+The product is `0.4.1`, tagged `v0.4.1`; `latest` is an additional alias, and
+GitHub Latest selects this release. The NSIS asset follows the upstream filename
+style: `Strata-0.4.1-windows-x64-setup.exe`. Tauri's generated underscore filename
+is renamed without changing bytes. `Strata-0.4.1-windows-x64.tar.7z` holds that EXE,
+the signed engine and Control packages, feed, checksums and installation instructions.
+Keep release dates in notes. Never replace older published assets.
 
 `VERSION` owns the product version. Run `python tools/bump_hakua_product_version.py
---set 0.4.1-beta.1` to sync it, or use `--next-prerelease beta` for the next beta.
-Use `--check` before building. Native engine and Control package versions are
-independent three-part versions from CMake. A changed native/Control package gets
-a new version; this release uses `0.4.1`. Unchanged PrismML and TurboQuant runtimes
-retain their verified `0.4.0` package identities and upstream revisions. Metal
-source stays at its independently tracked version until built and qualified.
+--set 0.4.1` to sync it; run `--check` before building. `CONTROL_VERSION` owns the
+independent Control package version (`0.4.2`). Native engine `0.4.1` remains in
+CMake; the unchanged engine archive is reused byte for byte. A Control-only change
+must not relabel or rebuild an unchanged native engine. PrismML/TurboQuant remain
+`0.4.0`; Metal source stays independently versioned until built and qualified.
+The signed stable feed has engine and Control entries. App updates remain manual;
+there is no app updater entry or `latest.json` without the matching signing key.
 
 Everything that downloads software on a user's PC sits behind one explicit step: `strata update` in the Terminal, or
 "Update engine" or "Update Strata" in the app's Settings. Starting a model and serving never download anything
