@@ -6,7 +6,7 @@ Lokalne modele, czat, narzędzia i opcjonalna pamięć Hakua. To [fork zapabob](
 
 ## Wersja testowa dla Windows
 
-Ta beta jest nadal sprawdzana i nie została jeszcze opublikowana. Poniższe nazwy plików i kroki instalacji opisują planowane wydanie; zobacz [aktualny stan](docs/HAKUA_RELEASE.md).
+Ta beta jest przeznaczona dla Windows x64 CUDA sm_120. Testy lokalne wykonano na RTX 5060 Ti z 16 GB VRAM i 32 GB RAM. Przed instalacją przeczytaj [wyniki i pozostałe ograniczenia](docs/HAKUA_RELEASE.md).
 
 **0.4.1-beta.1** wymaga ręcznej aktualizacji i nie ma podpisu kodu Windows. [Wydanie](https://github.com/zapabob/Strata/releases/tag/v0.4.1-beta.1) · [Instalacja](docs/HAKUA_INSTALL.md) · [Testy i ograniczenia](docs/HAKUA_RELEASE.md).
 
@@ -39,7 +39,7 @@ Otwórz **Hakua memory** na pasku bocznym. Odczyt i zapis wymagają osobnych dec
 
 Aplikacja/Host: `0.4.1-beta.1`; silnik natywny/Control: `0.4.1`; Node: `24.22.2`; CPython: `3.12.15`; Hakua-memory: `0.3.5`. Wersja źródeł upstream: `ffa80d73` / `0.2.10`.
 
-Kandydat osobnego komponentu CUDA zawiera silnik natywny 0.4.1 oraz niezmienione środowiska PrismML/TurboQuant 0.4.0. Manifest podpisano kluczem komponentów tego forka i zweryfikowano lokalnie. Kanał beta wersji z optymalizacją CRC nie został jeszcze przygotowany. Zwykły test uruchomienia Qwen3.6 przekroczył limit czasu; weryfikacja uruchomienia i publikacja pozostają niezakończone. Po publikacji zaimportuj plik z tej wersji beta; stabilny kanał zachowuje poprzedni pakiet. Podpis komponentu jest odrębny od podpisu kodu Windows aplikacji. Identyfikatory i zmierzone ograniczenia znajdują się w [rejestrze wydania](docs/HAKUA_RELEASE.md).
+Osobny komponent CUDA zawiera silnik natywny 0.4.1 oraz niezmienione środowiska PrismML/TurboQuant 0.4.0. Manifest i odpowiadający mu kanał beta podpisano kluczem komponentów tego forka i zweryfikowano. Zainstalowany silnik przeszedł test uruchomienia Qwen3.6 z wygenerowaniem jednego tokenu przy pojemności kontekstu 4096; zapisane ustawienie 131072 pozostało bez zmian. Nie potwierdza to generowania natywnego z pełnym oknem kontekstu. Zaimportuj odpowiedni plik tej wersji beta; stabilny kanał zachowuje poprzedni pakiet. Podpis komponentu jest odrębny od podpisu kodu Windows aplikacji. Identyfikatory i pomiary znajdują się w [rejestrze wydania](docs/HAKUA_RELEASE.md).
 
 Testy Windows x64 dotyczą RTX 5060 Ti, CUDA sm_120 i 32 GB RAM. Nie kwalifikują innych GPU ani systemów, natywnego wejścia obrazów ani osobnego natywnego silnika DeepSeek. Starszy sposób alokacji Qwen3.6 w RAM może wymagać około 18,7 GiB oraz rezerwy; 32 GB nie gwarantują uruchomienia. Krótka odpowiedź przy kontekście 131 072 tokenów nie potwierdza działania ani jakości całego okna. Tryby K TurboQuant pozostają wyłączone po nieudanych testach jakości. Spin(8), Triality, Query-v3 i Bonsai są opcjonalnymi eksperymentami. Wydajność i wymagane zasoby zależą od modelu i komputera.
 

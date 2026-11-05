@@ -8,7 +8,7 @@ of [Niko1221/Strata](https://github.com/Niko1221/Strata).
 
 ## Windows preview
 
-This beta is still being qualified and is not published yet. The filenames and installation steps below describe the planned release; see the [current release status](docs/HAKUA_RELEASE.md).
+This beta targets Windows x64 CUDA sm_120. Local checks used an RTX 5060 Ti with 16 GB VRAM and 32 GB RAM. Read the [release checks and remaining limits](docs/HAKUA_RELEASE.md) before installing.
 
 Product version: **0.4.1-beta.1**. The release contains the setup EXE
 and its checksums. It is a manual-update preview without a Windows code signature.
@@ -69,7 +69,7 @@ engine clears the loading indicator. See [local backends](docs/LOCAL_LLAMA_BACKE
 | CUDA / PrismML / TurboQuant component candidate | [release status](docs/HAKUA_RELEASE.md) |
 | Upstream source reference | `ffa80d73`, upstream `0.2.10` |
 
-The separate CUDA component candidate contains native engine 0.4.1 and the unchanged PrismML/TurboQuant 0.4.0 runtimes. Its manifest is signed and verified locally with the fork’s component key. The beta feed for the CRC follow-up is still pending. The normal Qwen3.6 startup check timed out; startup qualification and publication remain pending. Once published, import the file from this beta release; the stable feed keeps its earlier package. Component signing is separate from Windows app code signing. Exact identities and measured limits are in [the release record](docs/HAKUA_RELEASE.md).
+The separate CUDA component contains native engine 0.4.1 and unchanged PrismML/TurboQuant 0.4.0 runtimes. Its manifest and matching beta feed are signed and verified with this fork’s component key. The installed engine passed a one-token Qwen3.6 startup check at 4,096 context; the saved 131,072 setting was preserved. This does not qualify native full-window generation. Import the matching file from this beta release; the stable feed keeps its earlier package. Component signing is separate from Windows app code signing. See [the release record](docs/HAKUA_RELEASE.md) for exact identities and measurements.
 
 After loading a supported model, open **Hakua memory** in the sidebar. Reading
 and saving memory have separate consent controls for each turn. Opening memory

@@ -6,7 +6,7 @@
 
 ## Windows 预览版
 
-此测试版仍在验证中，尚未发布。以下文件名和安装步骤描述计划中的版本，当前进度见[发布记录](docs/HAKUA_RELEASE.md)。
+此测试版面向 Windows x64 CUDA sm_120，已在 RTX 5060 Ti（16 GB 显存）和 32 GB 内存的电脑上进行本地检查。安装前请阅读[验证结果与剩余限制](docs/HAKUA_RELEASE.md)。
 
 产品版本为 **0.4.1-beta.1**，需要手动更新，没有 Windows 代码签名。[发布页面](https://github.com/zapabob/Strata/releases/tag/v0.4.1-beta.1) · [安装说明](docs/HAKUA_INSTALL.md) · [验证结果与限制](docs/HAKUA_RELEASE.md)。
 
@@ -39,7 +39,7 @@
 
 桌面应用/Host：`0.4.1-beta.1`；原生引擎/Control：`0.4.1`；Node：`24.22.2`；CPython：`3.12.15`；Hakua-memory：`0.3.5`。上游源码参考：`ffa80d73` / `0.2.10`。
 
-独立的 CUDA 组件候选包含原生引擎 0.4.1 和未变更的 PrismML/TurboQuant 0.4.0。清单已使用本分支的组件密钥签名，并在本地通过验证。CRC 优化版的测试版订阅源尚未生成。常规 Qwen3.6 启动检查超时，启动验证和发布仍在进行中。发布后请从此测试版导入组件文件；稳定版订阅源保留原包。组件签名与 Windows 应用代码签名不同。具体标识和实测限制见[发布记录](docs/HAKUA_RELEASE.md)。
+独立 CUDA 组件包含原生引擎 0.4.1 和未变更的 PrismML/TurboQuant 0.4.0。清单和配套测试版订阅源已使用本分支的组件密钥签名并通过验证。安装后的引擎通过了 Qwen3.6 在 4,096 上下文容量下生成一个 token 的启动检查；保存的 131,072 设置保持不变。这不代表原生引擎已通过完整上下文生成测试。请导入本测试版的对应文件；稳定版订阅源保留原包。组件签名与 Windows 应用代码签名不同。具体标识和实测数据见[发布记录](docs/HAKUA_RELEASE.md)。
 
 Windows x64 检查基于 RTX 5060 Ti、CUDA sm_120 和 32 GB 内存，不代表其他 GPU、操作系统、原生图像输入或独立原生 DeepSeek 引擎已经通过验证。Qwen3.6 的旧式主机内存分配可能需要约 18.7 GiB 加预留空间，32 GB 总内存并不保证能够启动。设置 131,072 token 上下文后成功生成短回复，不等于完整窗口生成或质量验证。TurboQuant 的 K 模式在实模型质量测试失败后仍保持禁用。Spin(8)、Triality、Query-v3 和 Bonsai 均为可选实验。速度和资源需求取决于模型与计算机。
 

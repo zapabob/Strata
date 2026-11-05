@@ -1,16 +1,19 @@
 # Hakua Windows release qualification
 
-## Current candidate: 0.4.1-beta.1
+## Windows beta: 0.4.1-beta.1
 
 Product/tag: `0.4.1-beta.1` / `v0.4.1-beta.1`. Native engine and Control are
 `0.4.1`; unchanged PrismML/TurboQuant packages remain `0.4.0`, Hakua-memory
 `0.3.5`, and Metal source `0.4.0-metal`. Versions follow SemVer 2.0.0; dates stay
 in the release notes. Published historical assets are not replaced.
 
-The Windows app is built and installed in the normal C-drive location. Native
-full-window qualification and publication are still in progress. This section does
-not yet claim that the beta assets are public. See [installation](HAKUA_INSTALL.md)
-for the intended artifact names and [version policy](../packaging/UPDATES.md#version-and-asset-names).
+The Windows app and signed engine are built and installed in the normal C-drive
+locations. The local checks below pass within their stated scope. Native full-window
+generation remains unqualified. Use the explicit
+[beta release page](https://github.com/zapabob/Strata/releases/tag/v0.4.1-beta.1)
+for asset availability; the normal latest feed retains its earlier signed release.
+See [installation](HAKUA_INSTALL.md) and
+[version policy](../packaging/UPDATES.md#version-and-asset-names).
 
 The repair includes meaningful names for generic GGUF metadata, existing local
 GGUF discovery, resumable-pack disk accounting, layer progress, cancellation of
@@ -49,6 +52,13 @@ selection, CPU MoE settings, saved profiles after reload, navigation and widths
 285 / 148 / 516 ms respectively; these are metadata-registration observations,
 not weight-loading or generation times. The registered local-model screen
 opened in 262 ms while native catalog discovery was still pending.
+
+After native activation, a separate Playwright observation of the installed
+WebView2 Settings > Engine page showed 0.4.1 as In use. The installed Control's
+engine list independently returned that version as active and compatible.
+The observation used an isolated profile and a minimised window; it sent no
+model-load request and had no page or console errors. Two earlier observers
+left the Settings route before the assertion and did not establish a UI result.
 
 The same repair avoids a CUDA card-ordering probe on a single-GPU computer.
 Multi-GPU and mixed-vendor detection retain their prior path. Two observations
@@ -183,7 +193,7 @@ checks pass. The bounded real-GPU run below also passes; full-window and repeate
 speed qualification are still pending.
 Model files, weight precision, KV precision and context capacity are unchanged.
 
-The final native executable
+An earlier native executable
 `5e37033b11e6478920450f39a3b0057c2ca6d4116b1e196a1b507bf344d4fbd0`
 completed 18 short private-cache checks at capacity 131,072. All ten comparable
 deterministic cases matched the earlier c86b5d36 token results. The run covered
@@ -213,9 +223,9 @@ in that profile, the import test ran `--version` only; it is distinct from the
 A later attempt used the normal C-drive component store and the installed
 Control's real one-token startup check. Its diagnostic context was 4,096 and its
 startup limit was eight minutes. The Qwen3.6 model was still loading when that
-limit expired. The installer did not switch engines: the active component stays
-0.4.0, the saved 131,072 configuration is unchanged, and the existing GGUF and
-expert pack retain their sizes and modification times. No resource-pressure
+limit expired. That attempt did not switch engines: the active component stayed
+0.4.0, the saved 131,072 configuration was unchanged, and the existing GGUF and
+expert pack retained their sizes and modification times. No resource-pressure
 abort occurred; minimum available RAM was 7,929,376,768 bytes. The complete owned
 test tree ended, and Hermes returned to the identical Hikari command line and
 98,304 context. The interruption-to-restoration interval was about 11 minutes
@@ -230,9 +240,9 @@ times of 131.17 ms before and 31.74 ms after, about 4.1 times faster
 for this checksum calculation. 16,390 comparison cases and a known CRC vector
 passed. The implementation's pack-format, corruption, reuse, bounded-read and
 transfer-lifetime CPU tests pass, including independent bitwise CRC checks.
-Core/C++ static analysis passes. Whole-model startup speed and native inference
-with this checksum change have not yet been measured. Model and KV precision,
-context capacity and all hash checks remain unchanged.
+Core/C++ static analysis passes. The later installed startup observation is
+reported below; it is not a controlled before/after speed comparison. Model and
+KV precision, context capacity and all hash checks remain unchanged.
 
 The CRC follow-up native executable has SHA256
 `e79b9791bdfdacd1e5f20324b8e80978af287cc1dc464d22231da8819de0f7fc`.
@@ -241,15 +251,36 @@ check pass. The signed archive is 1,466,638,193 bytes, SHA256
 `d305c6e2f9f367a8ca1d09052daa1e09134d5802a4fead261d1923c4d86dbfa0`;
 the signed manifest is
 `de9ff76a8c69e97d4de19a031ccb390eb775ec8059cae7a28b118d9286f7018b`.
-This candidate has no beta feed yet and has not run a native model. The earlier
-18-request result and signed beta feed belong to the previous executable, not
-this checksum rebuild. Normal activation is still pending; the normal engine
-selection remains 0.4.0.
+The matching beta feed, sequence 20261105121136, is signed and verified with the
+fork's pinned key. It names this exact archive and Control ZIP SHA256
+`23a94b37df6faadf7c56f20786c071541882587b5b63153c9dac619fc6ab6244`.
+It has no app updater entry. The earlier 18-request isolation result belongs to
+the previous executable; those 18 checks were not repeated on this CRC rebuild.
+
+The installed Control then imported this exact archive into the normal C-drive
+component store, verified its signature and every file, loaded the existing
+Qwen3.6 GGUF/pack, and completed its real one-token startup check. Control reported
+the model loaded at 289 seconds. The 11-token prompt took 28,672 ms; one generated
+token is insufficient for a sustained decode-rate measurement. This test used
+4,096 context, 512-token chunks, MTP 2, FP32 KV, five expert slots, no warmup,
+private conversation caching and the three opt-in transfer switches above.
+Legacy K/V quantisation and spin8 settings in the saved config are ignored by
+this native engine; they did not change its FP32 KV precision.
+
+The active component is now 0.4.1. The normal saved context remains 131,072 and
+the existing GGUF and expert-pack sizes and modification times are unchanged.
+The owned test tree exited completely. Minimum available physical RAM was
+6,467,551,232 bytes, with no resource abort. Hermes was restored through its
+existing scheduled launcher with the exact original command line, model,
+98,304 context and one slot, and its health endpoint returned OK. Total
+interruption was 635.78 seconds. This passes bounded installed startup, not
+native full-window generation, repeated speed qualification or all-model support.
 
 GitHub Actions returned `Actions has been disabled for this repository` when
 the validation branch was dispatched. The exact source head had no workflow
 runs on the later check, despite the permissions API reporting enabled. This
-remains unresolved; no exact-head cloud-test pass or public beta is claimed.
+remains unresolved. No exact-head cloud-test pass is claimed; this beta's
+validation is limited to the recorded local checks.
 
 Three Qwen3.6 GDN kernel candidates passed their bitwise parity checks but did
 not show a consistent timing improvement. None is enabled in the engine. No

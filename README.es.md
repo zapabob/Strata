@@ -6,7 +6,7 @@ Modelos locales, chat, herramientas y memoria Hakua opcional. Este es el [fork d
 
 ## Versión preliminar para Windows
 
-Esta beta sigue en validación y todavía no se ha publicado. Los nombres de archivo y los pasos siguientes describen la versión prevista; consulta el [estado actual](docs/HAKUA_RELEASE.md).
+Esta beta está destinada a Windows x64 CUDA sm_120. Las comprobaciones locales se realizaron con una RTX 5060 Ti de 16 GB de VRAM y 32 GB de RAM. Consulta los [resultados y límites pendientes](docs/HAKUA_RELEASE.md) antes de instalar.
 
 **0.4.1-beta.1** se actualiza manualmente y no tiene firma de código de Windows. [Versión](https://github.com/zapabob/Strata/releases/tag/v0.4.1-beta.1) · [Instalación](docs/HAKUA_INSTALL.md) · [Pruebas y límites](docs/HAKUA_RELEASE.md).
 
@@ -39,7 +39,7 @@ Abre **Hakua memory** en la barra lateral. Leer y guardar requieren consentimien
 
 Aplicación/Host: `0.4.1-beta.1`; motor nativo/Control: `0.4.1`; Node: `24.22.2`; CPython: `3.12.15`; Hakua-memory: `0.3.5`. Referencia upstream: `ffa80d73` / `0.2.10`.
 
-El candidato del componente CUDA separado contiene el motor nativo 0.4.1 y los entornos PrismML/TurboQuant 0.4.0 sin cambios. Su manifiesto se ha firmado con la clave de componentes de este fork y se ha verificado localmente. El canal beta de la versión con CRC optimizado sigue pendiente. La comprobación de arranque normal de Qwen3.6 agotó el tiempo; la validación del arranque y la publicación siguen pendientes. Cuando se publique, importa el archivo de esta beta; el canal estable conserva su paquete anterior. Esta firma es distinta de la firma de código Windows de la aplicación. Los identificadores y los límites medidos están en el [registro de versión](docs/HAKUA_RELEASE.md).
+El componente CUDA separado contiene el motor nativo 0.4.1 y los entornos PrismML/TurboQuant 0.4.0 sin cambios. Su manifiesto y el canal beta correspondiente están firmados y verificados con la clave de componentes de este fork. El motor instalado superó la comprobación de arranque de Qwen3.6 generando un token con capacidad de contexto de 4.096; se conservó el ajuste guardado de 131.072. Esto no valida la generación nativa con toda la ventana de contexto. Importa el archivo correspondiente a esta beta; el canal estable conserva su paquete anterior. La firma del componente es distinta de la firma de código Windows de la aplicación. Los identificadores y las mediciones están en el [registro de versión](docs/HAKUA_RELEASE.md).
 
 Las pruebas Windows x64 corresponden a RTX 5060 Ti, CUDA sm_120 y 32 GB de RAM. No califican otros GPU o sistemas, entrada nativa de imágenes ni un motor nativo DeepSeek independiente. La asignación heredada en RAM de Qwen3.6 puede exigir unos 18,7 GiB más reserva; 32 GB no garantizan el arranque. Una respuesta corta con 131.072 tokens de contexto no valida toda la ventana ni su calidad. Los modos K de TurboQuant siguen desactivados tras fallar pruebas de calidad. Spin(8), Triality, Query-v3 y Bonsai son experimentos opcionales. El rendimiento y los recursos necesarios dependen del modelo y del equipo.
 
