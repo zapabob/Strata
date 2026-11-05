@@ -208,8 +208,14 @@ export async function startScriptedWorker({ port = 0, chunkDelayMs = 40, model =
       return say(['Tool finished. ', `Result: ${result}`]);
     }
     const [name, args] = [directive?.[1], (directive?.[2] ?? '').trim()];
-    // The Harness's compaction request (its summarizer prompt asks for the person's evolving goals): answer with a short summary.
-    if (messages.some(m => /evolving goals/.test(text(m)))) { requests.at(-1).summary = true; return say(['Summary of the earlier conversation: the person asked for echoes of a word and got them.']); }
+    // Compaction appends its own instruction as the FINAL user message. Both prompt
+    // formats occur in pinned Harness builds; earlier user text is not a summary request.
+    const summaryInstruction = text(last);
+    const checkpoint = /Do NOT mention this summarization request/.test(summaryInstruction)
+      && /Output only the checkpoint text/.test(summaryInstruction);
+    const legacySummary = /^You are now acting as a compaction engine/.test(summaryInstruction)
+      && /evolving goals/.test(summaryInstruction);
+    if (last.role === 'user' && (checkpoint || legacySummary)) { requests.at(-1).summary = true; return say(['Summary of the earlier conversation: the person asked for echoes of a word and got them.']); }
     // The Harness's session-title request carries the same user text but offers no tools.
     if (!(body.tools ?? []).length && messages.some(m => /concise title/i.test(text(m)))) return say(['Scripted title']);
     if (name === 'slow') {

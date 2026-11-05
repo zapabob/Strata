@@ -21,6 +21,26 @@ import { resolveHarness } from '../server/agent/harness-runtime.mjs';
 const HARNESS = process.env.STRATA_HARNESS_DIR;
 const skip = !HARNESS || !resolveHarness({ env: process.env }).ok ? 'STRATA_HARNESS_DIR is not set to a built Harness' : false;
 
+test('the scripted worker recognises final checkpoint instructions without treating prior user text as compaction', async t => {
+  const worker = await startScriptedWorker();
+  t.after(() => worker.close());
+  const checkpoint = 'You are now acting as a compaction engine.\nDo NOT mention this summarization request or that the context was compacted.\nOutput only the checkpoint text: do not call any tool or take any other action.';
+  const ask = async messages => {
+    const response = await fetch(worker.url + '/chat/completions', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ model: 'scripted-model', stream: true, messages }),
+    });
+    assert.equal(response.status, 200);
+    return response.text();
+  };
+  const summary = await ask([{ role: 'user', content: 'SCRIPT:echo first' }, { role: 'user', content: checkpoint }]);
+  assert.equal(worker.requests.at(-1).summary, true);
+  assert.match(summary, /Summary of the earlier conversation/);
+  const normal = await ask([{ role: 'user', content: checkpoint + '\nThe user has evolving goals.' }, { role: 'user', content: 'SCRIPT:echo still a normal turn' }]);
+  assert.equal(worker.requests.at(-1).summary, undefined);
+  assert.match(normal, /still a normal turn/);
+});
+
 function cleanup(dir) {
   // The Harness's Windows sandbox adds access entries under the directories it works in, which can make a
   // plain recursive delete fail with EPERM. Cleanup is best effort; a leftover temp dir is not a failure.
@@ -116,8 +136,9 @@ test('A03 a tool runs exactly once, in the Harness, after the user approves', { 
   const card = frames.filter(f => f.type === 'agent-tool').at(-1).tool;
   assert.equal(card.scope, 'shell'); assert.match(card.preview, /marker\.txt/);
   assert.equal(frames.at(-1).type, 'done');
-  // The worker only saw a transcript: it has no execution path, and it was asked twice (call, then result).
-  assert.equal(r.worker.requests.filter(q => q.toolNames.length).length, 2);
+  // The agent request ran twice (call, then result). A background checkpoint
+  // may also carry tools, but it is not another execution round.
+  assert.equal(r.worker.requests.filter(q => q.toolNames.length && !q.summary).length, 2);
   assert.match(text(frames), /Tool finished/);
 });
 
@@ -190,8 +211,11 @@ test('A06 reopening a chat resumes its Harness session without replaying a tool'
   assert.equal(turn2.frames.filter(f => f.type === 'agent-tool').length, 0, 'no tool card appears on resume');
   assert.equal(lines(join(second.ws, 'resume.txt')), 1, 'the earlier tool effect was not replayed');
   // The agent really carried the earlier conversation: its request holds the earlier turn too.
-  const resumed = second.worker.requests.find(q => q.toolNames.length);
+  const resumed = second.worker.requests.find(q => q.toolNames.length && !q.summary);
   assert.ok(resumed.messageCount > 5, `expected earlier messages in the request, saw ${resumed.messageCount}`);
+  const transcript = JSON.parse(resumed.raw).messages;
+  assert.ok(transcript.some(m => m.role === 'assistant' && m.tool_calls?.some(call => call.function?.arguments?.includes('resume.txt'))), 'the resumed agent sees its earlier tool call');
+  assert.ok(transcript.some(m => m.role === 'tool'), 'the resumed agent sees the earlier tool result');
 });
 
 test('A08 two chats run independently, each with its own session and approval', { skip }, async t => {

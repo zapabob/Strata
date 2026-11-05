@@ -40,6 +40,8 @@ def _fixture(tmp_path: Path) -> tuple[dict, Path, Path]:
         "programs/control/BUNDLE.json": b"{}",
         "programs/control/python/python.exe": b"python PE",
         "programs/control/strata.py": b"print('ok')\n",
+        "programs/control/metal/tools/metal_repack.py": b"# Metal repacker\n",
+        "programs/control/metal/tools/stream_experts.py": b"# Metal expert streaming\n",
         "programs/harness/BUNDLE.json": b"{}",
         "programs/harness/lib/bin.js": b"harness",
         "programs/README.md": b"Fresh Windows test fixture.\n",
@@ -132,6 +134,9 @@ def test_auxiliary_pe_does_not_accept_unrelated_subdirectory_dll(tmp_path: Path)
     "programs/harness/.env", "programs/harness/examples/prompt.txt",
     "programs/harness/node_modules/.npmrc", "programs/control/python/private.key",
     "programs/control/tools/update_install.ps1",
+    "programs/control/metal/tools/other.py",
+    "programs/control/metal/metal_repack.py",
+    "programs/control/metal/tools/nested/stream_experts.py",
     "programs/control/data/experimental-speed-projection/meta.json",
 ])
 def test_refuse_private_or_unlicensed_payload(name: str, tmp_path: Path):

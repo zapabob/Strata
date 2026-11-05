@@ -44,6 +44,7 @@ CONTROL_TOOLS = {
     "quantscope.py", "serve_load.py", "strata_bench.py", "strata_inspect.py", "strata_mcp.py",
     "strata_pack.py", "strata_tokenizer.py",
 }
+CONTROL_METAL_TOOLS = {"metal/tools/metal_repack.py", "metal/tools/stream_experts.py"}
 
 # This script runs on stock Windows PowerShell 5.1. It accepts only an empty
 # program target and previously absent component folders. It never consults
@@ -359,11 +360,13 @@ def _payload_name(value: str, native: str, generic: str, neutral_assets: set[str
         if top not in {
             "BUNDLE.json", "COMMIT", "VERSION", "README.txt", "strata.py", "setup.py",
             "requirements-monitor.txt", "requirements.txt", "bin", "data", "python", "ref",
-            "serve", "strata_cli", "strata_control", "tools",
+            "serve", "strata_cli", "strata_control", "tools", "metal",
         }:
             raise ValueError(f"unapproved Control file: {name}")
         if top == "tools" and rel[len("tools/"):] not in CONTROL_TOOLS:
             raise ValueError(f"unapproved Control tool: {name}")
+        if top == "metal" and rel not in CONTROL_METAL_TOOLS:
+            raise ValueError(f"unapproved Control Metal tool: {name}")
         if top == "ref" and rel != "ref/load.py":
             raise ValueError(f"unapproved Control reference file: {name}")
         if top == "data" and "experimental-speed-projection" in rel.split("/"):

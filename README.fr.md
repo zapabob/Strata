@@ -8,16 +8,16 @@ Modèles locaux, discussion, outils et mémoire Hakua facultative. Il s’agit d
 
 Cette version vise Windows x64 CUDA sm_120. Les vérifications locales ont utilisé une RTX 5060 Ti avec 16 Go de VRAM et 32 Go de RAM. Consultez les [résultats et limites restantes](docs/HAKUA_RELEASE.md) avant l’installation.
 
-**0.4.1** se met à jour manuellement et ne possède pas de signature de code Windows. [Version](https://github.com/zapabob/Strata/releases/tag/v0.4.1) · [Installation](docs/HAKUA_INSTALL.md) · [Vérifications et limites](docs/HAKUA_RELEASE.md).
+**0.5.0** se met à jour manuellement et ne possède pas de signature de code Windows. [Version](https://github.com/zapabob/Strata/releases/tag/v0.5.0) · [Installation](docs/HAKUA_INSTALL.md) · [Vérifications et limites](docs/HAKUA_RELEASE.md).
 
-1. Téléchargez [l’installateur](https://github.com/zapabob/Strata/releases/download/v0.4.1/Strata-0.4.1-windows-x64-setup.exe) et comparez son empreinte à [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.1/SHA256SUMS.txt).
+1. Téléchargez [l’installateur](https://github.com/zapabob/Strata/releases/download/v0.5.0/Strata-0.5.0-windows-x64-setup.exe) et comparez son empreinte à [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.5.0/SHA256SUMS.txt).
 2. Quittez Strata, y compris son icône de notification, puis lancez l’installation. Conservez modèles et données personnelles hors du dossier de l’application.
-3. Installez le composant CUDA signé depuis l’écran de préparation, via le flux latest ou le fichier inclus `strata-engine-0.4.1-windows-x86_64-cuda-cuda13.tar.gz`.
+3. Installez le composant CUDA signé depuis l’écran de préparation, via le flux latest ou le fichier inclus `strata-engine-0.5.0-windows-x86_64-cuda-cuda13.tar.gz`.
 4. Choisissez un modèle adapté ou **Use a local GGUF** pour vos fichiers existants. Node et Python sont inclus ; aucun interpréteur système ni compilateur n’est nécessaire.
 
-Les versions suivent [SemVer 2.0.0](https://semver.org/) : application `0.4.1`, moteur natif `0.4.1`; Control `0.4.2` ; les environnements PrismML/TurboQuant inchangés restent en `0.4.0`. Le dossier habituel de l’application est `%LOCALAPPDATA%\Programs\Strata` sur C:, indépendamment des modèles. Une installation existante peut conserver un autre emplacement.
+Les versions suivent [SemVer 2.0.0](https://semver.org/) : application `0.5.0`, moteur natif `0.5.0`; Control `0.5.0` ; les environnements PrismML/TurboQuant inchangés restent en `0.4.0`. Le dossier habituel de l’application est `%LOCALAPPDATA%\Programs\Strata` sur C:, indépendamment des modèles. Une installation existante peut conserver un autre emplacement.
 
-L’[archive tar.7z](https://github.com/zapabob/Strata/releases/download/v0.4.1/Strata-0.4.1-windows-x64.tar.7z) contient le même installateur NSIS, le composant CUDA signé, Control, les sommes de contrôle et les instructions. Les modèles et données personnelles sont exclus. Publication avec `v0.4.1`, l’alias de tag `latest` et GitHub Latest.
+L’[archive tar.7z](https://github.com/zapabob/Strata/releases/download/v0.5.0/Strata-0.5.0-windows-x64.tar.7z) contient le même installateur NSIS, le composant CUDA signé, Control, les sommes de contrôle et les instructions. Les modèles et données personnelles sont exclus. Publication avec `v0.5.0`, l’alias de tag `latest` et GitHub Latest.
 
 ## Réutiliser les modèles présents
 
@@ -39,9 +39,9 @@ Ouvrez **Hakua memory** dans la barre latérale. La lecture et la sauvegarde dem
 
 ## Composants et limites
 
-Application/Host : `0.4.1` ; moteur natif : `0.4.1`; Control `0.4.2` ; Node : `24.22.2` ; CPython : `3.12.15` ; Hakua-memory : `0.3.5`. Référence amont : `ffa80d73` / `0.2.10`.
+Application/Host : `0.5.0` ; moteur natif : `0.5.0`; Control `0.5.0` ; Node : `24.22.2` ; CPython : `3.12.15` ; Hakua-memory : `0.3.5`. Référence amont : `5d37280d` / `0.2.11`.
 
-Moteur natif : `0.4.1` ; Control : `0.4.2`. Le flux stable signé fournit le composant CUDA déjà vérifié avec Qwen3.6 installé, un jeton et une capacité de contexte de 4096. Le réglage enregistré de 131072 a été conservé ; la génération native sur toute la fenêtre reste non qualifiée. L’application se met à jour manuellement. Voir les [vérifications](docs/HAKUA_RELEASE.md).
+0.5.0 intègre la version amont 0.2.11 et les corrections jusqu’à `5d37280d` : fichiers par conversation, reprise des réponses actives, corrections IME et du moteur de rendu, nouveaux modèles, isolation des flux et Pillow 13. La mémoire Hakua, la réutilisation des GGUF locaux et les caches privés Qwen3.6 sont conservés. La nouvelle compilation CUDA est vérifiée séparément ; les mesures de 0.4.1 ne qualifient pas ses nouveaux réglages par défaut. La génération native sur toute la fenêtre reste non qualifiée. Voir les [vérifications et la publication](docs/HAKUA_RELEASE.md).
 
 Les vérifications Windows x64 portent sur une RTX 5060 Ti, CUDA sm_120 et 32 Go de RAM. Les autres GPU et systèmes, les images natives et un moteur natif DeepSeek distinct ne sont pas qualifiés. L’ancienne allocation hôte Qwen3.6 peut demander environ 18,7 Gio plus une réserve ; 32 Go ne garantissent pas le démarrage. Une réponse courte avec un contexte de 131 072 tokens ne valide ni la pleine fenêtre ni sa qualité. Les modes K de TurboQuant restent désactivés après des échecs aux essais de qualité. Spin(8), Triality, Query-v3 et Bonsai restent expérimentaux et facultatifs. Performances et besoins dépendent du modèle et de l’ordinateur.
 

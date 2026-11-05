@@ -1,7 +1,13 @@
 # Strata packaging: targets, recipes and locks
 
 This page is for developers who build the desktop app, the Terminal archive and the engine packages. To install this Hakua
-Windows fork, use [docs/HAKUA_INSTALL.md](../docs/HAKUA_INSTALL.md). Product 0.4.0-preview.20261103.7 uses Control/engine 0.4.0; the Qwen3.6 engine package on that tag is unsigned, has no picture reader, and `signature` is null. Setup EXE SHA-256 `5e8b8fff82b6e63dea48bf5c1907950911700c9bf30673444e5d2489a87c0336`, 113064953 bytes. Mapped-pack allows `907341c74d5a9f26c784e4aaad3460e376d4cabd84635c5d032879c59b08d150`, `64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7`; `6fe110650940d0c19f09909d769393769650045e6bc6eab29ccc49734dbcab29`; `dd53df07789e0fefcb87e33acab54f5bfe1faf312ef6bad515924736b715c5b5` and `512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046` stay allowed. Local help-honesty rebuild `64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7` is the unsigned Qwen3.6 component digest for this .7 preview (side-by-side .4.0-q36-…); older digests stay allowed. Legacy placement stays the default. Spill guard did not pass. Startup time and token speed were not measured.
+Windows fork, use [docs/HAKUA_INSTALL.md](../docs/HAKUA_INSTALL.md). The 0.5.0
+candidate integrates official 0.2.11 and subsequent fixes while preserving Hakua
+memory and the fork's native cache and model-reuse paths. Product, Control and
+native CUDA engine each use 0.5.0; unchanged PrismML/TurboQuant packages remain
+0.4.0. Windows distribution uses an NSIS installer and a tar.7z bundle containing
+the same installer plus signed components, feed and checksums. Component signing
+does not provide a Windows code signature for the installer. The
 actual qualification and publication status are in [HAKUA_RELEASE.md](../docs/HAKUA_RELEASE.md). The cross-platform recipes below
 are upstream reference and do not establish qualification of a Hakua package on those platforms.
 How packages are signed and published is in [UPDATES.md](UPDATES.md), and the package format is in [ENGINE-COMPONENT.md](ENGINE-COMPONENT.md).

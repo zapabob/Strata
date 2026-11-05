@@ -8,16 +8,16 @@
 
 此版本面向 Windows x64 CUDA sm_120，已在 RTX 5060 Ti（16 GB 显存）和 32 GB 内存的电脑上进行本地检查。安装前请阅读[验证结果与剩余限制](docs/HAKUA_RELEASE.md)。
 
-产品版本为 **0.4.1**，需要手动更新，没有 Windows 代码签名。[发布页面](https://github.com/zapabob/Strata/releases/tag/v0.4.1) · [安装说明](docs/HAKUA_INSTALL.md) · [验证结果与限制](docs/HAKUA_RELEASE.md)。
+产品版本为 **0.5.0**，需要手动更新，没有 Windows 代码签名。[发布页面](https://github.com/zapabob/Strata/releases/tag/v0.5.0) · [安装说明](docs/HAKUA_INSTALL.md) · [验证结果与限制](docs/HAKUA_RELEASE.md)。
 
-1. 下载[安装程序](https://github.com/zapabob/Strata/releases/download/v0.4.1/Strata-0.4.1-windows-x64-setup.exe)，并与 [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.1/SHA256SUMS.txt) 核对校验值。
+1. 下载[安装程序](https://github.com/zapabob/Strata/releases/download/v0.5.0/Strata-0.5.0-windows-x64-setup.exe)，并与 [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.5.0/SHA256SUMS.txt) 核对校验值。
 2. 退出 Strata，包括托盘程序，然后运行安装程序。模型和个人数据应保存在应用目录之外。
-3. 在准备页面通过 latest 更新源或包内的 `strata-engine-0.4.1-windows-x86_64-cuda-cuda13.tar.gz` 安装已签名的 CUDA 组件。
+3. 在准备页面通过 latest 更新源或包内的 `strata-engine-0.5.0-windows-x86_64-cuda-cuda13.tar.gz` 安装已签名的 CUDA 组件。
 4. 选择适合本机的模型，或通过 **Use a local GGUF** 使用已有文件。安装包自带 Node 和 Python，不需要系统解释器或编译器。
 
-版本遵循 [SemVer 2.0.0](https://semver.org/)：应用为 `0.4.1`，原生引擎为 `0.4.1`，Control 为 `0.4.2`；未变更的 PrismML／TurboQuant 运行时保留 `0.4.0`。应用通常安装在 C 盘的 `%LOCALAPPDATA%\Programs\Strata`，与模型目录分开。已有安装可能沿用其他位置。
+版本遵循 [SemVer 2.0.0](https://semver.org/)：应用为 `0.5.0`，原生引擎为 `0.5.0`，Control 为 `0.5.0`；未变更的 PrismML／TurboQuant 运行时保留 `0.4.0`。应用通常安装在 C 盘的 `%LOCALAPPDATA%\Programs\Strata`，与模型目录分开。已有安装可能沿用其他位置。
 
-[tar.7z 整合包](https://github.com/zapabob/Strata/releases/download/v0.4.1/Strata-0.4.1-windows-x64.tar.7z)包含相同的 NSIS 安装程序、已签名的 CUDA 组件、Control、校验值和安装说明，不包含模型权重或个人数据。发布使用 `v0.4.1`、指向同一提交的 `latest` 标签和 GitHub Latest。
+[tar.7z 整合包](https://github.com/zapabob/Strata/releases/download/v0.5.0/Strata-0.5.0-windows-x64.tar.7z)包含相同的 NSIS 安装程序、已签名的 CUDA 组件、Control、校验值和安装说明，不包含模型权重或个人数据。发布使用 `v0.5.0`、指向同一提交的 `latest` 标签和 GitHub Latest。
 
 ## 使用已有模型文件
 
@@ -39,9 +39,9 @@
 
 ## 组件与限制
 
-桌面应用/Host：`0.4.1`；原生引擎：`0.4.1`；Control：`0.4.2`；Node：`24.22.2`；CPython：`3.12.15`；Hakua-memory：`0.3.5`。上游源码参考：`ffa80d73` / `0.2.10`。
+桌面应用/Host：`0.5.0`；原生引擎：`0.5.0`；Control：`0.5.0`；Node：`24.22.2`；CPython：`3.12.15`；Hakua-memory：`0.3.5`。上游源码参考：`5d37280d` / `0.2.11`。
 
-原生引擎为 `0.4.1`，Control 为 `0.4.2`。已签名的 stable 更新源提供经过已安装环境测试的同一 CUDA 组件：Qwen3.6 在 4096 上下文容量下生成了一个 token，已保存的 131072 设置保持不变。原生完整上下文生成仍未通过验证。Windows 应用需要手动更新。详见[验证记录](docs/HAKUA_RELEASE.md)。
+0.5.0 合并官方 0.2.11 及截至 `5d37280d` 的修复，包括按会话保存文件、重新连接正在生成的回复、IME 输入与渲染恢复、新模型列表、流隔离和 Pillow 13。保留 Hakua 记忆、现有 GGUF 复用和 Qwen3.6 私有缓存。新的 CUDA 构建需要单独验证，0.4.1 的历史测量不能证明新默认设置的表现。原生完整上下文生成仍未验证。请参阅[验证与发布状态](docs/HAKUA_RELEASE.md)。
 
 Windows x64 检查基于 RTX 5060 Ti、CUDA sm_120 和 32 GB 内存，不代表其他 GPU、操作系统、原生图像输入或独立原生 DeepSeek 引擎已经通过验证。Qwen3.6 的旧式主机内存分配可能需要约 18.7 GiB 加预留空间，32 GB 总内存并不保证能够启动。设置 131,072 token 上下文后成功生成短回复，不等于完整窗口生成或质量验证。TurboQuant 的 K 模式在实模型质量测试失败后仍保持禁用。Spin(8)、Triality、Query-v3 和 Bonsai 均为可选实验。速度和资源需求取决于模型与计算机。
 

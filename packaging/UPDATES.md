@@ -7,17 +7,17 @@ It covers the three updated parts, the feed format, what a PC checks, and the re
 
 Hakua product releases follow [Semantic Versioning 2.0.0](https://semver.org/).
 Use `MAJOR.MINOR.PATCH`, with `-alpha.N`, `-beta.N` or `-rc.N` for prereleases.
-The product is `0.4.1`, tagged `v0.4.1`; `latest` is an additional alias, and
+The product is `0.5.0`, tagged `v0.5.0`; `latest` is an additional alias, and
 GitHub Latest selects this release. The NSIS asset follows the upstream filename
-style: `Strata-0.4.1-windows-x64-setup.exe`. Tauri's generated underscore filename
-is renamed without changing bytes. `Strata-0.4.1-windows-x64.tar.7z` holds that EXE,
+style: `Strata-0.5.0-windows-x64-setup.exe`. Tauri's generated underscore filename
+is renamed without changing bytes. `Strata-0.5.0-windows-x64.tar.7z` holds that EXE,
 the signed engine and Control packages, feed, checksums and installation instructions.
 Keep release dates in notes. Never replace older published assets.
 
 `VERSION` owns the product version. Run `python tools/bump_hakua_product_version.py
---set 0.4.1` to sync it; run `--check` before building. `CONTROL_VERSION` owns the
-independent Control package version (`0.4.2`). Native engine `0.4.1` remains in
-CMake; the unchanged engine archive is reused byte for byte. A Control-only change
+--set 0.5.0` to sync it; run `--check` before building. `CONTROL_VERSION` owns the
+independent Control package version (`0.5.0`). Native engine `0.5.0` is owned by
+CMake and is rebuilt for this upstream integration. A Control-only change
 must not relabel or rebuild an unchanged native engine. PrismML/TurboQuant remain
 `0.4.0`; Metal source stays independently versioned until built and qualified.
 The signed stable feed has engine and Control entries. App updates remain manual;

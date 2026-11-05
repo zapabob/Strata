@@ -1,28 +1,63 @@
 # Hakua Windows release qualification
 
-## Windows release: 0.4.1
+## Windows release candidate: 0.5.0
 
-Product/tag: `0.4.1` / `v0.4.1`. The `latest` tag is an additional alias;
-GitHub Latest selects this release once publication is verified. The NSIS setup
-uses the upstream filename style, `Strata-0.4.1-windows-x64-setup.exe`.
-`Strata-0.4.1-windows-x64.tar.7z` collects the identical EXE, signed CUDA archive,
-Control ZIP, signed stable feed, install scripts, checksums and INSTALL.md.
+Publication status: pending the checks below. No 0.5.0 tag or release has been
+published at this point. The prepared 0.4.1 packaging-only candidate was
+superseded before publication by this upstream integration.
+
+Product, native CUDA engine and Control are independently versioned as `0.5.0`.
+The immutable release tag will be `v0.5.0`; `latest` will point to the same commit,
+and GitHub Latest will select this release after publication. Existing published
+assets remain unchanged. Metal source is `0.5.0-metal`, with no newly qualified
+Metal package. PrismML/TurboQuant remain `0.4.0`; Hakua-memory remains `0.3.5`.
+
+Official source is fixed at `5d37280db1f70ef6b55d69ac1d9ad8630d7a62f0`, including
+upstream `0.2.11` and its subsequent Docker packaging correction. The preceding
+upstream checkpoint was `ffa80d73133ea5c548aefe57889a16e8085a938f`.
+
+### Changes and preservation
+
+The integration adds per-chat file storage, conflict copies, active-turn
+reattachment, quiet-stream heartbeats, IME Enter handling, bounded previews,
+renderer recovery, Unsloth v3.1 model sets and updated Control split-engine APIs.
+Hakua memory, existing-GGUF discovery, private conversation ownership, mapped
+expert packs, bounded Windows I/O, CRC validation and the fork's signed feed
+are retained. Product, Control and engine version sources remain independent.
+
+Security-related updates include Pillow 13 with a restricted image decoder list,
+constant-time shared-key comparison, malformed Host-header handling, stream
+ownership and cancellation isolation, image prompts passed through private files,
+benchmark redaction, pinned-download completion checks and loopback startup probes.
+These describe included changes, not a claim that all vulnerabilities are absent.
+
+A reproduced incoming chat-store defect is also repaired: after a chat write
+succeeds but its index write fails, restart now reads the authoritative chat
+envelopes. A stale index cannot reset a revision or hide a stale-window conflict.
+The focused failure-injection suite passes 13 tests. Startup reads all saved
+chat files; large-history performance is not qualified by this result.
+
+### Required release evidence
+
+Source tests, real Harness tests against scripted models, CUDA build/parity,
+bounded native inference, production payload checks, isolated shell tests,
+Playwright, installer data preservation, archive readback and anonymous download
+verification are recorded here as they complete. Current successful source
+checks are not a substitute for the remaining binary and installer checks.
+
+The setup uses `Strata-0.5.0-windows-x64-setup.exe` (NSIS). The real tar then 7z
+archive `Strata-0.5.0-windows-x64.tar.7z` will contain the identical EXE, signed
+CUDA component, Control ZIP, signed feed, install scripts, checksums and INSTALL.md.
 Models, personal data and signing keys are excluded. Windows app updates remain
-manual; no Tauri app updater signature or `latest.json` is claimed.
+manual: neither Authenticode nor a Tauri app updater signature is claimed.
 
-Native engine `0.4.1` is the unchanged archive from the beta below, SHA256
-`d305c6e2f9f367a8ca1d09052daa1e09134d5802a4fead261d1923c4d86dbfa0`.
-Control advances to `0.4.2` because its product label and independent package
-version lookup changed. Its Python interpreter and locked dependencies are reused
-unchanged. `CONTROL_VERSION` now owns the Control identity; CMake still owns
-the native engine identity. Older published archives are not replaced.
+### Qualification limits
 
-The desktop release requires its own NSIS payload and isolated shell checks.
-Publication and final archive checks are recorded here after they complete.
-This packaging release does not extend the native full-window qualification.
-Swift 98K remains unqualified. The historical GPU measurements below retain
-their original binary, model and context scope. No new GPU trial is needed for
-this repackaging, and the restored Hermes runtime remains in service.
+Upstream NVIDIA MMQ and automatic prompt-chunk changes require new local checks.
+Prior 0.4.1 measurements below do not qualify 0.5.0 bytes or default settings.
+Native 98K/131K full-window generation remains unqualified. HIP, SYCL and Metal
+builds and hardware runs are NOT_RUN on this Windows CUDA release machine.
+The previous PrismML full-window observations retain their original scope.
 
 ## Previous beta qualification
 

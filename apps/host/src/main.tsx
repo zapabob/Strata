@@ -5,6 +5,7 @@ import './styles/kit/components.css';
 import './styles/app.css';
 import { App } from './app/App';
 import { installDropGuard } from './components/DropZone';
+import { startRecovery } from './lib/recovery';
 import { version as rendererVersion } from '../package.json';
 import { buildMismatch } from './lib/build-identity';
 
@@ -41,6 +42,7 @@ const el = document.getElementById('root');
 if (!el) throw new Error('#root missing');
 
 installDropGuard();
+startRecovery();
 
 createRoot(el).render(
   <StrictMode>
