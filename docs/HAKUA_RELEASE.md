@@ -74,9 +74,22 @@ retains PrismML/TurboQuant 0.4.0 binary identities and their original provenance
 | GitHub hosted CI | BLOCKED: workflow dispatch returned HTTP 422 because Actions was disabled for this repository. Local checks are reported separately. |
 | NSIS extraction and production self-tests | PASS: the payload matches the build sources and staged private runtimes; 13/13 production self-tests passed. The shell differs from the unbundled build only at Tauri's documented UNK-to-NSS bundle marker. |
 | Packaged WebView2 with Playwright | 15/15 passed on the exact extracted NSIS shell, using an isolated profile. Existing Qwen3.6, Hikari and both Swift shards kept their original paths and reported zero model-download bytes; repeated import retained the same identity. Hikari displayed its name/PQ2_0, 96K/128K and CPU MoE settings survived save/reload, three viewport widths had no horizontal overflow, and four navigation routes worked. No page or console errors were recorded. No model inference was started. |
-| Fresh CUDA parity and bounded native Qwen3.6 inference | Pending exclusive GPU access. No 0.5.0 inference result is inferred from the prior release. |
+| Fresh CUDA parity | 5/5 passed on the RTX 5060 Ti in 100.22 s: native dense/expert parity, K-quant and v3.1 MMQ fixtures, and the native cache bridge. The conditional Q5_0 MMQ omission below still applies. |
+| Bounded native Qwen3.6 startup and private-cache requests | ABORTED before READY. With context 4096, mapped-pack, 5 expert slots and a 512-token prefill chunk, available system RAM fell from 9.07 GiB at the start of the guarded batch to 2.42 GiB. The unchanged 3 GiB floor stopped the owned process tree after 268.99 s, including the preceding parity tests. None of the six planned private-cache requests ran. This is a resource-pressure stop, not a successful model-start or cache-isolation result. |
+| Cleanup and runtime restoration | PASS: the guarded Job had zero active processes after termination. The interrupted runtime was restored with its exact original command line, model, 98,304 context and one slot, and its owned listener returned healthy. The stop-to-restoration interval was about 6 min 35 s. Model and expert-pack size/modification-time checks were unchanged; this is not a full model hash recheck. |
+| Explicitly authorised second trial | CUDA parity again passed 5/5 in 96.06 s. The same native Qwen3.6 configuration did not return READY within the 360-second startup deadline, so it was stopped. RAM did not trigger the stop: available RAM began at 10.10 GiB and stayed at or above 5.96 GiB in the recorded samples. None of the six cache requests ran. This separates a startup timeout from the first trial's RAM-pressure abort; it does not identify the exact slow operation. |
+| Second-trial telemetry and restoration | The native process reached 4.61 GiB working set and 9.06 GiB private bytes; these process-level figures do not identify individual allocations. The Job ended with zero active processes, runtime file hashes were unchanged, and model/pack size and modification time were unchanged. Exact original runtime settings and healthy listener were restored in about 9 min 23 s after the stop. Resource floors were unchanged in both trials. |
 | Local component/feed signatures and tar.7z readback | PASS: the component and feed verify against the pinned signing key. All 10 tar members were streamed back from the 7z and matched their input size and SHA-256. Twelve separate public assets are prepared locally. This does not activate or publish the feed. |
-| Anonymous public downloads | NOT_RUN: no 0.5.0 release has been published. Publication remains gated on fresh GPU qualification and the completed runtime restoration record. |
+| Anonymous public downloads | NOT_RUN: no 0.5.0 release has been published. Fresh CUDA parity passed twice, but neither real-model startup/cache gate passed. The release and Latest promotion remain blocked. |
+
+Read-only comparison found `src/qwen35/expert_store.cpp` and
+`src/qwen35/q36_engine.cu` byte-identical to the preceding fork checkpoint
+`91f5057b`. Model hashing and pack verification already use bounded 1 MiB reads;
+pack SHA-256 and CRC share one payload pass. This rules out a direct edit regression
+in those two files, not differences in linked code, build settings, driver behaviour
+or other workloads. The last startup marker was `buffers:end`; the logs do not
+identify the exact unfinished expert-placement substage. No speculative native
+change was made from these observations.
 
 The packaged local-model settings screen opened in 235 ms in this single check,
 while unrelated native discovery was still pending. This measures screen access,
