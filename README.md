@@ -69,7 +69,7 @@ engine clears the loading indicator. See [local backends](docs/LOCAL_LLAMA_BACKE
 | CUDA / PrismML / TurboQuant component candidate | [release status](docs/HAKUA_RELEASE.md) |
 | Upstream source reference | `ffa80d73`, upstream `0.2.10` |
 
-The separate CUDA component candidate contains native engine 0.4.1 and the unchanged PrismML/TurboQuant 0.4.0 runtimes. Its new manifest will be signed with the fork’s component key after qualification. Once published, import the file from this beta release; the stable feed keeps its earlier package. Component signing is separate from Windows app code signing. Exact identities are in [the release record](docs/HAKUA_RELEASE.md).
+The separate CUDA component candidate contains native engine 0.4.1 and the unchanged PrismML/TurboQuant 0.4.0 runtimes. Its manifest and beta feed have been signed and verified locally with the fork’s component key. Publication is still pending. Once published, import the file from this beta release; the stable feed keeps its earlier package. Component signing is separate from Windows app code signing. Exact identities and measured limits are in [the release record](docs/HAKUA_RELEASE.md).
 
 After loading a supported model, open **Hakua memory** in the sidebar. Reading
 and saving memory have separate consent controls for each turn. Opening memory

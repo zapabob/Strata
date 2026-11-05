@@ -8,7 +8,7 @@ Product/tag: `0.4.1-beta.1` / `v0.4.1-beta.1`. Native engine and Control are
 in the release notes. Published historical assets are not replaced.
 
 The Windows app is built and installed in the normal C-drive location. Native
-engine qualification and publication are still in progress. This section does
+full-window qualification and publication are still in progress. This section does
 not yet claim that the beta assets are public. See [installation](HAKUA_INSTALL.md)
 for the intended artifact names and [version policy](../packaging/UPDATES.md#version-and-asset-names).
 
@@ -57,6 +57,19 @@ was running. These are observations on this PC, not a general speed guarantee.
 The GPU-role regression suite passed 18 tests, the existing ModelRun suite
 passed six, and the source UI passed 11 checks with native discovery deliberately
 held pending. These UI and discovery checks do not qualify inference.
+
+The installed app also completed a real GUI/Harness/search round trip through
+an API connection to the existing local Hikari PQ2_0 server. Playwright selected
+the model in the app and sent the prompt from its message box. The bundled
+Harness 0.2.1-alpha.3 received a model-generated `web_search` call, returned live
+DuckDuckGo results, and displayed the model's final answer with an official
+source link. Search took 1,066 ms; the Host reported 107,587 ms for the turn,
+including queue/startup and generation. Context capacity was 98,304; this was
+a short request. Page and console errors were zero. No engine was restarted.
+This qualifies the installed GUI/Harness loop through a local API connection;
+it does not independently qualify the Strata-owned supervisor route. An earlier
+attempt timed out while waiting for server status before sending a prompt; a
+second attempt watched the wrong HTTP path and supplied no stream evidence.
 
 ### Measurements before the final version rebuild
 
@@ -162,11 +175,44 @@ command line, model, context and slot count, and its health endpoint returned OK
 
 Inspection found that whole-layer uploads copy from the full mapped pack into
 the bounded pinned slots. Reading those mapped source pages can still grow the
-process working set. An opt-in `STRATA_Q36_FILE_STAGING=1` path is being tested:
-it reads the same open file directly into those slots and retains the existing
+process working set. The opt-in `STRATA_Q36_FILE_STAGING=1` path
+reads the same open file directly into those slots and retains the existing
 CUDA completion events. CPU byte, range, concurrent-offset and file-replacement
-checks pass. Real-GPU memory, token parity and speed qualification are pending.
+checks pass. The bounded real-GPU run below also passes; full-window and repeated
+speed qualification are still pending.
 Model files, weight precision, KV precision and context capacity are unchanged.
+
+The final native executable
+`5e37033b11e6478920450f39a3b0057c2ca6d4116b1e196a1b507bf344d4fbd0`
+completed 18 short private-cache checks at capacity 131,072. All ten comparable
+deterministic cases matched the earlier c86b5d36 token results. The run covered
+owner changes, missing and invalid owners, error recovery, decode cancellation,
+final-prefill cancellation and expiry after five idle minutes. It used the
+existing Qwen3.6 UD-Q4_K_XL GGUF and expert pack, five expert slots, 512-token
+prefill chunks, MTP 2, no startup warmup, and all three opt-in transfer switches
+(`PIN_PIPELINE`, `STREAM_RESIDENT`, `FILE_STAGING`, each with the `STRATA_Q36_`
+prefix). Model and pack sizes and modification times were unchanged.
+
+READY took 286,968 ms and the complete bounded run took 724,672 ms. Peak process
+RSS was 5,806,473,216 bytes; minimum available physical RAM was 11,843,059,712 bytes.
+There were no resource aborts and the owned engine exited and was reaped. These
+are short-input observations, not a full-window result. Initial available RAM
+and filesystem-cache warmth differed from the earlier run, so they do not prove
+a controlled speedup. Final-prefill cancellation took 88,156 ms: state was cleared
+before the acknowledgement, but prompt cancellation is not yet responsive.
+
+The 1,466,619,912-byte CUDA archive has SHA256
+`538578c8dd275408d6966e1404b1ae3339ed0574a9a0b3fc3eb27a99c5ceaed6`.
+Its manifest and beta feed were signed and verified with the fork's pinned
+component key. The installed Control imported the archive into a separate empty
+profile, verified every file and selected engine 0.4.1. With no model registered
+in that profile, the import test ran `--version` only; it is distinct from the
+18-request native test. It did not change the production component selection.
+
+GitHub Actions returned `Actions has been disabled for this repository` when
+the validation branch was dispatched. The exact source head had no workflow
+runs on the later check, despite the permissions API reporting enabled. This
+remains unresolved; no exact-head cloud-test pass or public beta is claimed.
 
 Three Qwen3.6 GDN kernel candidates passed their bitwise parity checks but did
 not show a consistent timing improvement. None is enabled in the engine. No
