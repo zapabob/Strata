@@ -2,11 +2,15 @@
 #include "strata/qwen35/expert_store.hpp"
 
 #include <cstdint>
+#include <atomic>
+#include <chrono>
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <limits>
 #include <string>
+#include <thread>
 #include <vector>
 
 #if defined(_WIN32)
@@ -170,6 +174,71 @@ int main() {
         file.read(got.data(), (std::streamsize) got.size());
         CHECK(std::memcmp(got.data(), expect.data(), expect.size()) == 0);
         CHECK(!fs::exists(fs::path(pack->path() + ".partial")));
+        std::vector<uint8_t> staged(expect.size() + 16, 0xcd);
+        CHECK(pack->read_mapped(pack->layer_data(0), staged.data() + 8, expect.size()));
+        CHECK(std::memcmp(staged.data() + 8, expect.data(), expect.size()) == 0);
+        CHECK(staged.front() == 0xcd && staged.back() == 0xcd);
+        const uint8_t* end = pack->layer_data(1) + pack->layer_bytes(1);
+        CHECK(pack->read_mapped(end, nullptr, 0));
+        std::memset(staged.data(), 0xcd, staged.size());
+        CHECK(!pack->read_mapped(end - 1, staged.data() + 8, 2));
+        CHECK(!pack->read_mapped(nullptr, staged.data() + 8, 1));
+        CHECK(!pack->read_mapped(pack->layer_data(0), nullptr, 1));
+        CHECK(!pack->read_mapped(reinterpret_cast<const uint8_t*>(std::numeric_limits<uintptr_t>::max()),
+                                 staged.data() + 8, 16));
+        CHECK(!pack->read_mapped(pack->layer_data(0), staged.data() + 8, std::numeric_limits<size_t>::max()));
+        for (uint8_t byte : staged) CHECK(byte == 0xcd);
+    }
+
+    // Cross buffered-read chunk boundaries and expert boundaries. The expected
+    // bytes are assembled from the source tensors, not read from the mapping.
+    PackBuildRequest staged_req = req;
+    const auto staging_id = std::chrono::steady_clock::now().time_since_epoch().count();
+    staged_req.model_path = (dir / ("file-staging-" + std::to_string(staging_id) + ".gguf")).string();
+    write_bytes(staged_req.model_path, "file-staging-model", 18);
+    PackLayer wide = layer;
+    wide.layout.stride = (1u << 20) + 64;
+    staged_req.layers = {wide, wide};
+    auto staged_pack = open_or_build_expert_pack(staged_req, err);
+    CHECK(staged_pack != nullptr);
+    if (staged_pack) {
+        const auto expected = expected_layer(wide);
+        const uint8_t* base = staged_pack->layer_data(0);
+        std::vector<uint8_t> got(expected.size());
+        CHECK(staged_pack->read_mapped(base, got.data(), got.size()));
+        CHECK(got == expected);
+        std::atomic<bool> independent_offsets{true};
+        std::vector<std::thread> readers;
+        for (size_t worker = 0; worker < 4; ++worker) {
+            readers.emplace_back([&, worker] {
+                for (size_t trial = 0; trial < 128; ++trial) {
+                    const size_t offset = ((worker + trial) % n_expert) * (size_t) wide.layout.stride;
+                    uint8_t chunk[80];
+                    std::memset(chunk, 0xcd, sizeof(chunk));
+                    if (!staged_pack->read_mapped(base + offset, chunk + 8, 64) ||
+                        std::memcmp(chunk + 8, expected.data() + offset, 64) != 0 ||
+                        chunk[0] != 0xcd || chunk[79] != 0xcd) independent_offsets = false;
+                }
+            });
+        }
+        for (auto& reader : readers) reader.join();
+        CHECK(independent_offsets.load());
+        uint8_t cross[16] = {};
+        const size_t boundary = (size_t) wide.layout.stride - 3;
+        CHECK(staged_pack->read_mapped(base + boundary, cross, sizeof(cross)));
+        CHECK(std::memcmp(cross, expected.data() + boundary, sizeof(cross)) == 0);
+
+        // A path replacement cannot switch staging to a newly supplied file:
+        // the read is bound to the same open object as the verified mapping.
+        const std::string original = staged_pack->path();
+        fs::rename(original, original + ".held");
+        write_bytes(original, "unverified replacement", 22);
+        CHECK(staged_pack->read_mapped(base, got.data(), got.size()));
+        CHECK(got == expected);
+        auto moved = std::move(*staged_pack);
+        CHECK(!staged_pack->read_mapped(base, got.data(), 1));
+        CHECK(moved.read_mapped(base, got.data(), got.size()));
+        CHECK(got == expected);
     }
 
     PackLayer reread = layer;

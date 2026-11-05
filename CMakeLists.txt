@@ -344,6 +344,7 @@ if(STRATA_BUILD_TESTS)
   # Qwen3.6 mapped expert pack: byte identity, checksum, partial publish. No GPU and no full arena.
   add_executable(q36_expert_store_test tests/qwen35/q36_expert_store_test.cpp src/qwen35/expert_store.cpp)
   target_include_directories(q36_expert_store_test PRIVATE include)
+  target_link_libraries(q36_expert_store_test PRIVATE Threads::Threads)
   add_test(NAME q36_expert_store_test COMMAND q36_expert_store_test)
   # T05-B host pin-pool lifetime only. No CUDA, no engine wire-up, no speed claim.
   add_executable(q36_transfer_lifetime_test tests/qwen35/q36_transfer_lifetime_test.cpp src/qwen35/expert_store.cpp)

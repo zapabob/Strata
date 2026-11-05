@@ -2,6 +2,7 @@
 // Opt-in Qwen3.6 expert pack. The engine default stays the legacy host arena.
 // This path writes the same bytes as expert_blob() into a file and maps that
 // file. It does not cudaHostAlloc or malloc the full expert arena.
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -70,6 +71,14 @@ public:
     uint32_t layer_count() const;
     const std::string& path() const;
 
+    // Read the bytes represented by a mapped range into caller-owned staging.
+    // The same open file is used; the source mapping is not touched. This keeps
+    // a whole-layer GPU upload from faulting the full expert pack into the
+    // process working set. Concurrent reads use independent file offsets.
+    // Invalid ranges are rejected before writing. An I/O error may leave a
+    // partial result, which the caller must not submit to the GPU.
+    bool read_mapped(const uint8_t* src, uint8_t* dst, std::size_t bytes) const;
+
 private:
     struct Impl;
     std::unique_ptr<Impl> impl_;
@@ -89,9 +98,9 @@ std::string expert_pack_sha256_file(const std::string& path, std::string& err);
 uint64_t expert_pack_last_scratch_bytes();
 
 // Bounded host staging for mapped-pack (T05-B). Default proposal is 2 x 32 MiB.
-// This is not the old 1.10 GiB GPU staging pair. The engine does not use this
-// pool yet; lifetime rules are tested on the CPU first. Production pin
-// (cudaHostAlloc) is a later wire-up and stays opt-in.
+// This is separate from the 1.10 GiB GPU staging pair. The mapped-pack engine
+// owns the pinned (or pageable fallback) buffers and gives this pool a
+// non-owning view. A slot stays in flight until its CUDA copy completes.
 enum class PinSlotState : uint8_t { Reusable = 0, HostFilling = 1, H2dInFlight = 2 };
 
 class ExpertPinPool {

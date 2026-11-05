@@ -407,16 +407,18 @@ struct MappedView {
     // process working set on Windows. Bounded buffered reads leave room for the
     // engine and the resident experts, while still checking every byte.
     bool read(uint64_t offset, uint8_t* dst, size_t n) {
-        if (offset > size || n > size - offset) return false;
+        if (offset > size || n > size - offset || (n && !dst)) return false;
 #if defined(_WIN32)
-        LARGE_INTEGER at{};
-        at.QuadPart = (LONGLONG) offset;
-        if (!SetFilePointerEx(file, at, nullptr, FILE_BEGIN)) return false;
         while (n) {
             const DWORD take = (DWORD) std::min<size_t>(n, 1u << 20);
             DWORD got = 0;
-            if (!ReadFile(file, dst, take, &got, nullptr) || got == 0) return false;
-            dst += got; n -= got;
+            // This is a synchronous handle. Supplying the offset on each read
+            // avoids a shared seek/read cursor race between staging callers.
+            OVERLAPPED at{};
+            at.Offset = (DWORD) offset;
+            at.OffsetHigh = (DWORD) (offset >> 32);
+            if (!ReadFile(file, dst, take, &got, &at) || got == 0) return false;
+            dst += got; n -= got; offset += got;
         }
 #else
         while (n) {
@@ -716,6 +718,18 @@ uint32_t MappedExpertPack::layer_count() const { return impl_ ? (uint32_t) impl_
 const std::string& MappedExpertPack::path() const {
     static const std::string empty;
     return impl_ ? impl_->path : empty;
+}
+
+bool MappedExpertPack::read_mapped(const uint8_t* src, uint8_t* dst, size_t bytes) const {
+    if (!impl_ || !impl_->view.data || !src || (bytes && !dst)) return false;
+    // Integer range checks also reject pointers outside this mapping without
+    // subtracting unrelated C++ pointers or overflowing src + bytes.
+    const uintptr_t base = reinterpret_cast<uintptr_t>(impl_->view.data);
+    const uintptr_t address = reinterpret_cast<uintptr_t>(src);
+    if (address < base) return false;
+    const uint64_t offset = (uint64_t) (address - base);
+    if (offset > impl_->view.size || bytes > impl_->view.size - offset) return false;
+    return impl_->view.read(offset, dst, bytes);
 }
 
 bool pack_expert_blob(const ExpertBlobLayout& layout, const ExpertSource& src, uint32_t expert, uint8_t* dst) {

@@ -2194,7 +2194,26 @@ struct Engine {
     // Chunks when the transfer is larger than one slot. Synchronizes before releasing a slot.
     void h2d_from_host(void* dst, const void* src, size_t n, cudaStream_t stream) {
         strata::qwen35::ExpertPinPool* pool = m && m->expert_pack ? m->pin_pool.get() : nullptr;
+        static const bool file_staging = [] {
+            const char* value = std::getenv("STRATA_Q36_FILE_STAGING");
+            return value && std::strcmp(value, "1") == 0;
+        }();
+        const bool file_source = file_staging && m && m->expert_pack;
+        const auto fill = [&](uint8_t* target, size_t off, size_t bytes) {
+            if (file_source) {
+                if (!m->expert_pack->read_mapped((const uint8_t*) src + off, target, bytes)) {
+                    std::fprintf(stderr, "strata-q36: expert file staging read failed; no partial transfer submitted\n");
+                    std::exit(1);
+                }
+            } else {
+                std::memcpy(target, (const uint8_t*) src + off, bytes);
+            }
+        };
         if (!pool || n == 0) {
+            if (n && file_source) {
+                std::fprintf(stderr, "strata-q36: file staging requires the bounded expert transfer pool\n");
+                std::exit(1);
+            }
             if (n) CK(cudaMemcpyAsync(dst, src, n, cudaMemcpyHostToDevice, stream));
             return;
         }
@@ -2216,7 +2235,7 @@ struct Engine {
                     std::exit(1);
                 }
                 const size_t chunk = std::min(n - off, (size_t) pool->slot_bytes());
-                std::memcpy(pool->data(slot), (const uint8_t*) src + off, chunk);
+                fill(pool->data(slot), off, chunk);
                 if (!pool->mark_h2d(slot)) {
                     std::fprintf(stderr, "strata-q36: invalid expert transfer slot state\n");
                     std::exit(1);
@@ -2236,14 +2255,22 @@ struct Engine {
                 s = pool->begin_fill();
             }
             if (s < 0) {
+                if (file_source) {
+                    std::fprintf(stderr, "strata-q36: no reusable expert file staging slot\n");
+                    std::exit(1);
+                }
                 CK(cudaMemcpyAsync((uint8_t*) dst + off, (const uint8_t*) src + off, n - off, cudaMemcpyHostToDevice,
                                    stream));
                 return;
             }
             const size_t chunk = std::min(n - off, (size_t) pool->slot_bytes());
-            std::memcpy(pool->data(s), (const uint8_t*) src + off, chunk);
+            fill(pool->data(s), off, chunk);
             if (!pool->mark_h2d(s)) {
                 pool->release(s);
+                if (file_source) {
+                    std::fprintf(stderr, "strata-q36: invalid expert file staging slot state\n");
+                    std::exit(1);
+                }
                 CK(cudaMemcpyAsync((uint8_t*) dst + off, (const uint8_t*) src + off, n - off, cudaMemcpyHostToDevice,
                                    stream));
                 return;
