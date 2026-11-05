@@ -30,24 +30,25 @@ Initial support is one request at a time. It does not enable shared prompt cache
 
 ### App and Control checks on 2026-11-05
 
-The app built from `7092b802c3f6da72c0244cd84e45e1e738220eb6` passed comparison
+The CRC follow-up app built from `6fdb857bec44a83a4bba82ad752062e788625966` passed comparison
 of 29,329 packaged files and all 13 isolated shell self-tests. These source
 inventory comparisons exclude generated Python bytecode caches. The installer
-is 113,088,510 bytes with SHA256
-`6ca18a533a7c5c5f7beefd1070247e9d4e50a99d9c44185e788dfbc0a7f94165`.
+is 113,080,604 bytes with SHA256
+`4d78da03b848ff985c5887b1080b6d0227edcda902a278961e99dc9fbf06864d`.
+Control remains at source `7092b802c3f6da72c0244cd84e45e1e738220eb6`.
 It then completed an in-place update at `%LOCALAPPDATA%\Programs\Strata`.
 The installed Host, Control, Node, Harness and notices match the qualified
 payload. All four user-data inventories match their pre-installation SHA256
-inventories. Both existing shortcuts point to the C-drive app.
+inventories (3,979 files). Both existing shortcuts point to the C-drive app.
 
 Playwright drove that installed app's actual WebView2 window with a separate
 test profile. All 15 checks passed: existing Qwen, Hikari and split Swift file
 references, repeated-import identity, meaningful model labels, 96K/128K
 selection, CPU MoE settings, saved profiles after reload, navigation and widths
 1440, 768 and 375. No model was loaded during this UI check. Registration took
-289 / 144 / 502 ms respectively; these are metadata-registration observations,
+285 / 148 / 516 ms respectively; these are metadata-registration observations,
 not weight-loading or generation times. The registered local-model screen
-opened in 200 ms while native catalog discovery was still pending.
+opened in 262 ms while native catalog discovery was still pending.
 
 The same repair avoids a CUDA card-ordering probe on a single-GPU computer.
 Multi-GPU and mixed-vendor detection retain their prior path. Two observations
@@ -58,7 +59,7 @@ The GPU-role regression suite passed 18 tests, the existing ModelRun suite
 passed six, and the source UI passed 11 checks with native discovery deliberately
 held pending. These UI and discovery checks do not qualify inference.
 
-The installed app also completed a real GUI/Harness/search round trip through
+Before the CRC follow-up rebuild, the installed app completed a real GUI/Harness/search round trip through
 an API connection to the existing local Hikari PQ2_0 server. Playwright selected
 the model in the app and sent the prompt from its message box. The bundled
 Harness 0.2.1-alpha.3 received a model-generated `web_search` call, returned live
@@ -232,6 +233,18 @@ transfer-lifetime CPU tests pass, including independent bitwise CRC checks.
 Core/C++ static analysis passes. Whole-model startup speed and native inference
 with this checksum change have not yet been measured. Model and KV precision,
 context capacity and all hash checks remain unchanged.
+
+The CRC follow-up native executable has SHA256
+`e79b9791bdfdacd1e5f20324b8e80978af287cc1dc464d22231da8819de0f7fc`.
+Its CUDA build, 138-file component integrity check and pinned-key signature
+check pass. The signed archive is 1,466,638,193 bytes, SHA256
+`d305c6e2f9f367a8ca1d09052daa1e09134d5802a4fead261d1923c4d86dbfa0`;
+the signed manifest is
+`de9ff76a8c69e97d4de19a031ccb390eb775ec8059cae7a28b118d9286f7018b`.
+This candidate has no beta feed yet and has not run a native model. The earlier
+18-request result and signed beta feed belong to the previous executable, not
+this checksum rebuild. Normal activation is still pending; the normal engine
+selection remains 0.4.0.
 
 GitHub Actions returned `Actions has been disabled for this repository` when
 the validation branch was dispatched. The exact source head had no workflow
