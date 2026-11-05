@@ -123,3 +123,11 @@ npm --prefix apps/host run typecheck
 Strata is MIT-licensed. Model weights, Hakua-memory and bundled dependencies
 retain their own licenses and notices. The optional small control vector is
 off by default under the [Qwen Community License 1.0](data/experimental-speed-projection/LICENSE).
+
+## Supporting upstream Strata
+
+Thank you to everyone who supports Strata.
+
+<!-- supporters:start (one line per public supporter, newest last; copy a line and change the GitHub name in all four places) -->
+<a href="https://github.com/ryan4yin"><img src="https://github.com/ryan4yin.png?size=96" width="48" height="48" alt="ryan4yin" title="ryan4yin"></a>
+<!-- supporters:end -->

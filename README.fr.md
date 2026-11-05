@@ -61,3 +61,11 @@ npm --prefix apps/host run typecheck
 ```
 
 Strata est sous licence MIT. Les poids, Hakua-memory et les dépendances conservent leurs licences et notices. Le petit vecteur de contrôle facultatif est désactivé par défaut et relève de la [Qwen Community License 1.0](data/experimental-speed-projection/LICENSE).
+
+## Soutiens du projet Strata d’origine
+
+Merci à toutes les personnes qui soutiennent Strata.
+
+<!-- supporters:start (one line per public supporter, newest last; copy a line and change the GitHub name in all four places) -->
+<a href="https://github.com/ryan4yin"><img src="https://github.com/ryan4yin.png?size=96" width="48" height="48" alt="ryan4yin" title="ryan4yin"></a>
+<!-- supporters:end -->

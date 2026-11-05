@@ -61,3 +61,11 @@ npm --prefix apps/host run typecheck
 ```
 
 Strata ma licencję MIT. Wagi modeli, Hakua-memory i zależności zachowują własne licencje oraz informacje prawne. Opcjonalny mały wektor sterujący jest domyślnie wyłączony i podlega [Qwen Community License 1.0](data/experimental-speed-projection/LICENSE).
+
+## Wspierający oryginalny projekt Strata
+
+Dziękujemy wszystkim, którzy wspierają Stratę.
+
+<!-- supporters:start (one line per public supporter, newest last; copy a line and change the GitHub name in all four places) -->
+<a href="https://github.com/ryan4yin"><img src="https://github.com/ryan4yin.png?size=96" width="48" height="48" alt="ryan4yin" title="ryan4yin"></a>
+<!-- supporters:end -->

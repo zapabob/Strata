@@ -61,3 +61,11 @@ npm --prefix apps/host run typecheck
 ```
 
 Strata 使用 MIT 许可证。模型权重、Hakua-memory 和依赖保留各自的许可证与声明。可选的小型控制向量默认关闭，适用 [Qwen Community License 1.0](data/experimental-speed-projection/LICENSE)。
+
+## 官方 Strata 项目的支持者
+
+感谢每一位支持 Strata 的人。
+
+<!-- supporters:start (one line per public supporter, newest last; copy a line and change the GitHub name in all four places) -->
+<a href="https://github.com/ryan4yin"><img src="https://github.com/ryan4yin.png?size=96" width="48" height="48" alt="ryan4yin" title="ryan4yin"></a>
+<!-- supporters:end -->
