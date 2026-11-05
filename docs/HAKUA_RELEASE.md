@@ -7,8 +7,9 @@ Product/tag: `0.4.1-beta.1` / `v0.4.1-beta.1`. Native engine and Control are
 `0.3.5`, and Metal source `0.4.0-metal`. Versions follow SemVer 2.0.0; dates stay
 in the release notes. Published historical assets are not replaced.
 
-Build, final installation and publication are in progress. This section does not
-yet claim that the beta assets are public. See [installation](HAKUA_INSTALL.md)
+The Windows app is built and installed in the normal C-drive location. Native
+engine qualification and publication are still in progress. This section does
+not yet claim that the beta assets are public. See [installation](HAKUA_INSTALL.md)
 for the intended artifact names and [version policy](../packaging/UPDATES.md#version-and-asset-names).
 
 The repair includes meaningful names for generic GGUF metadata, existing local
@@ -26,6 +27,36 @@ engine's INFO capability before accepting requests; private-cache support is not
 granted by a binary digest list. Saved refusal messages use the current translated
 engine-update instructions.
 Initial support is one request at a time. It does not enable shared prompt caches.
+
+### App and Control checks on 2026-11-05
+
+The app built from `7092b802c3f6da72c0244cd84e45e1e738220eb6` passed comparison
+of 29,329 packaged files and all 13 isolated shell self-tests. These source
+inventory comparisons exclude generated Python bytecode caches. The installer
+is 113,088,510 bytes with SHA256
+`6ca18a533a7c5c5f7beefd1070247e9d4e50a99d9c44185e788dfbc0a7f94165`.
+It then completed an in-place update at `%LOCALAPPDATA%\Programs\Strata`.
+The installed Host, Control, Node, Harness and notices match the qualified
+payload. All four user-data inventories match their pre-installation SHA256
+inventories. Both existing shortcuts point to the C-drive app.
+
+Playwright drove that installed app's actual WebView2 window with a separate
+test profile. All 15 checks passed: existing Qwen, Hikari and split Swift file
+references, repeated-import identity, meaningful model labels, 96K/128K
+selection, CPU MoE settings, saved profiles after reload, navigation and widths
+1440, 768 and 375. No model was loaded during this UI check. Registration took
+289 / 144 / 502 ms respectively; these are metadata-registration observations,
+not weight-loading or generation times. The registered local-model screen
+opened in 200 ms while native catalog discovery was still pending.
+
+The same repair avoids a CUDA card-ordering probe on a single-GPU computer.
+Multi-GPU and mixed-vendor detection retain their prior path. Two observations
+of the old installed Control's native discovery took 24,807 and 24,984 ms;
+the corresponding new staged-Control observation took 7,040 ms while Hermes
+was running. These are observations on this PC, not a general speed guarantee.
+The GPU-role regression suite passed 18 tests, the existing ModelRun suite
+passed six, and the source UI passed 11 checks with native discovery deliberately
+held pending. These UI and discovery checks do not qualify inference.
 
 ### Measurements before the final version rebuild
 
@@ -69,9 +100,81 @@ model-generated `web_search`, live DuckDuckGo sources, final official-source URL
 and engine still alive. This proves that bounded model/API/search path, not the
 final installed GUI/Harness path or full-window quality.
 
-HIP/SYCL/Metal builds, full-window generation/quality, repeated statistical speed
-qualification and the existing CUDA spill baseline are not qualified by these
-results. The final build's source/hash receipt and installer checks are separate.
+### Full-window and final-candidate observations on 2026-11-05
+
+On the same RTX 5060 Ti 16 GB / 32 GB RAM PC, the unchanged signed PrismML
+runtime completed both full-window cases below. Each evaluated all 130,792
+input tokens at capacity 131,072, generated 47 tokens, and recovered all three
+synthetic lookup codes placed far apart in the input. These are one-run retrieval
+checks, not broad quality tests or repeated speed comparisons. Compilation ran
+in the background and disk/page-cache warmth was not controlled.
+
+| Model and placement | Prompt time | Reported prompt rate | Generation time | Reported generation rate | Sampled whole-GPU peak |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Qwen3.6-35B-A3B UD-Q4_K_XL, CPU MoE 28 layers | 1,724,306.98 ms | 75.8519 tokens/s | 26,094.379 ms | 1.76283 tokens/s | 11,586 MiB |
+| Hikari 27B PQ2_0, all GPU | 257,130.314 ms | 508.66037 tokens/s | 1,803.198 ms | 25.51023 tokens/s | 12,740 MiB |
+
+Both use Q8 K/V, Flash Attention, batch 1024, microbatch 256, six CPU threads,
+one request slot, no automatic fit or context shift, and no shared prompt cache.
+The generation rates above are the runtime's reported rates. See
+[the 16 GB context guide](WINDOWS_16GB_CONTEXT.md) for the settings and limits.
+
+Native Qwen3.6 executable
+`2dd5dbcd2874767096b9c1eb4ac4132a96f7979bcd019ec6b779f23c9dbacc0f`
+passed 18 actual private-cache checks at capacity 131,072, prefill 512, MTP 2
+and FP32 KV, with the mapped expert pack and both opt-in transfer switches.
+The cases covered same-owner reuse, owner changes and absence, invalid requests,
+decode/prefill cancellation, and expiration after 305 idle seconds. READY took
+243,092 ms; sampled whole-GPU peak was 15,702 MiB. These short requests do not
+establish native full-window quality or qualify a later executable automatically.
+
+Swift IQ2_XS native input of 98,016 tokens at capacity 98,304 failed with Windows
+access violation `0xc0000005`. A null vector access in the KVA early-out path was
+identified: its stream plan is absent below the 1024-token streaming threshold.
+Three stream-plan release sites are now conditional on that plan being active.
+The rebuilt executable
+`83959903089c536a16a85cb14261070b05d1cb892f42d6b059bab61b238b21e7`
+passed separate state-only and MoE-skip regressions with 912 input tokens,
+512-token chunks, a partial final chunk, and two generated tokens. The diagnostic
+KVA settings deliberately exercise those branches and do not measure retrieval
+quality. The full repair run reached 96,256 processed tokens, but the PC became
+unresponsive and the user manually restarted it. No completion or answer was
+recorded. Earlier samples showed about 350 MiB of available RAM; the cause of
+the host hang is not established. The same configuration is not qualified for
+98K use and is not being retried unchanged.
+
+A subsequent source-bound CUDA build completed with SHA256
+`c86b5d36e5371d8276bc73d553d2be0149a674ccc74541fa51d7eb88a2ab55a0`.
+Its `kva_test` passes; runtime qualification of these exact bytes remains
+separate. The focused KVA fix is submitted as
+[upstream draft PR #5273](https://github.com/Niko1221/Strata/pull/5273).
+The PR contains only the three guards and records the missing exact-upstream
+CUDA, HIP and SYCL validation.
+
+The exact c86b5d36 native executable reached READY at capacity 131,072 in
+692,031 ms and passed 13 short private-cache checks. During the 256-token
+prefill-cancellation case, available physical memory fell below the diagnostic
+3 GiB reserve. The retained process handle stopped only that engine after the
+two-second grace period; its final sample had 2,758,021,120 available bytes.
+This run did not finish the cancellation or idle-expiry checks and is not a
+passing qualification. Hermes was restored with its original executable,
+command line, model, context and slot count, and its health endpoint returned OK.
+
+Inspection found that whole-layer uploads copy from the full mapped pack into
+the bounded pinned slots. Reading those mapped source pages can still grow the
+process working set. An opt-in `STRATA_Q36_FILE_STAGING=1` path is being tested:
+it reads the same open file directly into those slots and retains the existing
+CUDA completion events. CPU byte, range, concurrent-offset and file-replacement
+checks pass. Real-GPU memory, token parity and speed qualification are pending.
+Model files, weight precision, KV precision and context capacity are unchanged.
+
+Three Qwen3.6 GDN kernel candidates passed their bitwise parity checks but did
+not show a consistent timing improvement. None is enabled in the engine. No
+weight precision, KV precision or context capacity was reduced to obtain these
+results. HIP/SYCL/Metal builds, native full-window generation/quality, repeated
+statistical speed qualification and the existing CUDA spill baseline remain
+unqualified. The final build's source/hash receipt, installer checks and installed
+GUI/Harness tool round trip are separate requirements.
 
 ## Historical record: 0.4.0-preview.20261103.7
 

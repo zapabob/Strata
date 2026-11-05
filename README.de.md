@@ -6,6 +6,8 @@ Lokale Modelle, Chat, Werkzeuge und optionale Hakua-Erinnerungen. Dies ist der [
 
 ## Windows-Vorschau
 
+Diese Beta wird noch geprüft und ist noch nicht veröffentlicht. Die folgenden Dateinamen und Installationsschritte beschreiben die geplante Veröffentlichung; siehe den [aktuellen Status](docs/HAKUA_RELEASE.md).
+
 **0.4.1-beta.1** ist eine manuell installierte Vorschau ohne Windows-Codesignatur. [Release](https://github.com/zapabob/Strata/releases/tag/v0.4.1-beta.1) · [Installationsanleitung](docs/HAKUA_INSTALL.md) · [Prüfungen und Grenzen](docs/HAKUA_RELEASE.md).
 
 1. Lade den [Installer](https://github.com/zapabob/Strata/releases/download/v0.4.1-beta.1/Strata_0.4.1-beta.1_x64-setup.exe) herunter und vergleiche seine Prüfsumme mit [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.1-beta.1/SHA256SUMS.txt).
@@ -19,6 +21,8 @@ Die Versionen folgen [SemVer 2.0.0](https://semver.org/): App `0.4.1-beta.1`, na
 
 Bei einem geteilten GGUF genügt die Auswahl eines Teils; Strata prüft den vollständigen Satz. Importierte Gewichte bleiben an ihrem Speicherort. Generische Metadaten wie `Hf` werden durch den Dateinamen ersetzt. Selbst vergebene Namen bleiben bei erneuter Prüfung und nach einem Neustart erhalten.
 
+Die Einstellungen eines registrierten lokalen Modells lassen sich öffnen, während andere Modelllisten noch geladen werden.
+
 Vor der Vorbereitung eines Katalogmodells sucht Strata begrenzt im ausgewählten Modellordner und dessen Unterordnern nach einem passenden lokalen Satz. Ein eindeutiger gültiger Treffer wird wiederverwendet. Mehrere Treffer erfordern eine Dateiauswahl. Reguläre Downloads behalten ihre Integritätsprüfung und Wiederaufnahme. Engine und optionale Entwurfsschichten werden getrennt behandelt.
 
 Native Qwen-/Swift-Modelle können eine einmalige Pack-Konvertierung benötigen. Der Fortschritt zeigt fertige Schichten, sofern der Packer sie meldet. Beim Fortsetzen eines speichersparenden Packs wird der bereits zugewiesene Platz seiner temporären Datei berücksichtigt. Unterstützte Hikari-/PQ2_0-Dateien verwenden PrismML über **Load with Strata**, ohne native Q2_0-Konvertierung. Für unterstützte gewöhnliche GGUFs bietet TurboQuant K=`FP16` und V=`TURBO2/3/4`; danach neu laden. Siehe [lokale Backends](docs/LOCAL_LLAMA_BACKENDS.md).
@@ -27,17 +31,21 @@ Native Qwen-/Swift-Modelle können eine einmalige Pack-Konvertierung benötigen.
 
 Der neue Qwen3.6-Pfad behält den Cache innerhalb desselben authentifizierten Gesprächs. Ein anderes Gespräch oder ein anderer Benutzer übernimmt ihn nicht. Wechsel, Abbruch, Fehler oder fünf Minuten Inaktivität löschen den privaten Cache. Anfragen ohne Gesprächskennung verwenden keinen gespeicherten Cache.
 
-Dieser Pfad erfordert die passende geprüfte Engine-Datei und ihre Bestätigung beim Start. Ältere Engines bleiben gesperrt. Zunächst läuft jeweils eine Anfrage; gemeinsam genutzte Prompt- und Gesprächscaches bleiben deaktiviert. Der mapped expert pack bleibt optional. Die Messungen und noch offenen Prüfungen stehen im [Release-Protokoll](docs/HAKUA_RELEASE.md).
+Die beiden Ablehnungszweige vor dem Start im Host wurden entfernt. Der Server prüft die INFO-Antwort der laufenden Engine auf Unterstützung privater Caches; auch kompatible lokale Builds sind möglich. Zunächst läuft jeweils eine Anfrage; gemeinsam genutzte Prompt- und Gesprächscaches bleiben deaktiviert. Der mapped expert pack bleibt optional. Die Messungen und noch offenen Prüfungen stehen im [Release-Protokoll](docs/HAKUA_RELEASE.md).
 
 **Hakua memory** in der Seitenleiste bietet getrennte Zustimmung zum Lesen und Speichern je Nachricht. PrismML/TurboQuant startet dafür den eigenen Server mit Authentifizierung und privaten Caches neu; beende aktive Anfragen vorher. [Anleitung](serve/MEMORY_HARNESS.md).
 
 ## Komponenten und Grenzen
 
-Desktop/Host: `0.4.1-beta.1`; native Engine/Control: `0.4.0`; Node: `24.22.2`; CPython: `3.12.15`; Hakua-memory: `0.3.5`. Upstream-Referenz: `ffa80d73` / `0.2.10`.
+Desktop/Host: `0.4.1-beta.1`; native Engine/Control: `0.4.1`; Node: `24.22.2`; CPython: `3.12.15`; Hakua-memory: `0.3.5`. Upstream-Referenz: `ffa80d73` / `0.2.10`.
 
-Die signierte CUDA-/PrismML-/TurboQuant-Komponente stammt weiterhin aus [v0.4.0-preview.20261101.1](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261101.1). Die separate experimentelle Qwen3.6-Komponente ist unsigniert. Dieser Installer enthält keine CUDA-Engine. Signierte automatische App-Updates sind nicht qualifiziert.
+Der Kandidat der separaten CUDA-Komponente enthält die native Engine 0.4.1 und die unveränderten PrismML-/TurboQuant-Laufzeiten 0.4.0. Nach der Prüfung wird sein neues Manifest mit dem Komponentenschlüssel dieses Forks signiert. Importiere die Datei nach der Veröffentlichung aus dieser Beta; der stabile Feed behält sein bisheriges Paket. Die Komponentensignatur ist von der Windows-Codesignatur der App getrennt. Kennungen stehen im [Release-Protokoll](docs/HAKUA_RELEASE.md).
 
 Die Windows-x64-Prüfungen beziehen sich auf RTX 5060 Ti, CUDA sm_120 und 32 GB RAM. Andere GPUs und Betriebssysteme, native Bildeingabe und eine separate native DeepSeek-Engine sind nicht qualifiziert. Die alte Qwen3.6-Host-Arena kann etwa 18,7 GiB plus Reserve verlangen; 32 GB RAM garantieren keinen Start. Ein kurzer erfolgreicher Test bei 131.072 Kontext-Token bestätigt keine vollständige Kontextauslastung oder Qualität. TurboQuant-K-Modi bleiben nach fehlgeschlagenen Qualitätstests deaktiviert. Spin(8), Triality, Query-v3 und Bonsai sind optionale Experimente. Geschwindigkeit und Ressourcenbedarf hängen vom Modell und Computer ab.
+
+## 96K–128K mit 16 GB Grafikspeicher
+
+Der Editor bietet 96K (98.304) und 128K (131.072). Auf dem geprüften PC mit RTX 5060 Ti 16 GB und 32 GB RAM verarbeitete Qwen3.6 UD-Q4_K_XL mit PrismML, Q8 K/V und 28 CPU-MoE-Schichten 130.792 Eingabetokens ohne Kürzung und fand alle drei weit auseinanderliegenden Codes. Diese einzelne Anfrage dauerte etwa 29 Minuten; sie belegt weder allgemeine Qualität noch Geschwindigkeit anderer Modelle. Siehe [Einstellungen und Tests mit voller Kontextlänge](docs/WINDOWS_16GB_CONTEXT.md).
 
 ## Entwicklung
 

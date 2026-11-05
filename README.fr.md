@@ -6,6 +6,8 @@ Modèles locaux, discussion, outils et mémoire Hakua facultative. Il s’agit d
 
 ## Préversion Windows
 
+Cette bêta est encore en cours de validation et n’est pas publiée. Les noms de fichiers et les étapes ci-dessous décrivent la version prévue ; consultez son [état actuel](docs/HAKUA_RELEASE.md).
+
 **0.4.1-beta.1** se met à jour manuellement et ne possède pas de signature de code Windows. [Version](https://github.com/zapabob/Strata/releases/tag/v0.4.1-beta.1) · [Installation](docs/HAKUA_INSTALL.md) · [Vérifications et limites](docs/HAKUA_RELEASE.md).
 
 1. Téléchargez [l’installateur](https://github.com/zapabob/Strata/releases/download/v0.4.1-beta.1/Strata_0.4.1-beta.1_x64-setup.exe) et comparez son empreinte à [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.1-beta.1/SHA256SUMS.txt).
@@ -19,6 +21,8 @@ Les versions suivent [SemVer 2.0.0](https://semver.org/) : application `0.4.1-be
 
 Pour un GGUF fractionné, sélectionnez une partie : Strata vérifie l’ensemble. Les poids importés restent à leur emplacement. Un nom générique tel que `Hf` est remplacé à l’affichage par le nom du fichier. Vos noms personnalisés sont conservés après vérification et redémarrage.
 
+Les réglages d’un modèle local enregistré restent accessibles pendant le chargement des autres listes de modèles.
+
 Avant de préparer un modèle du catalogue, Strata recherche un ensemble local compatible dans le dossier choisi et ses sous-dossiers, avec une exploration limitée. Un résultat valide unique est réutilisé ; plusieurs résultats imposent une sélection explicite. Les téléchargements habituels conservent leurs contrôles d’intégrité et leur reprise. Le moteur et les couches de brouillon facultatives sont traités séparément.
 
 Les modèles Qwen/Swift natifs peuvent nécessiter une conversion initiale en pack. La progression affiche les couches terminées lorsque le convertisseur les fournit. La reprise d’un pack à faible consommation mémoire tient compte de l’espace déjà alloué au fichier temporaire. Les GGUF Hikari/PQ2_0 compatibles utilisent PrismML via **Load with Strata**, sans conversion native Q2_0. Pour les GGUF ordinaires compatibles, TurboQuant propose K=`FP16` et V=`TURBO2/3/4`, puis un rechargement. Voir les [moteurs locaux](docs/LOCAL_LLAMA_BACKENDS.md).
@@ -27,17 +31,21 @@ Les modèles Qwen/Swift natifs peuvent nécessiter une conversion initiale en pa
 
 Le nouveau mode Qwen3.6 conserve le cache dans une même conversation authentifiée. Une autre conversation ou un autre utilisateur ne le réutilise pas. Changement de conversation, annulation, erreur ou cinq minutes d’inactivité effacent le cache privé. Sans identifiant de conversation, aucune réutilisation n’est effectuée.
 
-Ce mode exige le fichier moteur validé correspondant et sa confirmation au démarrage. Les anciens moteurs restent refusés. Une seule requête est traitée à la fois ; les caches partagés restent désactivés. Le mapped expert pack reste facultatif. Consultez les mesures et vérifications encore ouvertes dans le [compte rendu de version](docs/HAKUA_RELEASE.md).
+Les deux branches de refus avant démarrage du Host ont été supprimées. Le serveur vérifie la capacité de cache privé dans la réponse INFO du moteur actif, y compris pour les compilations locales compatibles. Une seule requête est traitée à la fois ; les caches partagés restent désactivés. Le mapped expert pack reste facultatif. Consultez les mesures et vérifications encore ouvertes dans le [compte rendu de version](docs/HAKUA_RELEASE.md).
 
 Ouvrez **Hakua memory** dans la barre latérale. La lecture et la sauvegarde demandent des choix distincts à chaque tour. PrismML/TurboQuant redémarre son serveur avec authentification et caches privés ; terminez les requêtes en cours auparavant. [Guide](serve/MEMORY_HARNESS.md).
 
 ## Composants et limites
 
-Application/Host : `0.4.1-beta.1` ; moteur natif/Control : `0.4.0` ; Node : `24.22.2` ; CPython : `3.12.15` ; Hakua-memory : `0.3.5`. Référence amont : `ffa80d73` / `0.2.10`.
+Application/Host : `0.4.1-beta.1` ; moteur natif/Control : `0.4.1` ; Node : `24.22.2` ; CPython : `3.12.15` ; Hakua-memory : `0.3.5`. Référence amont : `ffa80d73` / `0.2.10`.
 
-Le composant CUDA/PrismML/TurboQuant signé reste celui de [v0.4.0-preview.20261101.1](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261101.1). Le composant expérimental Qwen3.6 séparé n’est pas signé. L’installateur n’inclut pas le moteur CUDA. Les mises à jour automatiques signées de l’application ne sont pas qualifiées.
+Le candidat du composant CUDA séparé contient le moteur natif 0.4.1 et les environnements PrismML/TurboQuant 0.4.0 inchangés. Son nouveau manifeste sera signé avec la clé de composant de ce fork après validation. Une fois la bêta publiée, importez son fichier ; le flux stable conserve son ancien paquet. Cette signature est distincte de la signature de code Windows de l’application. Voir les identifiants dans le [compte rendu de version](docs/HAKUA_RELEASE.md).
 
 Les vérifications Windows x64 portent sur une RTX 5060 Ti, CUDA sm_120 et 32 Go de RAM. Les autres GPU et systèmes, les images natives et un moteur natif DeepSeek distinct ne sont pas qualifiés. L’ancienne allocation hôte Qwen3.6 peut demander environ 18,7 Gio plus une réserve ; 32 Go ne garantissent pas le démarrage. Une réponse courte avec un contexte de 131 072 tokens ne valide ni la pleine fenêtre ni sa qualité. Les modes K de TurboQuant restent désactivés après des échecs aux essais de qualité. Spin(8), Triality, Query-v3 et Bonsai restent expérimentaux et facultatifs. Performances et besoins dépendent du modèle et de l’ordinateur.
+
+## 96K–128K avec 16 Go de VRAM
+
+L’éditeur propose 96K (98 304) et 128K (131 072). Sur le PC testé, équipé d’une RTX 5060 Ti de 16 Go et de 32 Go de RAM, Qwen3.6 UD-Q4_K_XL avec PrismML, un cache K/V Q8 et 28 couches MoE sur le CPU a traité 130 792 tokens sans troncature et retrouvé les trois codes éloignés. Cette requête a pris environ 29 minutes ; elle ne garantit ni la qualité générale ni la vitesse d’autres modèles. Voir les [réglages et résultats en contexte complet](docs/WINDOWS_16GB_CONTEXT.md).
 
 ## Développement
 

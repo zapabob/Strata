@@ -8,6 +8,8 @@ of [Niko1221/Strata](https://github.com/Niko1221/Strata).
 
 ## Windows preview
 
+This beta is still being qualified and is not published yet. The filenames and installation steps below describe the planned release; see the [current release status](docs/HAKUA_RELEASE.md).
+
 Product version: **0.4.1-beta.1**. The release contains the setup EXE
 and its checksums. It is a manual-update preview without a Windows code signature.
 
@@ -31,6 +33,8 @@ For a split GGUF, choose one shard; Strata checks the complete set. Imported
 weights stay in their original location. A generic metadata name such as `Hf`
 is displayed using the filename. A name you choose is preserved when inspected
 again or after a restart.
+
+Settings for a registered local model open while the other model lists are still loading.
 
 Before preparing a catalog model, Strata checks the selected model folder for a
 matching local set, including nested repository folders. A single valid match
@@ -59,15 +63,13 @@ engine clears the loading indicator. See [local backends](docs/LOCAL_LLAMA_BACKE
 | Component | Version / distribution |
 | --- | --- |
 | Desktop GUI / Host | `0.4.1-beta.1`, this app release |
-| Native engine / Control | `0.4.0` |
+| Native engine / Control | `0.4.1` |
 | Private runtimes | Node `24.22.2`, CPython `3.12.15` |
 | Hakua-memory | `0.3.5` |
-| Signed CUDA / PrismML / TurboQuant component | [v0.4.0-preview.20261101.1](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261101.1) |
+| CUDA / PrismML / TurboQuant component candidate | [release status](docs/HAKUA_RELEASE.md) |
 | Upstream source reference | `ffa80d73`, upstream `0.2.10` |
 
-This app update does not replace the signed engine binaries. The separate
-experimental Qwen3.6 component is unsigned and must not be presented as part of
-the signed component. Exact identities are in [the release record](docs/HAKUA_RELEASE.md).
+The separate CUDA component candidate contains native engine 0.4.1 and the unchanged PrismML/TurboQuant 0.4.0 runtimes. Its new manifest will be signed with the fork’s component key after qualification. Once published, import the file from this beta release; the stable feed keeps its earlier package. Component signing is separate from Windows app code signing. Exact identities are in [the release record](docs/HAKUA_RELEASE.md).
 
 After loading a supported model, open **Hakua memory** in the sidebar. Reading
 and saving memory have separate consent controls for each turn. Opening memory
@@ -84,9 +86,9 @@ disk space affect which models can run and how long preparation takes.
 The new Qwen3.6 private-cache path retains state within the same authenticated
 conversation. Another conversation or user cannot reuse it. Switching owners,
 cancellation, errors or five idle minutes clear the private cache. Requests
-without a conversation ID do not reuse cached state. This path requires the
-matching verified engine binary and its capability acknowledgement at startup;
-older engines remain refused. Initially it serves one request at a time, with
+without a conversation ID do not reuse cached state. The Host’s two pre-start refusal branches have been removed. The server checks
+the running engine’s INFO capability before accepting private-cache requests,
+including compatible local builds. Initially it serves one request at a time, with
 shared prompt and conversation caches disabled. Its mapped expert pack and
 experimental kernels remain opt-in, with binary-hash checks. The legacy host
 arena can need about 18.7 GiB plus a reserve; 32 GB total RAM does not guarantee
@@ -97,6 +99,10 @@ A successful short response with a 131,072 context setting is not full-window
 generation or quality qualification. Measured conditions, failures and tests
 not run are recorded separately in [HAKUA_RELEASE.md](docs/HAKUA_RELEASE.md).
 Spin(8), Triality, Query-v3 and Bonsai remain opt-in experiments.
+
+## 96K–128K on a 16 GB GPU
+
+The editor offers 96K (98,304) and 128K (131,072). On the tested RTX 5060 Ti 16 GB / 32 GB RAM PC, Qwen3.6 UD-Q4_K_XL with PrismML, Q8 K/V and 28 CPU MoE layers evaluated 130,792 input tokens without truncation and recovered all three distant lookup codes. This single request took about 29 minutes; it does not establish general quality or speed for other models. See the [settings and full-window results](docs/WINDOWS_16GB_CONTEXT.md).
 
 ## Development
 

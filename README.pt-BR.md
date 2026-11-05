@@ -6,6 +6,8 @@ Modelos locais, chat, ferramentas e memória Hakua opcional. Este é o [fork de 
 
 ## Prévia para Windows
 
+Esta beta ainda está em validação e não foi publicada. Os nomes de arquivos e as etapas abaixo descrevem a versão planejada; consulte o [estado atual](docs/HAKUA_RELEASE.md).
+
 **0.4.1-beta.1** exige atualização manual e não tem assinatura de código do Windows. [Versão](https://github.com/zapabob/Strata/releases/tag/v0.4.1-beta.1) · [Instalação](docs/HAKUA_INSTALL.md) · [Testes e limites](docs/HAKUA_RELEASE.md).
 
 1. Baixe o [instalador](https://github.com/zapabob/Strata/releases/download/v0.4.1-beta.1/Strata_0.4.1-beta.1_x64-setup.exe) e compare seu hash com [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.1-beta.1/SHA256SUMS.txt).
@@ -19,6 +21,8 @@ As versões seguem [SemVer 2.0.0](https://semver.org/): aplicativo `0.4.1-beta.1
 
 Para um GGUF dividido, selecione uma parte: o Strata verifica o conjunto completo. Os pesos importados permanecem no local original. Metadados genéricos, como `Hf`, são exibidos usando o nome do arquivo. Nomes personalizados são preservados após nova verificação e reinicialização.
 
+As configurações de um modelo local registrado podem ser abertas enquanto as outras listas de modelos ainda estão carregando.
+
 Antes de preparar um modelo do catálogo, o Strata faz uma busca limitada por conjuntos locais compatíveis na pasta escolhida e nas subpastas. Uma correspondência válida única é reutilizada; várias exigem selecionar o arquivo. Downloads convencionais mantêm a verificação de integridade e a retomada. O mecanismo e as camadas opcionais de rascunho são tratados separadamente.
 
 Modelos nativos Qwen/Swift podem precisar de uma conversão inicial para pack. O progresso mostra camadas concluídas quando o conversor fornece essa informação. A retomada de um pack de baixo consumo de memória considera o espaço já alocado ao arquivo temporário. GGUFs Hikari/PQ2_0 compatíveis usam PrismML por **Load with Strata**, sem conversão nativa Q2_0. Para GGUFs comuns compatíveis, o TurboQuant oferece K=`FP16` e V=`TURBO2/3/4`; recarregue após a escolha. Consulte os [mecanismos locais](docs/LOCAL_LLAMA_BACKENDS.md).
@@ -27,17 +31,21 @@ Modelos nativos Qwen/Swift podem precisar de uma conversão inicial para pack. O
 
 O novo caminho Qwen3.6 mantém o cache na mesma conversa autenticada. Outra conversa ou outro usuário não o reutiliza. Troca de conversa, cancelamento, erro ou cinco minutos de inatividade apagam o cache privado. Requisições sem identificador de conversa não reutilizam cache.
 
-Esse caminho exige o arquivo de mecanismo validado correspondente e sua confirmação ao iniciar. Mecanismos antigos continuam bloqueados. Inicialmente, uma requisição é processada por vez e os caches compartilhados permanecem desativados. O mapped expert pack continua opcional. Medições e verificações pendentes estão no [registro da versão](docs/HAKUA_RELEASE.md).
+As duas condições de recusa do Host antes da inicialização foram removidas. O servidor verifica a capacidade de cache privado na resposta INFO do mecanismo em execução, incluindo compilações locais compatíveis. Inicialmente, uma requisição é processada por vez e os caches compartilhados permanecem desativados. O mapped expert pack continua opcional. Medições e verificações pendentes estão no [registro da versão](docs/HAKUA_RELEASE.md).
 
 Abra **Hakua memory** na barra lateral. Ler e salvar dependem de consentimentos separados em cada turno. PrismML/TurboQuant reinicia seu servidor com autenticação e caches privados; conclua as requisições ativas antes. [Guia](serve/MEMORY_HARNESS.md).
 
 ## Componentes e limites
 
-Aplicativo/Host: `0.4.1-beta.1`; mecanismo nativo/Control: `0.4.0`; Node: `24.22.2`; CPython: `3.12.15`; Hakua-memory: `0.3.5`. Referência upstream: `ffa80d73` / `0.2.10`.
+Aplicativo/Host: `0.4.1-beta.1`; mecanismo nativo/Control: `0.4.1`; Node: `24.22.2`; CPython: `3.12.15`; Hakua-memory: `0.3.5`. Referência upstream: `ffa80d73` / `0.2.10`.
 
-O componente assinado CUDA/PrismML/TurboQuant continua sendo o de [v0.4.0-preview.20261101.1](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261101.1). O componente experimental Qwen3.6 separado não é assinado. O instalador não inclui o mecanismo CUDA. Atualizações automáticas assinadas do aplicativo não estão qualificadas.
+O candidato do componente CUDA separado contém o mecanismo nativo 0.4.1 e os ambientes PrismML/TurboQuant 0.4.0 sem alterações. Após a validação, seu novo manifesto será assinado com a chave de componentes deste fork. Depois da publicação, importe o arquivo desta beta; o canal estável mantém o pacote anterior. Essa assinatura é diferente da assinatura de código Windows do aplicativo. Os identificadores estão no [registro da versão](docs/HAKUA_RELEASE.md).
 
 Os testes Windows x64 abrangem RTX 5060 Ti, CUDA sm_120 e 32 GB de RAM. Não qualificam outros GPUs ou sistemas, entrada nativa de imagens ou um mecanismo nativo DeepSeek separado. A alocação legada do Qwen3.6 na RAM pode exigir cerca de 18,7 GiB mais reserva; 32 GB não garantem a inicialização. Uma resposta curta com contexto de 131.072 tokens não valida toda a janela nem sua qualidade. Os modos K do TurboQuant continuam desativados após falhas nos testes de qualidade. Spin(8), Triality, Query-v3 e Bonsai são experimentos opcionais. Desempenho e recursos necessários dependem do modelo e do computador.
+
+## 96K–128K com 16 GB de VRAM
+
+O editor oferece 96K (98.304) e 128K (131.072). No PC testado, com RTX 5060 Ti de 16 GB e 32 GB de RAM, o Qwen3.6 UD-Q4_K_XL com PrismML, cache K/V Q8 e 28 camadas MoE na CPU processou 130.792 tokens sem cortes e recuperou os três códigos distantes. Essa solicitação levou cerca de 29 minutos; ela não garante qualidade geral nem velocidade para outros modelos. Consulte as [configurações e os resultados com contexto completo](docs/WINDOWS_16GB_CONTEXT.md).
 
 ## Desenvolvimento
 
