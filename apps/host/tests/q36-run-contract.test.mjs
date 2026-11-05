@@ -136,10 +136,14 @@ test('the engine digest is read from the file, and a missing file is not an allo
 test('the recorded sm_120 engine digests are the mapped-pack allowlist, and legacy stays the default', () => {
   const listed = [...Q36_MAPPED_PACK_DIGESTS].sort();
   assert.deepEqual(listed, [
+    '2dd5dbcd2874767096b9c1eb4ac4132a96f7979bcd019ec6b779f23c9dbacc0f',
+    '3797f2d368360b184b055c2130ed300645a1ece20d0bdef05dd6a3ceecf7e608',
     '512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046',
+    '5e37033b11e6478920450f39a3b0057c2ca6d4116b1e196a1b507bf344d4fbd0',
     '64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7',
     '6fe110650940d0c19f09909d769393769650045e6bc6eab29ccc49734dbcab29',
     '907341c74d5a9f26c784e4aaad3460e376d4cabd84635c5d032879c59b08d150',
+    'c86b5d36e5371d8276bc73d553d2be0149a674ccc74541fa51d7eb88a2ab55a0',
     'dd53df07789e0fefcb87e33acab54f5bfe1faf312ef6bad515924736b715c5b5',
   ].sort());
   for (const sha of listed) assert.match(sha, /^[0-9a-f]{64}$/);

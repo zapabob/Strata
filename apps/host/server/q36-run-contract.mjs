@@ -3,8 +3,8 @@
  * The native Qwen3.6 engine (strata-q36) accepts a short flag list and, in --serve,
  * skips anything else with a warning. A skipped flag still looks like a successful
  * setting in the UI. This module keeps the launch argv inside the flags the engine
- * actually reads, and refuses a start when the person, or a private-cache policy,
- * asked for something this engine cannot do.
+ * actually reads and reports unsupported settings. Private-cache capability is
+ * negotiated with the running engine before it accepts requests.
  *
  * Capability list is the `a == "--..."` options in src/qwen35/q36_engine.cu::run.
  * Q36_SOURCE_BASELINE is the reviewed public commit. The live flag list is
@@ -27,6 +27,10 @@ export const Q36_CAPABILITY_REVISION = 'q36-argv-private-cache-1';
  * H:\Strata\releases\hakua040-native-sync-20261103\Release\strata.exe.
  * An older binary is not listed. Legacy placement stays the default. */
 export const Q36_MAPPED_PACK_DIGESTS = new Set([
+  // 0.4.1 sm_120: unchanged verified layout; optional bounded file staging.
+  '5e37033b11e6478920450f39a3b0057c2ca6d4116b1e196a1b507bf344d4fbd0',
+  // 0.4.1 sm_120 source-bound rebuild: KVA guards; unchanged mapped expert layout.
+  'c86b5d36e5371d8276bc73d553d2be0149a674ccc74541fa51d7eb88a2ab55a0',
   // Same mapped layout, with final-prefill STOP acknowledgement fixed; 0.4.1 sm_120.
   '2dd5dbcd2874767096b9c1eb4ac4132a96f7979bcd019ec6b779f23c9dbacc0f',
   // 0.4.1 sm_120: verified mapped pack, 131072-cell READY and real requests on RTX 5060 Ti 16 GB.
