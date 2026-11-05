@@ -6,6 +6,8 @@ Modèles locaux, discussion, outils et mémoire Hakua facultative. Il s’agit d
 
 ## Version Windows
 
+Version candidate : la publication attend les [vérifications restantes](docs/HAKUA_RELEASE.md). Les liens de téléchargement ci-dessous sont préparés pour la publication.
+
 Cette version vise Windows x64 CUDA sm_120. Les vérifications locales ont utilisé une RTX 5060 Ti avec 16 Go de VRAM et 32 Go de RAM. Consultez les [résultats et limites restantes](docs/HAKUA_RELEASE.md) avant l’installation.
 
 **0.5.0** se met à jour manuellement et ne possède pas de signature de code Windows. [Version](https://github.com/zapabob/Strata/releases/tag/v0.5.0) · [Installation](docs/HAKUA_INSTALL.md) · [Vérifications et limites](docs/HAKUA_RELEASE.md).

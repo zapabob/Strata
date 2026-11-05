@@ -8,6 +8,8 @@ of [Niko1221/Strata](https://github.com/Niko1221/Strata).
 
 ## Windows release
 
+Release candidate: publication is pending the [remaining qualification checks](docs/HAKUA_RELEASE.md). The download links below are prepared for publication.
+
 This release targets Windows x64 CUDA sm_120. Local checks used an RTX 5060 Ti with 16 GB VRAM and 32 GB RAM. Read the [release checks and remaining limits](docs/HAKUA_RELEASE.md) before installing.
 
 Product version: **0.5.0**. The release contains the setup EXE

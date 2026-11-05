@@ -6,6 +6,8 @@ Lokale Modelle, Chat, Werkzeuge und optionale Hakua-Erinnerungen. Dies ist der [
 
 ## Windows-Veröffentlichung
 
+Release-Kandidat: Die Veröffentlichung wartet auf die [verbleibenden Prüfungen](docs/HAKUA_RELEASE.md). Die Downloadlinks unten sind für die Veröffentlichung vorbereitet.
+
 Diese Version ist für Windows x64 CUDA sm_120 bestimmt. Die lokalen Prüfungen liefen auf einer RTX 5060 Ti mit 16 GB VRAM und 32 GB RAM. Lies vor der Installation die [Prüfergebnisse und verbleibenden Grenzen](docs/HAKUA_RELEASE.md).
 
 **0.5.0** ist eine manuell installierte Version ohne Windows-Codesignatur. [Release](https://github.com/zapabob/Strata/releases/tag/v0.5.0) · [Installationsanleitung](docs/HAKUA_INSTALL.md) · [Prüfungen und Grenzen](docs/HAKUA_RELEASE.md).

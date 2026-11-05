@@ -6,6 +6,8 @@
 
 ## Windows 版本
 
+当前为发布候选版，须完成[剩余验证](docs/HAKUA_RELEASE.md)后才能发布。以下下载链接为发布预先准备。
+
 此版本面向 Windows x64 CUDA sm_120，已在 RTX 5060 Ti（16 GB 显存）和 32 GB 内存的电脑上进行本地检查。安装前请阅读[验证结果与剩余限制](docs/HAKUA_RELEASE.md)。
 
 产品版本为 **0.5.0**，需要手动更新，没有 Windows 代码签名。[发布页面](https://github.com/zapabob/Strata/releases/tag/v0.5.0) · [安装说明](docs/HAKUA_INSTALL.md) · [验证结果与限制](docs/HAKUA_RELEASE.md)。

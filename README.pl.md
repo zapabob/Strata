@@ -6,6 +6,8 @@ Lokalne modele, czat, narzędzia i opcjonalna pamięć Hakua. To [fork zapabob](
 
 ## Wydanie dla Windows
 
+Wersja kandydująca: publikacja czeka na [pozostałe testy](docs/HAKUA_RELEASE.md). Poniższe łącza pobierania przygotowano do publikacji.
+
 Ta wersja jest przeznaczona dla Windows x64 CUDA sm_120. Testy lokalne wykonano na RTX 5060 Ti z 16 GB VRAM i 32 GB RAM. Przed instalacją przeczytaj [wyniki i pozostałe ograniczenia](docs/HAKUA_RELEASE.md).
 
 **0.5.0** wymaga ręcznej aktualizacji i nie ma podpisu kodu Windows. [Wydanie](https://github.com/zapabob/Strata/releases/tag/v0.5.0) · [Instalacja](docs/HAKUA_INSTALL.md) · [Testy i ograniczenia](docs/HAKUA_RELEASE.md).

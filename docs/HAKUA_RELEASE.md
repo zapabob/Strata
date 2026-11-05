@@ -12,9 +12,11 @@ and GitHub Latest will select this release after publication. Existing published
 assets remain unchanged. Metal source is `0.5.0-metal`, with no newly qualified
 Metal package. PrismML/TurboQuant remain `0.4.0`; Hakua-memory remains `0.3.5`.
 
-Official source is fixed at `5d37280db1f70ef6b55d69ac1d9ad8630d7a62f0`, including
-upstream `0.2.11` and its subsequent Docker packaging correction. The preceding
-upstream checkpoint was `ffa80d73133ea5c548aefe57889a16e8085a938f`.
+Official source is fixed at `9f7d977d220e9fdf2ec53cf2620cdadac1cfb24e`, including
+upstream `0.2.11`, the subsequent Docker packaging correction and supporter credits
+in all eight READMEs. Executable source is unchanged from the reviewed upstream
+`5d37280db1f70ef6b55d69ac1d9ad8630d7a62f0`. The preceding upstream checkpoint was
+`ffa80d73133ea5c548aefe57889a16e8085a938f`.
 
 ### Changes and preservation
 
@@ -37,13 +39,48 @@ envelopes. A stale index cannot reset a revision or hide a stale-window conflict
 The focused failure-injection suite passes 13 tests. Startup reads all saved
 chat files; large-history performance is not qualified by this result.
 
-### Required release evidence
+### Build identities
 
-Source tests, real Harness tests against scripted models, CUDA build/parity,
-bounded native inference, production payload checks, isolated shell tests,
-Playwright, installer data preservation, archive readback and anonymous download
-verification are recorded here as they complete. Current successful source
-checks are not a substitute for the remaining binary and installer checks.
+The native build uses CUDA 13.3, Visual Studio 2022 x64 and `sm_120`, with one
+build job. ggml is pinned to `3cf03257f219afbe7334045ff7c6a06ac68c627d`.
+The source receipt is from `11ba67bec6f89ff998cf58293364f9a7c45bde6a`.
+`strata.exe` SHA-256 is
+`28c4dc3991fa05b900fa956c351720121088d9041202d6acefd9b7af2749370e`.
+The NSIS build uses Host/shell source `df8762ff97819333f3416c48922b09965863f964`,
+Node 24.22.2, CPython 3.12.15 and Pillow 13.0.0. Later README and installation
+documentation changes do not alter these packaged executable sources.
+The installer is 111,992,152 bytes, SHA-256
+`fa1ab27695c13b7f251c9d9362d0f3649507f91d04194692c436810f6824a778`.
+
+Control was built at `d6b6e9b9ddd9d7a35888e4eeaa5c13f7e368c421`. Later fixes
+affect native/Host sources, tests and documentation; the packaged Control source
+is checked file by file against the final checkout. The signed engine component
+retains PrismML/TurboQuant 0.4.0 binary identities and their original provenance.
+
+### Release evidence
+
+| Check | Result and scope |
+| --- | --- |
+| Native CUDA ALL_BUILD | PASS after correcting the cache-prefill local-variable scope; the failed first build is retained. The Windows W16 parity test environment setter was also corrected and compiled. |
+| CPU-only native CTest | 8 passed. This does not execute CUDA kernels. |
+| Terminal, download, setup and runtime checks | 266 passed, 2 skipped across the focused batches. |
+| Server integration | 558 passed, 5 skipped. Windows/POSIX and symlink privilege skips are retained; one passing closed-console fixture emitted a background-writer warning. |
+| Host full suite with the real bundled Harness and scripted model responses | Initial run: 1,741 passed, 1 failed, 34 skipped out of 1,776 tests. The failure was Windows command-line length in a Markdown test; its input now uses stdin. The 28-test Markdown/preview rerun passed. The full suite was not repeated. |
+| Qwen3.6 launch contract | 11 passed with the new source-bound executable identity. This registers mapped-pack capability; it is not an inference measurement. |
+| Actual packaged Python/Pillow runtime | 80 passed, 2 skipped, plus 39 passing subtests using CPython 3.12.15 and Pillow 13.0.0. |
+| TypeScript and production Host build | PASS. An initial build with a deliberately small 512 MiB JavaScript heap hit that limit; the qualified build used 1,024 MiB and passed. |
+| Source Playwright UI | 10 passed, including 96K/128K configuration, saved profiles, responsive layouts and navigation; no model inference. |
+| Production npm audit | No known advisories in the 8 production packages at the recorded check. This does not cover every bundled component. |
+| GitHub hosted CI | BLOCKED: workflow dispatch returned HTTP 422 because Actions was disabled for this repository. Local checks are reported separately. |
+| NSIS extraction and production self-tests | PASS: the payload matches the build sources and staged private runtimes; 13/13 production self-tests passed. The shell differs from the unbundled build only at Tauri's documented UNK-to-NSS bundle marker. |
+| Packaged WebView2 with Playwright | 15/15 passed on the exact extracted NSIS shell, using an isolated profile. Existing Qwen3.6, Hikari and both Swift shards kept their original paths and reported zero model-download bytes; repeated import retained the same identity. Hikari displayed its name/PQ2_0, 96K/128K and CPU MoE settings survived save/reload, three viewport widths had no horizontal overflow, and four navigation routes worked. No page or console errors were recorded. No model inference was started. |
+| Fresh CUDA parity and bounded native Qwen3.6 inference | Pending exclusive GPU access. No 0.5.0 inference result is inferred from the prior release. |
+| Component signature, tar.7z readback and anonymous public downloads | Pending. Publication remains gated on the remaining package and GPU checks. |
+
+The packaged local-model settings screen opened in 235 ms in this single check,
+while unrelated native discovery was still pending. This measures screen access,
+not model loading, prefill or token generation. The extracted-package test does
+not replace the user's normal installation or establish an NSIS upgrade result.
 
 The setup uses `Strata-0.5.0-windows-x64-setup.exe` (NSIS). The real tar then 7z
 archive `Strata-0.5.0-windows-x64.tar.7z` will contain the identical EXE, signed
@@ -54,7 +91,12 @@ manual: neither Authenticode nor a Tauri app updater signature is claimed.
 ### Qualification limits
 
 Upstream NVIDIA MMQ and automatic prompt-chunk changes require new local checks.
-Prior 0.4.1 measurements below do not qualify 0.5.0 bytes or default settings.
+The build leaves `STRATA_ORCA_Q4KS_MMQ` off; a passing v3.1 parity executable alone
+does not qualify its conditionally omitted Q5_0 MMQ path. The W16 parity binary
+is built but its large fixture is NOT_RUN on this 16 GB GPU. The native Qwen3.8
+cache-prefill integration and 0.5.0 throughput are not qualified by a small cache
+bridge or Qwen3.6 request. Prior 0.4.1 measurements below do not qualify 0.5.0
+bytes or default settings.
 Native 98K/131K full-window generation remains unqualified. HIP, SYCL and Metal
 builds and hardware runs are NOT_RUN on this Windows CUDA release machine.
 The previous PrismML full-window observations retain their original scope.

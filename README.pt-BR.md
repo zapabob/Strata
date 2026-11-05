@@ -6,6 +6,8 @@ Modelos locais, chat, ferramentas e memória Hakua opcional. Este é o [fork de 
 
 ## Versão para Windows
 
+Versão candidata: a publicação aguarda as [verificações restantes](docs/HAKUA_RELEASE.md). Os links de download abaixo estão preparados para a publicação.
+
 Esta versão se destina ao Windows x64 CUDA sm_120. As verificações locais usaram uma RTX 5060 Ti com 16 GB de VRAM e 32 GB de RAM. Leia os [resultados e limites restantes](docs/HAKUA_RELEASE.md) antes de instalar.
 
 **0.5.0** exige atualização manual e não tem assinatura de código do Windows. [Versão](https://github.com/zapabob/Strata/releases/tag/v0.5.0) · [Instalação](docs/HAKUA_INSTALL.md) · [Testes e limites](docs/HAKUA_RELEASE.md).

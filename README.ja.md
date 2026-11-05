@@ -9,6 +9,8 @@
 
 ## Windows版の導入
 
+現在は公開候補です。[残りの検証](docs/HAKUA_RELEASE.md)が完了してから公開します。以下のダウンロードリンクは公開用に準備したものです。
+
 Windows x64 CUDA sm_120向けのリリースです。RTX 5060 Ti（VRAM 16GB）・RAM 32GBの実機で確認しました。導入前に[検証結果と残っている制限](docs/HAKUA_RELEASE.md)をご覧ください。
 
 製品バージョンは **0.5.0** です。配布物はsetup EXEとチェックサムです。
