@@ -55,19 +55,33 @@ bool read_u64(const uint8_t* base, uint64_t size, uint64_t at, uint64_t& out) {
 }
 
 uint32_t crc32_update(uint32_t crc, const uint8_t* p, size_t n) {
-    // The same IEEE CRC32 as existing packs, one table lookup per byte instead
-    // of eight bit iterations over every byte of a multi-GB expert payload.
-    static const std::array<uint32_t, 256> table = [] {
-        std::array<uint32_t, 256> values{};
-        for (uint32_t i = 0; i < values.size(); ++i) {
+    // Slicing by eight preserves the IEEE polynomial and streaming state of
+    // existing packs, while breaking the byte-at-a-time dependency chain.
+    // Explicit little-endian loads also work on unaligned and big-endian hosts.
+    static const std::array<std::array<uint32_t, 256>, 8> table = [] {
+        std::array<std::array<uint32_t, 256>, 8> values{};
+        for (uint32_t i = 0; i < values[0].size(); ++i) {
             uint32_t v = i;
             for (int b = 0; b < 8; ++b) v = (v >> 1) ^ (0xEDB88320u & (0u - (v & 1u)));
-            values[i] = v;
+            values[0][i] = v;
         }
+        for (size_t slice = 1; slice < values.size(); ++slice)
+            for (size_t i = 0; i < values[slice].size(); ++i) {
+                const uint32_t v = values[slice - 1][i];
+                values[slice][i] = (v >> 8) ^ values[0][v & 0xffu];
+            }
         return values;
     }();
     crc = ~crc;
-    for (size_t i = 0; i < n; ++i) crc = table[(crc ^ p[i]) & 0xffu] ^ (crc >> 8);
+    while (n >= 8) {
+        const uint32_t first =
+            crc ^ (uint32_t) p[0] ^ ((uint32_t) p[1] << 8) ^ ((uint32_t) p[2] << 16) ^ ((uint32_t) p[3] << 24);
+        crc = table[7][first & 0xffu] ^ table[6][(first >> 8) & 0xffu] ^ table[5][(first >> 16) & 0xffu] ^
+              table[4][first >> 24] ^ table[3][p[4]] ^ table[2][p[5]] ^ table[1][p[6]] ^ table[0][p[7]];
+        p += 8;
+        n -= 8;
+    }
+    while (n--) crc = table[0][(crc ^ *p++) & 0xffu] ^ (crc >> 8);
     return ~crc;
 }
 

@@ -111,9 +111,32 @@ void fill_pattern(std::vector<uint8_t>& buf, uint8_t mark) {
     for (size_t i = 0; i < buf.size(); ++i) buf[i] = (uint8_t) (mark + i);
 }
 
-}  // namespace
+uint32_t reference_crc32(const uint8_t* data, size_t size) {
+    // Independent bitwise oracle for the pack format, not the production table.
+    uint32_t crc = 0xffffffffu;
+    for (size_t i = 0; i < size; ++i) {
+        crc ^= data[i];
+        for (unsigned bit = 0; bit < 8; ++bit) crc = (crc >> 1) ^ (0xedb88320u & (0u - (crc & 1u)));
+    }
+    return ~crc;
+}
+
+void check_stored_crc(const std::string& path, uint32_t layer, const std::vector<uint8_t>& payload) {
+    std::ifstream file(path, std::ios::binary);
+    file.seekg((std::streamoff) (kExpertPackPrefixBytes + (uint64_t) layer * kExpertPackRecordBytes + 104));
+    uint8_t bytes[4]{};
+    file.read(reinterpret_cast<char*>(bytes), sizeof(bytes));
+    CHECK(file.gcount() == sizeof(bytes));
+    const uint32_t stored =
+        (uint32_t) bytes[0] | ((uint32_t) bytes[1] << 8) | ((uint32_t) bytes[2] << 16) | ((uint32_t) bytes[3] << 24);
+    CHECK(stored == reference_crc32(payload.data(), payload.size()));
+}
+
+} // namespace
 
 int main() {
+    const uint8_t check_crc[] = {'1', '2', '3', '4', '5', '6', '7', '8', '9'};
+    CHECK(reference_crc32(check_crc, sizeof(check_crc)) == 0xcbf43926u);
     const fs::path dir = temp_dir();
     const fs::path model = dir / "model.gguf";
     const char abc[] = "abc";
@@ -166,6 +189,8 @@ int main() {
         CHECK(pack->layer_bytes(0) == expect.size());
         CHECK(std::memcmp(pack->layer_data(0), expect.data(), expect.size()) == 0);
         CHECK(std::memcmp(pack->layer_data(1), expect.data(), expect.size()) == 0);
+        check_stored_crc(pack->path(), 0, expect);
+        check_stored_crc(pack->path(), 1, expect);
         const uint64_t payload_at = (kExpertPackPrefixBytes + 2 * kExpertPackRecordBytes + 4095ull) & ~4095ull;
         CHECK(payload_at == 4096);
         std::ifstream file(pack->path(), std::ios::binary);
@@ -203,6 +228,8 @@ int main() {
     CHECK(staged_pack != nullptr);
     if (staged_pack) {
         const auto expected = expected_layer(wide);
+        check_stored_crc(staged_pack->path(), 0, expected);
+        check_stored_crc(staged_pack->path(), 1, expected);
         const uint8_t* base = staged_pack->layer_data(0);
         std::vector<uint8_t> got(expected.size());
         CHECK(staged_pack->read_mapped(base, got.data(), got.size()));
