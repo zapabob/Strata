@@ -44,8 +44,9 @@ export function ModelRunScreen() {
     const [other, setOther] = useState(entry === 'local' || entry === 'local-import'), [importFirst, setImportFirst] = useState(entry === 'local-import');
     const [llamaPath, setLlamaPath] = useState<string | null>(null);
     const [llamaBackend, setLlamaBackend] = useState<string | undefined>(undefined);
-    // Before the engine's answer arrives the page would show the bundled Starter and then jump to the installed model (#3740): show a neutral placeholder instead.
-    if ((!native && !settled) || (localId && !library))
+    // Wait before choosing an automatic model (#3740). An explicitly selected, registered
+    // local GGUF already has an identity and can open while native discovery continues.
+    if ((!savedLocal && !native && !settled) || (localId && !library))
         return <div className="main__body"><div className="wrap stack" role="status" aria-label={tr("Loading…")}><div className="skel" style={{ height: 20, width: '60%' }}/><div className="skel" style={{ height: 20, width: '80%' }}/><div className="skel" style={{ height: 20, width: '70%' }}/></div></div>;
     // Fork: keep llama.cpp alternative path picker (F11 / local GGUF).
     if (native && other && llamaPath === null && !savedLocal)

@@ -463,9 +463,11 @@ def nvidia_speeds(timeout: float = 20.0) -> dict[int, float]:
 
 
 def add_speeds(gpus: list[dict]) -> None:
-    """Puts "speed" on the NVIDIA cards of a hardware report (in place); a card it cannot measure keeps none."""
+    """Adds relative NVIDIA speeds when there are cards to compare; an unmeasured card keeps none."""
     nv = [g for g in gpus if str(g.get("vendor")) == "nvidia"]
-    if not nv:
+    # A one-card machine needs no ordering. Avoid initializing CUDA in a helper
+    # process just to rank it, especially while another application uses it.
+    if not nv or len(gpus) == 1:
         return
     sp = nvidia_speeds()
     for g in nv:

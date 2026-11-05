@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from strata_control import gpu_roles as R
@@ -121,6 +122,39 @@ class MirrorAndParse(unittest.TestCase):
         b = R.spill_for({0: "main", 1: "off"}, two, 44.0, 32.0)
         self.assertLess(a, b)
         self.assertEqual(R.spill_for({0: "main", 1: "off"}, two, None, 32.0), 0.0)
+
+
+class SpeedDiscovery(unittest.TestCase):
+    def test_single_nvidia_card_does_not_initialize_cuda_for_ordering(self):
+        cards = [{"index": 0, "vendor": "nvidia", "vram_gb": 16}]
+        before = [dict(card) for card in cards]
+        with patch.object(R, "nvidia_speeds", side_effect=AssertionError("Unexpected CUDA probe")):
+            R.add_speeds(cards)
+        self.assertEqual(cards, before)
+
+    def test_mixed_vendor_machines_keep_the_existing_probe(self):
+        cards = [{"index": 0, "vendor": "nvidia"}, {"index": 1, "vendor": "amd"}]
+        with patch.object(R, "nvidia_speeds", return_value={0: 30.0}) as probe:
+            R.add_speeds(cards)
+        probe.assert_called_once_with()
+        self.assertEqual(cards[0]["speed"], 30.0)
+        self.assertNotIn("speed", cards[1])
+
+    def test_multiple_nvidia_cards_keep_the_measured_index_mapping(self):
+        cards = [{"index": 2, "vendor": "nvidia"}, {"index": 0, "vendor": "nvidia"},
+                 {"index": 1, "vendor": "amd"}]
+        with patch.object(R, "nvidia_speeds", return_value={0: 30.0, 2: 50.0}) as probe:
+            R.add_speeds(cards)
+        probe.assert_called_once_with()
+        self.assertEqual(cards, [{"index": 2, "vendor": "nvidia", "speed": 50.0},
+                                 {"index": 0, "vendor": "nvidia", "speed": 30.0},
+                                 {"index": 1, "vendor": "amd"}])
+
+    def test_unavailable_measurements_do_not_invent_speeds(self):
+        cards = [{"index": 0, "vendor": "nvidia"}, {"index": 1, "vendor": "nvidia"}]
+        with patch.object(R, "nvidia_speeds", return_value={}):
+            R.add_speeds(cards)
+        self.assertTrue(all("speed" not in card for card in cards))
 
 
 if __name__ == "__main__":
