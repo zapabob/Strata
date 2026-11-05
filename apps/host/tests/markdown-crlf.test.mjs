@@ -12,11 +12,12 @@ import { join, resolve } from 'node:path';
 import { build } from 'esbuild';
 
 const root = resolve(import.meta.dirname, '..');
-// the text arrives as JSON in argv[2], so no shell or platform touches its line ends
+// JSON on stdin preserves line ends without Windows's command-line length limit.
 const entry = [
+  "import { readFileSync } from 'node:fs';",
   "import React from 'react'; import { renderToStaticMarkup } from 'react-dom/server';",
   "import { Markdown } from './src/components/Markdown.tsx'; import { splitPreview } from './src/lib/preview-render.ts';",
-  'const text = JSON.parse(process.argv[2]);',
+  "const text = JSON.parse(readFileSync(0, 'utf8'));",
   'console.log(JSON.stringify({ html: renderToStaticMarkup(React.createElement(Markdown, { text })), slices: splitPreview(text).map(s => s.text) }));',
 ].join('\n');
 const bundle = await build({
@@ -31,7 +32,7 @@ const dir = mkdtempSync(join(tmpdir(), 'strata-crlf-'));
 const file = join(dir, 'render.cjs');
 writeFileSync(file, bundle.outputFiles[0].text);
 function render(text) {
-  const run = spawnSync(process.execPath, ['--max-old-space-size=200', file, JSON.stringify(text)], { cwd: root, encoding: 'utf8', timeout: 20000, maxBuffer: 20 * 1024 * 1024 });
+  const run = spawnSync(process.execPath, ['--max-old-space-size=200', file], { cwd: root, input: JSON.stringify(text), encoding: 'utf8', timeout: 20000, maxBuffer: 20 * 1024 * 1024 });
   return { ok: run.status === 0 && !run.error, out: run.stdout, err: (run.stderr || '') + (run.error?.message ?? ''), status: run.status, signal: run.signal };
 }
 
@@ -46,7 +47,9 @@ test('QAGUI case: the file with a CRLF bullet renders (it used to run the page o
 
 test('CRLF, CR and LF give the same page, for lists, ordered lists, tables, quotes, code and paragraphs', () => {
   const lf = '# T\n\n- a\n- b\n\n1. x\n2. y\n\n| h | i |\n| --- | --- |\n| 1 | 2 |\n\n> quote\n\n```js\nconst a = 1;\n```\n\nline one\nline two\n';
-  const want = JSON.parse(render(lf).out).html;
+  const first = render(lf);
+  assert.ok(first.ok, `LF render failed: status ${first.status} signal ${first.signal} ${first.err.slice(0, 200)}`);
+  const want = JSON.parse(first.out).html;
   for (const sep of ['\r\n', '\r']) {
     const r = render(lf.replace(/\n/g, sep));
     assert.ok(r.ok, `sep ${JSON.stringify(sep)}: ${r.err.slice(0, 200)}`);
@@ -56,7 +59,10 @@ test('CRLF, CR and LF give the same page, for lists, ordered lists, tables, quot
 
 test('the preview slices are cut the same on CRLF text, and carry no \\r', () => {
   const lf = Array.from({ length: 1500 }, (_, i) => `# S${i}\n\n- item ${i}\n- another ${i}\n`).join('\n');
-  const a = JSON.parse(render(lf).out).slices, b = JSON.parse(render(lf.replace(/\n/g, '\r\n')).out).slices;
+  const lfRun = render(lf), crlfRun = render(lf.replace(/\n/g, '\r\n'));
+  for (const [name, run] of [['LF', lfRun], ['CRLF', crlfRun]])
+    assert.ok(run.ok, `${name} preview render failed: status ${run.status} signal ${run.signal} ${run.err.slice(0, 200)}`);
+  const a = JSON.parse(lfRun.out).slices, b = JSON.parse(crlfRun.out).slices;
   assert.ok(a.length > 3);
   assert.deepEqual(b, a);
 });
