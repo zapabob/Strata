@@ -1,6 +1,7 @@
 /** Preserve native protocol events and tool payloads; the gateway owns identity and cancellation. */
 import { once } from 'node:events';
-export async function nativeGateway({req,res,path,body,control,serving,fetcher=fetch}){
+import { inferenceFetch } from './inference-fetch.mjs';
+export async function nativeGateway({req,res,path,body,control,serving,fetcher=inferenceFetch}){
  // The Host's local UI and /v1 listener have one shared native engine key, not
  // an authenticated principal. Never forward per-user memory consent with it.
  if(body && Object.prototype.hasOwnProperty.call(body,'strata_memory')){
