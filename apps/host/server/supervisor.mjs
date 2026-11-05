@@ -187,6 +187,9 @@ export function buildArgs({ modelPath, config, hardware, port = state.port }) {
   const split = String(params.get('gpu.layers') ?? 'Automatic');
   const ngl = split === 'CPU only' ? 0 : split === 'Quarter' ? Math.max(1, Math.round(Number(config.layerCount ?? 48) / 4)) : split === 'Half' ? Math.max(1, Math.round(Number(config.layerCount ?? 48) / 2)) : 999;
   args.push('-ngl', String(ngl));
+  const cpuMoeLayers = params.get('gpu.cpuMoeLayers') ?? 0;
+  if (!Number.isInteger(cpuMoeLayers) || cpuMoeLayers < 0 || cpuMoeLayers > 256) throw new Error('MoE layers in CPU memory must be a whole number from 0 to 256.');
+  if (cpuMoeLayers > 0) args.push('--n-cpu-moe', String(cpuMoeLayers));
 
   const threads = num('perf.threads', Math.max(4, (hardware?.cpu?.cores ?? 8) - 2));
   args.push('-t', String(threads));

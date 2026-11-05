@@ -16,7 +16,7 @@ import { resolvePython, venvPython } from './python-resolver.mjs';
 import os from 'node:os';
 import { markPictures, runtimeVision } from './native-vision.mjs';
 import { dsEngineArgs, dsUserArgs, dsArgsNote, withoutVisionFlag } from './native-ds-args.mjs';
-import { admitQ36LegacyPhysical, isQwen36Config, prepareQ36Launch, q36FileSha256, q36PrivateCacheAllowed } from './q36-run-contract.mjs';
+import { admitQ36LegacyPhysical, isQwen36Config, prepareQ36Launch, q36FileSha256 } from './q36-run-contract.mjs';
 import { parseQ36StartupLine, q36StartupSentence, reduceQ36Startup, pushEngineLogChunk, q36EngineLogPath } from './q36-startup-events.mjs';
 import { componentsDirectory, installerEnvironment, controlEnvironment, sourceServerEnvironment } from './control-runtime.mjs';
 import { createEngineStep } from './engine-step.mjs';
@@ -539,12 +539,8 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   const {cfg,resources,visionPreferences,parallelChoice,parallelNote:chosenNote,dsNote,q36Note}=buildConfig(args,config,drafts?.choice==='dflash2'&&drafts.needed===true&&args.values?.drafting===undefined?'mtp':drafts?.choice??null,{binarySha256:trustedEngineSha});/* (a drafter that is not here and will not be fetched by this load: the MTP runs, and the request slots stay) */
   let parallelNote=chosenNote;
   await prepareDrafter(job,args,cfg,configFile,drafts);if(job.state!=='running')return;
- /* Memory may inject private flags after buildConfig. Require the actual engine's
-    tested capability here too; a stored config cannot authorize an old binary. */
+ /* The server negotiates private-cache support with the running engine. */
  const wantPrivateMemory=packaged&&hakuaChatbotEnabled()&&!ownEngine(cfg);
- if(wantPrivateMemory&&isQwen36Config(cfg)&&cfg.hakua_harness===undefined&&!q36PrivateCacheAllowed({binarySha256:trustedEngineSha})){
-  throw Object.assign(new Error('This Qwen3.6 engine has no tested private-cache support. Install the matching private-cache component. Private cache flags were not removed to force a start.'),{code:'q36_private_cache_unsupported'});
- }
  const memoryAccess=configureDesktopMemory(cfg,{enabled:wantPrivateMemory,directory});
   const fingerprint=createHash('sha256').update(JSON.stringify({...cfg,api_key:undefined,port:undefined})).digest('hex');
   const placement=Array.isArray(cfg.gpu)?cfg.gpu:cfg.gpu===undefined?[]:[cfg.gpu];const matching=[...instances.values()].find(i=>i.model===args.model&&JSON.stringify(i.gpus)===JSON.stringify(placement));
@@ -757,7 +753,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
  }
  /* What the tuner measures is what a load would start: the saved model config with the user's choices and the resource profile. */
  async function tuneConfig(args){const {config,entry}=record(args.model);if(!entry.ready)throw new Error('Prepare the model before tuning it.');let binarySha256=null;if(packaged&&isQwen36Config(config)){const engine=await control.engine();if(engine.usable&&engine.engine?.exe)binarySha256=q36FileSha256(engine.engine.exe);}const {cfg}=buildConfig({model:args.model,vision:args.vision,resourceProfile:args.resourceProfile,gpus:args.gpus,values:args.values},config,null,{binarySha256});return {path:writeTuneConfig(directory,args.model,cfg),entry};}
- async function tuneReadConfig(args){try{return await tuneConfig(args);}catch(error){if(!['q36_private_cache_unsupported','q36_private_cache_parallel'].includes(error.code))throw error;return {unavailable:{available:false,reason:error.message,code:error.code}};}}
+ async function tuneReadConfig(args){try{return await tuneConfig(args);}catch(error){if(error.code!=='q36_private_cache_parallel')throw error;return {unavailable:{available:false,reason:error.message,code:error.code}};}}
  async function tuneStatus(args){await refresh();const {path,unavailable}=await tuneReadConfig(args);return unavailable?{...unavailable,ok:true,active:null,state:null,reasons:[unavailable.reason],presets:[],can_undo:false}:autotuner.status(path);}
  async function tuneEffective(args){await refresh();const {path,unavailable}=await tuneReadConfig(args);return unavailable?{...unavailable,applied:false,preset:null,args:[],env:{},changed:[],why_not:unavailable.reason}:autotuner.effective(path);}
  async function tuneOff(args){await refresh();const {path}=await tuneConfig(args);return autotuner.off(path);}

@@ -10,10 +10,13 @@
  "gf09": "These files use {0}. Strata starts them with its bundled {0} engine — same Models screen, same chat, tools and web search. No separate pack preparation.",
  "gf10": "Model stopped after an error",
  "gf11": "{0} / {1} layers",
- "gf12": "This Qwen3.6 engine has no tested private-cache support. Install the matching private-cache component. Private cache flags were not removed to force a start.",
+ "gf12": "Install the Qwen3.6 engine from this app’s release page in Settings → About, then load the model again.",
  "gf13": "Packing the experts into one file for low-memory mode (one time)",
  "gf14": "Strata uses these files in place with its bundled PrismML / TurboQuant engine (Load with Strata). No native Q2_0 pack preparation.",
  "gf15": "Private Qwen3.6 requests currently run one at a time. Set parallel requests to 1.",
  "gf16": "leave empty = always on, or: review this, check my code",
- "gf17": "Leave empty to apply this skill on every message (up to 5). Or list phrases; the skill name also counts as a trigger."
+ "gf17": "Leave empty to apply this skill on every message (up to 5). Or list phrases; the skill name also counts as a trigger.",
+ "gf18": "MoE layers in CPU memory",
+ "gf19": "Keep experts from this many layers in RAM to leave GPU memory for long context; 0 keeps the existing placement",
+ "gf20": "MoE layers in CPU memory must be a whole number from 0 to 256."
 }

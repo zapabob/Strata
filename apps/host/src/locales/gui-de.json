@@ -10,10 +10,13 @@
  "gf09": "Diese Dateien verwenden {0}. Strata startet sie mit dem enthaltenen {0}-Modul; Modellansicht, Chat, Werkzeuge und Websuche bleiben gemeinsam. Keine separate Pack-Vorbereitung.",
  "gf10": "Modell nach einem Fehler angehalten",
  "gf11": "{0} / {1} Schichten",
- "gf12": "Diese Qwen3.6-Engine hat keine geprüfte Unterstützung für private Caches. Installiere die passende Komponente. Die Datenschutzeinstellungen wurden nicht entfernt, um den Start zu erzwingen.",
+ "gf12": "Installiere unter Einstellungen → Info die Qwen3.6-Engine von der Release-Seite dieser App und lade das Modell erneut.",
  "gf13": "Experten werden für den speichersparenden Modus in eine Datei gepackt (einmalig)",
  "gf14": "Strata verwendet diese Dateien am vorhandenen Ort mit PrismML / TurboQuant (Mit Strata laden). Kein natives Q2_0-Pack nötig.",
  "gf15": "Private Qwen3.6-Anfragen laufen derzeit einzeln. Setze parallele Anfragen auf 1.",
  "gf16": "leer = immer aktiv, oder: prüfen, meinen Code prüfen",
- "gf17": "Leer lassen, um diesen Skill bei jeder Nachricht anzuwenden (höchstens 5). Alternativ Auslöser angeben; auch der Skillname zählt."
+ "gf17": "Leer lassen, um diesen Skill bei jeder Nachricht anzuwenden (höchstens 5). Alternativ Auslöser angeben; auch der Skillname zählt.",
+ "gf18": "MoE-Schichten im CPU-Arbeitsspeicher",
+ "gf19": "Experten dieser Anzahl von Schichten im RAM halten, um GPU-Speicher für langen Kontext freizuhalten; 0 behält die bisherige Verteilung bei",
+ "gf20": "Die Anzahl der MoE-Schichten im CPU-Arbeitsspeicher muss eine ganze Zahl von 0 bis 256 sein."
 }

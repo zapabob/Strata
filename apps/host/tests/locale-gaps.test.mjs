@@ -10,6 +10,20 @@ const read = async name => JSON.parse(await readFile(`src/locales/${name}.json`,
 const built = await build({ stdin: { contents: "export * from './src/lib/i18n';", resolveDir: process.cwd() }, bundle: true, write: false, format: 'esm', platform: 'node', loader: { '.json': 'json' } });
 const { tr, setTranslationLanguage } = await import(`data:text/javascript;base64,${Buffer.from(built.outputFiles[0].text).toString('base64')}`);
 
+test('saved Qwen3.6 refusal messages show the current engine update instruction in every language', async () => {
+  const legacy = [
+    'Qwen3.6 has no tested prompt-cache isolation. Private cache flags were not removed to force a start.',
+    'This Qwen3.6 engine has no tested private-cache support. Install the matching private-cache component. Private cache flags were not removed to force a start.',
+  ];
+  try {
+    for (const language of languages) {
+      setTranslationLanguage(language);
+      const expected = (await read('gui-' + language)).gf12;
+      for (const text of legacy) assert.equal(tr(text), expected);
+    }
+  } finally { setTranslationLanguage('en'); }
+});
+
 test('every tr("...") literal and every command hint has a key in the English catalog, so no language is stuck in English (#3479)', async () => {
   const known = new Set();
   for (const name of ['en', 'tune-en', 'tools-en', 'fix-en', 'gh-en', 'ui-en', 'engine-en', 'pick-en', 'df2-en', 'upd-en', 'r3-en', 'pic-en', 'gui-en']) for (const v of Object.values(await read(name))) known.add(String(v));

@@ -49,6 +49,13 @@ class Base(unittest.TestCase):
     def setUp(self):
         self.home = Home().__enter__()
         self.addCleanup(self.home.__exit__, None, None, None)
+        # These synthetic multi-card plans target the Linux split engine.
+        # Do not let the machine running the test change that fixture's OS.
+        expected = SE.expected
+        system = mock.patch.object(SE, "expected", side_effect=lambda cfg, **kw:
+                                   expected(cfg, **{"system": "linux", **kw}))
+        system.start()
+        self.addCleanup(system.stop)
 
     def profile_for(self, cfg: dict, *, parallel=None, hw=None, four_card=None) -> dict:
         """What Runner.ensure_profile saves as the launch profile's overrides for this written run config."""
@@ -248,6 +255,7 @@ class AutoFetchesTheDraftLayer(Base):
         self.assertFalse(SE.expected({"split_engine": "off"}, probe=lambda i: cards(2), ram=lambda: (500.0, 400.0), system="linux"))
         self.assertFalse(SE.expected({"drafting": "dflash2"}, probe=lambda i: cards(2), ram=lambda: (500.0, 400.0), system="linux"))
         self.assertFalse(SE.expected({}, probe=lambda i: cards(2), ram=lambda: (500.0, 400.0), system="darwin"))
+        self.assertFalse(SE.expected({}, probe=lambda i: cards(2), ram=lambda: (500.0, 400.0), system="win32"))
         self.assertFalse(SE.expected({}, probe=lambda i: cards(2), ram=lambda: (500.0, 4.0), system="linux"), "not enough RAM for the locked tables")
 
     def test_the_apps_drafting_plan_follows_the_same_rule(self):

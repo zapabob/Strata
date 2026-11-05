@@ -73,6 +73,7 @@ export function expertParams(cores = null) {
     // Context & memory
     { id: 'runtime.backend', group: 'Context & memory', label: 'llama-server backend', effect: 'Select a bundled local inference runtime', type: 'select', options: ['Automatic', 'PrismML', 'TurboQuant'], value: 'Automatic', recommended: 'Automatic' },
     { id: 'gpu.layers', group: 'Context & memory', label: 'GPU / layer split', effect: 'Which GPUs hold the model', type: 'select', options: ['Automatic', 'All layers', 'Half', 'Quarter', 'CPU only'], value: 'Automatic', recommended: 'Automatic' },
+    { id: 'gpu.cpuMoeLayers', group: 'Context & memory', label: 'MoE layers in CPU memory', effect: 'Keep experts from this many layers in RAM to leave GPU memory for long context; 0 keeps the existing placement', type: 'number', value: 0, recommended: 0, advanced: true },
     { id: 'ctx.length', group: 'Context & memory', label: 'Context length', effect: 'Maximum prompt length', type: 'text', value: '128K', recommended: '128K' },
     { id: 'ctx.kvMode', group: 'Context & memory', label: 'KV mode', effect: 'Context memory format', type: 'select', options: ['INT8', 'FP16', 'Q8_0', 'Q4_0'], value: 'INT8', recommended: 'INT8' },
     { id: 'ctx.kType', group: 'Context & memory', label: 'K cache precision', effect: 'Precision of cached attention keys', type: 'select', options: ['Inherit', 'FP16', 'BF16', 'Q8_0', 'Q4_0'], value: 'Inherit', recommended: 'Inherit' },

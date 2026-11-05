@@ -24,7 +24,7 @@ for(const choice of Object.keys(LOCAL_BACKENDS)){
  runtimes.push({choice,root:dirname(binary.manifestPath),id:manifest.backend,manifest});
 }
 const notices=join(resources,'notices'),noticeRecord=JSON.parse(readFileSync(join(notices,'NOTICES.json'),'utf8'));
-const noticeFiles=files(notices);
+const noticeFiles=files(notices).filter(path=>relative(notices,path)!=='.gitignore');
 if(JSON.stringify(noticeFiles.map(path=>relative(notices,path).replaceAll('\\','/')).filter(name=>name!=='NOTICES.json').sort())!==JSON.stringify(Object.keys(noticeRecord.files).sort()))throw new Error('Notice membership changed');
 for(const [name,hash] of Object.entries(noticeRecord.files))if(sha256(join(notices,name))!==hash)throw new Error('Notice changed: '+name);
 mkdirSync(output,{recursive:true});

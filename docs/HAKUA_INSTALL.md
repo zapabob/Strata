@@ -44,12 +44,14 @@ layers when the packer reports them. Resume reuses the matching checkpoint and c
 space already allocated to its temporary file. Existing GGUFs and expert packs stay
 on disk; normal unload and restart do not delete them.
 
-Qwen3.6 private conversation reuse requires the exact tested native executable. Within
+Qwen3.6 private conversation reuse is negotiated with the running engine. Within
 one authenticated conversation, a completed prefix can be reused. Another conversation,
 missing identity, cancellation, invalid requests and five minutes of idle time clear
 that private state. This does not delete the model or its expert pack. The first
 implementation accepts one active request; parallel private Qwen3.6 requests are refused.
-Old engines that cannot enforce the policy are refused rather than ignoring its flags.
+The Host no longer rejects Qwen3.6 before startup because its private-cache digest
+is absent from a list. The server checks the engine's actual capability before it
+accepts requests. An engine without that capability needs the matching update.
 
 The Qwen3.6 mapped expert pack is opt-in and requires an allowlisted executable.
 It avoids the legacy full host expert arena, but the operating system may still page

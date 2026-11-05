@@ -135,6 +135,8 @@ const catalogs:Record<Language,Record<string,string>>={en:english,zh,ja,de,fr,es
 const entities:Record<string,string>={amp:'&',lt:'<',gt:'>',quot:'"',apos:"'",nbsp:'\u00a0'};
 const decode=(text:string)=>text.replace(/&(#x[\da-f]+|#\d+|amp|lt|gt|quot|apos|nbsp);/gi,(whole,key:string)=>key[0]==='#'?String.fromCodePoint(key[1].toLowerCase()==='x'?parseInt(key.slice(2),16):parseInt(key.slice(1),10)):entities[key]??whole);
 const ids=new Map(Object.entries(english).map(([id,value])=>[decode(value),id]));
+// Saved errors from earlier app versions use the current update instructions.
+for(const legacy of ["Qwen3.6 has no tested prompt-cache isolation. Private cache flags were not removed to force a start.","This Qwen3.6 engine has no tested private-cache support. Install the matching private-cache component. Private cache flags were not removed to force a start."])ids.set(legacy,'gf12');
 let language:Language='en';
 export const validLanguage=(value:unknown):value is Language=>LANGUAGES.some(item=>item.value===value);
 export const currentLanguage=()=>language;

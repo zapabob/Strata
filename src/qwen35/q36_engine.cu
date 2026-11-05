@@ -3878,7 +3878,9 @@ struct Serve {
             } else {
                 poll_control();
             }
-            if (stop.load() && done < fresh) { cancelled = true; return false; }
+            // STOP may arrive while the final chunk is running. A completed
+            // prefill must still acknowledge cancellation before emitting text.
+            if (stop.load()) { cancelled = true; return false; }
             return true;
         });
         ss.live.insert(ss.live.end(), ids.begin() + (long) reuse, ids.begin() + (long) reuse + (long) got);
@@ -3950,6 +3952,7 @@ struct Serve {
             return;
         }
         for (;;) {
+            if (stop.load()) { finish = "cancel"; break; }
             if (smp.needs_logits()) {
                 E.host_logits(lg);
                 nx = sample(lg, smp, hist, rng);
@@ -3960,8 +3963,8 @@ struct Serve {
                 ++produced;
                 hist.push_back(t);
                 if (is_eos(t)) { finish = "stop"; return false; }
-                if (produced >= max_new) return false;
                 if (stop.load()) { finish = "cancel"; return false; }
+                if (produced >= max_new) return false;
                 return true;
             };
             if (!emit(nx)) break;

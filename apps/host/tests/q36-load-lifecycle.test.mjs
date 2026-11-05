@@ -65,7 +65,7 @@ function packagedQ36Fixture({ parallel = 4 } = {}) {
       };
     },
     async saveProfile(name, configPath) {
-      calls.push(['saveProfile', name, basename(configPath)]);
+      calls.push(['saveProfile', name, basename(configPath), JSON.parse(readFileSync(configPath, 'utf8'))]);
       return {};
     },
     async start(name, options) {
@@ -148,20 +148,22 @@ const finish = async (native, id) => {
   throw new Error('job did not finish');
 };
 
-test('a private-cache demand is refused before any Control start', async () => {
+test('private-cache flags are forwarded to the native server instead of blocking its start', async () => {
   const f = nativeFixture();
   try {
     await f.control.refresh(true);
     const path = join(f.repo, 'strata-iq3_s.json');
     const config = JSON.parse(readFileSync(path, 'utf8'));
     config.arch = 'qwen35moe';
-    config.model_name = 'Qwen3.6-35B-A3B-UD-Q4_K_XL';
+    config.model_name = 'Qwen3.6-35B-A3B';
     config.args = ['--max-context', '65536', '--prompt-cache', '0', '--conversation-cache-mib', '0'];
     writeFileSync(path, JSON.stringify(config));
-    const denied = await finishJob(f.control, f.control.operation('load', { model: 'iq3_s' }).id);
-    assert.equal(denied.state, 'error');
-    assert.match(denied.error, /not removed to force a start/);
-    assert.equal(f.calls.filter(call => call.args?.some(arg => String(arg).endsWith('server.py'))).length, 0);
+    const loaded = await finishJob(f.control, f.control.operation('load', { model: 'iq3_s' }).id);
+    assert.equal(loaded.state, 'done', loaded.error);
+    const starts = f.calls.filter(call => call.args?.some(arg => String(arg).endsWith('server.py')));
+    assert.equal(starts.length, 1);
+    const launched = JSON.parse(readFileSync(starts[0].args[starts[0].args.indexOf('--config') + 1], 'utf8'));
+    for (const flag of ['--prompt-cache', '--conversation-cache-mib']) assert.equal(launched.args[launched.args.indexOf(flag) + 1], '0');
   } finally {
     await f.cleanup();
   }
@@ -187,22 +189,19 @@ test('mapped-pack skips the measured 18.75 GiB legacy physical gate; legacy stil
   assert.equal(mapped.contract.effective.mtp, 2);
 });
 
-test('packaged Hakua memory refuses Qwen3.6 before Control start instead of stripping private-cache', async () => {
+test('packaged Hakua memory starts Qwen3.6 with scoped caching for runtime negotiation', async () => {
   const earlier = process.env.STRATA_HAKUA_CHATBOT;
   delete process.env.STRATA_HAKUA_CHATBOT;
   const f = packagedQ36Fixture({ parallel: 1 });
   try {
     await f.native.refresh(true);
-    const unavailable=await f.native.tuneStatus({model:f.modelId});
-    assert.equal(unavailable.available,false);
-    assert.equal(unavailable.code,'q36_private_cache_unsupported');
-    const effective=await f.native.tuneEffective({model:f.modelId});
-    assert.equal(effective.applied,false);
-    assert.equal(effective.available,false);
     const job = await finish(f.native, f.native.operation('load', { model: f.modelId }).id);
-    assert.equal(job.state, 'error');
-    assert.match(job.error, /not removed to force a start/);
-    assert.equal(f.calls.filter(call => call[0] === 'start').length, 0);
+    assert.equal(job.state, 'done', job.error);
+    assert.equal(f.calls.filter(call => call[0] === 'start').length, 1);
+    const launched = f.calls.find(call => call[0] === 'saveProfile')[3];
+    assert.equal(launched.hakua_harness.enabled, true);
+    assert.ok(launched.args.includes('--private-conversation-cache'));
+    for (const flag of ['--prompt-cache', '--conversation-cache-mib']) assert.equal(launched.args[launched.args.indexOf(flag) + 1], '0');
   } finally {
     await f.native.close();
     f.cleanup();

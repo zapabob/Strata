@@ -34,6 +34,15 @@ test('K and V can be selected independently in the real launch arguments', () =>
   assert.equal(args[args.indexOf('-ctk')+1],'f16');
   assert.equal(args[args.indexOf('-ctv')+1],'q4_0');
 });
+
+test('long-context MoE placement preserves context and KV precision without changing the default command', () => {
+  const config={beginner:{contextLength:'128k'},expert:[entry('ctx.kType','Q8_0'),entry('ctx.vType','Q8_0')]};
+  const ordinary=buildArgs({modelPath:'fixture.gguf',config});
+  assert.deepEqual(buildArgs({modelPath:'fixture.gguf',config:{...config,expert:[...config.expert,entry('gpu.cpuMoeLayers',0)]}}),ordinary);
+  const args=buildArgs({modelPath:'fixture.gguf',config:{...config,expert:[...config.expert,entry('gpu.cpuMoeLayers',28)]}});
+  for(const [flag,value] of [['-c','131072'],['-ctk','q8_0'],['-ctv','q8_0'],['--n-cpu-moe','28']]) assert.equal(args[args.indexOf(flag)+1],value);
+  for(const value of [-1,257,1.5,'28']) assert.throws(()=>buildArgs({modelPath:'fixture.gguf',config:{expert:[entry('gpu.cpuMoeLayers',value)]}}),/whole number/);
+});
 test('invalid precision and incompatible flash settings reject before restart mutates state', async () => {
   const before = status();
   for(const expert of [[entry('ctx.kType','turbo99')],[entry('ctx.vType','Q4_0'),entry('perf.flashAttn',false)]]) {

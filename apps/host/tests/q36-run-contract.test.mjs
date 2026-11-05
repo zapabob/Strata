@@ -208,12 +208,13 @@ test('app-owned flags that this engine ignores are left out of argv and kept in 
   assert.deepEqual(out.preservedUserArgs, userArgs);
 });
 
-test('a private-cache demand is refused instead of being deleted', () => {
+test('private-cache flags reach runtime negotiation without a binary allowlist', () => {
   const required = prepareQ36Launch({ args: ['--max-context', '65536'], privacyRequired: true });
-  assert.equal(required.error.code, 'q36_private_cache_unsupported');
+  assert.equal(required.ok, true);
+  assert.ok(required.argv.includes('--private-conversation-cache'));
   const present = prepareQ36Launch({ args: ['--max-context', '65536', '--prompt-cache', '0', '--conversation-cache-mib', '0'], userArgs: [] });
-  assert.equal(present.error.code, 'q36_private_cache_unsupported');
-  assert.match(present.error.message, /not removed to force a start/);
+  assert.equal(present.ok, true);
+  assert.deepEqual(present.argv, ['--max-context', '65536', '--prompt-cache', '0', '--conversation-cache-mib', '0']);
 });
 
 test('FP32 KV bytes and the legacy 18.75 GiB arena use commit headroom, not a shared-VRAM sum', () => {

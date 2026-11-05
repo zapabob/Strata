@@ -10,10 +10,13 @@
  "gf09": "Ces fichiers utilisent {0}. Strata les démarre avec son moteur {0} intégré : mêmes modèles, discussion, outils et recherche web. Aucune préparation de pack séparée.",
  "gf10": "Modèle arrêté après une erreur",
  "gf11": "{0} / {1} couches",
- "gf12": "Ce moteur Qwen3.6 ne dispose pas de caches privés validés. Installez le composant correspondant. Les paramètres de confidentialité n’ont pas été supprimés pour forcer le démarrage.",
+ "gf12": "Dans Paramètres → À propos, installez le moteur Qwen3.6 proposé sur la page de publication de cette application, puis rechargez le modèle.",
  "gf13": "Regroupement des experts dans un fichier pour le mode à faible mémoire (une seule fois)",
  "gf14": "Strata utilise ces fichiers à leur emplacement avec PrismML / TurboQuant intégré (Charger avec Strata). Aucun pack Q2_0 natif à préparer.",
  "gf15": "Les requêtes privées Qwen3.6 sont actuellement traitées une par une. Réglez le nombre de requêtes parallèles sur 1.",
  "gf16": "vide = toujours actif, ou : vérifier ceci, vérifier mon code",
- "gf17": "Laissez vide pour appliquer cette compétence à chaque message (5 maximum). Vous pouvez aussi préciser des expressions ; son nom sert également de déclencheur."
+ "gf17": "Laissez vide pour appliquer cette compétence à chaque message (5 maximum). Vous pouvez aussi préciser des expressions ; son nom sert également de déclencheur.",
+ "gf18": "Couches MoE en mémoire CPU",
+ "gf19": "Garder les experts de ce nombre de couches en RAM pour réserver la mémoire GPU aux longs contextes ; 0 conserve la répartition actuelle",
+ "gf20": "Le nombre de couches MoE en mémoire CPU doit être un entier compris entre 0 et 256."
 }

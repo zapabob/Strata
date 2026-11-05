@@ -10,10 +10,13 @@
  "gf09": "Estes arquivos usam {0}. O Strata os inicia com o mecanismo {0} incluído: mesma tela de modelos, chat, ferramentas e busca na web. Nenhum pack separado é necessário.",
  "gf10": "Modelo interrompido após um erro",
  "gf11": "{0} / {1} camadas",
- "gf12": "Este mecanismo Qwen3.6 não tem suporte a cache privado validado. Instale o componente correspondente. Os ajustes de privacidade não foram removidos para forçar a inicialização.",
+ "gf12": "Em Configurações → Sobre, instale o mecanismo Qwen3.6 da página de versões deste aplicativo e carregue o modelo novamente.",
  "gf13": "Agrupando os especialistas em um arquivo para o modo de pouca memória (uma única vez)",
  "gf14": "O Strata usa estes arquivos no local atual com PrismML / TurboQuant incluído (Carregar com Strata). Não é necessário preparar um pack Q2_0 nativo.",
  "gf15": "As solicitações privadas do Qwen3.6 são processadas uma por vez. Defina as solicitações paralelas como 1.",
  "gf16": "vazio = sempre ativo, ou: revise isto, confira meu código",
- "gf17": "Deixe vazio para aplicar esta habilidade em cada mensagem (até 5). Ou informe frases; o nome da habilidade também funciona como gatilho."
+ "gf17": "Deixe vazio para aplicar esta habilidade em cada mensagem (até 5). Ou informe frases; o nome da habilidade também funciona como gatilho.",
+ "gf18": "Camadas MoE na memória da CPU",
+ "gf19": "Manter os especialistas deste número de camadas na RAM para reservar memória da GPU para contextos longos; 0 mantém a distribuição atual",
+ "gf20": "O número de camadas MoE na memória da CPU deve ser um inteiro entre 0 e 256."
 }

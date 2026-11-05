@@ -19,18 +19,18 @@ import { flagOf, groups } from './native-user-args.mjs';
 
 export const Q36_SOURCE_BASELINE = '170e0d330edd9c03b5dcddfc64b77e498387ff86';
 export const Q36_CAPABILITY_REVISION = 'q36-argv-private-cache-1';
-// Only binaries tested with repeated, cancelled and rejected private requests.
-// Settings files cannot grant this capability to an older engine.
-export const Q36_PRIVATE_CACHE_DIGESTS = new Set([]);
-export function q36PrivateCacheAllowed(input = {}) {
-  return Q36_PRIVATE_CACHE_DIGESTS.has(String(input.binarySha256 ?? '').toLowerCase());
-}
+// Private-cache support is negotiated with the running engine's INFO response
+// by serve/server.py, before requests are accepted. It is not a binary allowlist.
 /** Release strata.exe files that contain --q36-expert-store. A digest
  * written in model settings is not consulted. The first entry is the
  * 2026-11-03 sm_120 link of hakua040-nsis-native-20261102. The second is
  * H:\Strata\releases\hakua040-native-sync-20261103\Release\strata.exe.
  * An older binary is not listed. Legacy placement stays the default. */
 export const Q36_MAPPED_PACK_DIGESTS = new Set([
+  // Same mapped layout, with final-prefill STOP acknowledgement fixed; 0.4.1 sm_120.
+  '2dd5dbcd2874767096b9c1eb4ac4132a96f7979bcd019ec6b779f23c9dbacc0f',
+  // 0.4.1 sm_120: verified mapped pack, 131072-cell READY and real requests on RTX 5060 Ti 16 GB.
+  '3797f2d368360b184b055c2130ed300645a1ece20d0bdef05dd6a3ceecf7e608',
   '512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046',
   'dd53df07789e0fefcb87e33acab54f5bfe1faf312ef6bad515924736b715c5b5',
   // 2026-11-03 mapped-pack host pin-pool wire-up (sm_120), unsigned; kept allowed after .6
@@ -211,12 +211,6 @@ export function prepareQ36Launch(input = {}) {
   const warnings = [];
 
   const privateCache = input.privacyRequired === true || [...args, ...userArgs].some(a => PRIVATE_CACHE_FLAGS.has(a.split('=')[0]) || a === '--private-conversation-cache');
-  if (privateCache && !q36PrivateCacheAllowed(input)) {
-    return fail(
-      'q36_private_cache_unsupported',
-      'This Qwen3.6 engine has no tested private-cache support. Install the matching private-cache component. Private cache flags were not removed to force a start.',
-    );
-  }
   if (privateCache) {
     for (const flag of PRIVATE_CACHE_FLAGS) {
       for (const list of [args, userArgs]) {

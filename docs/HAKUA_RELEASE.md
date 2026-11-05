@@ -20,7 +20,11 @@ affected behavior. Model weights and expert packs are retained.
 Qwen3.6's new private cache is bound to an authenticated conversation. It is
 cleared for a changed or absent owner, cancellation, errors and five idle minutes.
 The Host propagates chat ownership through the actual Harness adapter without
-mutating shared profiles. Older executables remain rejected by a digest allowlist.
+mutating shared profiles. The two Host branches that rejected Qwen3.6 private-cache
+requests before startup have been removed. The server now checks the running
+engine's INFO capability before accepting requests; private-cache support is not
+granted by a binary digest list. Saved refusal messages use the current translated
+engine-update instructions.
 Initial support is one request at a time. It does not enable shared prompt caches.
 
 ### Measurements before the final version rebuild
