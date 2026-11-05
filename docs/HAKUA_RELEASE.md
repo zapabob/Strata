@@ -15,6 +15,16 @@ for asset availability; the normal latest feed retains its earlier signed releas
 See [installation](HAKUA_INSTALL.md) and
 [version policy](../packaging/UPDATES.md#version-and-asset-names).
 
+Published on 2026-11-05 at 12:40:24 UTC as a prerelease with `latest=false`.
+The release tag points to `9e6f515af3c707562e99b3f904c64da9e9c69e8d`.
+Its seven assets are the setup EXE, CUDA component archive, Control ZIP, signed
+feed, feed signature, Terminal install manifest and SHA256SUMS.txt. All seven
+anonymous downloads returned HTTP 200 and matched the local sizes and SHA256
+digests. The downloaded feed signature also verified with the pinned key.
+The normal latest release remains `v0.4.0-preview.20261101.1`; no historical
+asset or stable-feed pointer was replaced. These publication checks do not
+extend the hardware or full-context qualification described below.
+
 The repair includes meaningful names for generic GGUF metadata, existing local
 GGUF discovery, resumable-pack disk accounting, layer progress, cancellation of
 image downloads, consistent engine/monitor state after failure, and one runtime
