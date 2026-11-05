@@ -829,6 +829,7 @@ fn write_self_test_report(path: &str, steps: Vec<(String, bool, String)>, error:
     let text = serde_json::to_string_pretty(&report).unwrap_or_else(|_| "{}".into());
     if let Err(e) = std::fs::write(path, &text) {
         eprintln!("[strata] could not write the self-test report to {path}: {e}");
+        return 1;
     }
     println!("{text}");
     if ok {
@@ -1252,6 +1253,20 @@ mod tests {
         assert_eq!(node_binary(&res).unwrap(), dir.join(NODE_EXE));
         assert_eq!(NODE_EXE, if cfg!(windows) { "node.exe" } else { "node" });
         let _ = std::fs::remove_dir_all(&res);
+    }
+
+    #[test]
+    fn self_test_requires_a_written_report_for_a_success_exit() {
+        let root = scratch("self-test-report");
+        std::fs::create_dir_all(&root).unwrap();
+        let steps = || vec![("probe".to_string(), true, "passed".to_string())];
+        let missing = root.join("missing-parent").join("report.json");
+        assert_eq!(write_self_test_report(missing.to_str().unwrap(), steps(), ""), 1);
+        let report = root.join("report.json");
+        assert_eq!(write_self_test_report(report.to_str().unwrap(), steps(), ""), 0);
+        let result: serde_json::Value = serde_json::from_slice(&std::fs::read(report).unwrap()).unwrap();
+        assert_eq!(result["ok"], true);
+        let _ = std::fs::remove_dir_all(root);
     }
 
     #[test]
