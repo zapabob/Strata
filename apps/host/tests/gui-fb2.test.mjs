@@ -150,7 +150,7 @@ test('"Leave room for my work" everywhere the old name was, and the new words in
   assert.match(src('src/lib/plain-errors.ts'), /choose “Leave room for my work”/);
   const cat = Object.fromEntries(LANGS.map(l => [l, JSON.parse(src(`src/locales/gui-${l}.json`))]));
   const keys = Object.keys(cat.en);
-  assert.equal(keys.length, 6);
+  assert.ok(keys.length >= 6, 'the original six messages remain alongside newly translated controls');
   for (const l of LANGS) {
     assert.deepEqual(Object.keys(cat[l]), keys, l);
     for (const k of keys) {

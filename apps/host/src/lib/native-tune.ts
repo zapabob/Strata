@@ -16,6 +16,8 @@ export interface TunePreset {
 }
 
 export interface TuneStatus {
+  available?: boolean;
+  reason?: string;
   ok: boolean;
   slot: string;
   suggested_name: string;

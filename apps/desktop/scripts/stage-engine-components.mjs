@@ -20,7 +20,7 @@ const runtimes=[];
 for(const choice of Object.keys(LOCAL_BACKENDS)){
  const binary=findLocalBackend(choice,{installRoot:resources});
  const manifest=await verifyLocalBackend(binary,choice);
- if(manifest.version!==version)throw new Error('Stale local runtime: '+choice);
+ if(manifest.version!==LOCAL_BACKENDS[choice].packageVersion)throw new Error('Stale local runtime: '+choice);
  runtimes.push({choice,root:dirname(binary.manifestPath),id:manifest.backend,manifest});
 }
 const notices=join(resources,'notices'),noticeRecord=JSON.parse(readFileSync(join(notices,'NOTICES.json'),'utf8'));

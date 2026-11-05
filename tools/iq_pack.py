@@ -768,6 +768,8 @@ def main() -> int:
             note = out / "experts.bin.tmp.json.new"
             note.write_text(json.dumps({"want": want, "layers": l + 1}), encoding="utf-8")
             note.replace(progress)
+            print("[pack-progress] %d/%d layers %d/%d bytes" %
+                  (l + 1, len(layout), fo.tell(), offset), flush=True)
             if l % 8 == 0:
                 print("  layer %2d  %-8s/%-7s blob %8d  at %.2f GiB" % (l, ts[0].type_name, ts[2].type_name, blob,
                                                                         off / 2**30), flush=True)

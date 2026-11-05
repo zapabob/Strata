@@ -23,6 +23,11 @@ test('a backend that exits before health reports its error promptly', async t =>
   const started=Date.now(), secret='private-startup-key-fixture';
   await assert.rejects(supervisor.start({modelId:'fixture',modelPath:model,port,config:{beginner:{contextLength:'2k'},expert:[],serving:{apiKey:secret}},hardware:{cpu:{cores:4}},timeoutMs:10_000}),/Engine exited early with code \d+.*bad option: -m/);
   assert.ok(Date.now()-started<5_000,'did not wait for the health timeout');
+  assert.equal(supervisor.status().status,'error','cleanup must preserve the startup error');
+  assert.match(supervisor.status().error,/Engine exited early/);
+  let stoppedOther=false;
+  await assert.rejects(supervisor.restart({modelId:'missing',modelPath:join(home,'absent.gguf'),config:{expert:[]},hardware:{cpu:{cores:4}},beforeStart:()=>{stoppedOther=true;}}),/Model file missing/);
+  assert.equal(stoppedOther,false,'a failed preflight must not unload another engine');
   assert.ok(!JSON.stringify(supervisor.status()).includes(secret),'public status must not expose the API key after startup failure');
   assert.ok(!JSON.stringify(supervisor.logs()).includes(secret),'startup logs must not expose the API key');
 });

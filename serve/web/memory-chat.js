@@ -8,22 +8,26 @@ function createMemoryTranscripts(ordinary) {
   let selected = false;
   let key = "";
   let version = 0;
+  const freshSession = () => globalThis.crypto?.randomUUID?.() ?? null;
+  let normalSession = freshSession(), memorySession = freshSession();
   return {
     active: () => selected ? memory : normal,
     version: () => version,
+    cacheSession: () => selected ? memorySession : normalSession,
+    resetCacheSession: () => { if (selected) memorySession = freshSession(); else normalSession = freshSession(); },
     select: enabled => {
       if (enabled !== selected) version++;
       selected = enabled;
       return selected ? memory : normal;
     },
     setKey: next => {
-      if (next !== key) { memory = []; version++; }
+      if (next !== key) { memory = []; memorySession = freshSession(); version++; }
       key = next;
       return memory;
     },
     replaceActive: next => {
-      if (selected) memory = next;
-      else normal = next;
+      if (selected) { memory = next; memorySession = freshSession(); }
+      else { normal = next; normalSession = freshSession(); }
       version++;
       return next;
     },

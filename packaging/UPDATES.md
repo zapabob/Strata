@@ -3,6 +3,23 @@
 This page is for developers who build, sign and publish releases. Users update with [INSTALL.md](../docs/INSTALL.md#updating).
 It covers the three updated parts, the feed format, what a PC checks, and the release steps.
 
+## Version and asset names
+
+Hakua product releases follow [Semantic Versioning 2.0.0](https://semver.org/).
+Use `MAJOR.MINOR.PATCH`, with `-alpha.N`, `-beta.N` or `-rc.N` for prereleases.
+The current migration is `0.4.1-beta.1`; its tag is `v0.4.1-beta.1` and its
+Windows installer is `Strata_0.4.1-beta.1_x64-setup.exe` (the Tauri naming convention).
+Keep release dates in the release notes. Do not replace a published version's assets.
+The old date-based tags remain available under their original names.
+
+`VERSION` owns the product version. Run `python tools/bump_hakua_product_version.py
+--set 0.4.1-beta.1` to sync it, or use `--next-prerelease beta` for the next beta.
+Use `--check` before building. Native engine and Control package versions are
+independent three-part versions from CMake. A changed native/Control package gets
+a new version; this release uses `0.4.1`. Unchanged PrismML and TurboQuant runtimes
+retain their verified `0.4.0` package identities and upstream revisions. Metal
+source stays at its independently tracked version until built and qualified.
+
 Everything that downloads software on a user's PC sits behind one explicit step: `strata update` in the Terminal, or
 "Update engine" or "Update Strata" in the app's Settings. Starting a model and serving never download anything
 (`STRATA_NO_ACQUIRE` stays on for them; the update step is a separate Control process that is allowed to). Engines are

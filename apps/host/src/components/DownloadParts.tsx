@@ -11,7 +11,7 @@ export function DownloadParts({ parts }: { parts: InstallPart[] | undefined }) {
   return <ul className="native-parts" aria-label={tr("Download parts")}>
     {parts.map(p => <li key={`${p.kind}-${p.name}`} data-state={p.state}>
       <span>{tr(p.name)}{(p.files_total ?? 0) > 1 ? ` ${p.files_done ?? 0}/${p.files_total}` : ''}</span>
-      <small className="muted">{p.state === 'done' || p.state === 'current' ? tr('Done') : p.state === 'waiting' || p.state === 'pending' ? tr('Waiting') : Number.isFinite(p.done_gb) && Number.isFinite(p.total_gb) ? `${p.done_gb!.toFixed(1)} / ${p.total_gb!.toFixed(1)} GB` : ''}</small>
+      <small className="muted">{p.state === 'done' || p.state === 'current' ? tr('Done') : p.state === 'waiting' || p.state === 'pending' ? tr('Waiting') : Number.isFinite(p.done_gb) && Number.isFinite(p.total_gb) && p.total_gb! > 0 ? `${p.done_gb!.toFixed(1)} / ${p.total_gb!.toFixed(1)} GB` : ''}</small>
     </li>)}
   </ul>;
 }

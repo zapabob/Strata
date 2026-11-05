@@ -332,13 +332,14 @@ export function NativeProgress({ job, label }: {
     const running = job.state === 'running', stoppable = ['install', 'load', 'pictures', 'autotune', 'recheck'].includes(job.kind);
     const kindTitle = job.kind === 'install' ? (label ? tr('Preparing {0}', [label]) : 'Preparing your model') : job.kind === 'load' ? 'Loading model' : job.kind === 'pictures' ? 'Downloading the picture files' : job.kind === 'autotune' || job.kind === 'recheck' ? 'Tuning your model' : 'Engine operation';
     const step = job.kind === 'install' ? (job.result?.install?.label ?? (download && /^5\//.test(job.result?.install?.step ?? '') ? stageText(installStage(job.result?.install)) : installStepLabel(job.result?.install?.step))) : job.summary;
-    const percent = download && Number.isFinite(download.percent) ? Math.max(0, Math.min(100, Number(download.percent))) : null;
-    const numbers = [percent !== null ? `${Math.round(percent)}%` : '', download && Number.isFinite(download.done_gb) && Number.isFinite(download.total_gb) ? `${download.done_gb!.toFixed(1)} / ${download.total_gb!.toFixed(1)} GB` : '', eta].filter(Boolean).join(' · ');
+    const packing = job.result?.install?.phase === 'pack' ? job.result.install.packing : undefined;
+    const percent = packing && Number.isFinite(packing.percent) ? packing.percent : download && Number.isFinite(download.percent) ? Math.max(0, Math.min(100, Number(download.percent))) : null;
+    const numbers = packing ? tr('{0} / {1} layers', [packing.layers_done, packing.layers_total]) : [percent !== null ? `${Math.round(percent)}%` : '', download && Number.isFinite(download.done_gb) && Number.isFinite(download.total_gb) ? `${download.done_gb!.toFixed(1)} / ${download.total_gb!.toFixed(1)} GB` : '', eta].filter(Boolean).join(' · ');
     const words = tr(step || kindTitle);
     return <section className="st-card native-progress" aria-live="polite" data-state={job.state}>
         <div className="native-progress__row">
             <span className="native-progress__ring" aria-hidden="true"/>
-            <div className="native-progress__text"><p className="native-progress__step">{words}</p>{numbers ? <p className="native-progress__numbers">{numbers}</p> : null}</div>
+            <div className="native-progress__text">{job.model ? <p className="small muted">{[job.family,job.model].filter(Boolean).join(' · ')}</p> : null}<p className="native-progress__step">{words}</p>{numbers ? <p className="native-progress__numbers">{numbers}</p> : null}</div>
             {stoppable && running ? <button type="button" className="native-progress__stop" disabled={stopping} onClick={() => void stop()}>{tr(stopping ? 'Stopping…' : 'Stop')}</button> : null}
         </div>
         {running ? <div className="native-progress__bar" role="progressbar" aria-label={words} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent ?? undefined} data-indeterminate={percent === null || undefined}><i style={percent !== null ? { transform: `scaleX(${percent / 100})` } : undefined}/></div> : null}

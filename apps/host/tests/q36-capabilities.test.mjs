@@ -19,7 +19,10 @@ test('the capability table matches the flags strata-q36 actually reads', () => {
   assert.equal(Q36_SUPPORTED_FLAGS.has('--vram-reserve-mib'), false);
   assert.equal(Q36_SUPPORTED_FLAGS.has('--cache-type-k'), false);
   assert.equal(Q36_SUPPORTED_FLAGS.has('--q36-expert-store'), true);
-  assert.equal(Q36_CAPABILITY_REVISION, 'q36-argv-expert-store-1');
+  assert.equal(Q36_SUPPORTED_FLAGS.has('--prompt-cache'), true);
+  assert.equal(Q36_SUPPORTED_FLAGS.has('--conversation-cache-mib'), true);
+  assert.equal(Q36_SUPPORTED_FLAGS.has('--private-conversation-cache'), true);
+  assert.equal(Q36_CAPABILITY_REVISION, 'q36-argv-private-cache-1');
 });
 
 test('Qwen3.6 does not get a resident-budget or shorter-context retry; another family still does', () => {

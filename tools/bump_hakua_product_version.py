@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """Sync Hakua fork product semver across the tree.
 
-Canonical source: repository-root ``VERSION`` (one line, SemVer-compatible
-preview such as ``0.3.2-preview.YYYYMMDD.N``).
+Canonical source: repository-root ``VERSION`` (one line, Semantic Versioning
+2.0.0, for example ``0.4.1-beta.1``).
 
 Engine / Control build numbers stay in CMakeLists.txt (and Metal
 STRATA_VERSION) and are intentionally not rewritten here.
 
 Usage:
   py -3 tools/bump_hakua_product_version.py                 # use VERSION as-is; sync others
-  py -3 tools/bump_hakua_product_version.py --set 0.3.2-preview.20261029.1
-  py -3 tools/bump_hakua_product_version.py --next-today    # next N for today's Japan date
+  py -3 tools/bump_hakua_product_version.py --set 0.4.1-beta.1
+  py -3 tools/bump_hakua_product_version.py --next-prerelease beta
   py -3 tools/bump_hakua_product_version.py --check         # exit 1 on product mismatches
 """
 from __future__ import annotations
@@ -20,14 +20,15 @@ import json
 import re
 import subprocess
 import sys
-from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PRODUCT_RE = re.compile(
-    r"^0\.\d+\.\d+(?:-preview\.\d{8}\.\d+)?$"
+    r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)"
+    r"(?:-((?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)"
+    r"(?:\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*))?"
+    r"(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$"
 )
-PREVIEW_RE = re.compile(r"^0\.\d+\.\d+-preview\.(\d{8})\.(\d+)$")
 
 
 def read_version() -> str:
@@ -43,26 +44,36 @@ def write_version(version: str) -> None:
     (ROOT / "VERSION").write_text(version + "\n", encoding="utf-8", newline="\n")
 
 
-def next_today(base: str = "0.3.3") -> str:
-    today = date.today().strftime("%Y%m%d")
+def next_prerelease(channel: str, current: str | None = None,
+                    tags: list[str] | None = None) -> str:
+    if channel not in ("alpha", "beta", "rc"):
+        raise ValueError("prerelease channel must be alpha, beta or rc")
+    current = current or read_version()
+    match = PRODUCT_RE.fullmatch(current)
+    if not match:
+        raise ValueError(f"invalid SemVer: {current!r}")
+    major, minor, patch = map(int, match.group(1, 2, 3))
+    prior = match.group(4)
+    # A stable release or a lexically later channel must not be downgraded.
+    same_channel_other_form = (
+        prior is not None and prior.startswith(channel + '.')
+        and not re.fullmatch(rf"{channel}\.[0-9]+", prior)
+    )
+    if prior is None or prior.split('.')[0] > channel or same_channel_other_form:
+        patch += 1
+    base = f"{major}.{minor}.{patch}"
     n = 1
-    try:
+    if tags is None:
+        # Fail rather than accidentally reusing a release number when Git fails.
         tags = subprocess.check_output(
-            ["git", "tag", "--list", f"v{base}-preview.{today}.*"],
-            cwd=ROOT,
-            text=True,
-        )
-        for line in tags.splitlines():
-            m = re.fullmatch(rf"v{re.escape(base)}-preview\.{today}\.(\d+)", line.strip())
-            if m:
-                n = max(n, int(m.group(1)) + 1)
-    except (OSError, subprocess.CalledProcessError):
-        pass
-    current = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
-    m = PREVIEW_RE.fullmatch(current)
-    if m and m.group(1) == today:
-        n = max(n, int(m.group(2)) + 1)
-    return f"{base}-preview.{today}.{n}"
+            ["git", "tag", "--list", f"v{base}-{channel}.*"],
+            cwd=ROOT, text=True,
+        ).splitlines()
+    for version in [current, *(tag.removeprefix('v') for tag in tags)]:
+        m = re.fullmatch(rf"{re.escape(base)}-{channel}\.([1-9][0-9]*)(?:\+.*)?", version)
+        if m:
+            n = max(n, int(m.group(1)) + 1)
+    return f"{base}-{channel}.{n}"
 
 
 def replace_once(path: Path, pattern: str, repl: str, flags: int = 0) -> None:
@@ -166,6 +177,7 @@ def metal_engine() -> str:
 
 
 def sync(version: str) -> None:
+    previous = read_version()
     write_version(version)
     for rel in (
         "apps/desktop/package.json",
@@ -183,6 +195,9 @@ def sync(version: str) -> None:
     set_cargo_lock_package(ROOT / "apps/desktop/src-tauri/Cargo.lock", "strata-desktop", version)
     patch_product_constant(ROOT / "strata_cli" / "__init__.py", version)
     for name in sorted(path.name for path in ROOT.glob("README*.md")):
+        path = ROOT / name
+        text = path.read_text(encoding="utf-8")
+        path.write_text(text.replace(previous, version), encoding="utf-8", newline="\n")
         patch_fork_readme(ROOT / name, version)
     patch_agents(ROOT / "AGENTS.md", version, cmake_engine(), metal_engine())
     folder = f"Strata-{version}"
@@ -260,6 +275,7 @@ def collect() -> dict[str, str]:
 
 
 def check() -> int:
+    read_version()
     rows = collect()
     product = rows["VERSION"]
     mismatches = []
@@ -293,21 +309,27 @@ def check() -> int:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--set", dest="set_version", help="write VERSION then sync")
-    ap.add_argument("--next-today", action="store_true", help="bump to next preview for today")
+    change = ap.add_mutually_exclusive_group()
+    change.add_argument("--set", dest="set_version", help="write VERSION then sync")
+    change.add_argument("--next-prerelease", choices=("alpha", "beta", "rc"))
+    change.add_argument("--next-today", action="store_true", help=argparse.SUPPRESS)
     ap.add_argument("--check", action="store_true", help="verify product sources agree")
     ap.add_argument("--show", action="store_true", help="print current version map")
     args = ap.parse_args()
-    if args.show or (not args.set_version and not args.next_today and not args.check):
+    changing = args.set_version or args.next_today or args.next_prerelease
+    if args.show or (not changing and not args.check):
         for k, v in collect().items():
             print(f"{k}: {v}")
-        if args.show and not args.check and not args.set_version and not args.next_today:
+        if args.show and not args.check and not changing:
             return 0
     if args.next_today:
-        sync(next_today())
+        print("--next-today is deprecated; using --next-prerelease beta", file=sys.stderr)
+        sync(next_prerelease("beta"))
+    elif args.next_prerelease:
+        sync(next_prerelease(args.next_prerelease))
     elif args.set_version:
         sync(args.set_version)
-    if args.check or args.next_today or args.set_version:
+    if args.check or changing:
         return check()
     return 0
 

@@ -320,6 +320,13 @@ export async function beginLoading(id) {
   hubRef?.send('monitor', snapshot());
 }
 
+export function engineStopped(status) {
+  if (!status.modelId || state.variantId!==status.modelId || !['error','stopped'].includes(status.status)) return;
+  state.variantId=null;
+  resetContext();
+  idle(status.error ? 'Model stopped after an error' : 'Model unloaded');
+}
+
 export function beginReading(tokens, id) {
   state.variantId = id;
   state.phase = 'reading';

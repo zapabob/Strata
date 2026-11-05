@@ -83,6 +83,7 @@ export async function startScriptedWorker({ port = 0, chunkDelayMs = 40, model =
       params: Object.fromEntries(Object.entries(body).filter(([k]) => !['messages', 'tools', 'model'].includes(k))),
       lastRole: last.role, directive: directive?.[1] ?? null, messageCount: messages.length,
       authorization: req.headers.authorization ? 'present' : 'absent',
+      cacheSession: req.headers['x-session-affinity'] ?? null,
       authSha: req.headers.authorization ? createHash('sha256').update(req.headers.authorization).digest('hex') : null,
       promptChars: raw.length, raw,
     });

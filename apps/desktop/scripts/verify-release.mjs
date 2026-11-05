@@ -66,7 +66,7 @@ if(process.platform==='win32') {
  for(const choice of Object.keys(LOCAL_BACKENDS)) {
   const binary=findLocalBackend(choice,{installRoot:resources});
   const manifest=await verifyLocalBackend(binary,choice);
-  if(manifest.version!==engine)throw new Error(`Stale ${choice} runtime version`);
+  if(manifest.version!==LOCAL_BACKENDS[choice].packageVersion)throw new Error(`Stale ${choice} runtime version`);
   if(choice==='TurboQuant' && (JSON.stringify(manifest.cacheTypesK)!==JSON.stringify(['f16','bf16','q8_0','q4_0']) || JSON.stringify(manifest.cacheTypesV)!==JSON.stringify(['f16','bf16','q8_0','q4_0','turbo2','turbo3','turbo4'])))throw new Error('Stage the TurboQuant runtime with independently qualified K/V capabilities');
   const probe=spawnSync(binary.path,['--version'],{encoding:'utf8',timeout:30000,windowsHide:true,env:{...process.env,PATH:join(process.env.SystemRoot??'C:/Windows','System32')}});
   if(probe.error||probe.status!==0||!((probe.stdout+probe.stderr).match(/\b[0-9a-f]{7,40}\b/gi)??[]).some(value=>manifest.source.commit.startsWith(value.toLowerCase())))throw new Error(`Bundled ${choice} executable does not match its source revision`);

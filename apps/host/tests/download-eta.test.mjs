@@ -6,6 +6,11 @@ const built = await build({ stdin: { contents: "export * from './src/lib/downloa
 const src = built.outputFiles[0].text.replace(/from\s*["']react["']/, 'from "data:text/javascript,export const useRef=()=>({current:null}),useEffect=()=>{},useState=v=>[v,()=>{}]"');
 const { etaMinutes, etaLabel, installProgress } = await import(`data:text/javascript;base64,${Buffer.from(src).toString('base64')}`);
 
+test('packing does not show stale download percentages or unknown zero-byte totals',()=>{
+ assert.equal(installProgress({phase:'pack',parts:[{done_gb:0,total_gb:1,state:'downloading'}]}),undefined);
+ assert.equal(installProgress({download:{done_gb:0,total_gb:0}}),undefined);
+});
+
 test('the time left comes from the recent rate, and says nothing until there is one', () => {
   assert.equal(etaMinutes([{ at: 0, done: 1 }], 50), null);
   assert.equal(etaMinutes([{ at: 0, done: 1 }, { at: 5000, done: 3 }], 50), null, 'under ten seconds of samples');

@@ -18,7 +18,13 @@ import { basename } from 'node:path';
 import { flagOf, groups } from './native-user-args.mjs';
 
 export const Q36_SOURCE_BASELINE = '170e0d330edd9c03b5dcddfc64b77e498387ff86';
-export const Q36_CAPABILITY_REVISION = 'q36-argv-expert-store-1';
+export const Q36_CAPABILITY_REVISION = 'q36-argv-private-cache-1';
+// Only binaries tested with repeated, cancelled and rejected private requests.
+// Settings files cannot grant this capability to an older engine.
+export const Q36_PRIVATE_CACHE_DIGESTS = new Set([]);
+export function q36PrivateCacheAllowed(input = {}) {
+  return Q36_PRIVATE_CACHE_DIGESTS.has(String(input.binarySha256 ?? '').toLowerCase());
+}
 /** Release strata.exe files that contain --q36-expert-store. A digest
  * written in model settings is not consulted. The first entry is the
  * 2026-11-03 sm_120 link of hakua040-nsis-native-20261102. The second is
@@ -43,10 +49,11 @@ export const Q36_VALUE_FLAGS = new Set([
   '--chunk', '--prefill', '--tokens', '--n', '--force', '--emb', '--dump-full-logits',
   '--bench-pp', '--bench-tg', '--mtp', '--draft-vocab', '--batch', '--slots',
   '--expert-vram', '--cpu-threads', '--expert-slots', '--hybrid-rows', '--q36-expert-store',
+  '--prompt-cache', '--conversation-cache-mib',
 ]);
 /** Options that stand alone. */
 export const Q36_SWITCH_FLAGS = new Set([
-  '--no-token-graph', '--greedy', '--serve', '--no-graph', '--no-warmup', '--vision', '--batch-mtp',
+  '--no-token-graph', '--greedy', '--serve', '--no-graph', '--no-warmup', '--vision', '--batch-mtp', '--private-conversation-cache',
 ]);
 export const Q36_SUPPORTED_FLAGS = new Set([...Q36_VALUE_FLAGS, ...Q36_SWITCH_FLAGS]);
 
@@ -203,11 +210,28 @@ export function prepareQ36Launch(input = {}) {
   const userFlags = new Set(groups(userArgs).map(flagOf).filter(Boolean));
   const warnings = [];
 
-  if (input.privacyRequired === true || args.some(a => PRIVATE_CACHE_FLAGS.has(a)) || [...userFlags].some(f => PRIVATE_CACHE_FLAGS.has(f))) {
+  const privateCache = input.privacyRequired === true || [...args, ...userArgs].some(a => PRIVATE_CACHE_FLAGS.has(a.split('=')[0]) || a === '--private-conversation-cache');
+  if (privateCache && !q36PrivateCacheAllowed(input)) {
     return fail(
       'q36_private_cache_unsupported',
-      'Qwen3.6 has no tested prompt-cache isolation. Private cache flags were not removed to force a start.',
+      'This Qwen3.6 engine has no tested private-cache support. Install the matching private-cache component. Private cache flags were not removed to force a start.',
     );
+  }
+  if (privateCache) {
+    for (const flag of PRIVATE_CACHE_FLAGS) {
+      for (const list of [args, userArgs]) {
+        const occurrences = list.filter(a => a.split('=')[0] === flag);
+        const at = list.indexOf(flag);
+        if (occurrences.length > 1 || (occurrences.length && (at < 0 || list[at + 1] !== '0'))) {
+          return fail('unsupported_setting', `${flag} must occur once with value 0 for private Qwen3.6 requests.`);
+        }
+      }
+      if (!args.includes(flag)) {
+        if (!input.privacyRequired) return fail('unsupported_setting', 'Private Qwen3.6 requests require both --prompt-cache 0 and --conversation-cache-mib 0.');
+        args.push(flag, '0');
+      }
+    }
+    if (input.privacyRequired && !args.includes('--private-conversation-cache')) args.push('--private-conversation-cache');
   }
   if (requested.persistentKv && requested.persistentKv !== 'fp32') {
     return fail('unsupported_setting', 'Qwen3.6 keeps FP32 KV for this launch. Another KV storage was not applied.');
@@ -293,6 +317,9 @@ export function prepareQ36Launch(input = {}) {
   const mtp = mtpText != null ? Number(mtpText) : 0;
   const batchText = readNumberFlag(argv, ['--batch', '--slots']);
   const parallel = Number.isInteger(requested.parallel) ? requested.parallel : (batchText != null ? Number(batchText) : 1);
+  if (privateCache && (parallel > 1 || Number(batchText) > 1 || argv.includes('--batch-mtp'))) {
+    return fail('q36_private_cache_parallel', 'Private Qwen3.6 requests currently run one at a time. Set parallel requests to 1.');
+  }
   const warmupMode = argv.includes('--no-warmup') || requested.warmupMode === 'off' ? 'off' : 'legacy';
   let expertStoreMode = 'legacy';
   const storeAt = argv.indexOf('--q36-expert-store');
@@ -339,6 +366,8 @@ export function prepareQ36Launch(input = {}) {
       persistentKv: 'fp32',
       warmupMode,
       expertStoreMode,
+      privateCache,
+      scopedConversationCache: argv.includes('--private-conversation-cache'),
     },
     securityPolicyDigest: input.securityPolicyDigest ?? null,
     argv,

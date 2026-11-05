@@ -20,10 +20,12 @@ import { Btn, Dialog, Icon, IconBtn, type IconName } from '../components/ui';
 import { Brand } from '../components/Brand';
 import { HakuaLlamaChat, type LlamaMemoryAccess } from '../components/HakuaLlamaChat';
 import { api } from '../lib/client';
+import { useCopy } from '../lib/use-copy';
 import { addWorkspace, deleteSession, go, isUnread, liveChatIds, pickWorkspace, pushToast, renameSession, removeWorkspace, renameWorkspace, selectSession, setActiveWorkspace, setNavOpen, togglePin, toggleRail, setTheme, useStore } from '../lib/store';
 export function Sidebar({ containerRef }: {
     containerRef: RefObject<HTMLElement | null>;
 }) {
+    const { copied: memoryKeyCopied, copy: copyMemoryKey } = useCopy();
     useBindings();
     const location = useLocation();
     const compact = useMedia('(max-width: 1279px)');
@@ -129,7 +131,7 @@ export function Sidebar({ containerRef }: {
     </FloatingMenu> : null)}
     {llamaAccess?<HakuaLlamaChat access={llamaAccess} onClose={()=>setLlamaAccess(null)}/>:null}
     <Dialog open={!!hakuaAccess} compact title={tr("Hakua memory chat")} onClose={() => setHakuaAccess(null)}
-      actions={<><Btn onClick={() => setHakuaAccess(null)}>{tr("Close")}</Btn><Btn variant="primary" onClick={() => { if(hakuaAccess) void navigator.clipboard.writeText(hakuaAccess.profileKey).then(() => pushToast('info', tr("Copied"), ''), () => pushToast('warn', tr("Copy"), tr("Select the key and copy it manually."))); }}>{tr("Copy")}</Btn></>}>
+      actions={<><Btn onClick={() => setHakuaAccess(null)}>{tr("Close")}</Btn><Btn variant="primary" onClick={() => { if(hakuaAccess) void copyMemoryKey(hakuaAccess.profileKey, tr("API key")); }}>{tr(memoryKeyCopied ? "Copied" : "Copy")}</Btn></>}>
       <p>{tr("Select a memory checkbox on the local page first, then paste this profile key into About → Settings. Confirm consent again before sending.")}</p>
       <label className="input-field"><span>{tr("API key")}</span><input className="st-input" readOnly autoComplete="off" value={hakuaAccess?.profileKey ?? ''} onFocus={event => event.currentTarget.select()}/></label>
       <p className="small muted">{hakuaAccess?.profileRoot}</p>

@@ -1276,6 +1276,7 @@ async function generateReply() {
 
   const body = {model: health.model, messages: apiMessages(), stream: true,
                 reasoning_effort: settings.thinking};
+  if (transcripts.cacheSession?.()) body.strata_cache_session = transcripts.cacheSession();
   if (!(settings.temperature > 0)) {
     body.temperature = 0;
   } else if (!samplingUntouched(settings)) {
@@ -1387,6 +1388,7 @@ $("new-btn").onclick = () => {
   const backup = messages;
   clearToolMedia();
   messages = [];
+  transcripts.resetCacheSession?.();
   saveChat();
   renderChat();
   toast("info", tr("chat.newToast", "New chat"), tr("chat.clearedToast", "The last one was cleared."), 6000, {label: tr("undo", "Undo"), run: () => {

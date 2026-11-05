@@ -562,6 +562,42 @@ def _folders_with_models(root: Path) -> list[Path]:
     return found
 
 
+def existing_model_folder(root: Path, family: str, model: str, *, managed: Path | None = None) -> Path | None:
+    """Reuse one validated local set before setup downloads another copy.
+
+    Only the selected data folder is searched, with the importer's existing
+    depth/directory bounds. The canonical download folder keeps its pinned hash
+    verification and partial-download recovery. Ambiguous sets require a file
+    choice instead of silently picking a different fine-tune.
+    """
+    matches: list[Path] = []
+    inspected = 0
+    wanted = (family.casefold(), model.casefold())
+    for folder in _folders_with_models(root):
+        if managed and folder.resolve() == managed.resolve():
+            continue
+        shards, _, _ = _list_gguf(folder)
+        for members in _split_groups(shards).values():
+            inspected += 1
+            if inspected > 32:
+                raise ProfileError("Too many local model sets to choose automatically. Use a local GGUF and select its file.")
+            try:
+                preview = plan_import(str(sorted(members)[0]))
+            except ProfileError:
+                continue
+            choice = preview.get("candidate_selection") or {}
+            if (str(choice.get("family", "")).casefold(), str(choice.get("model", "")).casefold()) != wanted:
+                continue
+            if preview.get("file_set_status") != "plausible":
+                raise ProfileError("Existing model files need attention. Use a local GGUF to check their missing or invalid parts; no new copy was downloaded.")
+            candidate = Path(preview.get("model_dir") or folder)
+            if candidate not in matches:
+                matches.append(candidate)
+    if len(matches) > 1:
+        raise ProfileError("More than one matching model is already on this computer. Use a local GGUF to choose its file; no new copy was downloaded.")
+    return matches[0] if matches else None
+
+
 def _split_groups(shards: list[Path]) -> dict:
     """Model files by set: (name before -0000i-of-0000N, N) -> files. A file with no shard number is a set of its own."""
     groups: dict = {}

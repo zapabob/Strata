@@ -4,5 +4,16 @@
  "gf03": "Schließen Sie andere Programme und versuchen Sie es erneut, oder wählen Sie „Platz für meine Arbeit lassen“. Im Expertenmodus können Sie außerdem die Option für wenig Arbeitsspeicher aktivieren, sodass ein Teil des Modells von der SSD gelesen wird.",
  "gf04": "Geliefert nach",
  "gf05": "Arbeitsordner",
- "gf06": "{0} Dateien"
+ "gf06": "{0} Dateien",
+ "gf07": "Bereit für Strata",
+ "gf08": "Mit Strata laden",
+ "gf09": "Diese Dateien verwenden {0}. Strata startet sie mit dem enthaltenen {0}-Modul; Modellansicht, Chat, Werkzeuge und Websuche bleiben gemeinsam. Keine separate Pack-Vorbereitung.",
+ "gf10": "Modell nach einem Fehler angehalten",
+ "gf11": "{0} / {1} Schichten",
+ "gf12": "Diese Qwen3.6-Engine hat keine geprüfte Unterstützung für private Caches. Installiere die passende Komponente. Die Datenschutzeinstellungen wurden nicht entfernt, um den Start zu erzwingen.",
+ "gf13": "Experten werden für den speichersparenden Modus in eine Datei gepackt (einmalig)",
+ "gf14": "Strata verwendet diese Dateien am vorhandenen Ort mit PrismML / TurboQuant (Mit Strata laden). Kein natives Q2_0-Pack nötig.",
+ "gf15": "Private Qwen3.6-Anfragen laufen derzeit einzeln. Setze parallele Anfragen auf 1.",
+ "gf16": "leer = immer aktiv, oder: prüfen, meinen Code prüfen",
+ "gf17": "Leer lassen, um diesen Skill bei jeder Nachricht anzuwenden (höchstens 5). Alternativ Auslöser angeben; auch der Skillname zählt."
 }

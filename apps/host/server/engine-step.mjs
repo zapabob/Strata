@@ -82,7 +82,7 @@ export function createEngineStep({ control, signal = null, onChange = () => {} }
        model part from the combined figures. The engine is added either way. */
     const own = Array.isArray(install.parts) && install.parts.some(p => p?.kind === 'model') ? install.parts.filter(p => p?.kind !== 'engine') : null;
     const parts = [
-      ...(own ?? [{ kind: 'model', name: model?.file ?? install.model ?? 'Model', state: install.running === false ? 'done' : 'downloading', done_gb: modelDone ?? 0, total_gb: round((modelDone ?? 0) + (modelRemaining ?? 0)) }]),
+      ...(own ?? [{ kind: 'model', name: model?.file ?? install.model ?? 'Model', state: install.running === false || ['pack','draft','tokenizer','settings'].includes(install.phase) ? 'done' : 'downloading', done_gb: modelDone ?? 0, total_gb: round((modelDone ?? 0) + (modelRemaining ?? 0)) }]),
       { ...part },
     ];
     const merged = { ...install, engine: { ...part }, parts };

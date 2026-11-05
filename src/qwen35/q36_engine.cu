@@ -1219,6 +1219,9 @@ struct Engine {
     };
     std::vector<Sess> sess;
     int n_sess = 1, cur = 0;
+    bool private_cache = false;           // opt-in: no unscoped session reuse
+    bool scoped_cache = false;            // retain only for the server-authenticated conversation owner
+    std::string cache_scope;
     uint64_t use_clock = 0;
     // device tables for batch rows: per state index (layer, then the MTP block) the session pointers
     float **d_conv_tab = nullptr, **d_S_tab = nullptr, **d_kc_tab = nullptr, **d_vc_tab = nullptr;
@@ -1275,6 +1278,18 @@ struct Engine {
     uint8_t* stage[2] = {};
     cudaStream_t cst = nullptr;
     cudaEvent_t ev_copy[2] = {}, ev_used[2] = {};
+    // Opt-in bounded H2D overlap. A slot is reusable only after its own copy
+    // event, including copies on the other stream, has completed.
+    struct PinTransfers {
+        cudaEvent_t done[2] = {};
+        std::deque<int> busy;
+        ~PinTransfers() {
+            for (auto event : done) if (event) {
+                (void) cudaEventSynchronize(event);
+                (void) cudaEventDestroy(event);
+            }
+        }
+    } pin_transfers;
     std::vector<int> stream_seq;   // the state indices a streamed forward visits, in order
     int stream_pos = 0;
     long long hy_cpu = 0, hy_gpu = 0, hy_swaps = 0;   // entries computed on the CPU / GPU, slot replacements
@@ -1551,6 +1566,33 @@ struct Engine {
         pos = 0;
         sess[(size_t) cur].pos = 0;
         set_delta(0);
+    }
+
+    // Private requests run one at a time. Clear the full persistent session,
+    // including cells written by speculative decoding beyond its accepted prefix.
+    // Do not use pos as the wipe bound. Ordinary launches keep their old behavior.
+    void clear_private_cache() {
+        if (!private_cache) return;
+        cache_scope.clear();
+        reset();
+        const auto& g = m->g;
+        const size_t kv_bytes = (size_t) ctx * g.n_head_kv * g.head_dim * sizeof(float);
+        for (size_t l = 0; l < kc.size(); ++l) {
+            if (kc[l]) CK(cudaMemsetAsync(kc[l], 0, kv_bytes, st));
+            if (vc[l]) CK(cudaMemsetAsync(vc[l], 0, kv_bytes, st));
+        }
+        if (d_img) CK(cudaMemsetAsync(d_img, 0, img_cap * sizeof(float), st));
+        if (d_mtab) CK(cudaMemsetAsync(d_mtab, 0, (size_t) ctx * 3 * sizeof(int32_t), st));
+        if (d_map) CK(cudaMemsetAsync(d_map, 0, (size_t) tmax * sizeof(int32_t), st));
+        auto& ss = sess[(size_t) cur];
+        std::fill(ss.live.begin(), ss.live.end(), 0);
+        ss.live.clear();
+        std::fill(ss.imgs.begin(), ss.imgs.end(), ImgKey{});
+        ss.imgs.clear();
+        std::fill(img_map.begin(), img_map.end(), 0);
+        clear_images();
+        ss.used = 0;
+        CK(cudaStreamSynchronize(st));
     }
 
     /// y [T][n_out] = W x [T][n_in] on the native MMVQ, 8 columns per launch.
@@ -2225,6 +2267,36 @@ struct Engine {
             if (n) CK(cudaMemcpyAsync(dst, src, n, cudaMemcpyHostToDevice, stream));
             return;
         }
+        static const bool pipeline = std::getenv("STRATA_Q36_PIN_PIPELINE") != nullptr;
+        if (pipeline && m->pin_cuda_host && pool->slot_count() == 2) {
+            for (auto& event : pin_transfers.done)
+                if (!event) CK(cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
+            for (size_t off = 0; off < n;) {
+                int slot = pool->begin_fill();
+                if (slot < 0 && !pin_transfers.busy.empty()) {
+                    const int oldest = pin_transfers.busy.front();
+                    CK(cudaEventSynchronize(pin_transfers.done[oldest]));
+                    pool->release(oldest);
+                    pin_transfers.busy.pop_front();
+                    slot = pool->begin_fill();
+                }
+                if (slot < 0) {
+                    std::fprintf(stderr, "strata-q36: no reusable expert transfer slot\n");
+                    std::exit(1);
+                }
+                const size_t chunk = std::min(n - off, (size_t) pool->slot_bytes());
+                std::memcpy(pool->data(slot), (const uint8_t*) src + off, chunk);
+                if (!pool->mark_h2d(slot)) {
+                    std::fprintf(stderr, "strata-q36: invalid expert transfer slot state\n");
+                    std::exit(1);
+                }
+                CK(cudaMemcpyAsync((uint8_t*) dst + off, pool->data(slot), chunk, cudaMemcpyHostToDevice, stream));
+                CK(cudaEventRecord(pin_transfers.done[slot], stream));
+                pin_transfers.busy.push_back(slot);
+                off += chunk;
+            }
+            return;
+        }
         size_t off = 0;
         while (off < n) {
             int s = pool->begin_fill();
@@ -2264,11 +2336,12 @@ struct Engine {
         // of consecutive experts from the same source in one copy each.  STRATA_Q36_STREAM_ALL=1: the whole layer from
         // host memory (the first version: PCIe-bound)
         static const bool all = std::getenv("STRATA_Q36_STREAM_ALL") != nullptr;
+        static const bool resident = std::getenv("STRATA_Q36_STREAM_RESIDENT") != nullptr;
         const int ne = (int) m->g.n_expert;
         const Hy& H = hy[(size_t) stream_seq[(size_t) i]];
         // fewer than half the experts resident (a 12 GB card): the one whole-layer copy is faster than many small ones
         // (RTX 3060, UD-Q4_K_XL at 37 of 256: pp2048 1970 whole vs 1540 in runs)
-        if (all || 2 * L.n_slots < ne) {
+        if (all || (!resident && 2 * L.n_slots < ne)) {
             const size_t n = L.stride * (size_t) ne;
             h2d_from_host(stage[b], L.hblobs, n, cst);
             if (hotspot_on) hs_stream_h2d += (long long) n;
@@ -3657,6 +3730,15 @@ struct Serve {
     }
 
     void request(const std::string& line) {
+        // Also covers every validation/early-return path and C++ exception.
+        // Successful/cancelled requests wipe explicitly before acknowledging DONE.
+        struct PrivateRequest {
+            Engine& engine;
+            bool cleared = false;
+            bool retain = false;
+            void clear() { if (!cleared) { engine.clear_private_cache(); cleared = true; } }
+            ~PrivateRequest() { if (!retain) clear(); }
+        } private_request{E};
         const bool adm = line[0] == 'B';
         const bool geni = line.rfind(adm ? "BGENI " : "GENI ", 0) == 0;
         if (!adm && !geni && line.rfind("GEN ", 0) != 0) {
@@ -3679,6 +3761,8 @@ struct Serve {
         }
         const long long max_new = std::strtoll(p, &p, 10);
         Sampling smp;
+        std::string cache_scope;
+        bool bad_scope = false;
         std::vector<uint64_t> img_keys;
         for (;;) {
             while (*p == ' ') ++p;
@@ -3689,7 +3773,14 @@ struct Serve {
             if (tk.empty() || eq == std::string::npos) { p = const_cast<char*>(st0); break; }
             const std::string key = tk.substr(0, eq);
             const char* v = tk.c_str() + eq + 1;
-            if (key == "temperature") smp.temperature = std::strtof(v, nullptr);
+            if (key == "cache_scope") {
+                if (!cache_scope.empty()) bad_scope = true;
+                cache_scope = v;
+                if (cache_scope.size() != 64 || !std::all_of(cache_scope.begin(), cache_scope.end(), [](unsigned char c) {
+                    return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
+                })) bad_scope = true;
+            }
+            else if (key == "temperature") smp.temperature = std::strtof(v, nullptr);
             else if (key == "top_p") smp.top_p = std::strtof(v, nullptr);
             else if (key == "top_k") smp.top_k = std::atoi(v);
             else if (key == "min_p") smp.min_p = std::strtof(v, nullptr);
@@ -3720,6 +3811,7 @@ struct Serve {
             p = const_cast<char*>(e);
         }
         const std::vector<int32_t> ids = parse_ids(p);
+        if (bad_scope) { std::printf("ERR invalid private conversation scope\n"); std::fflush(stdout); return; }
         if (max_new < 1 || ids.empty() || (geni && emb.empty())) {
             std::printf("ERR bad request: max_new or the ids\n");
             std::fflush(stdout);
@@ -3744,10 +3836,13 @@ struct Serve {
             if (!ve.empty()) { std::printf("ERR %s\n", ve.c_str()); std::fflush(stdout); return; }
         }
         stop.store(false);
+        const bool scoped_request = E.private_cache && E.scoped_cache && !cache_scope.empty();
+        if (E.private_cache && (!scoped_request || E.cache_scope != cache_scope)) E.clear_private_cache();
+        if (scoped_request) E.cache_scope = cache_scope;
         // ---- the session: the held state continues when the request extends it (the recurrent state cannot step back)
         const int s = adm ? slot : pick_session(ids, ir.imgs);
         Engine::Sess& ss = E.sess[(size_t) s];
-        size_t reuse = match_len(ss, ids, ir.imgs);
+        size_t reuse = E.private_cache && !scoped_request ? 0 : match_len(ss, ids, ir.imgs);
         if (adm) {   // another session holding more of this prompt (the conversation was read alone): copy its state
             int src = -1;
             size_t best = reuse;
@@ -3800,6 +3895,7 @@ struct Serve {
         E.sess[(size_t) E.cur].pos = E.pos;
         const double prompt_ms = ms_since(t0);
         if (cancelled) {
+            private_request.clear();
             std::printf("DONE 0 %zu %.1f 0.0 cancel 0 0 %zu 0 0 0 0 0.0 %lld 0\n", ids.size(), prompt_ms, reuse, (long long) got);
             if (adm) std::printf("BADM %d 0\n", slot);
             std::fflush(stdout);
@@ -3897,6 +3993,8 @@ struct Serve {
         }
         E.sess[(size_t) E.cur].pos = E.pos;
         const double decode_ms = ms_since(d0);
+        private_request.retain = scoped_request && std::string(finish) != "cancel";
+        if (!private_request.retain) private_request.clear();
         std::printf("DONE %lld %zu %.1f %.1f %s %lld %lld %zu 0 0 0 0 0.0 %lld 0\n", produced, ids.size(), prompt_ms,
                     decode_ms, finish, accepted, offered, reuse, (long long) fresh);
         std::fflush(stdout);
@@ -3907,6 +4005,8 @@ struct Serve {
     }
 
     int run() {
+        E.clear_private_cache();            // remove warmup state before accepting the first request
+        if (E.private_cache) std::printf("INFO q36_private_cache=%d prompt_cache=0 conversation_cache_mib=0\n", E.scoped_cache ? 2 : 1);
         if (E.n_sess > 1) std::printf("INFO batch_slots=%d slot_cache=1\n", E.n_sess);
         std::printf("READY %d stop\n", E.ctx);
         std::fflush(stdout);
@@ -3929,7 +4029,15 @@ struct Serve {
             bool have = false;
             {
                 std::unique_lock<std::mutex> lk(mu);
-                if (n_active == 0) cv.wait(lk, [&] { return eof || !lines.empty(); });
+                if (n_active == 0) {
+                    if (E.private_cache && !E.cache_scope.empty()) {
+                        if (!cv.wait_for(lk, std::chrono::minutes(5), [&] { return eof || !lines.empty(); })) {
+                            lk.unlock();
+                            E.clear_private_cache();
+                            continue;
+                        }
+                    } else cv.wait(lk, [&] { return eof || !lines.empty(); });
+                }
                 if (!lines.empty()) {
                     line = lines.front();
                     lines.pop_front();
@@ -3970,6 +4078,8 @@ int strata::qwen35::run(int argc, char** argv) {
     bool warm = true;
     int expert_slots = 0, batch = 0, draft_vocab = -1;
     bool serve_mode = false, graph = true, vision = false, batch_mtp = false;
+    bool private_prompt = false, private_conversation = false;
+    bool scoped_cache = false;
     std::string expert_store = "legacy";
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
@@ -4012,6 +4122,15 @@ int strata::qwen35::run(int argc, char** argv) {
         else if (a == "--expert-slots") expert_slots = std::atoi(next().c_str());
         else if (a == "--hybrid-rows") hybrid_rows = std::atoi(next().c_str());
         else if (a == "--q36-expert-store") expert_store = next();
+        else if (a == "--private-conversation-cache") scoped_cache = true;
+        else if (a == "--prompt-cache" || a == "--conversation-cache-mib") {
+            bool& seen = a == "--prompt-cache" ? private_prompt : private_conversation;
+            if (seen || next() != "0") {
+                std::fprintf(stderr, "strata-q36: %s must occur once with value 0\n", a.c_str());
+                return 2;
+            }
+            seen = true;
+        }
         else if (serve_mode && a.rfind("--", 0) == 0) {
             // serve passes the config's args plus a few of its own: one this engine does not have is said and skipped
             // (with its value), not fatal
@@ -4023,6 +4142,8 @@ int strata::qwen35::run(int argc, char** argv) {
             std::fprintf(stderr,
                          "usage: strata-q36 --model GGUF [--max-context 32768] [--chunk 512] [--no-graph]\n"
                          "       [--q36-expert-store legacy|mapped-pack] [--mtp N] [--prefill auto|N]\n"
+                         "       [--prompt-cache 0 --conversation-cache-mib 0] (private, one request at a time)\n"
+                         "       [--private-conversation-cache] (private flags required; server-scoped reuse)\n"
                          "       (--serve | --tokens IDS [--n 64] [--force IDS] [--dump-full-logits F] | --bench-pp N "
                          "--bench-tg N)\n");
             return 2;
@@ -4030,6 +4151,10 @@ int strata::qwen35::run(int argc, char** argv) {
     }
     if (expert_store != "legacy" && expert_store != "mapped-pack") {
         std::fprintf(stderr, "strata-q36: --q36-expert-store takes legacy or mapped-pack\n");
+        return 2;
+    }
+    if (private_prompt != private_conversation || (scoped_cache && !private_prompt) || (private_prompt && (batch > 1 || batch_mtp))) {
+        std::fprintf(stderr, "strata-q36: private cache requires both --prompt-cache 0 and --conversation-cache-mib 0, with at most one request slot\n");
         return 2;
     }
     if (model.empty()) { std::fprintf(stderr, "strata-q36: --model is required\n"); return 2; }
@@ -4053,6 +4178,8 @@ int strata::qwen35::run(int argc, char** argv) {
         return 1;
     }
     Engine E;
+    E.private_cache = private_prompt && private_conversation;
+    E.scoped_cache = scoped_cache;
     E.use_graph = graph;
     if (chunk == 0) {
         // auto: the largest chunk (4096 .. 1024) that fits beside every expert in VRAM; 2048 when they will not all fit (a prompt chunk streams every layer's
@@ -4102,6 +4229,16 @@ int strata::qwen35::run(int argc, char** argv) {
     if (!place_experts(m, E, expert_vram, cpu_threads, hybrid_rows, expert_slots, err, expert_store, model)) {
         std::fprintf(stderr, "strata-q36: %s\n", err.c_str());
         return 1;
+    }
+    if (m.expert_pack) {
+        // Dense weights are on the GPU; every CPU expert now belongs to the
+        // verified pack. Drop the original GGUF mapping instead of retaining
+        // two large file-backed weight sets on a 32-GB host.
+        CK(cudaDeviceSynchronize());
+        for (Layer& layer : m.layers) layer.src_g = layer.src_u = layer.src_d = nullptr;
+        m.mtp.src_g = m.mtp.src_u = m.mtp.src_d = nullptr;
+        m.file.reset();
+        std::fprintf(stderr, "strata-q36: released source GGUF mapping; experts use the verified mapped pack\n");
     }
     struct Report {
         Engine& E;

@@ -193,6 +193,12 @@ test('packaged Hakua memory refuses Qwen3.6 before Control start instead of stri
   const f = packagedQ36Fixture({ parallel: 1 });
   try {
     await f.native.refresh(true);
+    const unavailable=await f.native.tuneStatus({model:f.modelId});
+    assert.equal(unavailable.available,false);
+    assert.equal(unavailable.code,'q36_private_cache_unsupported');
+    const effective=await f.native.tuneEffective({model:f.modelId});
+    assert.equal(effective.applied,false);
+    assert.equal(effective.available,false);
     const job = await finish(f.native, f.native.operation('load', { model: f.modelId }).id);
     assert.equal(job.state, 'error');
     assert.match(job.error, /not removed to force a start/);

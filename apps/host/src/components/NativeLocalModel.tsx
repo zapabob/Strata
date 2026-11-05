@@ -1,5 +1,5 @@
 import { tr } from '../lib/i18n';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Screen } from './layout';
 import { Btn, ErrorNotice, Icon } from './ui';
 import { api } from '../lib/client';
@@ -34,11 +34,14 @@ export function NativeLocalModel({ onBack, onAlternative }: { onBack: () => void
     const [typed, setTyped] = useState(''), [checked, setChecked] = useState<Preview | null>(null), [pending, setPending] = useState(false), [error, setError] = useState(''), [jobId, setJobId] = useState('');
     const job = native?.jobs.find(j => j.id === jobId);
     const active = native?.jobs.find(j => j.state === 'running');
+    const checking = useRef(false);
     const selection = checked?.preview.candidate_selection;
     const usable = !!checked && checked.preview.file_set_status === 'plausible' && !!selection;
     const version = selection ? nativeCatalogModels(native?.catalog?.families ?? []).flatMap(f => f.sizes).find(s => s.sourceFamily === selection.family && s.model === selection.model) : undefined;
     const family = selection ? nativeCatalogModels(native?.catalog?.families ?? []).find(f => f.sizes.some(s => s.sourceFamily === selection.family && s.model === selection.model)) : undefined;
     async function check(path: string) {
+        if (checking.current || pending) return;
+        checking.current = true;
         setPending(true);
         setError('');
         setChecked(null);
@@ -50,7 +53,7 @@ export function NativeLocalModel({ onBack, onAlternative }: { onBack: () => void
             }
         }
         catch (e) { setError(e instanceof Error ? e.message : String(e)); }
-        finally { setPending(false); }
+        finally { checking.current = false; setPending(false); }
     }
     /* The first-run page hands over the folder the person chose (#3507): it is checked at once, as if they had pressed Check files. */
     useEffect(() => { const path = parseLocation(window.location.hash).query.get('path'); if (path) { setTyped(path); void check(path); } }, []);
@@ -80,7 +83,7 @@ export function NativeLocalModel({ onBack, onAlternative }: { onBack: () => void
     <section className="st-card native-choice"><h2 className="h3">{tr("Use a local GGUF…")}</h2>
      <p className="small muted">{tr("Already have a supported model on this computer? Choose the folder that holds its files, or one of its .gguf files. Strata checks them, prepares the model and loads it. Nothing is copied or downloaded.")}</p>
      <label className="input-field"><span>{tr("Folder with the GGUF files, or one .gguf file")}</span><input className="st-input" value={typed} placeholder={tr("Full path to the folder or the file")} spellCheck={false} onChange={e => setTyped(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && typed.trim()) void check(typed); }}/></label>
-     <div className="native-settings-actions"><Btn icon="folder" disabled={pending || !!active} onClick={() => void check('')}>{tr("Choose folder")}</Btn><Btn disabled={pending || !typed.trim() || !!active} onClick={() => void check(typed)}>{tr(pending && !jobId ? 'Checking…' : 'Check files')}</Btn></div>
+     <div className="native-settings-actions"><Btn icon="folder" disabled={pending} onClick={() => void check('')}>{tr("Choose folder")}</Btn><Btn disabled={pending || !typed.trim()} onClick={() => void check(typed)}>{tr(pending && !jobId ? 'Checking…' : 'Check files')}</Btn></div>
     </section>
     {tr(checked ? <section className="st-card native-choice">{tr(usable ? <>
       <h2 className="h3">{tr(family ? family.title : 'Model found')}</h2>

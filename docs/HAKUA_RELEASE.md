@@ -1,6 +1,75 @@
 # Hakua Windows release qualification
 
-## Current product: 0.4.0-preview.20261103.7
+## Current candidate: 0.4.1-beta.1
+
+Product/tag: `0.4.1-beta.1` / `v0.4.1-beta.1`. Native engine and Control are
+`0.4.1`; unchanged PrismML/TurboQuant packages remain `0.4.0`, Hakua-memory
+`0.3.5`, and Metal source `0.4.0-metal`. Versions follow SemVer 2.0.0; dates stay
+in the release notes. Published historical assets are not replaced.
+
+Build, final installation and publication are in progress. This section does not
+yet claim that the beta assets are public. See [installation](HAKUA_INSTALL.md)
+for the intended artifact names and [version policy](../packaging/UPDATES.md#version-and-asset-names).
+
+The repair includes meaningful names for generic GGUF metadata, existing local
+GGUF discovery, resumable-pack disk accounting, layer progress, cancellation of
+image downloads, consistent engine/monitor state after failure, and one runtime
+preflight per load. All eight README languages and nine GUI catalogs describe the
+affected behavior. Model weights and expert packs are retained.
+
+Qwen3.6's new private cache is bound to an authenticated conversation. It is
+cleared for a changed or absent owner, cancellation, errors and five idle minutes.
+The Host propagates chat ownership through the actual Harness adapter without
+mutating shared profiles. Older executables remain rejected by a digest allowlist.
+Initial support is one request at a time. It does not enable shared prompt caches.
+
+### Measurements before the final version rebuild
+
+Windows, RTX 5060 Ti 16 GB, 32 GB RAM, CUDA 13.3, sm_120;
+Qwen3.6-35B-A3B UD-Q4_K_XL, mapped expert pack, FP32 KV, MTP 2,
+4096 context capacity, 256-token prefill chunks, no startup warmup.
+These measurements are tied to the listed development binaries, not a future
+installer or an unmeasured full-length context.
+
+The first cache-isolation probe passed 15 cases on executable
+`7a0801aaab8752d3ef6a6370a42b05294552df6f0147b50c3983d028ea801073`.
+READY was 318838 ms versus an earlier 799047 ms observation. Disk/page-cache state
+was not controlled across those runs; this is not a repeated speed qualification.
+
+The next executable, `335600683f10801b694fee0f10e45a7600da418289365e7501b52abc61db9341`,
+compared the default transfer path with both `STRATA_Q36_PIN_PIPELINE=1` and
+`STRATA_Q36_STREAM_RESIDENT=1`. Generated tokens matched exactly in all four cases.
+
+| Synthetic case | Prompt tokens | Default total ms | Opt-in total ms |
+| --- | ---: | ---: | ---: |
+| Arithmetic | 31 | 72059 | 25323 |
+| Python function | 35 | 75942 | 29791 |
+| Web-search tool call | 291 | 100615 | 52429 |
+| Longer prefill | 1596 | 42166 | 19830 |
+
+READY was 337231 / 243690 ms. Whole-GPU peak used memory was 15796 / 15842 MiB,
+including other applications. This single ordered pair has uncontrolled cache
+warmth and desktop load. Some short decode timings regressed. Both switches stay
+off by default; no general speed or quality claim follows from four prompts.
+The longer fixture was originally named `prefill-1024`; its actual prompt is 1596
+tokens, as recorded here.
+
+The bounded verifier retains full model/payload SHA256 and per-layer CRC checks,
+uses one payload pass, and releases the original GGUF mapping after expert
+placement. CUDA transfers retain two bounded pinned slots with per-slot completion
+events. No weight format, KV precision or context default was reduced.
+
+The installed signed PrismML binary completed a real Hikari/PQ2_0 tool round trip
+with context capacity 131072 and the production privacy flags: startup 15165 ms,
+model-generated `web_search`, live DuckDuckGo sources, final official-source URL,
+and engine still alive. This proves that bounded model/API/search path, not the
+final installed GUI/Harness path or full-window quality.
+
+HIP/SYCL/Metal builds, full-window generation/quality, repeated statistical speed
+qualification and the existing CUDA spill baseline are not qualified by these
+results. The final build's source/hash receipt and installer checks are separate.
+
+## Historical record: 0.4.0-preview.20261103.7
 
 Product tag: **0.4.0-preview.20261103.7**. Use the explicit release page, not GitHub `/releases/latest`.
 

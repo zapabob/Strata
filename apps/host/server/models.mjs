@@ -136,6 +136,15 @@ function emit() {
   hubRef?.send('models', library());
 }
 
+/** A child can fail after startup has returned; clear its persisted selection too. */
+export function engineStopped(status) {
+  if (!REAL || !status.modelId || !['error','stopped'].includes(status.status)) return;
+  const id=status.modelId;
+  runtime.set(id,{state:status.error?'error':'installed',...(status.error?{error:status.error}:{})});
+  if(getStore().loaded===id)update({loaded:null});
+  emit();
+}
+
 /* ---------------------------------------------------------------- download --- */
 
 /**
@@ -229,11 +238,15 @@ export async function load(id, hooks = {}) {
       port,
       config: { ...config, layerCount: v.layerCount },
       hardware,
+      beforeStart: hooks.beforeStart,
     });
   } catch (err) {
     runtime.set(id, { state: 'error', error: err.message });
-    update({ loaded: null });
+    const existing=supervisor.status();
+    update({ loaded: existing.running ? existing.modelId : null });
     emit();
+    await hooks.onPhase?.('error', id);
+    if(existing.running)await hooks.onPhase?.('ready',existing.modelId);
     throw err;
   }
 

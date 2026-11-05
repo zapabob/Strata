@@ -16,7 +16,7 @@ import { resolvePython, venvPython } from './python-resolver.mjs';
 import os from 'node:os';
 import { markPictures, runtimeVision } from './native-vision.mjs';
 import { dsEngineArgs, dsUserArgs, dsArgsNote, withoutVisionFlag } from './native-ds-args.mjs';
-import { admitQ36LegacyPhysical, isQwen36Config, prepareQ36Launch, q36FileSha256 } from './q36-run-contract.mjs';
+import { admitQ36LegacyPhysical, isQwen36Config, prepareQ36Launch, q36FileSha256, q36PrivateCacheAllowed } from './q36-run-contract.mjs';
 import { parseQ36StartupLine, q36StartupSentence, reduceQ36Startup, pushEngineLogChunk, q36EngineLogPath } from './q36-startup-events.mjs';
 import { componentsDirectory, installerEnvironment, controlEnvironment, sourceServerEnvironment } from './control-runtime.mjs';
 import { createEngineStep } from './engine-step.mjs';
@@ -484,13 +484,15 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   if(prepared&&!missing&&!(asked&&pictureFileGone(config)))return keep;
   if(!asked){const none={...args,vision:'no',visionUnavailable:true};return prepared?{config,args:none,note:PICTURES_WORDS.gone}:keep;}
   if(typeof control.picturesFetch!=='function')return keep;
-  job.abort=new AbortController();job.summary=PICTURES_WORDS.download;job.details=undefined;emit();
+  job.abort=new AbortController();job.summary=PICTURES_WORDS.check;job.details=undefined;emit();
   try{
    const engine=await control.engine();const engineDir=engine?.engine?.root;
+   if(job.state!=='running'||job.abort.signal.aborted)return keep;
    if(!engineDir)throw Object.assign(new Error('This engine has no picture reader.'),{code:'no_reader'});
    const family=snapshot.catalog?.families?.find(f=>f.sizes?.some(s=>s.id===args.model))?.family??null;
    const here=snapshot.installed?.models?.find(m=>m.model===args.model);
    let fallbackData=null;try{fallbackData=here?.runDataFolder??here?.dataFolder??nativeDataDirectory(preferences.downloadDirectory??modelsDirectory?.())??null;}catch{fallbackData=here?.runDataFolder??here?.dataFolder??null;}
+   job.summary=PICTURES_WORDS.download;emit();
    const got=await control.picturesFetch({configPath:configFile,engineDir,vision:args.vision,dataDir:fallbackData,family,hardware:pictureCard(config),signal:job.abort.signal,
     onEvent:event=>{if(event?.event!=='progress'||job.state!=='running')return;const total=Number(event.total)||0,done=Number(event.done)||0;
      if(/^Checking/i.test(String(event.step))){job.summary=PICTURES_WORDS.check;}
@@ -537,12 +539,11 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   const {cfg,resources,visionPreferences,parallelChoice,parallelNote:chosenNote,dsNote,q36Note}=buildConfig(args,config,drafts?.choice==='dflash2'&&drafts.needed===true&&args.values?.drafting===undefined?'mtp':drafts?.choice??null,{binarySha256:trustedEngineSha});/* (a drafter that is not here and will not be fetched by this load: the MTP runs, and the request slots stay) */
   let parallelNote=chosenNote;
   await prepareDrafter(job,args,cfg,configFile,drafts);if(job.state!=='running')return;
- /* Hakua private memory injects --prompt-cache 0 after buildConfig. Qwen3.6 must not reach that strip-and-continue
-    path: prepareQ36Launch already refuses when privacyRequired, and this guard keeps the same refusal if a later
-    change ever lets a Qwen3.6 config through with chatbot memory still enabled. */
+ /* Memory may inject private flags after buildConfig. Require the actual engine's
+    tested capability here too; a stored config cannot authorize an old binary. */
  const wantPrivateMemory=packaged&&hakuaChatbotEnabled()&&!ownEngine(cfg);
- if(wantPrivateMemory&&isQwen36Config(cfg)&&cfg.hakua_harness===undefined){
-  throw Object.assign(new Error('Qwen3.6 has no tested prompt-cache isolation. Private cache flags were not removed to force a start.'),{code:'q36_private_cache_unsupported'});
+ if(wantPrivateMemory&&isQwen36Config(cfg)&&cfg.hakua_harness===undefined&&!q36PrivateCacheAllowed({binarySha256:trustedEngineSha})){
+  throw Object.assign(new Error('This Qwen3.6 engine has no tested private-cache support. Install the matching private-cache component. Private cache flags were not removed to force a start.'),{code:'q36_private_cache_unsupported'});
  }
  const memoryAccess=configureDesktopMemory(cfg,{enabled:wantPrivateMemory,directory});
   const fingerprint=createHash('sha256').update(JSON.stringify({...cfg,api_key:undefined,port:undefined})).digest('hex');
@@ -755,14 +756,15 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   return {...loaded,...measured,summary:'Your model is tuned and ready.',profile:args.profile};
  }
  /* What the tuner measures is what a load would start: the saved model config with the user's choices and the resource profile. */
- function tuneConfig(args){const {config,entry}=record(args.model);if(!entry.ready)throw new Error('Prepare the model before tuning it.');const {cfg}=buildConfig({model:args.model,vision:args.vision,resourceProfile:args.resourceProfile,gpus:args.gpus,values:args.values},config);return {path:writeTuneConfig(directory,args.model,cfg),entry};}
- async function tuneStatus(args){await refresh();const {path}=tuneConfig(args);return autotuner.status(path);}
- async function tuneEffective(args){await refresh();const {path}=tuneConfig(args);return autotuner.effective(path);}
- async function tuneOff(args){await refresh();const {path}=tuneConfig(args);return autotuner.off(path);}
+ async function tuneConfig(args){const {config,entry}=record(args.model);if(!entry.ready)throw new Error('Prepare the model before tuning it.');let binarySha256=null;if(packaged&&isQwen36Config(config)){const engine=await control.engine();if(engine.usable&&engine.engine?.exe)binarySha256=q36FileSha256(engine.engine.exe);}const {cfg}=buildConfig({model:args.model,vision:args.vision,resourceProfile:args.resourceProfile,gpus:args.gpus,values:args.values},config,null,{binarySha256});return {path:writeTuneConfig(directory,args.model,cfg),entry};}
+ async function tuneReadConfig(args){try{return await tuneConfig(args);}catch(error){if(!['q36_private_cache_unsupported','q36_private_cache_parallel'].includes(error.code))throw error;return {unavailable:{available:false,reason:error.message,code:error.code}};}}
+ async function tuneStatus(args){await refresh();const {path,unavailable}=await tuneReadConfig(args);return unavailable?{...unavailable,ok:true,active:null,state:null,reasons:[unavailable.reason],presets:[],can_undo:false}:autotuner.status(path);}
+ async function tuneEffective(args){await refresh();const {path,unavailable}=await tuneReadConfig(args);return unavailable?{...unavailable,applied:false,preset:null,args:[],env:{},changed:[],why_not:unavailable.reason}:autotuner.effective(path);}
+ async function tuneOff(args){await refresh();const {path}=await tuneConfig(args);return autotuner.off(path);}
  async function autotune(job,args){
   await refresh(true);if(job.state!=='running')return;
   if(packaged){const engine=await control.engine();if(!engine.usable)throw new Error(ENGINE_NOT_RECOGNISED+(engine.notice?` ${engine.notice}`:''));}
-  const {path}=tuneConfig(args);
+  const {path}=await tuneConfig(args);
   if(externalRunning().length)throw new Error('Stop the native server running outside this UI before tuning.');
   if(busy(requests().filter(r=>instances.has(r.instanceId))))throw new Error('Finish requests before tuning.');
   for(const id of [...instances.keys()])await unload(id);
@@ -866,7 +868,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   lastRead=0;await refresh(true);
   return {done:true,folder:st.from,partial:st.to,removed:result.removed??0,restored:result.restored??0};
  }
- async function cancel(id){const job=jobs.get(id);if(!job||(job.state!=='running'&&job.state!=='cancelling'))throw new Error('This operation is no longer running.');if(job.state==='cancelling')return state();if(job.kind==='install'){job.engineAbort?.abort();await tool('strata_install',{cancel:true});}else if(job.kind==='models-move'){/* a safe stop: the copy in flight is dropped, files already moved stay */try{writeFileSync(job.cancelFile,'stop');}catch{/* the run ends anyway */}job.summary='Stopping…';emit();return state();}else if(job.kind==='load'){/* cancelling is not terminal: drop only this job's runtime before another load may reuse the id or app-N profile */job.state='cancelling';job.summary='Stopping…';emit();for(const inst of [...instances.values()].filter(i=>i.ownerJob===job.id))await unload(inst.id,true).catch(()=>{});job.state='cancelled';job.summary='Stopped.';job.finishedAt=new Date().toISOString();emit();return state();}else if(job.abort)job.abort.abort();else if(job.process){if(!['tune','calibrate','autotune','recheck'].includes(job.kind))throw new Error('File updates cannot be cancelled safely while files are being replaced.');job.state='cancelled';await stopProcess(job.process);}job.state='cancelled';job.summary=job.kind==='install'?'Stopped. Completed downloads are kept.':'Stopped.';emit();return state();}
+ async function cancel(id){const job=jobs.get(id);if(!job||(job.state!=='running'&&job.state!=='cancelling'))throw new Error('This operation is no longer running.');if(job.state==='cancelling')return state();if(job.kind==='install'){job.engineAbort?.abort();await tool('strata_install',{cancel:true});}else if(job.kind==='models-move'){/* a safe stop: the copy in flight is dropped, files already moved stay */try{writeFileSync(job.cancelFile,'stop');}catch{/* the run ends anyway */}job.summary='Stopping…';emit();return state();}else if(job.kind==='load'){/* cancelling is not terminal: drop only this job's runtime before another load may reuse the id or app-N profile */job.state='cancelling';job.summary='Stopping…';job.abort?.abort();emit();for(const inst of [...instances.values()].filter(i=>i.ownerJob===job.id))await unload(inst.id,true).catch(()=>{});job.state='cancelled';job.summary='Stopped.';job.finishedAt=new Date().toISOString();emit();return state();}else if(job.abort)job.abort.abort();else if(job.process){if(!['tune','calibrate','autotune','recheck'].includes(job.kind))throw new Error('File updates cannot be cancelled safely while files are being replaced.');job.state='cancelled';await stopProcess(job.process);}job.state='cancelled';job.summary=job.kind==='install'?'Stopped. Completed downloads are kept.':'Stopped.';emit();return state();}
  async function close(){closing=true;clearInterval(timer);const installing=packaged&&child&&[...jobs.values()].some(j=>j.kind==='install'&&j.state==='running');if(installing)await send('tools/call',{name:'strata_install',arguments:{cancel:true}},15000).catch(()=>{});const operations=[];for(const job of jobs.values()){job.abort?.abort();if(job.process)operations.push(stopProcess(job.process));if(job.state==='running')job.state='cancelled';}await Promise.all(operations);await Promise.all([...instances.keys()].map(id=>unload(id,true).catch(()=>{})));disconnect();}
  // Remove nonserializable process references from public jobs.
  const publicState=()=>{const value=state();value.jobs=value.jobs.map(({process,engineAbort,rawResult,...job})=>job);return value;};
@@ -882,7 +884,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   const opened=opener(`http://127.0.0.1:${port}/`);
   return {...opened,...(desktopMemoryAccess.get(instance.id)??{})};
  }
- return {state:publicState,tuneStatus,tuneEffective,tuneOff,tunePresets:{list:()=>autotuner.list(),action:(kind,id,extra)=>autotuner.action(kind,id,extra),undoFor:async args=>autotuner.undoFor(tuneConfig(args).path)},refresh,localPreview,openHakuaChat,configure,setDownloadDirectory,planModelsFolder,startModelsFolder,interruptedMove,finishInterruptedMove,leaveInterruptedMove,plan,settings,save,settingsFile,openSettingsFile,operation,dismissRestart,cancel,unload,resolveInstance,poll,logs:()=>logs.slice(),benchmarkReport:()=>readJson(join(directory,'native-benchmark.json'),null),setDefault(id){defaultId=resolveInstance(id).id;emit();return publicState();},hasLive:()=>[...instances.values()].some(i=>i.status==='ready'),readyInstances:()=>[...instances.values()].filter(i=>i.status==='ready'),defaultInstanceId:()=>defaultId,close};
+ return {state:publicState,tuneStatus,tuneEffective,tuneOff,tunePresets:{list:()=>autotuner.list(),action:(kind,id,extra)=>autotuner.action(kind,id,extra),undoFor:async args=>autotuner.undoFor((await tuneConfig(args)).path)},refresh,localPreview,openHakuaChat,configure,setDownloadDirectory,planModelsFolder,startModelsFolder,interruptedMove,finishInterruptedMove,leaveInterruptedMove,plan,settings,save,settingsFile,openSettingsFile,operation,dismissRestart,cancel,unload,resolveInstance,poll,logs:()=>logs.slice(),benchmarkReport:()=>readJson(join(directory,'native-benchmark.json'),null),setDefault(id){defaultId=resolveInstance(id).id;emit();return publicState();},hasLive:()=>[...instances.values()].some(i=>i.status==='ready'),readyInstances:()=>[...instances.values()].filter(i=>i.status==='ready'),defaultInstanceId:()=>defaultId,close};
 }
 /* A DeepSeek config on AMD written by setup 0.2.8 or earlier names ONE card and marks it "asked", though setup picked it itself (strata_control/gpu_pick.py): it must not stop the app's recommended cards from applying. A card setup named for itself is the first of the usable cards, largest memory first; another card number was the person's. Roles and a "gpus_by" marker are always honoured. */
 export function setupPickedOneCard(config,hardware){

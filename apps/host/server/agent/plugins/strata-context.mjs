@@ -17,12 +17,28 @@
  * that renames either leaves compaction as it was, and the test that runs the real Harness fails.
  */
 import { replyCap } from '../reply-cut.mjs';
+import { createHash } from 'node:crypto';
 import { densityOf, estimateMessage, estimateTools, isContextOverflow, MAX_DENSITY, pressureNow, promptTokensOf, splitMessages, summaryBudget, usageOfEvent, WINDOW_SLACK, withSummaryLanguage } from '../context-budget.mjs';
 
 export const name = 'strata-context';
 
 /** The routes the host writes for models on this computer (profile.mjs): `strata-local`, `strata-local-<id>`, and their `~s<budget>` copies. */
 const isLocalRoute = provider => typeof provider === 'string' && provider.startsWith('strata-local');
+
+/** Clone this call's profile; a concurrent chat must never see another chat's affinity. */
+export function privateConversationSnapshot(options, snapshot) {
+  if (!isLocalRoute(options?.provider)) return snapshot;
+  const profile = snapshot?.profiles?.get?.(options.provider);
+  if (profile?.headers?.['x-strata-conversation-cache'] !== '1') return snapshot;
+  const headers = { ...profile.headers };
+  delete headers['x-strata-conversation-cache'];
+  delete headers['x-session-affinity'];
+  if (typeof options.sessionId === 'string' && options.sessionId.length > 0 && options.sessionId.length <= 128)
+    headers['x-session-affinity'] = createHash('sha256').update(options.sessionId).digest('hex');
+  const profiles = new Map(snapshot.profiles);
+  profiles.set(options.provider, { ...profile, headers });
+  return { ...snapshot, profiles };
+}
 export const inject = ['tokenMeter', 'llm'];
 
 /** Real prompt measurements per session: { real, estimated } for the last answer the model server reported. */
@@ -115,7 +131,7 @@ export function apply(ctx) {
           }
         }
       } catch { next = options; }
-      return stream.call(this, next, snapshot);
+      return stream.call(this, next, privateConversationSnapshot(options, snapshot));
     };
   }
 

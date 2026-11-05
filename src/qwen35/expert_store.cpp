@@ -1,6 +1,7 @@
 ﻿#include "strata/qwen35/expert_store.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cstdio>
 #include <cstring>
 #include <limits>
@@ -12,6 +13,7 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
+#include <bcrypt.h>
 #else
 #include <errno.h>
 #include <fcntl.h>
@@ -53,15 +55,23 @@ bool read_u64(const uint8_t* base, uint64_t size, uint64_t at, uint64_t& out) {
 }
 
 uint32_t crc32_update(uint32_t crc, const uint8_t* p, size_t n) {
+    // The same IEEE CRC32 as existing packs, one table lookup per byte instead
+    // of eight bit iterations over every byte of a multi-GB expert payload.
+    static const std::array<uint32_t, 256> table = [] {
+        std::array<uint32_t, 256> values{};
+        for (uint32_t i = 0; i < values.size(); ++i) {
+            uint32_t v = i;
+            for (int b = 0; b < 8; ++b) v = (v >> 1) ^ (0xEDB88320u & (0u - (v & 1u)));
+            values[i] = v;
+        }
+        return values;
+    }();
     crc = ~crc;
-    for (size_t i = 0; i < n; ++i) {
-        crc ^= p[i];
-        for (int b = 0; b < 8; ++b) crc = (crc >> 1) ^ (0xEDB88320u & (0u - (crc & 1u)));
-    }
+    for (size_t i = 0; i < n; ++i) crc = table[(crc ^ p[i]) & 0xffu] ^ (crc >> 8);
     return ~crc;
 }
 
-struct Sha256 {
+struct PortableSha256 {
     uint32_t h[8] = {0x6a09e667u, 0xbb67ae85u, 0x3c6ef372u, 0xa54ff53au,
                      0x510e527fu, 0x9b05688cu, 0x1f83d9abu, 0x5be0cd19u};
     uint64_t bits = 0;
@@ -160,6 +170,49 @@ struct Sha256 {
         return true;
     }
 };
+
+#if defined(_WIN32)
+// Same SHA-256 and full-file coverage as the portable implementation. CNG can
+// use the CPU's accelerated hash implementation; no digest/CRC check is skipped.
+struct Sha256 {
+    BCRYPT_ALG_HANDLE algorithm = nullptr;
+    BCRYPT_HASH_HANDLE hash = nullptr;
+    std::vector<uint8_t> object;
+    uint64_t bytes = 0;
+    bool bad = false;
+
+    Sha256() {
+        DWORD object_size = 0, hash_size = 0, got = 0;
+        if (BCryptOpenAlgorithmProvider(&algorithm, BCRYPT_SHA256_ALGORITHM, nullptr, 0) < 0 ||
+            BCryptGetProperty(algorithm, BCRYPT_OBJECT_LENGTH, (PUCHAR) &object_size, sizeof(object_size), &got, 0) < 0 ||
+            BCryptGetProperty(algorithm, BCRYPT_HASH_LENGTH, (PUCHAR) &hash_size, sizeof(hash_size), &got, 0) < 0 ||
+            hash_size != 32 || object_size == 0) { bad = true; return; }
+        object.resize(object_size);
+        if (BCryptCreateHash(algorithm, &hash, object.data(), object_size, nullptr, 0, 0) < 0) bad = true;
+    }
+    Sha256(const Sha256&) = delete;
+    Sha256& operator=(const Sha256&) = delete;
+    ~Sha256() {
+        if (hash) BCryptDestroyHash(hash);
+        if (algorithm) BCryptCloseAlgorithmProvider(algorithm, 0);
+    }
+    void update(const void* data, size_t len) {
+        if (bad) return;
+        if (len > std::numeric_limits<uint64_t>::max() / 8 - bytes) { bad = true; return; }
+        bytes += len;
+        const auto* p = static_cast<const uint8_t*>(data);
+        while (len) {
+            const ULONG take = (ULONG) std::min<size_t>(len, 1u << 20);
+            if (BCryptHashData(hash, const_cast<PUCHAR>(p), take, 0) < 0) { bad = true; return; }
+            p += take;
+            len -= take;
+        }
+    }
+    bool final(uint8_t out[32]) { return !bad && BCryptFinishHash(hash, out, 32, 0) >= 0; }
+};
+#else
+using Sha256 = PortableSha256;
+#endif
 
 std::string to_hex(const uint8_t* p, size_t n) {
     static const char* hexd = "0123456789abcdef";
@@ -289,7 +342,7 @@ struct MappedView {
         size = 0;
     }
 
-    bool open(const std::string& path, std::string& err) {
+    bool open(const std::string& path, std::string& err, bool sequential = false) {
         close();
 #if defined(_WIN32)
         const std::wstring w = widen(path);
@@ -298,7 +351,7 @@ struct MappedView {
             return false;
         }
         file = CreateFileW(w.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
-                           OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+                           OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | (sequential ? FILE_FLAG_SEQUENTIAL_SCAN : 0), nullptr);
         if (file == INVALID_HANDLE_VALUE) {
             err = "expert pack could not be opened";
             return false;
@@ -324,6 +377,7 @@ struct MappedView {
             return false;
         }
 #else
+        (void) sequential;
         fd = ::open(path.c_str(), O_RDONLY);
         if (fd < 0) {
             err = "expert pack could not be opened";
@@ -348,6 +402,32 @@ struct MappedView {
 #endif
         return true;
     }
+
+    // Hashing through a second full mapped view populates tens of GiB of the
+    // process working set on Windows. Bounded buffered reads leave room for the
+    // engine and the resident experts, while still checking every byte.
+    bool read(uint64_t offset, uint8_t* dst, size_t n) {
+        if (offset > size || n > size - offset) return false;
+#if defined(_WIN32)
+        LARGE_INTEGER at{};
+        at.QuadPart = (LONGLONG) offset;
+        if (!SetFilePointerEx(file, at, nullptr, FILE_BEGIN)) return false;
+        while (n) {
+            const DWORD take = (DWORD) std::min<size_t>(n, 1u << 20);
+            DWORD got = 0;
+            if (!ReadFile(file, dst, take, &got, nullptr) || got == 0) return false;
+            dst += got; n -= got;
+        }
+#else
+        while (n) {
+            const ssize_t got = pread(fd, dst, n, (off_t) offset);
+            if (got < 0 && errno == EINTR) continue;
+            if (got <= 0) return false;
+            dst += got; n -= (size_t) got; offset += (uint64_t) got;
+        }
+#endif
+        return true;
+    }
 };
 
 bool hash_range(const uint8_t* p, uint64_t n, uint8_t out[32], std::string& err) {
@@ -360,7 +440,7 @@ bool hash_range(const uint8_t* p, uint64_t n, uint8_t out[32], std::string& err)
         at += take;
     }
     if (!sha.final(out)) {
-        err = "expert pack hash overflowed";
+        err = "expert pack SHA-256 failed";
         return false;
     }
     return true;
@@ -460,8 +540,17 @@ private:
 
 bool hash_file(const std::string& path, uint8_t out[32], std::string& err) {
     MappedView view;
-    if (!view.open(path, err)) return false;
-    return hash_range(view.data, view.size, out, err);
+    if (!view.open(path, err, true)) return false;
+    Sha256 sha;
+    std::vector<uint8_t> buffer(1u << 20);
+    for (uint64_t at = 0; at < view.size;) {
+        const size_t take = (size_t) std::min<uint64_t>(buffer.size(), view.size - at);
+        if (!view.read(at, buffer.data(), take)) { err = "model hash read failed"; return false; }
+        sha.update(buffer.data(), take);
+        at += take;
+    }
+    if (!sha.final(out)) { err = "expert pack SHA-256 failed"; return false; }
+    return true;
 }
 
 struct HeldLock {
@@ -651,7 +740,7 @@ std::string expert_pack_verify(const std::string& pack_path, const std::string& 
                                const std::vector<PackLayer>* expected, uint64_t tail) {
     std::string err;
     MappedView view;
-    if (!view.open(pack_path, err)) return err;
+    if (!view.open(pack_path, err, true)) return err;
     if (view.size < kExpertPackPrefixBytes) return "expert pack is shorter than its header";
     if (std::memcmp(view.data, kExpertPackMagic, 8) != 0) return "expert pack magic does not match";
     uint32_t version = 0, endian = 0, n_layers = 0;
@@ -671,9 +760,9 @@ std::string expert_pack_verify(const std::string& pack_path, const std::string& 
     }
     const uint64_t header = kExpertPackPrefixBytes + (uint64_t) n_layers * kExpertPackRecordBytes;
     if (payload_offset < header || (payload_offset & (kExpertPackAlign - 1)) != 0) return "expert pack payload is not aligned";
-    uint8_t payload_sha[32];
-    if (!hash_range(view.data + payload_offset, payload_bytes, payload_sha, err)) return err;
-    if (std::memcmp(view.data + 80, payload_sha, 32) != 0) return "expert pack payload hash does not match";
+    Sha256 payload_hash;
+    std::vector<uint8_t> verify_buffer(1u << 20);
+    bool checksum_mismatch = false;
     if (expected && expected->size() != n_layers) return "expert pack layer count does not match this model";
     uint64_t cursor = payload_offset;
     for (uint32_t i = 0; i < n_layers; ++i) {
@@ -695,7 +784,17 @@ std::string expert_pack_verify(const std::string& pack_path, const std::string& 
             return "expert pack layer geometry is inconsistent";
         }
         if (cursor > view.size || layer_bytes > view.size - cursor) return "expert pack layer runs past the file";
-        if (crc32_update(0, view.data + cursor, (size_t) layer_bytes) != crc) return "expert pack layer checksum does not match";
+        // SHA-256 and each layer's CRC cover the same bytes in one sequential
+        // pass. A 20-GiB pack must not be read twice on a 32-GiB machine.
+        uint32_t actual_crc = 0;
+        for (uint64_t at = 0; at < layer_bytes;) {
+            const size_t take = (size_t) std::min<uint64_t>(verify_buffer.size(), layer_bytes - at);
+            if (!view.read(cursor + at, verify_buffer.data(), take)) return "expert pack payload read failed";
+            payload_hash.update(verify_buffer.data(), take);
+            actual_crc = crc32_update(actual_crc, verify_buffer.data(), take);
+            at += take;
+        }
+        checksum_mismatch = checksum_mismatch || actual_crc != crc;
         if (expected) {
             const ExpertBlobLayout& want = (*expected)[i].layout;
             const ExpertSource& src = (*expected)[i].source;
@@ -709,6 +808,10 @@ std::string expert_pack_verify(const std::string& pack_path, const std::string& 
         cursor += layer_bytes;
     }
     if (cursor != view.size) return "expert pack has bytes after the last layer";
+    uint8_t payload_sha[32];
+    if (!payload_hash.final(payload_sha)) return "expert pack SHA-256 failed";
+    if (std::memcmp(view.data + 80, payload_sha, 32) != 0) return "expert pack payload hash does not match";
+    if (checksum_mismatch) return "expert pack layer checksum does not match";
     return {};
 }
 

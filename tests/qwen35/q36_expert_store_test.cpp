@@ -121,6 +121,12 @@ int main() {
           "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
     CHECK(expert_pack_sha256_file(model.string(), err) ==
           "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+    // Cross the hash_range/CNG update boundary. Reference: Python hashlib.sha256.
+    const fs::path multichunk = dir / "hash-multichunk.bin";
+    std::vector<uint8_t> hash_bytes((1u << 20) + 257, 0x55);
+    write_bytes(multichunk, hash_bytes.data(), hash_bytes.size());
+    CHECK(expert_pack_sha256_file(multichunk.string(), err) ==
+          "b35dfaf41fc659d90c3d70dc67c0a45bc48b04f33d3a78c346acb026d2327aac");
 
     constexpr uint32_t n_expert = 4;
     constexpr uint64_t src_gsz = 8;

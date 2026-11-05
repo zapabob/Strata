@@ -127,7 +127,7 @@ test('the Drafting dropdown exists only where there is something to choose: Qwen
   for (const family of ['coder', 'swift', 'nvfp4', 'qwen36', 'deepseek41', undefined]) assert.equal(draftingChoices(family, true), null, `${family}, served`);
   // the app learns it from Control, once, and false until Control answers
   const host = read('../server/native-control.mjs');
-  assert.match(host, /dflash2:dflash2Served===true,dflash2Support,dflash2Selq4,dflash2Split\}/);
+  assert.match(host, /dflash2:dflash2Served===true,dflash2Support,dflash2Selq4,dflash2Split(?:,|\})/);
   assert.match(host, /dflash2Served=p\.serves===true/);
   assert.match(host, /function probeDrafting\(\)\{if\(!packaged\|\|dflash2Served!==null/);
   const screen = read('../src/components/NativeModels.tsx');
@@ -225,7 +225,7 @@ test('the drafter memory figures in the app are the ones strata_control/drafting
   // Control's word reaches the page, and the page hands the fit the drafter it really loads
   const control = read('../server/native-control.mjs');
   assert.match(control, /dflash2Selq4=p\.serves===true&&p\.selq4===true/);
-  assert.match(control, /dflash2Support,dflash2Selq4,dflash2Split\}/);
+  assert.match(control, /dflash2Support,dflash2Selq4,dflash2Split(?:,|\})/);
   assert.match(read('../src/lib/native.ts'), /dflash2Selq4\?:boolean/);
   const page = read('../src/components/NativeModels.tsx');
   assert.match(page, /const fitDrafter = nowDrafter === 'dflash2' && native\?\.capabilities\?\.dflash2Selq4 === true \? 'dflash2_selq4' : nowDrafter;/);

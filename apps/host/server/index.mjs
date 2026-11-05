@@ -213,6 +213,7 @@ function agentLocalRows() {
     id: i.id, label: i.label, baseUrl: `http://127.0.0.1:${i.port}/v1`, modelId: i.apiModelId,
     context: i.metrics?.engine?.max_context ?? i.context ?? undefined, key: i.key, vision: i.vision,
     slots: i.metrics?.live?.slots?.length || i.parallel || 1,
+    privateConversationCache: i.metrics?.engine?.q36_private_cache === 2,
     mcpServers: i.mcpServers,
     source: 'native',
   }));
@@ -255,7 +256,13 @@ const requestQueue = new RequestQueue(n => monitor.queueWaiting(n));
 let runtimeModels;
 const rawSend = hub.send.bind(hub);
 hub.send = (event, payload) => {
-  if (event === 'engine-status') rawSend('engine-status', payload);
+  if (event === 'engine-status') {
+    rawSend('engine-status', payload);
+    if(['error','stopped'].includes(payload.status)){
+      models.engineStopped(payload);
+      monitor.engineStopped(payload);
+    }
+  }
   else if (event === 'engine-log') rawSend('log', payload);
   else if(event==='models' && runtimeModels){
     runtimeModels.adopt(payload.loaded,{beginner:store.get().beginner,expert:engine.params(),extra:store.get().configExtra??{}});
@@ -697,7 +704,7 @@ async function runTurn({ message, history = [], onFrame, signal, client, workspa
   if(native.hasLive()||nativeModelId){
     let instance;try{instance=native.resolveInstance(nativeModelId??native.state().defaultId);}catch(e){const message=plainNoModel(e.message);onFrame({type:'error',message});return {error:message};}const started=Date.now(),cancel=new AbortController();
     const entry=serving.open({client:client??'Strata chat',endpoint:'/chat/completions',model:instance.apiModelId,instanceId:instance.id,gpuIds:instance.gpus.map(String),cancel:()=>cancel.abort()});
-    try{serving.mark(entry.id,{state:'generating'});const applied=selectSkills(skillState,message,workspaceId);const result=await proxyCompletion({baseUrl:`http://127.0.0.1:${instance.port}/v1`,modelId:instance.apiModelId,authorization:instance.key,message,history,images,extra:{strata_mcp:useTools===true,...(thinkingBudget>0&&String(thinking).toLowerCase()!=='off'?{reasoning_budget_tokens:thinkingBudget}:{}),reasoning_effort:({off:'none',max:'high'}[String(thinking).toLowerCase()]??String(thinking).toLowerCase())},systemPrompt:getEffectiveSystemPrompt(applied),signal:signal?AbortSignal.any([signal,cancel.signal]):cancel.signal,onFrame:frame=>onFrame({...frame,requestId:entry.id,model:instance.label,contextMax:instance.metrics?.engine?.max_context??instance.context,skills:applied.map(s=>s.name)})});serving.mark(entry.id,{...result,usageSource:result.usageSource});serving.finish(entry.id,{tokensOut:result.tokensOut,durationMs:Date.now()-started});return result;}catch(e){serving.finish(entry.id,{durationMs:Date.now()-started,error:e.message});onFrame({type:'error',message:e.message,requestId:entry.id});return {error:e.message};}
+    try{serving.mark(entry.id,{state:'generating'});const applied=selectSkills(skillState,message,workspaceId);const result=await proxyCompletion({baseUrl:`http://127.0.0.1:${instance.port}/v1`,modelId:instance.apiModelId,authorization:instance.key,message,history,images,extra:{...(sessionId?{strata_cache_session:createHash('sha256').update(String(sessionId)).digest('hex')}:{}),strata_mcp:useTools===true,...(thinkingBudget>0&&String(thinking).toLowerCase()!=='off'?{reasoning_budget_tokens:thinkingBudget}:{}),reasoning_effort:({off:'none',max:'high'}[String(thinking).toLowerCase()]??String(thinking).toLowerCase())},systemPrompt:getEffectiveSystemPrompt(applied),signal:signal?AbortSignal.any([signal,cancel.signal]):cancel.signal,onFrame:frame=>onFrame({...frame,requestId:entry.id,model:instance.label,contextMax:instance.metrics?.engine?.max_context??instance.context,skills:applied.map(s=>s.name)})});serving.mark(entry.id,{...result,usageSource:result.usageSource});serving.finish(entry.id,{tokensOut:result.tokensOut,durationMs:Date.now()-started});return result;}catch(e){serving.finish(entry.id,{durationMs:Date.now()-started,error:e.message});onFrame({type:'error',message:e.message,requestId:entry.id});return {error:e.message};}
   }
   runtimeState();
   let instance;
@@ -1491,16 +1498,17 @@ async function api(req, res, path, method, url) {
     catch (err) { return error(res, 400, err.message); }
   }
   if (path === '/api/local-models/inspect' && method === 'POST') {
-    try { const body=await readBody(req); return json(res,200,inspectLocalModel(body.path)); }
+    try { const body=await readBody(req); return json(res,200,localModels.inspect(body.path)); }
     catch (err) { return error(res,400,err.message); }
   }
   if (path === '/api/local-models' && method === 'POST') {
     const body=await readBody(req);
     if(storageChanging)return error(res,409,'Wait for the model folder check to finish.');
     try {
-      const preview=inspectLocalModel(body.path),previous=variant(preview.variant.id);
+      const preview=localModels.inspect(body.path),previous=variant(preview.variant.id);
       if(body.name!==undefined){if(typeof body.name!=='string'||!body.name.trim()||body.name.length>160)return error(res,400,'Enter a display name up to 160 characters.');preview.variant.name=body.name.replace(/[\x00-\x1f\x7f]/g,' ').trim();if(!preview.variant.name)return error(res,400,'Enter a display name.');preview.variant.label=`${preview.variant.name} · ${preview.variant.quant}`;}
       if(previous && runtimeModels.hasVariant(previous.id) && JSON.stringify(previous.local)!==JSON.stringify(preview.variant.local))return error(res,409,'Unload this local model before replacing its file reference.');
+      if(body.name!==undefined)preview.variant.displayNameExplicit=true;
       localModels.add(preview);
       return json(res,200,{library:runtimeModels.libraryState(models.localModelAdded()),variantId:preview.variant.id});
     } catch (err) { return error(res,400,err.message); }
@@ -1588,13 +1596,18 @@ async function api(req, res, path, method, url) {
       }
       const candidate=models.library().variants.find(v=>v.id===id);if(!candidate||!models.isOnDisk(id)||['loading','downloading','unloading'].includes(candidate.state))return error(res,409,'Download this model before loading it.');
       const loadConfig={ beginner: store.get().beginner, expert: engine.params(), serving: store.get().serving };
-      try{requireModelKvCompatible(candidate,loadConfig.expert);await supervisor.preflight({config:loadConfig,modelPath:models.pathFor(candidate)});}catch(err){return error(res,409,err.message);}
-      for(const instance of native.state().instances)await native.unload(instance.id);
+      try{requireModelKvCompatible(candidate,loadConfig.expert);}catch(err){return error(res,409,err.message);}
       const lib = await models.load(id, {
         hardware: hw,
         config: loadConfig,
+        beforeStart: async () => {for(const instance of native.state().instances)await native.unload(instance.id);},
         onPhase: async (phase, variantId) => {
           if (phase === 'loading') await monitor.beginLoading(variantId);
+          if (phase === 'error') {
+            monitor.engineStopped({modelId:variantId,status:'error',error:true});
+            engine.markStopped();
+            hub.send('engine',await engine.config());
+          }
           if (phase === 'ready') {
             await monitor.setModel(variantId);
             monitor.idle('Model loaded — waiting for a request');

@@ -4,5 +4,16 @@
  "gf03": "Fermez les autres programmes et réessayez, ou choisissez « Garder de la place pour mon travail ». En mode expert, vous pouvez aussi activer l’option de faible RAM : une partie du modèle est alors lue depuis le SSD.",
  "gf04": "Livré dans",
  "gf05": "Dossier de travail",
- "gf06": "{0} fichiers"
+ "gf06": "{0} fichiers",
+ "gf07": "Prêt pour Strata",
+ "gf08": "Charger avec Strata",
+ "gf09": "Ces fichiers utilisent {0}. Strata les démarre avec son moteur {0} intégré : mêmes modèles, discussion, outils et recherche web. Aucune préparation de pack séparée.",
+ "gf10": "Modèle arrêté après une erreur",
+ "gf11": "{0} / {1} couches",
+ "gf12": "Ce moteur Qwen3.6 ne dispose pas de caches privés validés. Installez le composant correspondant. Les paramètres de confidentialité n’ont pas été supprimés pour forcer le démarrage.",
+ "gf13": "Regroupement des experts dans un fichier pour le mode à faible mémoire (une seule fois)",
+ "gf14": "Strata utilise ces fichiers à leur emplacement avec PrismML / TurboQuant intégré (Charger avec Strata). Aucun pack Q2_0 natif à préparer.",
+ "gf15": "Les requêtes privées Qwen3.6 sont actuellement traitées une par une. Réglez le nombre de requêtes parallèles sur 1.",
+ "gf16": "vide = toujours actif, ou : vérifier ceci, vérifier mon code",
+ "gf17": "Laissez vide pour appliquer cette compétence à chaque message (5 maximum). Vous pouvez aussi préciser des expressions ; son nom sert également de déclencheur."
 }

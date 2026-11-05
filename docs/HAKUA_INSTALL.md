@@ -1,57 +1,101 @@
 # Install Hakua / Strata on Windows
 
-GUI/Product `0.4.0-preview.20261103.7` · native engine/Control `0.4.0` · Hakua-memory `0.3.5`. The app installer on this tag has no Windows code signature. Its Qwen3.6 engine package is separate, has no picture reader, and is not Ed25519-signed (`signature` is null). PrismML and TurboQuant stay in the signed component from `v0.4.0-preview.20261101.1`. Startup time and token speed for this build were not measured. The CUDA spill guard did not pass the reviewed baseline.
+Product `0.4.1-beta.1` uses native engine/Control `0.4.1` and Hakua-memory `0.3.5`.
+PrismML and TurboQuant retain their independently verified `0.4.0` runtime packages.
+This is a Windows x64 CUDA sm_120 beta, tested on an RTX 5060 Ti with 16 GB VRAM and
+32 GB system RAM. See the [release record](HAKUA_RELEASE.md) for publication status,
+exact tests and limits. A successful short request does not qualify a full context window.
 
-Use this fork's 0.4.0 preview packages below. See the [qualification record](HAKUA_RELEASE.md) for exact tests and supported limits.
+## Install or update
 
-Check the [qualification record](HAKUA_RELEASE.md) for publication status and measured limits. This is an unsigned manual-update preview for Windows x64 and NVIDIA CUDA sm_120, tested on an RTX 5060 Ti. Other GPUs and operating systems need their own qualified packages.
+Download the [Windows setup EXE](https://github.com/zapabob/Strata/releases/download/v0.4.1-beta.1/Strata_0.4.1-beta.1_x64-setup.exe)
+and compare it with [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.1-beta.1/SHA256SUMS.txt).
+The desktop installer has no Windows code signature. Component signatures and checksums
+are separate checks; they are not Windows executable signing.
 
-## Start
+Unload models, finish active requests and quit Strata, including its tray icon, before
+updating. Back up the app data first. Run one installer at a time. Do not remove the
+installation directory while setup is running. The installer replaces its managed
+application files and preserves unrelated files in the installation root.
 
-Download the [setup EXE](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.7/Strata_0.4.0-preview.20261103.7_x64-setup.exe). Compare the file with [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.7/SHA256SUMS.txt). SHA-256 `5e8b8fff82b6e63dea48bf5c1907950911700c9bf30673444e5d2489a87c0336`, 113064953 bytes. The installer has no Windows code signature. Mapped expert pack stays off unless the launch asks for it and the resolved `strata.exe` SHA-256 is `907341c74d5a9f26c784e4aaad3460e376d4cabd84635c5d032879c59b08d150`, `64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7`, `6fe110650940d0c19f09909d769393769650045e6bc6eab29ccc49734dbcab29`, `dd53df07789e0fefcb87e33acab54f5bfe1faf312ef6bad515924736b715c5b5`, or `512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046`. The older digest stays allowed. Hotspot-profile `907341c7…` is the unsigned Qwen3.6 component digest staged for this `.7` preview (side-by-side `0.4.0-q36-…`); help-honesty `64226fde…` and older digests stay allowed. A digest written in model settings does not unlock it. The legacy host arena stays the default. The main line stays context 65536, FP32 KV, MTP 2, prefill auto. T04 is KEEP_DEFAULT; T06 is BLOCKED; T07 hotspot profile is done; T08 refuse PASS / measured FP16 NOT_RUN. Unsigned is not signed: the CUDA digest `b5e4d525…` on `v0.4.0-preview.20261101.1` was not overwritten.
+The usual per-user location is `%LOCALAPPDATA%\Programs\Strata` on C:. A previous
+installation can retain another drive. Choose the intended folder in the installer.
+Models, chats and memory have their own data locations; changing the application
+folder does not move them. Leave existing model files where they are and select
+that model folder in Strata. System Node, Python, pip and compilers are not required.
 
-Close the running app and unload models before updating. Back up the app's data directory first. Run the installer for your Windows account. Keep enough free disk space for extraction and model files; when C: is short of space, save the download and choose an installation directory on a drive with room.
+GPU runtimes are separate from the app. For this beta, download the matching
+`strata-engine-0.4.1-windows-x86_64-cuda-cuda13.tar.gz` from the
+[beta release](https://github.com/zapabob/Strata/releases/tag/v0.4.1-beta.1) and import
+it from the preparation screen. The app checks the component signature and all file
+hashes before activating it. The normal latest feed still serves its earlier signed
+release; installing the app alone does not upgrade that native engine. Keep the older
+component available for rollback. The signed `0.4.0` release files are not replaced.
 
-Silent `/S` note: if a fresh empty install tree exits with code 2, create the destination folder and these empty managed directories first (`control`, `host`, `node`, `harness`, `engine-bundle`, `local-backends`, `notices`), then run **one** `/S`. Do not delete or `rmdir` a live `Programs\Strata` (or the remembered InstallLocation) while setup is running; concurrent wipe races have broken locks and left incomplete trees.
+## Existing models and caches
 
-With tray storage enabled, × only hides the window. Right-click the Strata tray icon and choose Quit Strata before updating.
+Use **Use a local GGUF** for a file already on the PC. One shard is enough to select
+a split set; all required shards are checked. Catalog setup also searches the chosen
+model directory's subfolders for one matching valid set. If more than one matches,
+choose the intended file. It does not silently select a different fine-tune.
 
-Open Strata and install the compatible engine offered on its first-run preparation screen. The app downloads the separate signed Hakua engine component and checks its signature and file hashes before activation. If you have already downloaded its `.tar.gz` file from this fork's release, use the engine file-import option instead. Then select a compatible model and its storage folder and load it.
+A native model can need a one-time expert-pack conversion. The app displays completed
+layers when the packer reports them. Resume reuses the matching checkpoint and counts
+space already allocated to its temporary file. Existing GGUFs and expert packs stay
+on disk; normal unload and restart do not delete them.
 
-The installer follows the official app architecture: it carries private Node, Python/Control and Hakua-memory, while GPU runtimes are separate. The Hakua Windows CUDA component contains the native engine and separate PrismML and TurboQuant runtimes. You do not need to install system Node, Python, pip or a compiler. Full inference model weights are another separate download and can be tens or hundreds of GB. Downloads, installation and loading take longer than the 30-second sequence of setup actions.
+Qwen3.6 private conversation reuse requires the exact tested native executable. Within
+one authenticated conversation, a completed prefix can be reused. Another conversation,
+missing identity, cancellation, invalid requests and five minutes of idle time clear
+that private state. This does not delete the model or its expert pack. The first
+implementation accepts one active request; parallel private Qwen3.6 requests are refused.
+Old engines that cannot enforce the policy are refused rather than ignoring its flags.
 
-For native memory chat, open **Hakua memory** in the sidebar after loading a supported native model. Copy the profile key shown in its dialog. Select a memory checkbox on the local page, then paste the key into **About → Settings**. Choose read and/or save consent for each message. The app creates the local profile automatically and keeps ordinary chat credentials separate. See [the memory guide](../serve/MEMORY_HARNESS.md).
+The Qwen3.6 mapped expert pack is opt-in and requires an allowlisted executable.
+It avoids the legacy full host expert arena, but the operating system may still page
+mapped data. The experimental `STRATA_Q36_PIN_PIPELINE=1` and
+`STRATA_Q36_STREAM_RESIDENT=1` environment switches retain the model's numeric formats.
+They are off by default. The release record describes their bounded comparison; it is
+not a guarantee of speed on another model, context length or PC.
 
-For local PQ2_0 GGUF files, choose **PrismML** in the model's advanced llama-server backend settings. For TurboQuant, choose **TurboQuant**, K=`FP16` and V=`TURBO2`, `TURBO3` or `TURBO4`, then reload. Open **Hakua memory** in the same sidebar. For these additional runtimes, the app supplies the local profile key automatically; select read and/or save consent separately for each message. Opening memory chat first restarts the owned server with authentication and shared prompt caches disabled, so finish active requests first. Native and additional runtimes share the local memory profile. [Backend details and limits](LOCAL_LLAMA_BACKENDS.md).
+## Chat, tools and memory
 
-The separate native engine supports text chat. Native image input and the separate DeepSeek native engine are not included in this preview. Full model weights remain separate downloads.
+For a supported PQ2_0 GGUF, select **PrismML**. For TurboQuant, choose **TurboQuant**,
+K=`FP16` and V=`TURBO2`, `TURBO3` or `TURBO4`, then reload. The release keeps the
+quality-related refusals for unsupported K-cache choices. See [backend limits](LOCAL_LLAMA_BACKENDS.md).
 
-This preview uses the fork's installer for updates. Source setup wrappers and upstream Terminal installation commands describe different distribution paths. The upstream Niko1221 installer does not contain Hakua's fork changes. [Build from source](SOURCE_INSTALL.md) is for developers.
+Choose the loaded local model in the chat. Web search needs network access and a model
+that emits a supported tool call. A tool request, its returned result and the assistant's
+final answer are separate parts of the same turn. Stop cancels the active turn.
+The app's request adapter keeps Qwen3.6 cache ownership separate for each chat.
 
-## When C: has little free space
+Hakua memory is optional and remains off until enabled. Open it from the sidebar after
+loading the model. Reference/save consent is selected separately for each message.
+Additional local runtimes use the app's local profile key automatically. First enabling
+memory can restart the owned server with authentication and shared caches disabled;
+finish active requests first. See the [memory guide](../serve/MEMORY_HARNESS.md).
 
-The app and temporary extraction need several GB, before any full inference model weights. Choosing another installation drive does not automatically move Windows temporary files.
-
-If needed, open PowerShell in the folder containing the downloaded EXE and use a temporary folder on a drive with room. Replace H: below with an existing drive on your PC. These environment settings apply to this PowerShell process and the installer it starts. Choose an installation directory with enough space in the installer.
-
-```powershell
-$installTemp = 'H:\Hakua-install-temp'
-New-Item -ItemType Directory -Path $installTemp -Force | Out-Null
-$env:TEMP = $installTemp
-$env:TMP = $installTemp
-Start-Process -FilePath (Join-Path $PWD 'Strata_0.4.0-preview.20261103.7_x64-setup.exe') -Wait
-```
+Native image input and the separate DeepSeek native engine are not included in this
+Windows beta. Other GPUs, HIP, SYCL, Linux and Metal need their own builds and tests.
 
 ## 日本語の導入手順
 
-上のEXEを取得して実行してください。7zを選んだ場合は、先に展開してから同梱EXEを実行します。両方を取得する必要はありません。未署名のプレビューですので、SHA256SUMS.txtとの照合をお願いします。
+`0.4.1-beta.1`のsetup EXEとチェックサムを取得します。更新前にモデルをアンロードし、
+トレイのStrataも終了してから、一度だけインストーラーを実行してください。
+Cドライブに入れる場合は、導入先を`%LOCALAPPDATA%\Programs\Strata`に指定します。
+以前Hドライブを選んだ環境では、その場所が引き継がれることがあります。
+モデル・会話・記憶の保存先は別なので、モデルを移したり消したりする必要はありません。
 
-更新前にモデルをアンロードし、アプリを終了してデータをバックアップします。アプリと一時展開には数GBの空き容量が必要で、モデル重みの容量は別途必要です。C:の空き容量が少ない場合は、保存先・インストール先に加えて一時ファイルの置き場所にも余裕が必要です。上のPowerShell例では、H:上の一時フォルダーを使ってEXEを起動します。H:は実際に存在し、空き容量のあるドライブへ置き換えてください。設定はそのPowerShellと、そこから起動するインストーラーに適用されます。
+専用Node・Pythonは同梱されています。GPUエンジンは別配布です。このベータでは、同じ
+リリースページの`strata-engine-0.4.1-windows-x86_64-cuda-cuda13.tar.gz`を準備画面から
+読み込んでください。署名と全ファイルのハッシュを確認してから有効化します。
+通常のlatest配信先は以前の署名付き版を維持しているため、アプリの更新だけでは新しい
+Qwen3.6エンジンに切り替わりません。旧コンポーネントはロールバック用に残します。
 
-トレイ収納が有効な場合、×は画面を隠します。更新前はトレイのStrataアイコンを右クリックして、Strata を終了を選んでください。
+取得済みGGUFは「ローカルGGUFを使用」で選択します。分割GGUFは一つを選ぶと一式を確認します。
+モデルと変換済みパックは保持します。Qwen3.6の会話キャッシュは、認証された同じ会話で再利用し、
+別の会話、キャンセル、エラー、識別情報のない要求、5分間の待機では消去します。
+この消去でモデルファイルやパックが消えることはありません。
 
-起動後は対応モデルを選んで読み込み、サイドバーのHakua memoryを開きます。表示された専用キーをコピーし、記憶ページのチェック欄を選択してからAbout → Settingsへ貼り付けます。記憶の参照・保存への同意は、送信ごとに選び直してください。
-
-初回は、モデルを選ぶ前に準備画面から対応エンジンのインストールを選んでください。公式アプリと同じく専用Node・Pythonはアプリに同梱し、GPUエンジンは別配布にしています。アプリは署名付きHakuaエンジンコンポーネントを取得し、署名と全ファイルのハッシュを確認してから有効化します。取得済みのコンポーネントファイルから導入することもできます。このコンポーネントにネイティブCUDA・PrismML・TurboQuantの実行環境が入ります。モデル重みは別途必要です。システム側のNode・Python、pip、コンパイラーのインストールは不要です。
-
-PQ2_0はPrismML、TurboQuantはKをFP16・VをTURBO2／TURBO3／TURBO4にして使用します。モデルを読み込んでサイドバーのHakua memoryを開くと、追加経路では本人用キーをアプリが自動で使います。参照・保存は送信ごとに別々のチェック欄で選び、ネイティブと同じローカル記憶を利用できます。初回は認証付き・共有キャッシュ無効で起動し直すため、処理中のリクエストを終えてから開いてください。別配布のネイティブエンジンはテキスト用で、ネイティブ画像入力とDeepSeek専用エンジンは含みません。検証条件と未確認事項は[リリース検証記録](HAKUA_RELEASE.md)に記載します。
+インストーラーと一時展開には数GBの空き容量が必要です。モデルの容量は別に確保してください。
+公開状況、実測条件、未確認事項は[リリース記録](HAKUA_RELEASE.md)を参照してください。

@@ -1802,11 +1802,18 @@ def combined_progress(prog: dict, job: dict) -> dict:
 
 def install_progress(lines: list[str]) -> dict:
     """setup's progress from its output: the step, a download's percentage, a failure."""
-    step, title, dl, err = None, None, None, None
+    step, title, dl, err, packing = None, None, None, None, None
     for i, line in enumerate(lines):
         m = re.search(r"=== Step (\d+): (.+?) ===", line)
         if m:
             step, title, err, dl = int(m.group(1)), m.group(2), None, None      # a download figure belongs to its own step
+            packing = None
+        m = re.match(r"\[pack-progress\] (\d+)/(\d+) layers (\d+)/(\d+) bytes$", line.strip())
+        if m:
+            done, total, written, size = map(int, m.groups())
+            if 0 <= done <= total and total > 0 and 0 <= written <= size and size > 0:
+                packing = {"layers_done": done, "layers_total": total, "bytes_done": written, "bytes_total": size,
+                           "percent": min(100, int(100 * written / size))}
         m = re.match(r"\s*(\S.*?): +([\d.]+) / ([\d.]+) GB \((\d+)%\)", line)
         if m:
             dl = {"file": m.group(1), "done_gb": float(m.group(2)), "total_gb": float(m.group(3)),
@@ -1823,6 +1830,8 @@ def install_progress(lines: list[str]) -> dict:
     words = progress_words_for(step, lines, dl)
     if words:
         out["label"], out["phase"] = words
+    if packing and out.get("phase") == "pack":
+        out["packing"] = packing
     return out
 
 
@@ -2359,7 +2368,7 @@ class Tools:
                 except ProfileError as error:
                     raise ToolError(str(error)) from error
             if preview.get("local_runtime") == "PrismML":
-                raise ToolError("These GGUF files run on Strata’s PrismML engine, not native Qwen Q2_0 preparation. "
+                raise ToolError("These GGUF files require PrismML and cannot use native Qwen Q2_0 preparation. "
                                 "In Models, choose Load with Strata (PrismML). "
                                 "No model download or native pack preparation is needed.")
         if gpu is not None and gpus is not None:
@@ -2425,6 +2434,15 @@ class Tools:
         target = self.check_data_dir(data_dir) if data_dir else s.data_dir()
         tag = (families[family].get("tag", "") + model)
         have_dir = target / "models" / tag
+        if not gguf_dir and not md.get("multi_file") and not families[family].get("ready"):
+            from strata_control.models import existing_model_folder
+            from strata_control.profiles import ProfileError
+            try:
+                existing = existing_model_folder(target, family, model, managed=have_dir)
+            except ProfileError as error:
+                raise ToolError(str(error)) from error
+            if existing:
+                gguf_dir = str(existing)
         partly = (have_dir.is_dir() and any(have_dir.glob("*.gguf*"))) or bool(gguf_dir)   # a local folder: nothing to download
         need = (8 if partly else md["download_gb"] + 8) + (1 if vision in ("yes", "gpu", "cpu") else 0)
         free = s.disk_free(target)
@@ -2461,13 +2479,17 @@ class Tools:
             fit = "fits" if ram >= need_ram else f"needs ~{need_ram} GB of RAM, this PC has {ram:.0f} GB"
         installed = (s.root / f"strata-{tag.lower()}.json").exists()
         plan = {"title": f"{families[family]['title']} {model}", "family": family, "model": model,
-                "context": context, "images": vision or "no", "download_gb": md["download_gb"],
+                "context": context, "images": vision or "no", "download_gb": 0 if gguf_dir else md["download_gb"],
                 "partly_downloaded": partly, "ram": fit, "data_folder": str(target), "model_folder": str(have_dir),
                 "disk_free_gb": free,
                 "disk_needed_gb": round(need), "disk_short": short, "already_installed": installed,
                 "setup_command": ("START-HERE.bat " if WIN else "./setup.sh ") + " ".join(args),
                 "takes": "about 20-90 minutes, mostly the download; the PC stays usable",
                 "recommended_for_this_pc": rec if rec.get("model") else None}
+        if gguf_dir:
+            plan["model_folder"] = gguf_dir
+            plan["reuse_local_files"] = True
+            plan["takes"] = "Uses existing model files; preparation time depends on the model and disk."
         if installed:
             plan["note"] = ("this model is already installed: running setup again updates the engine and applies "
                             "the options (finished steps are skipped)")
@@ -2501,7 +2523,7 @@ class Tools:
             raise ToolError("setup did not start: " + " | ".join(read_tail(log_path, 5)))
         folder = plan.get("model_folder")
         files = []
-        if s.setup_module() is not None and folder:     # every file of this install, for a progress that counts all the parts
+        if s.setup_module() is not None and folder and not plan.get("reuse_local_files"):     # own GGUFs are not a catalog download
             files = expected_files(s.setup_module(), plan["family"], plan["model"], Path(folder).parent,
                                    plan.get("images") in ("yes", "gpu", "cpu"))
         s.save_state("install", {"job": job_id, "pid": p.pid, "ident": ident, "log": str(log_path),

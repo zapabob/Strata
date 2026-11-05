@@ -235,6 +235,7 @@ export function buildProfile({ local = [], connections = [], gate = true, tools 
       // The Strata server reads the thinking level from `chat_template_kwargs` (enable_thinking, reasoning_effort) or from a top-level
       // reasoning_effort; a top-level `enable_thinking` (pi-ai's `qwen` format) is ignored, so the model went on thinking with the menu on Off.
       compat: THINKING_COMPAT,
+      ...(inst.privateConversationCache ? { headers: { 'x-strata-conversation-cache': '1' } } : {}),
       models: [{
         id: inst.modelId, name: inst.label || inst.modelId, contextWindow: context, maxTokens: localOutputBudget(context),
         input: inst.vision ? ['text', 'image'] : ['text'],

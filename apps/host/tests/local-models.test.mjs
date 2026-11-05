@@ -14,6 +14,22 @@ import { ggufFixture } from './helpers/local-gguf.mjs';
 const cwd=fileURLToPath(new URL('..',import.meta.url)),pause=ms=>new Promise(r=>setTimeout(r,ms));
 function fixture(t){const root=mkdtempSync(join(tmpdir(),'strata-local-model-'));t.after(()=>rmSync(root,{recursive:true,force:true}));return root;}
 
+test('generic GGUF metadata uses the filename while saved custom names survive reinspection and restart',t=>{
+ const root=fixture(t),file=join(root,'Hikari-PQ2_0.gguf'),data=join(root,'data');
+ ggufFixture(file,{name:'Hf'});
+ const preview=inspectLocalModel(file);assert.equal(preview.variant.name,'Hikari-PQ2_0');
+ const service=createLocalModels(data);service.add(preview);
+ const custom=service.inspect(file);custom.variant.name='My Hikari';custom.variant.label='My Hikari · Q4_K_M';custom.variant.displayNameExplicit=true;service.add(custom);
+ assert.equal(service.inspect(file).variant.name,'My Hikari');
+ assert.equal(createLocalModels(data).inspect(file).variant.name,'My Hikari');
+ custom.variant.name='Hf';service.add(custom);
+ assert.equal(createLocalModels(data).inspect(file).variant.name,'Hf','an explicit user label is honored');
+ custom.variant.displayNameExplicit=false;service.add(custom);
+ assert.equal(createLocalModels(data).list()[0].name,'Hikari-PQ2_0','legacy placeholders recover on restart');
+ ggufFixture(file,{name:'Publisher model name'});
+ assert.equal(inspectLocalModel(file).variant.name,'Publisher model name');
+});
+
 test('Prism PQ2_0 uses its group-128 layout and refuses truncated weights',t=>{
  const root=fixture(t),file=join(root,'Prism-PQ2_0.gguf');
  ggufFixture(file,{fileType:141,tensorType:142,tensorElements:128,tensorBytes:34});

@@ -87,6 +87,7 @@ from serve import logit_bias as bias_api  # noqa: E402
 from serve import lifeline  # noqa: E402
 from serve import perf131k_e2e as perf_e2e  # noqa: E402
 from serve import memory_harness  # noqa: E402
+from serve import private_cache  # noqa: E402
 from serve.structured import StructuredOutputError, prepare_format, validated_json, extract_json  # noqa: E402
 from serve import responses as responses_api  # noqa: E402
 from serve.responses import ResponsesError, error_body as responses_error_body  # noqa: E402
@@ -1244,6 +1245,15 @@ class StrataEngine:
                 tail += "\n  (those are the launcher's own lines: the engine itself wrote nothing)"
             raise EngineDied(why + (f" (see {log})" if log else "") + note +
                              start_failure_hint(log, log_start) + tail)
+        required_cache = (env or {}).get("STRATA_REQUIRE_Q36_PRIVATE_CACHE", "0")
+        if not private_cache.capability_confirmed(self.info, int(required_cache)):
+            self.proc.kill()
+            self.proc.wait(timeout=5)
+            self.proc.stdin.close()
+            self.proc.stdout.close()
+            if log:
+                self.log.close()
+            raise EngineDied("Qwen3.6 did not confirm the required private conversation cache capability; the engine was stopped")
         self.known_ctx = self.max_context   # survives a failed restart: requests keep their limit and restart it
         # (from PR #41, midhatn) a locally built engine can sit next to another release's BUILD.json: engines that
         # report their own version (INFO engine=, 0.1.8+) win, the manifest stays the fallback for older ones
@@ -2520,6 +2530,10 @@ class StrataEngine:
         carry = NO_LINE                  # a line read for a token's LP line, held until it is used
         # an image request takes the same sampling keys as text (#75: it used to decode greedily whatever was asked)
         rid_key = f" rid={rid}" if rid is not None else ""
+        if self.info.get("q36_private_cache") == 2:
+            scope = getattr(cancel, "_strata_cache_scope", None)
+            if scope:
+                rid_key += f" cache_scope={scope}"
         head = f"GENI {int(max_new)}{self.sampling_keys(sampling or {})}{rid_key} {embeddings}" if embeddings else \
             f"GEN {int(max_new)}{self.sampling_keys(sampling or {})}{rid_key}"
         if prefill_only:                                 # split serving (serve/split.py): read the prompt, make no token
@@ -4146,6 +4160,8 @@ def child_env(cfg: dict, *, offline: bool = False) -> dict:
         env["CUDA_VISIBLE_DEVICES"] = ",".join(str(i) for i in ordered_gpus(cfg))
     for k, v in (cfg.get("env") or {}).items():      # engine settings the config carries (AMD: the GEMM tuning table)
         env[str(k)] = str(v)
+    # A config or inherited environment cannot turn off capability confirmation.
+    env["STRATA_REQUIRE_Q36_PRIVATE_CACHE"] = str(private_cache.required_capability(cfg))
     if (cfg.get("arch") or "") == "deepseek41":      # (only this engine reads these; Qwen's environment is untouched)
         deepseek_slot_env(env, cfg)
     parallel_stack_env(env, cfg)
@@ -7553,6 +7569,9 @@ def make_handler(svc: Service):
             return False
 
         def _prepare(self, messages, tools, kw, maximum, *, req, cancel, **kwargs):
+            setattr(cancel, "_strata_cache_scope", private_cache.conversation_scope(
+                self._memory_key() if svc.api_key else None,
+                private_cache.request_session(req, self.headers.get("x-session-affinity"))))
             harness = svc.memory_harness
             if (harness is not None and harness.principal(self._memory_key()) is not None
                     and req.get("strata_mcp")):

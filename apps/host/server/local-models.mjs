@@ -10,6 +10,9 @@ const NON_GENERATIVE=new Set(`clip bert modern-bert nomic-bert nomic-bert-moe ne
  t5encoder gemma-embedding llama-embed wavtokenizer-dec pangu-embedded eagle3 dflash paddleocr qwen3tts pockettts talkie`.trim().split(/\s+/));
 const QUANTS={0:'F32',1:'F16',2:'Q4_0',3:'Q4_1',7:'Q8_0',8:'Q5_0',9:'Q5_1',10:'Q2_K',11:'Q3_K_S',12:'Q3_K_M',13:'Q3_K_L',14:'Q4_K_S',15:'Q4_K_M',16:'Q5_K_S',17:'Q5_K_M',18:'Q6_K',19:'IQ2_XXS',20:'IQ2_XS',21:'Q2_K_S',22:'IQ3_XS',23:'IQ3_XXS',24:'IQ1_S',25:'IQ4_NL',26:'IQ3_S',27:'IQ3_M',28:'IQ2_S',29:'IQ2_M',30:'IQ4_XS',31:'IQ1_M',32:'BF16',141:'PQ2_0',142:'PQ2_0',143:'PTQ1_0'};
 const clean=value=>String(value??'').replace(/[\x00-\x1f\x7f]/g,' ').trim().slice(0,160);
+const genericName=value=>!clean(value)||/^(hf|hugging[ -]?face|model|unknown)$/i.test(clean(value));
+const fileName=file=>basename(file).replace(/-00001-of-\d{5}/,'').replace(/\.gguf$/i,'');
+function namedVariant(v,name){return {...v,name,label:`${name} · ${v.quant}`};}
 function fullPath(input){if(typeof input!=='string'||!input.trim()||input.includes('\0'))throw new Error('Choose a model file or enter its full path.');const path=input.trim().replace(/^~(?=$|[\\/])/,homedir());if(!isAbsolute(path))throw new Error('Enter a full path.');try{return realpathSync(path);}catch{throw new Error('This file or folder is unavailable. Check its location and permissions.');}}
 export function browseLocalModels(input){
  const directory=fullPath(input);if(!statSync(directory).isDirectory())throw new Error('Choose a folder to browse.');
@@ -57,7 +60,7 @@ export function inspectLocalModel(input){
   files.push({path:realpathSync(path),bytes:info.size,mtimeMs:info.mtimeMs,ctimeMs:info.ctimeMs});names.push(basename(path));totalTensors+=info.tensorCount;parameters+=info.parameters;
  }
  if(totalTensors<1||count>1&&totalTensors!==m['split.tensors.count'])throw new Error('This model is missing tensors or model shards.');
- const bytes=files.reduce((sum,f)=>sum+f.bytes,0),name=clean(m['general.name'])||basename(file).replace(/-00001-of-\d{5}/,'').replace(/\.gguf$/i,''),quant=QUANTS[m['general.file_type']]??'GGUF';
+ const bytes=files.reduce((sum,f)=>sum+f.bytes,0),name=genericName(m['general.name'])?clean(fileName(file)):clean(m['general.name']),quant=QUANTS[m['general.file_type']]??'GGUF';
  const id=`local-${createHash('sha256').update(file).digest('hex').slice(0,24)}`,gb=bytes/1024**3;
   const memoryPlan=estimateModelMemory({metadata:m,diskBytes:bytes,context:Math.min(context,131072),sequences:1,kType:'q8_0',vType:'q8_0'});
   const local={path:file,files,architecture:arch,hasChatTemplate:!!m['tokenizer.chat_template'],contextLength:context,keyLength,valueLength,shards:count,metadataSignature:hybrid.metadataSignature||createHash('sha256').update(JSON.stringify(m)).digest('hex'),
@@ -71,6 +74,9 @@ export function inspectLocalModel(input){
 export function createLocalModels(dataDir){
  mkdirSync(dataDir,{recursive:true});const file=join(dataDir,'local-models.json');let records=[];
  try{const saved=JSON.parse(readFileSync(file,'utf8'));if(Array.isArray(saved.models))records=saved.models.filter(v=>v?.id?.startsWith('local-')&&v.local?.files?.length&&isAbsolute(v.local.path));}catch{}
+ // Upgrade old placeholder labels in memory without modifying model weights.
+ records=records.map(v=>genericName(v.name)&&!v.displayNameExplicit?namedVariant(v,clean(fileName(v.local.path))):v);
+ const inspect=input=>{const preview=inspectLocalModel(input),previous=records.find(v=>v.id===preview.variant.id);if(previous)preview.variant={...namedVariant(preview.variant,previous.name),displayNameExplicit:previous.displayNameExplicit};return preview;};
  const persist=next=>{const temp=file+'.tmp';writeFileSync(temp,JSON.stringify({schema:1,models:next},null,2));renameSync(temp,file);records=next;};
- return {list:()=>structuredClone(records),add:preview=>{const v=preview.variant;const previous=records.find(row=>row.id===v.id);persist([...records.filter(row=>row.id!==v.id),{...v,importedAt:previous?.importedAt??new Date().toISOString()}]);return v;},remove:id=>persist(records.filter(v=>v.id!==id)),ready:v=>v.local.files.every(f=>{try{const s=statSync(f.path);return s.isFile()&&s.size===f.bytes&&s.mtimeMs===f.mtimeMs&&s.ctimeMs===f.ctimeMs;}catch{return false;}})};
+ return {inspect,list:()=>structuredClone(records),add:preview=>{const v=preview.variant;const previous=records.find(row=>row.id===v.id);persist([...records.filter(row=>row.id!==v.id),{...v,importedAt:previous?.importedAt??new Date().toISOString()}]);return v;},remove:id=>persist(records.filter(v=>v.id!==id)),ready:v=>v.local.files.every(f=>{try{const s=statSync(f.path);return s.isFile()&&s.size===f.bytes&&s.mtimeMs===f.mtimeMs&&s.ctimeMs===f.ctimeMs;}catch{return false;}})};
 }

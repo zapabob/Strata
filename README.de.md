@@ -1,64 +1,47 @@
-# Hakua / Strata
+# Strata · Hakua
 
-Hakua-Chatbot auf Strata. Dieser Fork liefert eine Windows-Vorschau mit Hakua memory und getrennten GPU-Laufzeiten. [zapabob/Strata](https://github.com/zapabob/Strata) · Upstream [Niko1221/Strata](https://github.com/Niko1221/Strata)
+Lokale Modelle, Chat, Werkzeuge und optionale Hakua-Erinnerungen. Dies ist der [zapabob-Fork](https://github.com/zapabob/Strata) von [Niko1221/Strata](https://github.com/Niko1221/Strata).
 
 [English](README.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [Deutsch](README.de.md) · [Français](README.fr.md) · [Español](README.es.md) · [Português](README.pt-BR.md) · [Polski](README.pl.md)
 
-## Installation (Windows-Vorschau)
+## Windows-Vorschau
 
-1. Lade die [Setup-EXE](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.7/Strata_0.4.0-preview.20261103.7_x64-setup.exe) herunter.
-2. Vergleiche sie vor dem Start mit [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.0-preview.20261103.7/SHA256SUMS.txt). Es gibt keine Windows-Codesignatur. SHA-256 der Setup-EXE: `5e8b8fff82b6e63dea48bf5c1907950911700c9bf30673444e5d2489a87c0336` (113.064.953 Bytes).
-3. Beende Strata vollständig (Infobereich → Strata beenden), falls bereits installiert, und starte die EXE.
-4. Der Installer aktualisiert die App. Er enthält keine CUDA-Engine. Die Qwen3.6-Engine dieses Tags ist separat, ohne Picture-Reader und nicht Ed25519-signiert (`signature` ist null). Die signierte Engine von [v0.4.0-preview.20261101.1](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261101.1) hält weiter PrismML und TurboQuant (Digest `b5e4d5255a48882334b27ab643c22c9c1b54e4580f82b402176a9ca5661bf6f1`, unberührt). Dieses Release ersetzt diese Dateien nicht.
+**0.4.1-beta.1** ist eine manuell installierte Vorschau ohne Windows-Codesignatur. [Release](https://github.com/zapabob/Strata/releases/tag/v0.4.1-beta.1) · [Installationsanleitung](docs/HAKUA_INSTALL.md) · [Prüfungen und Grenzen](docs/HAKUA_RELEASE.md).
 
-Die Klickfolge ist kurz. Downloads, Engine-Aktivierung und Modellladen dauern länger und brauchen Speicherplatz sowie VRAM. Details: [HAKUA_INSTALL.md](docs/HAKUA_INSTALL.md). Gemessene Grenzen: [HAKUA_RELEASE.md](docs/HAKUA_RELEASE.md).
+1. Lade den [Installer](https://github.com/zapabob/Strata/releases/download/v0.4.1-beta.1/Strata_0.4.1-beta.1_x64-setup.exe) herunter und vergleiche seine Prüfsumme mit [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.4.1-beta.1/SHA256SUMS.txt).
+2. Beende Strata einschließlich des Symbols im Infobereich und starte den Installer. Modelle und persönliche Daten gehören außerhalb des Programmordners.
+3. Lade `strata-engine-0.4.1-windows-x86_64-cuda-cuda13.tar.gz` aus dieser Beta-Veröffentlichung und importiere die Datei im Vorbereitungsbildschirm. Der latest-Feed bietet weiterhin die ältere Engine an.
+4. Wähle ein passendes Modell oder **Use a local GGUF** für vorhandene Dateien. Node und Python sind enthalten; ein Systeminterpreter oder Compiler ist nicht nötig.
 
-## Was der Installer enthält
+Die Versionen folgen [SemVer 2.0.0](https://semver.org/): App `0.4.1-beta.1`, native Engine/Control `0.4.1`; unveränderte PrismML-/TurboQuant-Laufzeiten bleiben `0.4.0`. Der übliche Programmordner ist `%LOCALAPPDATA%\Programs\Strata` auf C:, unabhängig vom Modellordner. Eine bestehende Installation kann einen anderen Speicherort behalten.
 
-| Im App-Installer | Separat |
-| --- | --- |
-| GUI / Host, privates Node 24.22.2, Control / CPython 3.12.15, Hakua-memory 0.3.5, Harness | CUDA-Engines getrennt. Qwen3.6-Paket dieses Tags unsigniert. PrismML/TurboQuant bleiben in der signierten Komponente von `v0.4.0-preview.20261101.1` (`b5e4d525…`) |
-| Manuelle App-Updates über diese EXE | Modellgewichte (zehn bis hundert GB) |
+## Vorhandene Modelle verwenden
 
-Für die veröffentlichte App brauchst du kein systemweites Node, Python, pip oder einen Compiler. Upstream-Installer von Niko1221 enthalten diese Fork-Änderungen nicht.
+Bei einem geteilten GGUF genügt die Auswahl eines Teils; Strata prüft den vollständigen Satz. Importierte Gewichte bleiben an ihrem Speicherort. Generische Metadaten wie `Hf` werden durch den Dateinamen ersetzt. Selbst vergebene Namen bleiben bei erneuter Prüfung und nach einem Neustart erhalten.
 
-## Lokales Modell laden
+Vor der Vorbereitung eines Katalogmodells sucht Strata begrenzt im ausgewählten Modellordner und dessen Unterordnern nach einem passenden lokalen Satz. Ein eindeutiger gültiger Treffer wird wiederverwendet. Mehrere Treffer erfordern eine Dateiauswahl. Reguläre Downloads behalten ihre Integritätsprüfung und Wiederaufnahme. Engine und optionale Entwurfsschichten werden getrennt behandelt.
 
-- **Native Strata-Pakete** (unterstützte Qwen-Textpakete): nativen Prepare-/Load-Pfad der App nutzen.
-- **Hikari / PQ2_0-GGUF**: **Load with Strata** (PrismML) nutzen. Kein natives Prepare für PQ2_0.
-- **Gewöhnliche GGUF + TurboQuant-Cache**: Backend `TurboQuant`, K=`FP16`, V=`TURBO2` / `TURBO3` / `TURBO4`, dann neu laden. TurboQuant-K bleibt wegen korrupter Antworten aus.
+Native Qwen-/Swift-Modelle können eine einmalige Pack-Konvertierung benötigen. Der Fortschritt zeigt fertige Schichten, sofern der Packer sie meldet. Beim Fortsetzen eines speichersparenden Packs wird der bereits zugewiesene Platz seiner temporären Datei berücksichtigt. Unterstützte Hikari-/PQ2_0-Dateien verwenden PrismML über **Load with Strata**, ohne native Q2_0-Konvertierung. Für unterstützte gewöhnliche GGUFs bietet TurboQuant K=`FP16` und V=`TURBO2/3/4`; danach neu laden. Siehe [lokale Backends](docs/LOCAL_LLAMA_BACKENDS.md).
 
-PrismML und TurboQuant sind eigene Programme in der Engine-Komponente. Details: [LOCAL_LLAMA_BACKENDS.md](docs/LOCAL_LLAMA_BACKENDS.md). Passende Pakete: ISTA-DASLab → Unsloth → Gyro.
+## Private Gesprächscaches und Erinnerungen
 
-Läuft ein Modell über den Strata-/Supervisor-Pfad, kann Agent diese lokale Instanz für unterstützte Werkzeuge nutzen (z. B. Websuche). Rein native Sitzungen nutzen denselben Pfad nicht.
+Der neue Qwen3.6-Pfad behält den Cache innerhalb desselben authentifizierten Gesprächs. Ein anderes Gespräch oder ein anderer Benutzer übernimmt ihn nicht. Wechsel, Abbruch, Fehler oder fünf Minuten Inaktivität löschen den privaten Cache. Anfragen ohne Gesprächskennung verwenden keinen gespeicherten Cache.
 
-## Hakua memory
+Dieser Pfad erfordert die passende geprüfte Engine-Datei und ihre Bestätigung beim Start. Ältere Engines bleiben gesperrt. Zunächst läuft jeweils eine Anfrage; gemeinsam genutzte Prompt- und Gesprächscaches bleiben deaktiviert. Der mapped expert pack bleibt optional. Die Messungen und noch offenen Prüfungen stehen im [Release-Protokoll](docs/HAKUA_RELEASE.md).
 
-Nach dem Laden eines unterstützten Modells **Hakua memory** in der Seitenleiste öffnen. Lesen und Speichern sind getrennt und werden pro Anfrage zurückgesetzt.
+**Hakua memory** in der Seitenleiste bietet getrennte Zustimmung zum Lesen und Speichern je Nachricht. PrismML/TurboQuant startet dafür den eigenen Server mit Authentifizierung und privaten Caches neu; beende aktive Anfragen vorher. [Anleitung](serve/MEMORY_HARNESS.md).
 
-- Nativ: Schlüssel aus dem Dialog unter About → Settings einfügen und auf der Gedächtnisseite markieren.
-- PrismML / TurboQuant: die App liefert den lokalen Schlüssel; vor dem ersten Öffnen laufende Anfragen beenden.
+## Komponenten und Grenzen
 
-Anleitung: [MEMORY_HARNESS.md](serve/MEMORY_HARNESS.md). Hermes-SOUL/MEMORY-Werkzeuge sind vom Chat getrennt und für die Grundnutzung nicht nötig.
+Desktop/Host: `0.4.1-beta.1`; native Engine/Control: `0.4.0`; Node: `24.22.2`; CPython: `3.12.15`; Hakua-memory: `0.3.5`. Upstream-Referenz: `ffa80d73` / `0.2.10`.
 
-## Versionen
+Die signierte CUDA-/PrismML-/TurboQuant-Komponente stammt weiterhin aus [v0.4.0-preview.20261101.1](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261101.1). Die separate experimentelle Qwen3.6-Komponente ist unsigniert. Dieser Installer enthält keine CUDA-Engine. Signierte automatische App-Updates sind nicht qualifiziert.
 
-| | |
-| --- | --- |
-| GUI / Product | `0.4.0-preview.20261103.7` |
-| Engine / Control | `0.4.0` (CUDA sm_120) |
-| Hakua-memory | `0.3.5` |
-| Upstream-Freeze | `ffa80d73` · 0.2.10 |
-
-Release: [v0.4.0-preview.20261103.7](https://github.com/zapabob/Strata/releases/tag/v0.4.0-preview.20261103.7). Installer und Qwen3.6-Engine-Paket dieses Tags sind nicht signiert. Der Ed25519-Feed und die signierte Engine von `v0.4.0-preview.20261101.1` bleiben. Automatische signierte App-Updates sind nicht qualifiziert; aktualisiere mit diesem Installer. Der Installer enthält keine CUDA-Engine. Das Qwen3.6-Paket hat keinen Picture-Reader und `signature` ist null. PrismML und TurboQuant bleiben in der signierten Komponente. Hauptlinie: Qwen3.6-35B-A3B UD-Q4_K_XL, Context 65536, FP32-KV, MTP 2, Prefill auto. Neue Wege sind opt-in. Nicht angewendete Einstellungen und Private-Cache-Anfragen werden vor dem Start abgelehnt. Mapped expert pack nur bei Anfrage und Engine-SHA-256 `907341c74d5a9f26c784e4aaad3460e376d4cabd84635c5d032879c59b08d150`, `64226fde7905821148c78b7de85ede4d291c4df8184d80866dccba014d7c02b7`, `6fe110650940d0c19f09909d769393769650045e6bc6eab29ccc49734dbcab29`, `dd53df07789e0fefcb87e33acab54f5bfe1faf312ef6bad515924736b715c5b5` oder `512d7f8bba66b57fbe0f8b90807825d3b3172a86dd039452bc29e685ca27d046`. Der ältere Digest bleibt erlaubt. Standard bleibt die alte Host-Arena. T04-Adoption ist NOT_DECIDED. Gepaarte Speed-Checks T06/T07/T08 wurden nicht ausgeführt. Startzeit und Token-Geschwindigkeit sind nicht gemessen. Der CUDA-Spill-Guard ist gegen die geprüfte Baseline nicht bestanden. Auf einem 32-GB-PC kann UD-Q4_K_XL vor dem Start abgelehnt werden, wenn der freie physische RAM die legacy 18,75-GiB-Arena plus Reserve nicht hält. Das ist keine Messung, dass das Modell in 16 GB VRAM passt.
-
-## Grenzen (gemessene Vorschau)
-
-Windows x64, NVIDIA RTX 50 / CUDA sm_120, geprüft auf RTX 5060 Ti. Nativer Text ist enthalten. Native Bildeingabe und die separate native DeepSeek-Engine fehlen. Andere GPUs und Betriebssysteme brauchen eigene Pakete. Modelle und persönliche Erinnerungen außerhalb des Programmordners belassen. Keine persönlichen Erinnerungen, Schlüssel oder vollständigen Gewichte in der Release.
-
-Spin(8) / Triality / Query-v3 / Bonsai bleiben optionale Experimente. Keine allgemeine Geschwindigkeits- oder Qualitätszusage.
+Die Windows-x64-Prüfungen beziehen sich auf RTX 5060 Ti, CUDA sm_120 und 32 GB RAM. Andere GPUs und Betriebssysteme, native Bildeingabe und eine separate native DeepSeek-Engine sind nicht qualifiziert. Die alte Qwen3.6-Host-Arena kann etwa 18,7 GiB plus Reserve verlangen; 32 GB RAM garantieren keinen Start. Ein kurzer erfolgreicher Test bei 131.072 Kontext-Token bestätigt keine vollständige Kontextauslastung oder Qualität. TurboQuant-K-Modi bleiben nach fehlgeschlagenen Qualitätstests deaktiviert. Spin(8), Triality, Query-v3 und Bonsai sind optionale Experimente. Geschwindigkeit und Ressourcenbedarf hängen vom Modell und Computer ab.
 
 ## Entwicklung
+
+[Modellreferenz](docs/AI_REFERENCE.md) · [Build](packaging/README.md) · [Mitwirken](CONTRIBUTING.md) · [Sicherheit](SECURITY.md)
 
 ```sh
 python -m pytest tests/terminal tests/test_hakua_hermes_memory_stack.py
@@ -67,6 +50,4 @@ npm --prefix apps/host test
 npm --prefix apps/host run typecheck
 ```
 
-[Models](docs/MODELS.md) · [Build](packaging/README.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Issues](https://github.com/zapabob/Strata/issues)
-
-MIT-Strata-Fork. Hakua-memory und Modellgewichte haben eigene Lizenzen. Credits bleiben bei Autoren und Upstream. Der optionale ~480-KB-Kontrollvektor bleibt standardmäßig aus unter [Qwen Community License 1.0](data/experimental-speed-projection/LICENSE).
+Strata steht unter MIT. Modellgewichte, Hakua-memory und Abhängigkeiten behalten ihre eigenen Lizenzen und Hinweise. Der optionale kleine Steuervektor ist standardmäßig aus und unterliegt der [Qwen Community License 1.0](data/experimental-speed-projection/LICENSE).

@@ -18,6 +18,10 @@ test('the mark moves with the prompt read and with generation, and is null when 
 });
 
 test('the host wires it in and the local profile lifts the 300 s stream-idle timer', () => {
-  assert.match(readFileSync(new URL('../server/index.mjs', import.meta.url), 'utf8'), /engineProgress: instanceId => engineProgressMark\(/);
+  const host = readFileSync(new URL('../server/index.mjs', import.meta.url), 'utf8');
+  const progress = host.slice(host.indexOf('engineProgress: instanceId =>'), host.indexOf('onPlan:', host.indexOf('engineProgress: instanceId =>')));
+  assert.match(progress, /engineProgressMark\(nativeHit\)/);
+  assert.match(progress, /supervisorAgentRow\(\)/);
+  assert.match(progress, /engineProgressMark\(\{ metrics: \{ live \} \}\)/);
   assert.match(readFileSync(new URL('../server/agent/profile.mjs', import.meta.url), 'utf8'), /streamIdleTimeoutMs: 60 \* 60_000/);
 });

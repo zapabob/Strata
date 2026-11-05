@@ -127,6 +127,18 @@ class StepWords(unittest.TestCase):
 
 
 class CombinedFigure(unittest.TestCase):
+    def test_packing_reports_written_layers_not_download_bytes(self):
+        lines = ["=== Step 6: preparing model ===", "> python tools/iq_pack.py --experts-bin",
+                 "[pack-progress] 12/48 layers 1000/4000 bytes"]
+        progress = strata_mcp.install_progress(lines)
+        out = strata_mcp.combined_progress(progress, {"folder": None, "total_gb": 0})
+        self.assertEqual(out["phase"], "pack")
+        self.assertEqual(out["packing"]["layers_done"], 12)
+        self.assertEqual(out["packing"]["percent"], 25)
+        self.assertNotIn("download", out)
+        later = strata_mcp.install_progress(lines + ["=== Step 7: saving settings ==="])
+        self.assertNotIn("packing", later)
+
     def test_a_part_file_the_pieces_filled_ahead_is_not_a_finished_download(self):
         """The parallel download writes the last pieces early, so the .part is full length while the pieces done are 50%: the log's
         figure is the truth (the bar used to jump to 99%)."""

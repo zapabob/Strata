@@ -10490,9 +10490,11 @@ def main() -> int:
         not prepared_done(model, models_dir) else 0.0
     margin = 2 if mtp_have else 8                      # working room: a guess, not bytes that will be written
     mtp_fetch = 5.2 if (not mtp_have and not ready and a.mtp != "off" and getattr(a, "drafter", None) != "dflash2") else 0.0      # the draft layer's tensors step 6 fetches (strata_control.discovery.MTP_FETCH_GB)
+    from strata_control.pack_space import remaining_pack_gb
+    low_ram_pack_gb = remaining_pack_gb(pack_now, MODELS[model]["arena_gb"] + 1) if low_ram and not q2_avx and not pack_bin else 0
     real = to_fetch + prep_gb + mtp_fetch + \
         (40 if q2_avx and not pack_bin else 0) + (1 if vision != "none" else 0) + \
-        (MODELS[model]["arena_gb"] + 1 if low_ram and not q2_avx and not pack_bin else 0)
+        low_ram_pack_gb
     need = real + margin
     room = room_for_setup_files(models_dir, data, a.gguf_dir)
     free_now = free_gb(room)

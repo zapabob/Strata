@@ -284,7 +284,7 @@ export async function preflight({config,modelPath}) {
   return {binary,backend,runtime};
 }
 
-export async function start({ modelId, modelPath, port = 8080, config, hardware, timeoutMs = 120_000, privateMemory = false }) {
+export async function start({ modelId, modelPath, port = 8080, config, hardware, timeoutMs = 120_000, privateMemory = false, beforeStart }) {
   const ordinaryArgs = buildArgs({ modelPath, config, hardware, port });
   const args = privateMemory ? privateLlamaArgs(ordinaryArgs) : ordinaryArgs;
   const {binary,backend,runtime}=await preflight({config,modelPath});
@@ -292,6 +292,7 @@ export async function start({ modelId, modelPath, port = 8080, config, hardware,
     return status();
   }
   if(privateMemory && !['PrismML','TurboQuant'].includes(backend))throw new Error('A verified local memory runtime is required.');
+  await beforeStart?.();
   if (child) await stop();
   lastStart={modelId,modelPath,port,config:structuredClone(config),hardware:structuredClone(hardware),timeoutMs};
   memoryMode=privateMemory;
@@ -354,10 +355,10 @@ export async function start({ modelId, modelPath, port = 8080, config, hardware,
   try {
     await waitForHealth(port, timeoutMs, launched, () => spawnError, privateKey || config.serving?.apiKey || '');
   } catch (err) {
+    await stop();
     state.status = 'error';
     state.error = err.message;
     hubRef?.send('engine-status', status());
-    await stop();
     throw err;
   }
 
@@ -401,10 +402,8 @@ export async function stop() {
 }
 
 export async function restart(opts) {
-  buildArgs(opts);
-  await preflight(opts);
-  await stop();
-  await new Promise((r) => setTimeout(r, 400));
+  // start validates the complete runtime before stopping either engine. Hash
+  // every launch, once: repeated verification here made one load do triple I/O.
   return start(opts);
 }
 

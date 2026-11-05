@@ -41,8 +41,9 @@ export function useDownloadEta(download: { done_gb?: number; remaining_gb?: numb
 /** What the progress UI reads from an install job's `install` object: the parts it is downloading (the model's files and,
  *  when the job adds it, the engine) summed into ONE count. A part is {kind, name, done_gb, total_gb, state}. Without `parts`
  *  the job's combined `download` fields ({done_gb, total_gb, remaining_gb, percent}) are used as they are. */
-export interface InstallParts { parts?: { done_gb?: number; total_gb?: number; state?: string }[]; download?: { done_gb?: number; total_gb?: number; remaining_gb?: number; percent?: number; file?: string } }
+export interface InstallParts { phase?: string; parts?: { done_gb?: number; total_gb?: number; state?: string }[]; download?: { done_gb?: number; total_gb?: number; remaining_gb?: number; percent?: number; file?: string } }
 export function installProgress(install: InstallParts | undefined): { done_gb: number; total_gb: number; remaining_gb: number; percent: number; file?: string } | undefined {
+  if(install?.phase && ['pack','draft','tokenizer','settings'].includes(install.phase)) return undefined;
   const parts = (install?.parts ?? []).filter(p => Number.isFinite(p.total_gb) && (p.total_gb ?? 0) > 0 && p.state !== 'skipped' && p.state !== 'current');
   if (parts.length) {
     const total = parts.reduce((n, p) => n + (p.total_gb ?? 0), 0);
@@ -50,7 +51,7 @@ export function installProgress(install: InstallParts | undefined): { done_gb: n
     return { done_gb: done, total_gb: total, remaining_gb: Math.max(0, total - done), percent: Math.min(99, Math.floor(100 * done / total)), file: install?.download?.file };
   }
   const d = install?.download;
-  if (d && Number.isFinite(d.done_gb) && Number.isFinite(d.total_gb)) return { done_gb: d.done_gb!, total_gb: d.total_gb!, remaining_gb: Number.isFinite(d.remaining_gb) ? d.remaining_gb! : Math.max(0, d.total_gb! - d.done_gb!), percent: d.percent ?? 0, file: d.file };
+  if (d && Number.isFinite(d.done_gb) && Number.isFinite(d.total_gb) && d.total_gb! > 0) return { done_gb: d.done_gb!, total_gb: d.total_gb!, remaining_gb: Number.isFinite(d.remaining_gb) ? d.remaining_gb! : Math.max(0, d.total_gb! - d.done_gb!), percent: d.percent ?? 0, file: d.file };
   return undefined;
 }
 

@@ -24,6 +24,7 @@ export function NativeTuneBadge({ model, resourceProfile, vision }: { model: str
         catch (e) { setError(e instanceof Error ? e.message : String(e)); }
         finally { setBusy(false); }
     }
+    if(status?.available===false)return <p className="small muted" role="status">{tr(status.reason ?? 'Tuning is unavailable for these settings.')}</p>;
     if (!status || (!status.active && !status.last_active)) return null;
     const active = status.active;
     return <p className="native-tune-line" data-tuning-active={!!active} role="status"><Icon name="gauge" size={15}/><span>

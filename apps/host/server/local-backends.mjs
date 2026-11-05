@@ -5,8 +5,8 @@ import {dirname,join,resolve,relative,isAbsolute} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 export const LOCAL_BACKENDS=Object.freeze({
- PrismML:{id:'prism',repository:'https://github.com/PrismML-Eng/llama.cpp.git',commit:'73bfe6cc485554822f80c473a3c0c4f25e80f41b'},
- TurboQuant:{id:'turboquant',repository:'https://github.com/TheTom/llama-cpp-turboquant.git',commit:'643956891dfdf51aecdbd05ca508dd21e21e8195'},
+ PrismML:{id:'prism',packageVersion:'0.4.0',repository:'https://github.com/PrismML-Eng/llama.cpp.git',commit:'73bfe6cc485554822f80c473a3c0c4f25e80f41b'},
+ TurboQuant:{id:'turboquant',packageVersion:'0.4.0',repository:'https://github.com/TheTom/llama-cpp-turboquant.git',commit:'643956891dfdf51aecdbd05ca508dd21e21e8195'},
 });
 export function localBackendChoice(expert=[]) {
  const selected=expert.find(item=>item.id==='runtime.backend')?.value??'Automatic';
