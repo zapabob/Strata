@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 import hashlib
 import json
 import logging
+import math
 from pathlib import Path
 import subprocess
 import sys
@@ -52,7 +53,26 @@ def available_memory() -> dict[str, int]:
 class PressurePolicy:
     """Require continuous low RAM; inadequate commit stops immediately."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        physical_floor_bytes: int = 256 * 1024**2,
+        commit_floor_bytes: int = 2 * 1024**3,
+        physical_grace_seconds: float = 30,
+    ) -> None:
+        for value in (physical_floor_bytes, commit_floor_bytes):
+            if type(value) is not int or value <= 0:
+                raise ValueError("memory floors must be positive byte counts")
+        if (
+            isinstance(physical_grace_seconds, bool)
+            or not isinstance(physical_grace_seconds, (int, float))
+            or not math.isfinite(physical_grace_seconds)
+            or physical_grace_seconds < 0
+        ):
+            raise ValueError("physical grace must be a finite non-negative duration")
+        self.physical_floor_bytes = physical_floor_bytes
+        self.commit_floor_bytes = commit_floor_bytes
+        self.physical_grace_seconds = physical_grace_seconds
         self.low_since: float | None = None
 
     def observe(self, sample: dict[str, int], now: float) -> str | None:
@@ -60,14 +80,15 @@ class PressurePolicy:
         for name in ("available_physical_bytes", "available_commit_bytes"):
             if type(sample.get(name)) is not int or sample[name] < 0:
                 raise ValueError(f"invalid memory telemetry: {name}")
-        if sample["available_commit_bytes"] < 2 * 1024**3:
+        if sample["available_commit_bytes"] < self.commit_floor_bytes:
             return "commit_memory_pressure"
-        if sample["available_physical_bytes"] >= 256 * 1024**2:
+        if sample["available_physical_bytes"] >= self.physical_floor_bytes:
             self.low_since = None
-        elif self.low_since is None:
-            self.low_since = now
-        elif now - self.low_since >= 30:
-            return "physical_memory_pressure"
+        else:
+            if self.low_since is None:
+                self.low_since = now
+            if now - self.low_since >= self.physical_grace_seconds:
+                return "physical_memory_pressure"
         return None
 
 
@@ -78,11 +99,12 @@ def run_owned(
     *,
     timeout_seconds: int,
     sample: Callable[[], dict[str, int]] = available_memory,
+    policy: PressurePolicy | None = None,
 ) -> dict:
     """Observe one owned process; preserve trace/result on failure and reap it."""
     if not command or type(timeout_seconds) is not int or timeout_seconds <= 0:
         raise ValueError("explicit command and positive timeout required")
-    policy = PressurePolicy()
+    policy = policy if policy is not None else PressurePolicy()
     result = {
         "schema": "strata-native-resource-run-v1",
         "status": "starting",
@@ -91,6 +113,11 @@ def run_owned(
         "owned_child_reaped": False,
         "command": command,
         "started_utc": datetime.now(timezone.utc).isoformat(),
+        "memory_policy": {
+            "physical_floor_bytes": policy.physical_floor_bytes,
+            "commit_floor_bytes": policy.commit_floor_bytes,
+            "physical_grace_seconds": policy.physical_grace_seconds,
+        },
     }
     process = None
     # Reserve BOTH artifacts before a process can start. Never overwrite evidence.

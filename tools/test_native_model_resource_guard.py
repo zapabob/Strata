@@ -41,6 +41,59 @@ def test_commit_pressure_is_immediate() -> None:
     )
 
 
+def test_desktop_policy_stops_before_observed_low_ram() -> None:
+    """The 362 MB observation must not pass a desktop diagnostic's reserve."""
+    policy = PressurePolicy(
+        physical_floor_bytes=3 * 1024**3,
+        commit_floor_bytes=4 * 1024**3,
+        physical_grace_seconds=2,
+    )
+    low = {"available_physical_bytes": 362352640, "available_commit_bytes": 8 * 1024**3}
+    assert policy.observe(low, 0) is None
+    assert policy.observe(low, 2) == "physical_memory_pressure"
+    assert policy.observe(dict(low, available_physical_bytes=3 * 1024**3), 3) is None
+    assert policy.observe(low, 4) is None
+    assert policy.observe(low, 6) == "physical_memory_pressure"
+
+
+def test_zero_grace_stops_on_first_low_sample() -> None:
+    policy = PressurePolicy(physical_grace_seconds=0)
+    assert policy.observe(
+        {"available_physical_bytes": 0, "available_commit_bytes": 8 * 1024**3}, 0
+    ) == "physical_memory_pressure"
+
+
+@pytest.mark.parametrize("settings", [
+    {"physical_floor_bytes": 0}, {"physical_floor_bytes": True},
+    {"commit_floor_bytes": -1}, {"commit_floor_bytes": 1.5},
+    {"physical_grace_seconds": -1}, {"physical_grace_seconds": float("nan")},
+    {"physical_grace_seconds": float("inf")}, {"physical_grace_seconds": True},
+])
+def test_invalid_pressure_policy(settings: dict) -> None:
+    with pytest.raises(ValueError):
+        PressurePolicy(**settings)
+
+
+def test_custom_policy_reaps_only_owned_child(tmp_path: Path) -> None:
+    command = [sys.executable, "-B", "-c", "import time; time.sleep(60)"]
+    policy = PressurePolicy(physical_floor_bytes=3 * 1024**3, physical_grace_seconds=0)
+    with subprocess.Popen(command, creationflags=subprocess.CREATE_NO_WINDOW) as peer:
+        try:
+            result = run_owned(
+                command, tmp_path / "trace.jsonl", tmp_path / "result.json",
+                timeout_seconds=10, policy=policy,
+                sample=lambda: {"available_physical_bytes": 362352640,
+                                "available_commit_bytes": 8 * 1024**3},
+            )
+            assert result["reason"] == "physical_memory_pressure"
+            assert result["owned_child_reaped"]
+            assert result["memory_policy"]["physical_floor_bytes"] == 3 * 1024**3
+            assert peer.poll() is None
+        finally:
+            peer.terminate()
+            peer.wait(timeout=5)
+
+
 @pytest.mark.parametrize("kind", ["pressure", "telemetry"])
 def test_owned_child_abort_preserves_other_child(tmp_path: Path, kind: str) -> None:
     """Exercise real Windows process handles; no name/PID lookup can target peer."""
