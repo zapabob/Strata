@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "purpose": "CUDA compiler comparison inputs; no performance qualification",
+  "status": "BUILD_BASELINE_ONLY",
+  "comparison": {
+    "source_policy": "same committed HEAD and clean tracked diff in both arms",
+    "dependency_policy": "same ggml SHA and clean tracked diff",
+    "ggml_sha": "3cf03257f219afbe7334045ff7c6a06ac68c627d",
+    "driver_policy": "same installed driver; no driver change authorised",
+    "driver_change_arms": ["old-driver-cuda13.3", "new-driver-cuda13.3", "new-driver-cuda13.5"],
+    "toolkits": ["13.3.73", "13.5.37"],
+    "generator": "Visual Studio 17 2022",
+    "configuration": "Release",
+    "architecture": "120",
+    "compile_jobs": 1,
+    "build_targets": ["strata", "strata-q36", "strata-dsv41"],
+    "cpu_test_targets": ["q36_expert_store_test", "q36_transfer_lifetime_test"],
+    "baseline_deltas": {
+      "STRATA_BUILD_DSV41": "ON in both arms; existing release cache was OFF",
+      "GGML_BMI2": "CMake forces OFF with DSV41; same in both arms"
+    }
+  },
+  "runtime": {
+    "status": "NOT_RUN",
+    "reason": "GPU ownership and controller clearance required before any CUDA probe or model load",
+    "families": ["qwen36", "qwen38", "deepseek41"],
+    "context_tokens": [98304, 131072],
+    "sessions": 1,
+    "gpus": 1,
+    "router_top_k": 8,
+    "kv_baseline": "FP32",
+    "candidate_kv_formats": ["FP16", "Q8_0", "NVFP4"],
+    "model_sha256": null,
+    "pack_sha256": null,
+    "pack_identity": null,
+    "layer_crc": null,
+    "expert_quantisation": null,
+    "mtp": null,
+    "unset_reason": "must freeze actual model/pack identity, effective quantisation, MTP and family-specific settings before runtime comparison; no model metadata collected in P0-A"
+  },
+  "resource_gates": {
+    "available_physical_ram_floor_bytes": 3221225472,
+    "commit_headroom_floor_bytes": 4294967296,
+    "count_shared_gpu_memory_as_dedicated_vram": false,
+    "count_pagefile_or_mapped_file_as_available_ram": false
+  }
+}
