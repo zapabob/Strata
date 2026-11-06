@@ -1,4 +1,6 @@
 {
+  "chrec01": "The reply was cut off. The partial answer is kept.",
+  "chrec02": "Response interrupted. Ask again to retry; the partial answer is kept.",
   "hk011": "The model did not return a useful summary. No memory was saved.",
   "hk001": "Generating…",
   "hk002": "Stopped. A completed summary may already have been saved.",

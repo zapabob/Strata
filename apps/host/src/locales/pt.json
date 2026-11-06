@@ -1,4 +1,6 @@
 {
+  "chrec01": "A resposta foi interrompida. A parte já recebida foi mantida.",
+  "chrec02": "A resposta foi interrompida. Pergunte novamente para tentar outra vez; a parte já recebida foi mantida.",
   "hk011": "O modelo não retornou um resumo útil. Nenhuma memória foi salva.",
   "hk001": "Gerando…",
   "hk002": "Interrompido. Um resumo já concluído pode ter sido salvo.",

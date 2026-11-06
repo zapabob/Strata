@@ -1,4 +1,6 @@
 {
+  "chrec01": "La respuesta se ha interrumpido. Se conserva la parte recibida.",
+  "chrec02": "La respuesta se ha interrumpido. Vuelve a preguntar para reintentarlo; se conserva la parte recibida.",
   "hk011": "El modelo no devolvió un resumen útil. No se guardó ningún recuerdo.",
   "hk001": "Generando…",
   "hk002": "Detenido. Es posible que ya se haya guardado un resumen completado.",

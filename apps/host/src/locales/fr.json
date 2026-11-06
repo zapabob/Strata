@@ -1,4 +1,6 @@
 {
+  "chrec01": "La réponse a été interrompue. La partie déjà reçue est conservée.",
+  "chrec02": "La réponse a été interrompue. Posez à nouveau votre question pour réessayer ; la partie déjà reçue est conservée.",
   "hk011": "Le modèle n’a pas renvoyé de résumé utile. Aucun souvenir n’a été sauvegardé.",
   "hk001": "Réponse en cours…",
   "hk002": "Arrêté. Un résumé déjà terminé peut avoir été sauvegardé.",

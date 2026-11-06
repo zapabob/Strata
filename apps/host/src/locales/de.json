@@ -1,4 +1,6 @@
 {
+  "chrec01": "Die Antwort wurde unterbrochen. Der bisherige Teil bleibt erhalten.",
+  "chrec02": "Die Antwort wurde unterbrochen. Fragen Sie erneut, um es noch einmal zu versuchen; der bisherige Teil bleibt erhalten.",
   "hk011": "Das Modell hat keine brauchbare Zusammenfassung geliefert. Es wurde keine Erinnerung gespeichert.",
   "hk001": "Antwort wird erstellt…",
   "hk002": "Gestoppt. Eine bereits fertige Zusammenfassung könnte gespeichert sein.",
