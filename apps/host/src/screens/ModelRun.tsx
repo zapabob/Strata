@@ -17,6 +17,7 @@ import { FloatingMenu } from '../components/FloatingMenu';
 import { ModelsScreen } from './Models';
 import { configDocument, configPatch, readConfig, type ConfigDocument } from '../lib/config';
 import { pinStrataEngineBackend } from '../lib/strata-engine-backend';
+import { RUN_VARIANT_KEY, readLastLocalModel, rememberRunSelection, resolveLocalRunSelection, runModelSettings, type RunModelDraft } from '../lib/run-selection';
 import { contextTokens, estimate, execution } from '../lib/experience';
 import { demoRunExperience, planMemory } from '../lib/run-memory';
 import { computerIdentity, configIdentity, defaultProfileKey, emptyProfiles, readProfiles, recommendedConfig, resourceConfig, RUN_PROFILES_KEY, saveProfile, type ComputerUse, type RunProfiles } from '../lib/run-profiles';
@@ -28,7 +29,7 @@ import type { ImageModelChoice, RuntimeModels, RuntimeModel } from '../lib/types
 import { useNative, nativeSettled, subscribeNative } from '../lib/native';
 import { NativeModels } from '../components/NativeModels';
 import { NativeLocalModel } from '../components/NativeLocalModel';
-import { navigate, parseLocation } from '../lib/router';
+import { navigate, replaceRoute, useLocation } from '../lib/router';
 type Issue = {
     level: 'error' | 'warn';
     message: string;
@@ -38,28 +39,39 @@ export function ModelRunScreen() {
     const native = useNative();
     const library = useStore(s => s.library);
     const settled = useSyncExternalStore(subscribeNative, nativeSettled);
-    const location = parseLocation(window.location.hash), entry = location.param;
-    const localId = entry === 'local' ? location.query.get('variant') : null;
-    const savedLocal = !!localId && !!library?.variants.some(v => v.id === localId && v.local);
+    const location = useLocation(), entry = location.param;
+    const explicitVariant = location.query.get('variant');
+    let lastLocal: string | null = null;
+    try { lastLocal = readLastLocalModel(localStorage, sessionStorage); }
+    catch { /* A blocked browser store still permits explicit links. */ }
+    const localSelection = resolveLocalRunSelection(library?.variants ?? null, explicitVariant, lastLocal);
+    const localId = entry === 'local' && localSelection.status === 'selected' ? localSelection.id : null;
+    const savedLocal = !!localId;
+    const explicitSelection = explicitVariant !== null;
     const [other, setOther] = useState(entry === 'local' || entry === 'local-import'), [importFirst, setImportFirst] = useState(entry === 'local-import');
     const [llamaPath, setLlamaPath] = useState<string | null>(null);
     const [llamaBackend, setLlamaBackend] = useState<string | undefined>(undefined);
+    useEffect(() => {
+        if (entry === 'local' && explicitVariant === null && localId)
+            replaceRoute('models', 'local', { ...Object.fromEntries(location.query), variant: localId });
+    }, [entry, explicitVariant, localId]);
     // Wait before choosing an automatic model (#3740). An explicitly selected, registered
     // local GGUF already has an identity and can open while native discovery continues.
-    if ((!savedLocal && !native && !settled) || (localId && !library))
+    if ((!savedLocal && !explicitSelection && !native && !settled) || (entry === 'local' && !library))
         return <div className="main__body"><div className="wrap stack" role="status" aria-label={tr("Loading…")}><div className="skel" style={{ height: 20, width: '60%' }}/><div className="skel" style={{ height: 20, width: '80%' }}/><div className="skel" style={{ height: 20, width: '70%' }}/></div></div>;
     // Fork: keep llama.cpp alternative path picker (F11 / local GGUF).
-    if (native && other && llamaPath === null && !savedLocal)
+    if (native && other && llamaPath === null && !savedLocal && !explicitSelection)
         return <NativeLocalModel onBack={() => { setOther(false); setImportFirst(false); }} onAlternative={(path, backend) => { setLlamaPath(path); setLlamaBackend(backend); }}/>;
-    if (native && !other && !savedLocal)
+    if (native && !other && !savedLocal && !explicitSelection)
         return <NativeModels onOtherModels={() => setOther(true)} onImport={() => { setImportFirst(true); setOther(true); }}/>;
-    return <><LegacyModelRunScreen importFirst={!savedLocal && (importFirst || llamaPath !== null)} importPath={llamaPath ?? undefined} preferredBackend={llamaBackend} initialVariant={location.query.get('variant') ?? undefined}/>{tr(other || savedLocal ? <button className="st-btn native-return" onClick={() => { setLlamaPath(null); setLlamaBackend(undefined); setOther(false); navigate('models'); }}>{tr("Back")}</button> : null)}</>;
+    return <><LegacyModelRunScreen importFirst={!savedLocal && (importFirst || llamaPath !== null)} importPath={llamaPath ?? undefined} preferredBackend={llamaBackend} requestedVariant={localId ?? explicitVariant ?? undefined} selectionMissing={entry === 'local' && localSelection.status === 'missing'}/>{tr(other || savedLocal || explicitSelection ? <button className="st-btn native-return" onClick={() => { setLlamaPath(null); setLlamaBackend(undefined); setOther(false); navigate('models'); }}>{tr("Back")}</button> : null)}</>;
 }
-function LegacyModelRunScreen({ importFirst = false, importPath, preferredBackend, initialVariant }: {
+function LegacyModelRunScreen({ importFirst = false, importPath, preferredBackend, requestedVariant, selectionMissing = false }: {
     importFirst?: boolean;
     importPath?: string;
     preferredBackend?: string;
-    initialVariant?: string;
+    requestedVariant?: string;
+    selectionMissing?: boolean;
 }) {
     const engine = useStore(s => s.engine), hardware = useStore(s => s.hardware), library = useStore(s => s.library);
     const runtime = useStore(s => s.runtime);
@@ -75,15 +87,17 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
     const imageUnavailable = imageChoice !== 'off' && !imageModels?.generationAvailable;
     const rawDraft = useStore(s => s.configDraft), connected = useStore(s => s.connection === 'live');
     const lifecycle = useLifecycle();
+    const initialDraftOwner = useRef<string | null>(null);
     const [selected, setSelected] = useState(() => {
-        if (initialVariant)
-            return initialVariant;
         try {
-            return sessionStorage.getItem('strata.run-variant.v1') ?? '';
+            const previous = sessionStorage.getItem(RUN_VARIANT_KEY);
+            initialDraftOwner.current = previous;
+            // The existing session draft belongs to this ID until chooseModel transfers it.
+            if (previous && library?.variants.some(v => v.id === previous))
+                return previous;
         }
-        catch {
-            return '';
-        }
+        catch { /* Use the explicit route when session storage is blocked. */ }
+        return requestedVariant ?? '';
     });
     const [expert, setExpert] = useState(false);
     const [allowMultiple, setAllowMultiple] = useState(false);
@@ -96,17 +110,14 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
     const [profileMenu, setProfileMenu] = useState(false);
     const profileTrigger = useRef<HTMLButtonElement>(null);
     const familySelections = useRef(new Map<string, string>());
-    const familyDrafts = useRef(new Map<string, {
-        variantId: string;
-        draft: string | null;
-        profile: string;
-        image: ImageModelChoice;
-    }>());
+    const modelDrafts = useRef(new Map<string, RunModelDraft>());
+    const importBackendTarget = useRef<string | null>(null);
     const [profileName, setProfileName] = useState('Everyday');
     const [makeDefault, setMakeDefault] = useState(false);
     const [updateExisting, setUpdateExisting] = useState(false);
     const [activeProfile, setActiveProfile] = useState('current');
     const [profiles, setProfiles] = useState<RunProfiles>(emptyProfiles);
+    const [profilesReady, setProfilesReady] = useState(false);
     const [profileError, setProfileError] = useState('');
     const [issues, setIssues] = useState<Issue[]>([]);
     const [pending, setPending] = useState(false);
@@ -134,6 +145,8 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
     const config = parsed.config;
     const running = library?.variants.find(v => v.id === library.loaded);
     const model = library?.variants.find(v => v.id === selected) ?? running ?? library?.variants.find(v => v.state === 'installed') ?? library?.variants[0];
+    const missingVariant = selectionMissing || !!library && requestedVariant !== undefined && !library.variants.some(v => v.id === requestedVariant);
+    const selectionPending = requestedVariant !== undefined && requestedVariant !== model?.id;
     const computer = hardware ? computerIdentity(hardware) : '';
     const localProfiles = profiles.profiles.filter(p => p.variantId === model?.id && p.hardware === computer);
     const selectedProfile = localProfiles.find(p => p.id === activeProfile);
@@ -156,18 +169,25 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
     const unsupportedContext = !!model && ctx > model.contextMax;
     const invalid = expert && deviceChoice === 'custom' && !gpuIds.length || !!parsed.error || issues.some(i => i.level === 'error') || unsupportedContext;
     useEffect(() => {
-        if (!hardware || !model || !engine || initialized.current)
+        if (!hardware || !model || !engine || initialized.current || missingVariant)
             return;
         initialized.current = true;
         try {
             const stored = readProfiles(localStorage.getItem(RUN_PROFILES_KEY));
             setProfiles(stored);
             const id = stored.defaults[defaultProfileKey(computer, model.id)];
-            const profile = stored.profiles.find(p => p.id === id);
-            if (profile && (rawDraft === null || parsed.config && configIdentity(parsed.config) === configIdentity(profile.config))) {
+            const profile = stored.profiles.find(p => p.id === id && p.variantId === model.id && p.hardware === computer);
+            if (rawDraft !== null && initialDraftOwner.current && initialDraftOwner.current !== model.id) {
+                modelDrafts.current.set(initialDraftOwner.current, { draft: rawDraft, profile: 'current', image: imageChoice });
+                const restored = runModelSettings(model, engine, hardware, stored, computer);
+                setActiveProfile(restored.profile);
+                setConfigDraft(restored.draft);
+                void chooseImage(restored.image);
+            }
+            else if (profile && (rawDraft === null || parsed.config && configIdentity(parsed.config) === configIdentity(profile.config))) {
                 setActiveProfile(profile.id);
                 if (rawDraft === null)
-                    setConfigDraft(JSON.stringify(profile.config, null, 2));
+                    setConfigDraft(JSON.stringify(pinStrataEngineBackend(profile.config, model), null, 2));
                 // Retain an image selection that has not yet been applied.
                 if (imageModels?.selected === imageModels?.applied && (profile.imageModel ?? 'off') !== imageChoice)
                     void chooseImage(profile.imageModel ?? 'off');
@@ -176,18 +196,23 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
         catch (error) {
             setProfileError(error instanceof Error ? error.message : 'Run profiles could not be loaded.');
         }
-    }, [hardware, model?.id, engine, computer, rawDraft]);
+        setProfilesReady(true);
+    }, [hardware, model?.id, engine, computer, rawDraft, missingVariant]);
     useEffect(() => {
-        if (model && (!selected || !library?.variants.some(v => v.id === selected)))
+        if (requestedVariant === undefined && model && (!selected || !library?.variants.some(v => v.id === selected)))
             setSelected(model.id);
-    }, [model?.id, selected, library]);
+    }, [model?.id, selected, library, requestedVariant]);
     useEffect(() => {
-        if (selected)
+        if (selected && model?.id === selected && !missingVariant && !selectionPending)
             try {
-                sessionStorage.setItem('strata.run-variant.v1', selected);
+                rememberRunSelection(model, localStorage, sessionStorage);
             }
             catch { /* Selection remains available for this session. */ }
-    }, [selected]);
+    }, [selected, model?.id, missingVariant, selectionPending]);
+    useEffect(() => {
+        if (requestedVariant !== undefined && !missingVariant && profilesReady && engine && hardware)
+            chooseModel(requestedVariant, undefined, false);
+    }, [requestedVariant, missingVariant, profilesReady, engine, hardware, library]);
     useEffect(() => {
         if (!model || !runtime || placementInitialized.current === model.id)
             return;
@@ -203,16 +228,14 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
     }, [model?.id]);
     // Load with Strata (Hikari PQ2 / TurboQuant): pin bundled PrismML after import lands on the run screen.
     useEffect(() => {
-        if (!preferredBackend || !config || !model?.local)
+        if (!config || !model?.local || selectionPending || missingVariant)
             return;
-        if (preferredBackend !== 'PrismML' && preferredBackend !== 'TurboQuant')
-            return;
-        const pinned = pinStrataEngineBackend(config, model, preferredBackend);
+        const pinned = pinStrataEngineBackend(config, model, importBackendTarget.current === model.id ? preferredBackend : undefined);
         if (pinned !== config)
             update(pinned);
-    }, [preferredBackend, model?.id, model?.local, model?.quant, config?.expert?.['runtime.backend']]);
+    }, [preferredBackend, model?.id, model?.local, model?.quant, config?.expert?.['runtime.backend'], selectionPending, missingVariant]);
     useEffect(() => {
-        if (!config || !model || !connected)
+        if (!config || !model || !connected || selectionPending || missingVariant)
             return;
         let active = true;
         const timer = setTimeout(() => void validateEngine({ ...configPatch(config), variantId: model.id }).then(result => {
@@ -223,11 +246,11 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
                 setIssues([{ level: 'error', message: error.message }]);
         }), 180);
         return () => { active = false; clearTimeout(timer); };
-    }, [text, model?.id, connected]);
+    }, [text, model?.id, connected, selectionPending, missingVariant]);
     useEffect(() => {
         setPlacementPlan(null);
         setPlacementError('');
-        if (!config || !model || !hardware || !connected)
+        if (!config || !model || !hardware || !connected || selectionPending || missingVariant)
             return;
         let active = true;
         const timer = setTimeout(() => {
@@ -244,7 +267,7 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
             });
         }, 180);
         return () => { active = false; clearTimeout(timer); };
-    }, [text, model?.id, deviceChoice, customGpus.join(','), JSON.stringify(runRoles), runtime?.revision, connected, expert, executionMode]);
+    }, [text, model?.id, deviceChoice, customGpus.join(','), JSON.stringify(runRoles), runtime?.revision, connected, expert, executionMode, selectionPending, missingVariant]);
     function loadPatch(doc: ConfigDocument) {
         const patch = configPatch(doc);
         if (!expert || !gpuIds.length)
@@ -284,9 +307,15 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
             void chooseImage('off');
         }
     }
-    function chooseModel(id: string, backendHint?: string) {
-        const hint = backendHint ?? preferredBackend;
+    function chooseModel(id: string, backendHint?: string, syncRoute = true) {
+        const hint = backendHint;
         const next = getState().library?.variants.find(v => v.id === id);
+        if (!next || !engine || !hardware)
+            return;
+        if (backendHint)
+            importBackendTarget.current = id;
+        if (syncRoute)
+            navigate('models', next.local ? 'local' : undefined, { variant: id });
         if (id === model?.id) {
             if (config && model?.local) {
                 const pinned = pinStrataEngineBackend(config, model, hint);
@@ -295,58 +324,15 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
             }
             return;
         }
-        if (model && next && next.family !== model.family) {
-            familyDrafts.current.set(model.family, { variantId: model.id, draft: rawDraft, profile: activeProfile, image: imageChoice });
-            const previous = familyDrafts.current.get(next.family);
-            if (previous?.variantId === id) {
-                setSelected(id);
-                setStage('idle');
-                setIssues([]);
-                setActiveProfile(previous.profile);
-                const restored = previous.draft ? (() => { try { return readConfig(previous.draft); } catch { return null; } })() : null;
-                const pinned = restored ? pinStrataEngineBackend(restored, next, hint) : null;
-                setConfigDraft(pinned ? JSON.stringify(pinned, null, 2) : previous.draft);
-                void chooseImage(previous.image);
-                return;
-            }
-        }
+        if (model)
+            modelDrafts.current.set(model.id, { draft: rawDraft, profile: activeProfile, image: imageChoice });
+        const restored = runModelSettings(next, engine, hardware, profiles, computer, modelDrafts.current.get(id), hint);
         setSelected(id);
         setStage('idle');
         setIssues([]);
-        const profileId = profiles.defaults[defaultProfileKey(computer, id)];
-        let nextConfig: ConfigDocument | null = null;
-        if (profileId) {
-            setActiveProfile(profileId);
-            const profile = profiles.profiles.find(p => p.id === profileId);
-            if (profile) {
-                nextConfig = structuredClone(profile.config);
-                void chooseImage(profile.imageModel ?? 'off');
-            }
-            else if (engine && hardware) {
-                setActiveProfile('current');
-                nextConfig = recommendedConfig(engine, hardware);
-            }
-        }
-        else {
-            setActiveProfile('current');
-            if (engine && hardware) {
-                nextConfig = recommendedConfig(engine, hardware);
-                if (next?.local) {
-                    const k = [1, 2, 4, 8, 16, 32, 64, 96, 128, 256, 512, 1024].filter(k => k * 1024 <= next.contextMax).at(-1) ?? 1;
-                    const context = Math.min(32, k);
-                    nextConfig.beginner.contextLength = `${context}k`;
-                    nextConfig.expert['ctx.length'] = `${context}K`;
-                }
-            }
-        }
-        if (nextConfig) {
-            update(pinStrataEngineBackend(nextConfig, next, hint));
-        }
-        else if (config && next?.local) {
-            const pinned = pinStrataEngineBackend(config, next, hint);
-            if (pinned !== config)
-                update(pinned);
-        }
+        setActiveProfile(restored.profile);
+        setConfigDraft(restored.draft);
+        void chooseImage(restored.image);
     }
     function chooseFamily(family: string) {
         if (!library || family === model?.family)
@@ -455,7 +441,9 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
             setPending(false);
         }
     }
-    if (!engine || !library || !model || !saved)
+    if (missingVariant)
+        return <Screen title={tr("Model")}><ErrorNotice message={tr("Choose an installed model.")}/><code>{requestedVariant}</code><Btn onClick={() => navigate('models')}>{tr("Back")}</Btn></Screen>;
+    if (!engine || !library || !model || !saved || selectionPending)
         return <Screen title={tr("Model")}><p className="small muted">{tr(connected ? 'Loading your models and settings…' : 'Connect the engine to configure a model.')}</p></Screen>;
     const versions = library.variants.filter(v => v.family === model.family || !!v.local);
     const installed = ['loaded', 'installed', 'loading', 'unloading'].includes(model.state) || !!model.installedAt;
@@ -535,7 +523,7 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
       {tr(selectedProfile && profileChanged ? <button role="menuitem" className="menu__item run-settings-action" onClick={() => { setProfileMenu(false); chooseProfile(selectedProfile.id); }}><span className="run-settings-icon"><Icon name="refresh" size={18}/></span>{tr("Restore saved settings")}</button> : null)}
     </FloatingMenu> : null)}
     <Dialog open={libraryOpen} className="run-library-dialog" title={tr("Manage models")} onClose={() => setLibraryOpen(false)}><ModelsScreen embedded familyOverride={model.family} selectedVariant={model.id} contextOverride={ctx} onChoose={id => { chooseModel(id); setLibraryOpen(false); }}/></Dialog>
-    <LocalModelImport open={localModelOpen} directory={library.disk.modelsDir} initialPath={importPath} onClose={() => setLocalModelOpen(false)} onChoose={id => { chooseModel(id, preferredBackend); navigate('models', 'local', { variant: id }); }}/>
+    <LocalModelImport open={localModelOpen} directory={library.disk.modelsDir} initialPath={importPath} onClose={() => setLocalModelOpen(false)} onChoose={id => chooseModel(id, preferredBackend)}/>
     <Dialog open={profileOpen} compact title={tr(updateExisting ? 'Update saved settings' : 'Save settings')} onClose={() => !pending && setProfileOpen(false)} actions={<><Btn disabled={pending} onClick={() => setProfileOpen(false)}>{tr("Cancel")}</Btn><Btn variant="primary" disabled={!profileName.trim() || pending || imagePending || invalid} onClick={() => void storeProfile()}>{tr(pending ? 'Saving…' : updateExisting ? 'Update settings' : 'Save settings')}</Btn></>}><div className="run-save-profile"><label className="input-field"><span>{tr("Name")}</span><input className="st-input" aria-label={tr("Settings name")} maxLength={64} value={profileName} onChange={e => setProfileName(e.target.value)}/></label><p className="small muted">{tr(model.name)} · {tr(ctx / 1024)}{tr("K \u00B7 ")}{tr(use === 'full' ? 'Maximum performance' : 'Room for other apps')}</p><label className="run-default-choice"><input type="checkbox" checked={makeDefault} onChange={e => setMakeDefault(e.target.checked)}/><span>{tr("Use by default for this model")}<small>{tr("On this computer. Restore it whenever you open Models.")}</small></span></label>{tr(profileError ? <ErrorNotice message={profileError}/> : null)}</div></Dialog>
     <DemoTest open={testOpen} onClose={() => setTestOpen(false)} experience={experience}/>
     <Dialog open={discardOpen} compact title={tr("Restore saved settings?")} onClose={() => setDiscardOpen(false)} actions={<><Btn onClick={() => setDiscardOpen(false)}>{tr("Keep editing")}</Btn><Btn onClick={() => { setConfigDraft(null); void chooseImage(imageModels?.applied ?? 'off'); setActiveProfile('current'); setIssues([]); setDiscardOpen(false); }}>{tr("Restore settings")}</Btn></>}><p>{tr("Replace this draft with the settings last saved to the engine.")}</p></Dialog>

@@ -84,6 +84,14 @@ export function navigate(route: Route, param?: string, query?: Record<string, st
   navigateHash(next, route !== 'settings');
 }
 
+/** Canonicalise a restored selection without adding a browser Back/Forward entry. */
+export function replaceRoute(route: Route, param?: string, query?: Record<string, string>): void {
+  const next = locationHref({ route, param: param ?? null, query: new URLSearchParams(query) });
+  if (window.location.hash === next) return;
+  window.history.replaceState(null, '', next);
+  window.dispatchEvent(new Event('hashchange'));
+}
+
 export function closeSettings() {
   const location = parseLocation(window.location.hash);
   location.query.delete('settings');
