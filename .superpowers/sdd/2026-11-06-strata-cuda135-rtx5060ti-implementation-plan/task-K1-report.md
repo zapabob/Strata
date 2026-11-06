@@ -85,3 +85,32 @@ Rollback is a normal revert of implementation commit `494032aee4c20799cda30bb2c9
 ## Standards
 
 Read canonical `C:/Users/downl/_docs/prompts/CLAUDE-FABLE-5.md`, PC/Codex/project AGENTS, task brief and native/KV audits. Applied common engineering, implementation start gate, skill selection, security, LLMOps, C++, Python and TypeScript SOPs; skills `milspec-codex-standard` and `api-and-interface-design`. `codebase-inspection` was inspected but its LOC tooling was inapplicable and was not run. Task brief explicitly selected existing interpreters and prohibited installs, overriding the general uv default. Trust boundaries are config → Host → Python → actual executable → INFO receipts, with no model prompt or credential data in capability probes. The `_docs` companion log records this implementation and links here.
+
+## Fix round 1/5 — Important R1
+
+Review input: `task-K1-review.md`, Important R1, read in full. Exact fix base: `3e772258aa91eae8c38cfe7dd66c214ae4189834`. Fix source head: `6d945e567e41864e19c4541c421f22c8a76055bd`. Status: R1 addressed, source rereview pending; all prior native/GPU/quality limits remain.
+
+The review correctly identified that flag-free default F32 returned before checking the Host-bound expected SHA. Changed only the early return in `q36_verify_kv_args`: the genuine legacy path returns without probing only when both explicit cache requests and a Host expectation are absent. When Host supplies the expected digest, the production function now probes the actual binary and returns the verified capability even with no cache flags. Consequently the existing immediate pre-spawn rehash and pre-READY dtype/layout/allocation checks run. Ordinary argv stays flag-free and byte-identical; no default cache flag is added.
+
+Modified files: `serve/server.py`, `serve/test_q36_kv_contract.py`, and this appended report. UI, native source, tests, dependency tree, frozen comparison checkout and existing artifacts were not changed by this fix.
+
+The constructor fixture now compiles the actual production `q36_verify_kv_args` into the same isolated namespace as the real constructor prefix; it no longer replaces verification with an unconditional capability lambda. Only the external help-probe, hash and process-IO dependencies are mocked. Existing explicit F32/F16 combinations remain covered. Added default-F32 constructor cases cover valid receipt, absent receipt, wrong K dtype, wrong allocation, wrong context geometry, unknown/different probed binary, a digest change immediately before spawn, and genuine legacy flag-free/no-expectation startup. They also check exact ordinary argv and whether a probe/spawn occurred.
+
+Red regression command, cwd worktree root, before the production fix:
+
+```powershell
+$env:PYTHONUTF8='1'
+& C:/Users/downl/AppData/Local/Programs/Python/Python312/python.exe -B -m unittest serve.test_q36_kv_contract.Q36KvContract.test_negotiated_flag_free_f32_uses_production_negotiation_and_ready_gate serve.test_q36_kv_contract.Q36KvContract.test_negotiated_flag_free_f32_rejects_different_or_changed_binary -v
+```
+
+Observed exit 1: 2 tests, 5 failed subtests and 1 error. The valid receipt path recorded zero probe calls, and missing/wrong dtype/bytes/geometry receipts did not raise EngineDied, reproducing R1. The changed-binary case reached a mock process that had not been prepared for an unexpected spawn and raised a mock returncode TypeError; the fixture was subsequently tightened to fail immediately on unexpected spawn. No real process was launched by these constructor fixtures.
+
+Green verification command, cwd worktree root:
+
+```powershell
+$env:PYTHONUTF8='1'
+& C:/Users/downl/AppData/Local/Programs/Python/Python312/python.exe -B -m unittest serve.test_q36_kv_contract serve.test_q36_config serve.test_private_cache -v
+git diff --check
+```
+
+Observed PASS: 18 tests in 12.078 seconds, `OK`, exit 0. This consists of 10 Q36 KV tests, 4 existing Q36 configuration tests, and 4 existing private-cache tests. `git diff --check` and staged diff checking found no whitespace errors; Git emitted only the repository's LF-to-CRLF checkout notice for the edited test. No UI rerun was needed: this fix does not change UI, and the controller separately reports the earlier isolated Playwright 8/8 pass. Native compilation, engine help execution, model/server/API/runtime launch and GPU work remain NOT_RUN. The pre-existing historical-summary test was not rerun or changed because R1 does not affect it.
