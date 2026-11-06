@@ -11,7 +11,7 @@ import { createHash } from 'node:crypto';
 const src = name => read(new URL(`../${name}`, import.meta.url), 'utf8');
 
 /** A packaged host with one installed model and a fake Control whose `update` plays the events of `strata update --stop-model --output jsonl`. */
-function fixture({ updateScript } = {}) {
+function fixture({ updateScript, q36CapabilityProbe } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'strata-update-model-'));
   const install = join(root, 'install'), data = join(root, 'data');
   mkdirSync(install, { recursive: true });
@@ -46,10 +46,46 @@ function fixture({ updateScript } = {}) {
   };
   let nextMetrics=null;
   const fetcher=async url=>{if(url.includes('/metrics')&&nextMetrics){const pending=nextMetrics;nextMetrics=null;await pending;return Response.json({engine:{max_context:1}});}return Response.json({engine:{max_context:32768}});};
-  const native = createNativeControl({ control, directory: data, spawnProcess: () => { throw new Error('no process'); }, observationProbe:async()=>({dedicated:null,shared_gpu_memory:null,processes:null}),fetcher, requests: () => [] });
-  return { native, calls, control,model,newExe,holdNextMetrics(){let release;nextMetrics=new Promise(r=>release=r);return release;},failStart:error=>startFailure=error,cleanup: () => rmSync(root, { recursive: true, force: true }) };
+  const native = createNativeControl({ control, directory: data, q36CapabilityProbe, spawnProcess: () => { throw new Error('no process'); }, observationProbe:async()=>({dedicated:null,shared_gpu_memory:null,processes:null}),fetcher, requests: () => [] });
+  return { native, calls, control,model,newExe,config,holdNextMetrics(){let release;nextMetrics=new Promise(r=>release=r);return release;},failStart:error=>startFailure=error,cleanup: () => rmSync(root, { recursive: true, force: true }) };
 }
 const finish = async (native, id) => { for (let i = 0; i < 400; i++) { const job = native.state().jobs.find(j => j.id === id); if (job.state !== 'running') return job; await new Promise(r => setTimeout(r, 10)); } throw new Error('job did not finish'); };
+const boundedCapability=exe=>({schema:1,family:'qwen35moe',modes:['bounded-experts-v1'],flag:'--q36-memory',requiresExpertStore:'mapped-pack',requiresExplicitSlots:true,scope:'expert-working-storage',totalProcessBound:false,qualification:'experimental-unqualified',binarySha256:createHash('sha256').update(read(exe)).digest('hex')});
+
+for(const [known,capable] of [[false,false],[true,false],[true,true]])test(`SPEC F1: ${known?'known':'cold'} ${capable?'different-binary':'unsupported'} bounded restart is admitted before consuming the offer or starting a profile`,async()=>{
+ let available=true;
+ const f=fixture({q36CapabilityProbe:async exe=>({kvCapability:null,memoryCapability:available?boundedCapability(exe):null})});
+ try{
+  const cfg={...JSON.parse(read(f.config)),arch:'qwen35moe',parallel:1,q36_memory:'bounded-experts-v1'};
+  cfg.args.push('--q36-expert-store','mapped-pack','--expert-slots','5');writeFileSync(f.config,JSON.stringify(cfg));
+  await loaded(f);await finish(f.native,f.native.operation('update-engine',{stopModel:true}).id);
+  available=capable;await f.native.refresh(true);if(known)await f.native.settingsKv('iq2_xs');
+  const calls=[...f.calls],jobs=f.native.state().jobs.length,offer=f.native.state().stoppedForUpdate;
+  let error,job;try{job=f.native.operation('restart-models',{});}catch(e){error=e;}
+  if(job){const done=await finish(f.native,job.id);assert.equal(done.state,'error');error=Error(done.error);}
+  assert.deepEqual(f.calls,calls,'no profile start/stop may run before admission');
+  assert.deepEqual(f.native.state().stoppedForUpdate,offer,'refusal must retain the restart offer');
+  assert.equal(f.native.state().instances.length,0);assert.match(error?.message??'',/memory/);
+  if(known)assert.equal(f.native.state().jobs.length,jobs);
+ }finally{for(const j of f.native.state().jobs.filter(j=>j.state==='running'))await finish(f.native,j.id);await f.native.close();f.cleanup();}
+});
+
+test('SPEC F1: a verified same-binary bounded restart preserves the saved profile and starts normally',async()=>{
+ const f=fixture({q36CapabilityProbe:async exe=>({kvCapability:null,memoryCapability:boundedCapability(exe)}),updateScript:async(options,{profile})=>{
+  options.onEvent({event:'models',phase:'stopped',models:[{profile,state:'stopped'}]});throw Error('fixture update left the original binary');
+ }});
+ try{
+  const cfg={...JSON.parse(read(f.config)),arch:'qwen35moe',parallel:1,q36_memory:'bounded-experts-v1'};
+  cfg.args.push('--q36-expert-store','mapped-pack','--expert-slots','5');writeFileSync(f.config,JSON.stringify(cfg));
+  await loaded(f);const first=f.calls.find(c=>c[0]==='start');
+  await finish(f.native,f.native.operation('update-engine',{stopModel:true}).id);
+  const saved=read(f.config,'utf8'),profiles=f.calls.filter(c=>c[0]==='saveProfile').length;
+  const done=await finish(f.native,f.native.operation('restart-models',{}).id);
+  assert.equal(done.state,'done',done.error);assert.deepEqual(f.calls.findLast(c=>c[0]==='start'),first);
+  assert.equal(read(f.config,'utf8'),saved);assert.equal(f.calls.filter(c=>c[0]==='saveProfile').length,profiles);
+  assert.equal(f.native.state().instances[0].status,'ready');
+ }finally{await f.native.close();f.cleanup();}
+});
 async function loaded(f,runObservation=false) {
   await f.native.refresh(true);
   const load = await finish(f.native, f.native.operation('load', { model: 'iq2_xs',runObservation }).id);

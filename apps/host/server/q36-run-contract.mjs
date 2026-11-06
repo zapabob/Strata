@@ -107,15 +107,17 @@ function fail(code, message) {
 }
 
 /** Validate the mode and its actual argv prerequisites before any start side effect. */
-export function q36MemoryRequest(args, requested = null) {
-  const read = flag => {
-    const found = args.filter(a => a === flag || a.startsWith(flag + '='));
-    const at = args.indexOf(flag);
-    if (found.length > 1 || (found.length && (at < 0 || !valueSpan(args, at))))
+export function q36MemoryRequest(args, requested = null, layers = []) {
+  const read = (flag, list = args) => {
+    const found = list.filter(a => a === flag || a.startsWith(flag + '='));
+    const at = list.indexOf(flag);
+    if (found.length > 1 || (found.length && (at < 0 || !valueSpan(list, at) || list[at + 1] === '')))
       throw new Error(`${flag} is malformed or repeated.`);
-    return at < 0 ? null : args[at + 1];
+    return at < 0 ? null : list[at + 1];
   };
   try {
+    // Merging valid overrides is allowed; masking an explicit malformed token is not.
+    for (const layer of layers) read('--q36-memory', layer ?? []);
     const value = read('--q36-memory');
     const modes = [value, requested].filter(v => v != null && v !== '');
     if (new Set(modes).size > 1 || modes.some(v => !['legacy', 'bounded-experts-v1'].includes(v)))
@@ -250,7 +252,7 @@ export function prepareQ36Launch(input = {}) {
   const userFlags = new Set(groups(userArgs).map(flagOf).filter(Boolean));
   const warnings = [];
 
-  const memory = q36MemoryRequest(args, requested.memoryMode);
+  const memory = q36MemoryRequest(args, requested.memoryMode, [userArgs]);
   if (!memory.ok) return memory;
   const memoryCapability = verifiedQ36MemoryCapability(input.memoryCapability, input.binarySha256 ?? null);
   const bounded = memory.mode === 'bounded-experts-v1';

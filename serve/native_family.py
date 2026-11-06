@@ -50,7 +50,7 @@ def _argument_value(args: object, flag: str) -> str | None:
     if len(found) != 1 or found[0] != flag:
         raise ValueError(f"Q36 memory: {flag} is malformed or repeated")
     at = args.index(flag)
-    if at + 1 >= len(args) or args[at + 1].startswith("--"):
+    if at + 1 >= len(args) or args[at + 1] == "" or args[at + 1].startswith("--"):
         raise ValueError(f"Q36 memory: {flag} requires a value")
     return args[at + 1]
 
@@ -67,6 +67,16 @@ def q36_memory_mode(args: object, requested: object = None) -> str:
     if len(set(values)) > 1:
         raise ValueError("Q36 memory mode conflicts with runtime arguments")
     return values[0] if values else "legacy"
+
+
+def native_merged_args(cfg: Mapping[str, object]) -> list[str]:
+    """The runtime's argument precedence, also used by early admission."""
+    args, mine = cfg.get("args") or [], cfg.get("user_args") or []
+    # A malformed explicit memory token is not a default, even if another layer
+    # could otherwise mask it. Top-level empty/null still means clear the setting.
+    _argument_value(args, "--q36-memory")
+    _argument_value(mine, "--q36-memory")
+    return user_args.merge(args, mine) if mine else list(args)
 
 
 def validate_q36_memory_args(args: object, mode: str) -> None:
@@ -176,18 +186,8 @@ def native_admission(cfg: Mapping[str, object]) -> NativeAdmission:
             re.search(r"qwen3\.6|qwen36|35b-a3b", str(cfg.get("model_name", "")), re.I)
         )
     expected = generation = memory_digest = memory_json = None
-    args, mine = cfg.get("args") or [], cfg.get("user_args") or []
-    mode = q36_memory_mode(args, cfg.get("q36_memory"))
-    user_mode = _argument_value(mine, "--q36-memory")
-    if user_mode is not None:
-        mode = q36_memory_mode(
-            args, user_mode if cfg.get("q36_memory") is None else cfg["q36_memory"]
-        )
-        if mode != user_mode:
-            raise ValueError(
-                "Q36 memory user arguments conflict with the selected mode"
-            )
-    combined = user_args.merge(args, mine) if mine else list(args)
+    combined = native_merged_args(cfg)
+    mode = q36_memory_mode(combined, cfg.get("q36_memory"))
     validate_q36_memory_args(combined, mode)
     run = cfg.get("q36_run")
     if run is not None:

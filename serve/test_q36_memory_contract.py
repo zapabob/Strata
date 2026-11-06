@@ -1,16 +1,19 @@
 """CPU-only bounded memory admission through the real pre-READY constructor."""
 
 import copy
+import contextlib
 import io
 import json
 import os
 from pathlib import Path
 import subprocess
+import tempfile
 import unittest
 from unittest import mock
 
 from serve import server
 from serve import test_q36_kv_contract as kv_tests
+from strata_control import private_files
 
 SHA, VERIFIED = kv_tests.SHA, kv_tests.VERIFIED
 
@@ -84,6 +87,104 @@ def config() -> dict:
 
 
 class Q36MemoryContract(unittest.TestCase):
+    def test_spec_f2_empty_raw_memory_is_rejected_in_each_argument_layer(self) -> None:
+        for layer in ("args", "user_args"):
+            for requested in (None, "legacy", "bounded-experts-v1"):
+                cfg = {"arch": "qwen35moe", "args": list(ARGS[:-2])}
+                cfg[layer] = [
+                    *(cfg["args"] if layer == "args" else []),
+                    "--q36-memory",
+                    "",
+                ]
+                if requested is not None:
+                    cfg["q36_memory"] = requested
+                before = copy.deepcopy(cfg)
+                with self.subTest(layer=layer, requested=requested), mock.patch.object(
+                    server, "q36_probe_capabilities"
+                ) as probe:
+                    with self.assertRaisesRegex(ValueError, "memory"):
+                        server.child_env(cfg)
+                    with self.assertRaisesRegex(ValueError, "memory"):
+                        server.native_cache_args(cfg, list(cfg["args"]), "fake")
+                    probe.assert_not_called()
+                    self.assertEqual(cfg, before)
+        ns, _ = constructor()
+        with self.assertRaisesRegex(ValueError, "memory"):
+            ns["ReadyPrefix"](
+                "fake", ["--q36-memory", ""], env={"STRATA_REQUIRE_Q36_KV": "1"}
+            )
+        ns["popen"].assert_not_called()
+        ns["end_leftover_engines"].assert_not_called()
+
+    def test_spec_f3_real_cli_preflight_accepts_the_runtime_user_layer(self) -> None:
+        class PreflightAccepted(Exception):
+            pass
+
+        for base in (
+            ["--max-context", "256"],
+            [
+                "--max-context",
+                "256",
+                "--q36-expert-store",
+                "legacy",
+                "--expert-slots",
+                "0",
+                "--q36-memory",
+                "legacy",
+            ],
+        ):
+            cfg = {"arch": "qwen35moe", "args": base, "user_args": ARGS[2:]}
+            with self.subTest(base=base), tempfile.TemporaryDirectory() as tmp:
+                path = Path(tmp) / "config.json"
+                path.write_text(json.dumps(cfg), encoding="utf-8")
+                with mock.patch.object(
+                    private_files, "adopt_user_defaults"
+                ), mock.patch.object(
+                    server.lifeline, "install_stop_handlers"
+                ), mock.patch.object(
+                    server, "rttime_limit_note", return_value=None
+                ), mock.patch.object(
+                    server, "apply_saved_tuning", side_effect=lambda c: c
+                ), mock.patch.object(
+                    server, "Server", side_effect=PreflightAccepted
+                ) as network, mock.patch.object(
+                    server, "popen"
+                ) as spawn, mock.patch.object(
+                    server, "q36_probe_capabilities"
+                ) as probe, mock.patch.dict(
+                    os.environ, {}, clear=True
+                ), contextlib.redirect_stderr(
+                    io.StringIO()
+                ):
+                    with self.assertRaises(PreflightAccepted):
+                        server._main(["--engine", "strata", "--config", str(path)])
+                    network.assert_called_once()
+                    spawn.assert_not_called()
+                    probe.assert_not_called()
+
+            # The same user precedence must survive the actual runtime builder,
+            # then independently satisfy the actual-child constructor gate.
+            with mock.patch.object(
+                server.drafting, "detect_hardware", return_value=("cpu", [])
+            ), mock.patch.object(
+                server, "drafting_vram_mib", return_value=None
+            ), mock.patch.object(
+                server, "drafting_card_class", return_value="cpu"
+            ), mock.patch.object(
+                server,
+                "q36_probe_capabilities",
+                return_value={"kvCapability": None, "memoryCapability": BOUND},
+            ), mock.patch.dict(
+                os.environ, {}, clear=True
+            ):
+                runtime = server.engine_args(cfg, "fake", announce=False)
+                env = server.child_env(cfg)
+            self.assertEqual(runtime, ARGS)
+            self.assertEqual(cfg["args"], base)
+            self.assertEqual(cfg["user_args"], ARGS[2:])
+            ns, _ = constructor()
+            self.assertEqual(ns["ReadyPrefix"]("fake", runtime, env=env).known_ctx, 256)
+
     def test_native_slot_decimal_range_is_checked_before_any_probe(self) -> None:
         ns, _ = constructor()
         args = list(ARGS)

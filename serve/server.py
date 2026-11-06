@@ -89,7 +89,7 @@ from serve import perf131k_e2e as perf_e2e  # noqa: E402
 from serve import memory_harness  # noqa: E402
 from serve import private_cache  # noqa: E402
 from serve.native_family import is_q36_config, native_admission, native_admission_from_env  # noqa: E402
-from serve.native_family import NativeAdmission, q36_memory_mode, validate_q36_memory_args, valid_q36_memory_capability  # noqa: E402
+from serve.native_family import NativeAdmission, native_merged_args, q36_memory_mode, validate_q36_memory_args, valid_q36_memory_capability  # noqa: E402
 from serve.structured import StructuredOutputError, prepare_format, validated_json, extract_json  # noqa: E402
 from serve import responses as responses_api  # noqa: E402
 from serve.responses import ResponsesError, error_body as responses_error_body  # noqa: E402
@@ -3855,11 +3855,9 @@ def engine_args(cfg: dict, exe: str | None = None, *, announce: bool = True) -> 
     layer_split_value). `exe` is the engine program that will start: the drafter's flags follow what that program takes
     (strata_control/drafting.py engine_form). `announce=False` builds the arguments without the "[strata] drafting" lines
     and without leaving a note for the next engine start (the retry arguments of mtp_retry_args)."""
-    args = list(cfg["args"])
     # "user_args" (strata_control/user_args.py): the options the person set by hand, over the generated ones at every start,
     # so a setup run or the app rewriting "args" cannot undo them (#3216 #3215 #3270)
-    if cfg.get("user_args"):
-        args = user_args.merge(args, cfg["user_args"])
+    args = native_merged_args(cfg)
     # "drafting": auto | mtp | dflash2 | off (strata_control/drafting.py; the Models screen and `strata launch --drafting` write it): which drafter
     # guesses ahead. ONE drafter per run: DFlash2 alone (no --mtp, --draft-fallback none) or the MTP alone (no DFlash2 option). Auto is DFlash2 where the engine
     # has it, on one card and on a layer split over several cards. A choice that cannot be applied (no drafter file yet, several requests at once) starts the other one if it is on this computer,
@@ -10540,7 +10538,7 @@ def _main(argv=None, *, lifecycle_event=None, interrupt_exit_code: int = 0) -> i
             cfg[_attr] = _val
     if cfg and "args" in cfg:
         try:
-            native_cache_args(cfg, list(cfg["args"]))
+            native_cache_args(cfg, native_merged_args(cfg))
         except ValueError as e:
             ap.error(str(e))
     lift_reasoning_effort_arg(cfg)

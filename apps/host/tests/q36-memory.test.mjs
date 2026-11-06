@@ -1,7 +1,7 @@
 /** Actual policy/PATCH/load boundaries; fake executable bytes, never native execution. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync,writeFileSync} from 'node:fs';
+import {readFileSync,writeFileSync,existsSync} from 'node:fs';
 import {join} from 'node:path';
 import * as probes from '../server/q36-kv-capabilities.mjs';
 import {prepareQ36Launch,q36FileSha256} from '../server/q36-run-contract.mjs';
@@ -64,7 +64,7 @@ test('bounded launch freezes memory expectations; explicit legacy has no new fla
 });
 
 async function fixture(capability=true){
-  let f;f=nativeFixture({packaged:true,q36CapabilityProbe:async()=>({kvCapability:null,memoryCapability:capability===true?{...memory,binarySha256:q36FileSha256(join(f.repo,'strata.exe'))}:capability})});
+  let f;f=nativeFixture({packaged:true,q36CapabilityProbe:async exe=>({kvCapability:null,memoryCapability:capability===true?{...memory,binarySha256:q36FileSha256(join(f.repo,'strata.exe'))}:typeof capability==='function'?await capability(exe):capability})});
   f.catalog.families[0].family='qwen36';
   writeFileSync(join(f.repo,'strata.exe'),'inert memory capability fixture');
   writeFileSync(join(f.repo,'strata-iq2_xs.json'),JSON.stringify({parallel:1,args}));
@@ -138,4 +138,119 @@ test('bounded slots use the native positive decimal int range before job creatio
     assert.equal(f.control.state().jobs.length,0);
     assert.equal((await f.control.saveChecked('iq2_xs',{values:{q36_memory:'bounded-experts-v1',args:[...args.slice(0,-1),'05']}})).values.q36_memory,'bounded-experts-v1');
   }finally{await f.cleanup();}
+});
+
+async function readyOtherModel(f){
+  writeFileSync(join(f.repo,'strata-iq3_s.json'),JSON.stringify({arch:'qwen4exp',args:['--max-context','256']}));
+  const ready=await finishJob(f.control,f.control.operation('load',{model:'iq3_s'}).id);
+  assert.equal(ready.state,'done',ready.error);
+  return f.control.state().instances[0].id;
+}
+
+for(const kind of ['tune','autotune','recheck','calibrate'])test(`SPEC F1: known unsupported bounded ${kind} refuses before job, config write or replacement`,async()=>{
+  const f=await fixture(null);try{
+    const ready=await readyOtherModel(f),path=join(f.repo,'strata-iq2_xs.json');
+    writeFileSync(path,JSON.stringify({parallel:1,args,q36_memory:'bounded-experts-v1'}));
+    await f.control.settingsKv('iq2_xs');
+    const before=readFileSync(path,'utf8'),effects=[...f.effects],jobs=f.control.state().jobs.length;
+    const journal=readFileSync(join(f.directory,'native-jobs.json'),'utf8');
+    let error,job;
+    try{job=f.control.operation(kind,{model:'iq2_xs',profile:'work',calibrate:false});}catch(e){error=e;}
+    if(job)await finishJob(f.control,job.id);
+    assert.deepEqual(f.effects,effects,'invalid start must preserve the ready engine');
+    assert.equal(readFileSync(path,'utf8'),before,'invalid tune must not persist resource settings');
+    assert.equal(f.control.state().jobs.length,jobs,'known failure must not create a job');
+    assert.equal(readFileSync(join(f.directory,'native-jobs.json'),'utf8'),journal);
+    assert.match(error?.message??'',/memory/);
+    assert.equal(f.control.state().instances[0].id,ready);
+  }finally{await f.cleanup();}
+});
+
+test('SPEC F1: cold unsupported guided tune checks capability before stopping or resource writes',async()=>{
+  const f=await fixture(null);try{
+    const ready=await readyOtherModel(f),path=join(f.repo,'strata-iq2_xs.json');
+    writeFileSync(path,JSON.stringify({parallel:1,args,q36_memory:'bounded-experts-v1'}));
+    const before=readFileSync(path,'utf8'),effects=[...f.effects];
+    const done=await finishJob(f.control,f.control.operation('tune',{model:'iq2_xs',profile:'work',calibrate:false}).id);
+    assert.equal(done.state,'error');assert.match(done.error,/memory/);
+    assert.deepEqual(f.effects,effects);assert.equal(readFileSync(path,'utf8'),before);
+    assert.equal(f.control.state().instances[0].id,ready);
+  }finally{await f.cleanup();}
+});
+
+test('SPEC F1: a verified bounded guided tune still persists the chosen resource preference and benchmarks',async()=>{
+  const f=await fixture();try{
+    await readyOtherModel(f);
+    await f.control.saveChecked('iq2_xs',{values:{q36_memory:'bounded-experts-v1'}});
+    const done=await finishJob(f.control,f.control.operation('tune',{model:'iq2_xs',profile:'performance',calibrate:false}).id);
+    assert.equal(done.state,'done',done.error);assert.equal(done.result.outputTps,41);
+    const saved=JSON.parse(readFileSync(join(f.repo,'strata-iq2_xs.json'))),run=JSON.parse(readFileSync(f.launchConfigs.at(-1)));
+    assert.equal(saved.ui_resource_profile,'performance');assert.equal(saved.q36_memory,'bounded-experts-v1');
+    assert.equal(run.args[run.args.indexOf('--q36-memory')+1],'bounded-experts-v1');
+    for(const flag of ['--max-context','--prefill','--expert-slots'])assert.equal(run.args[run.args.indexOf(flag)+1],args[args.indexOf(flag)+1]);
+    assert.equal(f.control.state().instances.length,1);assert.equal(f.control.state().instances[0].model,'iq2_xs');
+  }finally{await f.cleanup();}
+});
+
+for(const layer of ['args','user_args'])test(`SPEC F2: explicit empty memory in ${layer} is never dropped or persisted`,async()=>{
+  const f=await fixture();try{
+    const ready=await readyOtherModel(f),path=join(f.repo,'strata-iq2_xs.json');
+    const cfg={parallel:1,args:[...args],q36_memory:'bounded-experts-v1'};
+    cfg[layer]=[...(layer==='args'?args:[]),'--q36-memory',''];writeFileSync(path,JSON.stringify(cfg));
+    await f.control.settingsKv('iq2_xs');
+    const before=readFileSync(path,'utf8'),effects=[...f.effects],jobs=f.control.state().jobs.length;
+    await assert.rejects(f.control.saveChecked('iq2_xs',{values:{q36_memory:'bounded-experts-v1'}}),/memory/);
+    assert.throws(()=>f.control.operation('load',{model:'iq2_xs'}),/memory/);
+    assert.equal(readFileSync(path,'utf8'),before);assert.deepEqual(f.effects,effects);assert.equal(f.control.state().jobs.length,jobs);
+    assert.equal(f.control.state().instances[0].id,ready);
+  }finally{await f.cleanup();}
+});
+
+test('SPEC F2: launch contract cannot claim bounded while retaining an explicitly empty flag',()=>{
+  const sha='ab'.repeat(32);
+  for(const requested of [{},{memoryMode:'legacy'},{memoryMode:'bounded-experts-v1'}]){
+    const out=prepareQ36Launch({args:[...args,'--q36-memory',''],requested,binarySha256:sha,memoryCapability:{...memory,binarySha256:sha}});
+    assert.equal(out.ok,false);assert.match(out.error.message,/memory/);
+  }
+});
+
+test('SPEC F2: an empty raw mode cannot hide behind a valid user override',async()=>{
+  const f=await fixture();try{
+    const path=join(f.repo,'strata-iq2_xs.json');
+    const cfg={parallel:1,args:[...args,'--q36-memory',''],user_args:['--q36-memory','bounded-experts-v1']};
+    writeFileSync(path,JSON.stringify(cfg));await f.control.settingsKv('iq2_xs');
+    await assert.rejects(f.control.saveChecked('iq2_xs',{values:{q36_memory:'bounded-experts-v1'}}),/memory/);
+    assert.throws(()=>f.control.operation('load',{model:'iq2_xs'}),/memory/);
+    const sha=q36FileSha256(join(f.repo,'strata.exe'));
+    assert.equal(prepareQ36Launch({args,userArgs:['--q36-memory',''],requested:{memoryMode:'bounded-experts-v1'},binarySha256:sha,memoryCapability:{...memory,binarySha256:sha}}).ok,false);
+    assert.deepEqual(JSON.parse(readFileSync(path)),cfg);assert.equal(f.control.state().jobs.length,0);
+  }finally{await f.cleanup();}
+});
+
+test('SPEC F1: cold source calibration checks memory support before launching its program',async()=>{
+  const f=nativeFixture({q36CapabilityProbe:async()=>null});try{
+    const path=join(f.repo,'strata-iq2_xs.json');
+    writeFileSync(path,JSON.stringify({arch:'qwen35moe',parallel:1,args,q36_memory:'bounded-experts-v1'}));
+    await f.control.refresh(true);
+    const before=readFileSync(path,'utf8');
+    const done=await finishJob(f.control,f.control.operation('calibrate',{model:'iq2_xs'}).id);
+    assert.equal(f.calls.some(c=>c.args[0]==='-c'),false,'no calibration process before actual capability admission');
+    assert.equal(done.state,'error');assert.match(done.error,/memory/);
+    assert.equal(readFileSync(path,'utf8'),before);
+  }finally{for(const j of f.control.state().jobs.filter(j=>j.state==='running'))await finishJob(f.control,j.id);await f.cleanup();}
+});
+
+test('SPEC F1: cancelling autotune during capability admission leaves the ready model and tune files untouched',async()=>{
+  let hold=false,release;
+  const f=await fixture(async exe=>{if(hold)await new Promise(r=>release=r);return {...memory,binarySha256:q36FileSha256(exe)};});
+  try{
+    const ready=await readyOtherModel(f);
+    await f.control.saveChecked('iq2_xs',{values:{q36_memory:'bounded-experts-v1'}});
+    const effects=[...f.effects];hold=true;
+    const job=f.control.operation('autotune',{model:'iq2_xs',resourceProfile:'performance'});
+    for(let n=0;n<400&&!release;n++)await new Promise(r=>setTimeout(r,5));assert.equal(typeof release,'function');
+    await f.control.cancel(job.id);release();await new Promise(r=>setTimeout(r,30));
+    assert.deepEqual(f.effects,effects);assert.equal(f.control.state().instances[0].id,ready);
+    assert.equal(existsSync(join(f.directory,'native-tune','iq2_xs.json')),false,'a cancelled admission cannot persist a tuning config');
+  }finally{release?.();await f.cleanup();}
 });

@@ -241,3 +241,132 @@ suites, native build/model/GPU operation, install/overwrite, global/private prof
 changes, stop, push/tag/release are NOT_RUN in this lane. No source-only result here
 qualifies 32 GB RAM / 16 GB VRAM, full-window generation or model quality. Parent
 qualifies the exact binary, then decides personal packaging/overwrite.
+
+## SPEC F1–F3 follow-up
+
+User returned three findings on `57b893a1`. Continued on main at `36c5d916`, with
+only parent-owned untracked handoff/maintenance evidence. Same supplied standards,
+compatible canonical context, TypeScript/Python/Security SOPs, TDD and self-review
+apply. Goal: close F1 all start/tune admission before known side effects; F2 reject
+present empty raw memory tokens in either argument layer; F3 make CLI preflight
+validate the same merged precedence as actual runtime. Preserve valid tuning and
+existing private/KV requirements. Native/GPU/install and inherited locale gaps
+remain parent-owned. New production-boundary RED tests precede implementation.
+
+### Findings reproduced and corrected
+
+F1: the operation dispatcher only checked load/install. Guided tune could unload a
+ready model and write resource settings before its eventual load rejected bounded
+mode. Reused the existing serving policy through `captureStart` (synchronous known
+admission) and `startAdmission` (actual capability negotiation). Load, guided tune,
+autotune/recheck, source calibration and saved-profile restart now enter that same
+policy before their relevant writes/replacement/start. Install keeps its existing
+preflight using the same serving policy. Guided tuning validates the resource
+candidate before writing and revalidates after calibration; valid tuning still
+persists its preference, loads the model and benchmarks it. Only the arguments
+each operation really consumes are admitted; a load-only override cannot bypass
+the guided tune's saved setting.
+
+Restart checks every retained run before consuming the restart offer or starting
+any profile. Known unsupported/different-binary bounded expectations reject before
+job creation. Cold rejection retains the offer and starts/stops no profile. A
+verified same-binary restart continues normally with the existing saved profile.
+Changing to another binary requires a fresh Load to build a new expectation, not
+silently rebinding the old run contract.
+
+The additional pending-probe cancellation case reproduced an existing autotune
+race: cancellation while awaiting capability admission could still write the tune
+config and unload the ready model. The job owner is now checked before that write
+and before replacement. This uses the existing job lifecycle, not a new framework.
+
+F2: a present raw `--q36-memory`, `""` is now malformed in Host and Python. Blank
+top-level settings retain their clear/default meaning; an explicit empty argument
+does not. Both raw argument layers are checked before merge so a valid override
+cannot mask a malformed token. PATCH, operation admission and the launch builder
+use the same Host parser; Python config, CLI and constructor admission all refuse
+the empty raw token before probing/spawning a child.
+
+F3: `native_merged_args` shares the established `user_args.merge` precedence among
+`native_admission`, actual `engine_args` and `_main`'s early cache preflight. Valid
+memory prerequisites entirely in user_args now pass the real CLI preflight and
+runtime builder, including replacing old legacy/zero-slot generated arguments.
+The produced argv and env then pass the independently verified real constructor
+with controlled child IO. Top-level conflicts and retained expectations still
+fail; private-cache requirements continue to include both raw argument layers.
+The existing `server.user_args` import surface is retained for compatibility.
+
+Changed files in this follow-up: `apps/host/server/native-control.mjs`,
+`native-serving-policy.mjs`, `q36-run-contract.mjs`; Host
+`tests/q36-memory.test.mjs` and `tests/engine-update-model.test.mjs`;
+`serve/native_family.py`, `serve/server.py`, `serve/test_q36_memory_contract.py`;
+and this log. No frontend/locales or native files changed. No new `tr()` keys.
+One new dynamic server diagnostic explains that a retained run expectation needs
+a fresh Load when the binary/mode no longer matches; it follows the existing
+English admission-error path rather than adding a locale catalog dependency.
+
+### RED/GREEN and intermediate gates
+
+Initial RED: `strata-hybrid-26vEid` **16 passed / 8 failed**. The actual tune path
+issued the extra stop; autotune/recheck/calibrate created forbidden jobs; both
+empty-argument PATCH forms were accepted. Python `strata-gui-python-CewvEw`:
+**11 passed / 2 failed**. Empty raw mode was accepted, and actual `_main` exited 2
+for the valid user-only prerequisite case before the mocked network boundary.
+No native process or GPU was used to produce these findings.
+
+After the initial repair, `strata-hybrid-f3M5Pe`: **63/66 passed**; the three
+remaining cases reproduced cold/known saved-profile restart and masked empty-token
+gaps. `strata-hybrid-Agu61p`: **38/43 passed**, adding confirmed different-binary
+restart and source-calibration bypasses. Those paths now share admission.
+`strata-hybrid-o3CAIG`: **68/68 passed** at that stage. The targeted cancellation
+RED `strata-hybrid-rZL93v` was **26/27 passed**, with an extra stop after cancellation.
+
+The first expanded final run (`strata-hybrid-n5FTqy`) was **198/199 passed**.
+Cancellation no longer stopped the engine; the test's remaining assertion wrongly
+expected the entire native-tune directory to be absent, but createAutoTune creates
+that empty directory at construction. The assertion now checks the actual model
+tuning config file, preserving the zero-write requirement. Python `2RoHW4` was
+**43/44 passed** because removing an apparently unused import broke the existing
+server.user_args consumer test. Restored that compatibility surface; no existing
+test was weakened or rewritten. Black's test-format differences were corrected
+with apply_patch and rechecked.
+
+### Final follow-up verification
+
+Same read-only Node 24.22.2 / explicit offline uv and installed Python 3.12.10 as
+above, using the unchanged isolated runners. Exact Host command:
+
+```text
+node _docs/hybrid-intake-tests.mjs q36-memory.test.mjs q36-capabilities.test.mjs q36-run-contract.test.mjs q36-kv-layout.test.mjs q36-private-cache.test.mjs q36-load-lifecycle.test.mjs q36-progress.test.mjs native-serving-policy.test.mjs native-settings.test.mjs native-settings-file.test.mjs native-settings-response.test.mjs native-control.test.mjs run-config-check.test.mjs native-config-persistence.test.mjs native-installed-kv.test.mjs native-load-cancel.test.mjs native-ds-parallel.test.mjs native-ds-args.test.mjs native-onboarding.test.mjs native-autotune.test.mjs engine-update-model.test.mjs
+```
+
+PASS **199/199**, zero failed/skipped/cancelled, **20.145 s**, scratch
+`strata-hybrid-kcknoC`. Includes positive bounded guided tune/restart, old ordinary
+tuning/calibration/resource semantics, source calibration refusal, asynchronous
+cancellation, all reported known-invalid paths and zero new journal/config writes.
+
+```text
+node _docs/gui-consistency-python-tests.mjs serve/test_q36_memory_contract.py serve/test_q36_kv_contract.py serve/test_native_family.py serve/test_control_cancel.py
+```
+
+PASS **44/44**, no skips, **49.36 s**, scratch `strata-gui-python-JEO4LE`. The new
+CLI test executes actual `_main` until the controlled first network boundary;
+signals, owner-file defaults, hardware and child IO are controlled. It then runs
+the actual runtime builder and pre-READY constructor. Final focused follow-up total:
+**243 passed**. These counts supersede the prior unit's counts for this source.
+
+`node node_modules/typescript/bin/tsc --noEmit` in `apps/host`: PASS. Explicit uv
+Black check on native_family/new memory test: PASS. Flake8 (88 columns) on those
+files and critical-error lint on server.py: PASS. `git diff --check`: PASS, with
+only informational CRLF notices. The unchanged UI suite and broad locale suite
+were not repeated; parent owns the nine reported inherited locale gaps. Full
+native/real Host E2E, GPU, build, packaging and installation remain parent gates.
+
+Self-review-event: `rework_returned`, `qa_defect`, `local_fix`, `ticket_completed`;
+review-only. The original coverage stopped at load/PATCH and did not enumerate
+every start entry point or the CLI's argument projection. Prevention is the shared
+admission/merge contract plus real dispatcher, CLI, runtime and cancellation tests.
+Rejected: bypassing capability checks for tune, deleting explicit bad tokens,
+normalising a mismatched retained digest, validating only generated argv, weakening
+old consumer tests, and broad governance edits. Ready for independent SPEC/QUALITY
+re-review. All edits used apply_patch; no subdelegation, native edits, actual GPU or
+model process, install, global/private profile operation, push or tag occurred.

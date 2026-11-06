@@ -46,7 +46,7 @@ export function servingSettingsIssues(config, policy, { negotiating = false, mem
     if (!present(value) && !found.length) continue;
     if (policy.id !== 'q36' || field.startsWith('spin8_')) { reject(field, 'not supported by this serving adapter.'); continue; }
     if (field === 'q36_memory') {
-      const request = q36MemoryRequest(args, value);
+      const request = q36MemoryRequest(args, value, [config.args, config[USER_KEY]]);
       if (!request.ok) reject(field, request.error.message);
       else if (request.mode !== 'legacy' && (!negotiating || memoryKnown) && !policy.memoryCapability?.modes.includes(request.mode))
         reject(field, 'bounded-experts-v1 is not verified for this engine binary. Choose legacy or clear it.');
@@ -57,6 +57,13 @@ export function servingSettingsIssues(config, policy, { negotiating = false, mem
     const choices = policy.kvCapability?.[field === 'cache_type_k' ? 'cacheTypesK' : 'cacheTypesV'] ?? (negotiating ? ['f32', 'f16'] : ['f32']);
     if (found.length > 1 || found.some(o => o.malformed || o.flag !== flags[0]) || new Set(values).size > 1 || values.some(v => !choices.includes(v)))
       reject(field, 'the format is conflicting, malformed or not verified for this engine.');
+  }
+  const retained = config.q36_run?.backend?.memoryCapability;
+  if (retained != null) {
+    const expected = verifiedQ36MemoryCapability(retained, config.q36_run.backend.binarySha256 ?? null);
+    if (policy.id !== 'q36' || !expected || servingValue(config, 'q36_memory') !== 'bounded-experts-v1' ||
+        ((!negotiating || memoryKnown) && expected.binarySha256 !== policy.memoryCapability?.binarySha256))
+      reject('q36_memory', 'the retained run expectation does not match this engine or mode. Load the model again to create a new run.');
   }
   const combined = options(args, ['--kv']);
   if (combined.length && (policy.id !== 'q38' || combined.some(o => o.malformed) || !ORDINARY_KV.includes(combined.at(-1).value)))
