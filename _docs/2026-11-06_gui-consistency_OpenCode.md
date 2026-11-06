@@ -2,8 +2,8 @@
 
 Owner: OpenCode. Worktree `H:/Strata/worktrees/gui-consistency-20261106`, branch
 `fix/gui-consistency-20261106`, base `ca3ab40a`. Installed app source is
-`04fe91d0` / `0.5.2-local.1`. Status: SOURCE_READY_FOR_SPEC_RE_REVIEW
-(F1/F2 follow-up to `14a07fd5`; see the final section).
+`04fe91d0` / `0.5.2-local.1`. Status: SOURCE_READY_FOR_SPEC_CLOSURE_REVIEW
+(downstream F2 follow-up to `a968e82a`; see the final section).
 
 ## Requirements and plan
 
@@ -352,3 +352,134 @@ installed-app changes, broad suites and releases remain NOT_RUN in this follow-u
 The earlier controlled UI/E4 results are historical evidence, not rerun here;
 those source files are unchanged by F1/F2. Parent-owned telemetry/chat/locales
 remain outside this lane. No app stop or maintenance operation occurred.
+
+## Downstream F2 Python consumer follow-up — 2026-11-07
+
+Parent SPEC re-review passed F1 and found that F2 still ended at the Host-generated
+configuration. Continued from clean `a968e82add5fd6592331795a66b0aa7684dcb8f0` in
+the same owned worktree. The additional Python helper/tests are explicitly
+authorised. Applied the existing standards and `SOP-Python.md`; no applicable
+root/serve pyproject, uv.lock or .python-version exists, and requirements.txt
+specifies Python 3.10+. Selected installed Python **3.12.10** through read-only
+`C:/Users/downl/.local/bin/uv.exe`, verified with `uv run --no-project --offline
+--python C:/Users/downl/AppData/Local/Programs/Python/Python312/python.exe python
+-B --version`. The first bare `uv` lookup failed because it is not on PATH;
+locating the existing executable resolved it without installation. uv reports
+two pre-existing dangling dist-info directories; they were not changed.
+
+### Consumer inspection and root cause
+
+Inspected the Q36 selectors and their callers throughout `serve/`, the related
+Control paths, and root Python references. The admission chain is:
+
+1. `engine_args` and CLI cache validation call `native_cache_args`.
+2. `native_cache_args` selects Q36 negotiation through `server.q36_config`.
+3. `child_env` derives the typed-KV requirement through `q36_config`, but formerly
+   derived the private-cache requirement through a separate filename-based test.
+4. `StrataEngine.__init__` checks those requirements against the actual child's
+   capability/binary identity and INFO receipts before setting `known_ctx` and
+   making the engine ready. Restarts reuse the captured environment/constructor.
+
+Both former selectors allowed an executable containing `strata-q36` to override
+explicit `arch:qwen4exp`. They also disagreed about model-name-only legacy Q36.
+Family display/sampling tables already use explicit architecture. Control
+autotune/preset family labels use MTP shape for their own tuning metadata; they
+do not select these Python cache-admission gates and were not changed.
+
+### Production reproduction and correction
+
+The new `apps/host/tests/helpers/native-family-consumer-fixture.mjs` runs the
+actual Host settings/load builder with controlled Control/process boundaries.
+It exports only launch-input fields from two generated configs: explicit Q38
+with a Q36-looking executable/model label, and catalog-derived Q36 with neutral
+names. No model files or native executable are used, and no keys or memory-store
+paths are exported.
+
+`serve/test_native_family.py` consumes those real builder outputs with production
+`native_cache_args` and `child_env`, then executes the real Python constructor
+through the admission gate using the existing AST-based Q36 test harness. Only
+process/OS IO and actual-binary probe results are controlled. This is a CPU
+cross-language contract test, not a live-engine or browser E2E claim.
+
+RED (`strata-gui-python-KLCNgP`): **4 failed, 2 passed**, 6.49 s. The first test
+asserted the incorrect derived requirement. Strengthening it to continue into
+the actual READY consumer reproduced **EngineDied at server.py:1356** for the
+Host's Q38 config with a bare READY receipt. RED (`strata-gui-python-rEdeY8`):
+**4 failed, 2 passed**, 7.10 s. Its environment incorrectly required both Q36 KV
+and private-cache acknowledgement. The other failures covered legacy selector
+disagreement and the Q36 alias. The canonical Q36 receipt/verification cases
+already passed before the fix.
+
+Production changes are minimal: new `serve/native_family.py`, the selector call
+in `serve/private_cache.py`, and the `server.q36_config` wrapper/import. Both
+consumers now share one rule. Explicit runtime architecture wins; canonical
+`qwen35moe` and the existing `qwen36` alias select Q36. An explicit other/unknown
+architecture is not reclassified from its path or label. Missing/null/empty
+architecture preserves legacy executable/model hints. The helper does not read
+or accept any capability claim. This also makes model-name-only legacy Q36
+require the same private-cache acknowledgement as the server's Q36 selector.
+
+Actual binary negotiation, digest rechecks, typed layout/allocation receipts,
+private-cache capability comparisons and rejection-before-READY code are
+unchanged. Tests retain required private-cache versions **1 and 2**, reject
+missing/wrong markers, reject missing typed receipts, and prove that declared
+Host capability metadata cannot replace an unavailable or different actual
+binary. Unknown legacy FP32 still avoids inventing typed support.
+
+Packaging inspection: `packaging/package_terminal.py` includes the whole `serve`
+payload and copies directories recursively, so the helper needs no new module
+allowlist. This is static source inspection; no package/build/install was run.
+
+### Final checks and evidence
+
+Added `_docs/gui-consistency-python-tests.mjs` as the bounded driver. It uses uv
+offline with the existing interpreter, task-local state/home/cache/temp paths,
+no downloads, disabled GPU visibility, and disabled pytest plugin autoload.
+`--confcutdir=serve` avoids the root conftest's unrelated thinc import; the driver
+provides its own profile isolation. Python bytecode and pytest cache writes are
+disabled. Node's actual Host fixture receives this same isolated environment.
+
+Final command, using installed Node 24.22.2 read-only:
+
+```text
+node _docs/gui-consistency-python-tests.mjs serve/test_native_family.py serve/test_q36_kv_contract.py
+```
+
+PASS **16/16**, **14.37 s**, no skips. Scratch:
+`C:/Users/downl/AppData/Local/Temp/opencode/strata-gui-python-4Yj3pO`.
+This includes six new test methods (with family/receipt subcases) and ten existing
+actual-binary/KV receipt tests. The earlier bounded GREEN was 16/16 in 12.42 s;
+the final run additionally covers both private-cache protocol requirements.
+Available RAM was checked against the 3 GiB floor before test runs.
+
+Fresh checks through the same uv/Python path:
+
+```text
+python -B -m black --check serve/native_family.py serve/test_native_family.py
+python -B -m flake8 --isolated --max-line-length=88 serve/native_family.py serve/test_native_family.py
+python -B -m flake8 --isolated --select=E9,F63,F7,F82 serve/server.py serve/private_cache.py
+```
+
+All PASS. Black/flake8 initially found formatting/line-length issues in the new
+test; they were corrected with apply_patch and the checks rerun. Existing large
+Python files received critical-error lint only, without unrelated reformatting.
+`git diff --check`: PASS, with only Git's CRLF conversion notices. The bridge and
+driver were both executed successfully by the final test command.
+
+Changed files: the three production Python files above, `serve/test_native_family.py`,
+the task-only Python test driver, the Host fixture bridge, and this log. GUI/Host
+production policy, telemetry/chat/locales, native kernels and installed files are
+unchanged. No dependencies or interpreter were installed or updated.
+
+Self-review-event: `rework_returned`, `qa_defect`, `ticket_completed`; review-only.
+The missing gate was cross-language consumption of a correct generated config.
+The new test carries that actual builder output through both Python requirements
+and the real pre-READY consumer. Rejected: merely asserting generated JSON,
+disabling private-cache confirmation, accepting claimed capability without an
+actual-binary check, or resolving this by renaming paths. No governance update.
+
+Ready for parent SPEC closure review. Actual native startup/generation, GPU/model
+work, full suites, package builds, browser E2E, and live maintenance remain NOT_RUN.
+The constructor's real admission code runs with controlled child IO; no native
+process, model load, GPU probe or installed-app stop occurred. Prior GUI/E4 and
+F1 results are historical/parent-reviewed evidence, not a new all-GUI qualification.

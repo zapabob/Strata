@@ -88,6 +88,7 @@ from serve import lifeline  # noqa: E402
 from serve import perf131k_e2e as perf_e2e  # noqa: E402
 from serve import memory_harness  # noqa: E402
 from serve import private_cache  # noqa: E402
+from serve.native_family import is_q36_config  # noqa: E402
 from serve.structured import StructuredOutputError, prepare_format, validated_json, extract_json  # noqa: E402
 from serve import responses as responses_api  # noqa: E402
 from serve.responses import ResponsesError, error_body as responses_error_body  # noqa: E402
@@ -3979,8 +3980,7 @@ def _flag_value(args: list[str], *flags: str) -> str | None:
 
 def q36_config(cfg: dict) -> bool:
     """Identify only the Q36 family; other families retain their own codec rules."""
-    return (cfg.get("arch") == "qwen35moe" or "strata-q36" in str(cfg.get("exe", ""))
-            or bool(re.search(r"qwen3\.6|qwen36|35b-a3b", str(cfg.get("model_name", "")), re.I)))
+    return is_q36_config(cfg)
 
 
 def q36_binary_sha256(exe: str) -> str | None:
