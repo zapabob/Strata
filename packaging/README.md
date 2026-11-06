@@ -1,10 +1,10 @@
 # Strata packaging: targets, recipes and locks
 
 This page is for developers who build the desktop app, the Terminal archive and the engine packages. To install this Hakua
-Windows fork, use [docs/HAKUA_INSTALL.md](../docs/HAKUA_INSTALL.md). The 0.5.0
-candidate integrates official 0.2.11 and subsequent fixes while preserving Hakua
+Windows fork, use [docs/HAKUA_INSTALL.md](../docs/HAKUA_INSTALL.md). The published
+0.5.1 release integrates official 0.2.11 and subsequent fixes while preserving Hakua
 memory and the fork's native cache and model-reuse paths. Product, Control and
-native CUDA engine each use 0.5.0; unchanged PrismML/TurboQuant packages remain
+native CUDA engine each use 0.5.1; unchanged PrismML/TurboQuant packages remain
 0.4.0. Windows distribution uses an NSIS installer and a tar.7z bundle containing
 the same installer plus signed components, feed and checksums. Component signing
 does not provide a Windows code signature for the installer. The

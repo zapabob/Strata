@@ -3,7 +3,7 @@
 ## Windows release: 0.5.1
 
 Product, Control and the native CUDA package are `0.5.1`. The immutable release
-is `v0.5.1`; `latest` and GitHub Latest select it after publication. The release
+is `v0.5.1`; the `latest` alias and GitHub Latest currently select it. The release
 page records publication and anonymous-download checks. Metal source remains
 `0.5.0-metal`; PrismML/TurboQuant and Hakua-memory retain their package versions.
 The previous 0.5.0 results are retained below as historical evidence.
