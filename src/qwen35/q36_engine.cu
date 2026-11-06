@@ -4286,6 +4286,11 @@ int strata::qwen35::run(int argc, char** argv) {
             }
             seen = true;
         }
+        else if (a == "--vram-reserve-mib" || a.rfind("--vram-reserve-mib=", 0) == 0) {
+            // Never let the serve compatibility fallback pretend this reserve was applied.
+            std::fprintf(stderr, "strata-q36: %s is not an option of this engine. It was not applied. Use --expert-vram instead.\n", a.c_str());
+            return 2;
+        }
         else if (serve_mode && a.rfind("--", 0) == 0) {
             // serve passes the config's args plus a few of its own: one this engine does not have is said and skipped
             // (with its value), not fatal

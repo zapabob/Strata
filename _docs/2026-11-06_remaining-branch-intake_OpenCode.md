@@ -200,3 +200,20 @@ Parent independently reviews these scoped ports; the larger GUI/native 32 GB /
 reconcile these ports into those lanes, compile the changed native source before
 runtime claims, and run the parent GUI browser gate. No installed app/runtime,
 manual-startup policy, native mapped-pack allowlist, feed, tag or release changed.
+
+## Intake commits
+
+* `0adfd00a` — `[Other] integrate audited setup disk destination checks`, port of
+  `c02303b4` relative to parent 2 with newer main pack/model logic retained.
+* `e4b75273` — `[GUI] integrate small model context bounds`, missing contributions
+  from `c856522f` plus capped recommendation/reset behavior and render tests.
+* `7462de07` — `[GUI] integrate bounded local silence override`, port of
+  `9df2a96a` onto the current 30-minute local policy.
+* The commit containing this final log entry, `[Engine] refuse unsupported Q36
+  reserve arguments`, ports only the still-applicable refusal from `3b7241f4`
+  and adds executable CPU parser evidence. Its exact hash is returned in the
+  handoff (the commit cannot embed its own hash).
+
+No commit hook failures occurred in the first three commits. The staged files
+matched their listed scope and passed whitespace checks. The final native commit
+contains only the five-line parser refusal, its CPU test, and this mapping entry.
