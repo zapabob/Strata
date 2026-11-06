@@ -1293,6 +1293,16 @@ struct Engine {
         }
     }
 
+    std::string memory_info() const {
+        // These are live allocations after placement, not requested budgets or
+        // total process memory. Legacy mapped-pack can also own an H2D pool.
+        return std::string("INFO q36_memory_mode=") + (m->bounded_experts ? "bounded-experts-v1" : "legacy") +
+            " q36_memory_scope=expert-working-storage q36_memory_total_process_bound=0" +
+            " q36_memory_cpu_stage_bytes=" + std::to_string(cpu_staging ? cpu_staging->committed_bytes() : 0) +
+            " q36_memory_h2d_stage_bytes=" + std::to_string(m->pin_pool ? m->pin_pool->committed_bytes() : 0) +
+            " q36_memory_io_scratch_bytes=" + std::to_string(m->expert_pack ? m->expert_pack->bounded_read_scratch_bytes() : 0);
+    }
+
     void startup_effective(const char* warmup, const char* expert_store, bool placed, bool graph_requested) const {
         using namespace strata::qwen35;
         std::fprintf(stderr, "Q36_EFFECTIVE schema=1 generation=%s engine=strata-q36 context=%d prefill=%d parallel=%d "
@@ -4238,6 +4248,7 @@ struct Serve {
         std::printf("INFO kv_cache_k=%s kv_cache_v=%s kv_accumulation=f32\n", E.kv_k_f16 ? "f16" : "f32", E.kv_v_f16 ? "f16" : "f32");
         if (E.private_cache) std::printf("INFO q36_private_cache=%d prompt_cache=0 conversation_cache_mib=0\n", E.scoped_cache ? 2 : 1);
         if (E.n_sess > 1) std::printf("INFO batch_slots=%d slot_cache=1\n", E.n_sess);
+        std::puts(E.memory_info().c_str());
         std::printf("READY %d stop\n", E.ctx);
         std::fflush(stdout);
         std::thread reader([&] {

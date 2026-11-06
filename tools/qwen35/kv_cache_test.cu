@@ -136,21 +136,54 @@ void session_case(bool key_half, bool value_half) {
     m.layers.resize(2); m.layers[0].attn = true; m.layers[1].attn = false; m.has_mtp = true;
     Engine e{};
     e.m = &m; e.ctx = 513; e.kv_k_f16 = key_half; e.kv_v_f16 = value_half;
+    // The fixture bypasses Engine::init's model buffers, but must establish the
+    // same typed allocation contract before calling the production allocator.
+    using namespace strata::qwen35;
+    e.key_layout = make_kv_layout(key_half ? Q36KvType::Fp16 : Q36KvType::Fp32, e.ctx, m.g.n_head_kv, m.g.head_dim);
+    e.value_layout = make_kv_layout(value_half ? Q36KvType::Fp16 : Q36KvType::Fp32, e.ctx, m.g.n_head_kv, m.g.head_dim);
     e.sess.resize(2); e.cur = 0; e.private_cache = true;
     for (auto& ss : e.sess) e.alloc_session(ss);
     e.load_cur(); e.pos = 3;
     const size_t count = size_t(e.ctx) * m.g.n_head_kv * m.g.head_dim;
+    require(e.key_layout.allocation_bytes == count * e.kv_element_bytes(true), "initial K allocation geometry");
+    require(e.value_layout.allocation_bytes == count * e.kv_element_bytes(false), "initial V allocation geometry");
+    for (const auto& ss : e.sess) {
+        require(ss.key_layout.same_identity(e.key_layout) && ss.value_layout.same_identity(e.value_layout), "initial session layout identity");
+        for (size_t layer : {size_t(0), size_t(2)}) for (bool key : {true, false}) {
+            auto bytes = read_device(static_cast<unsigned char*>(key ? ss.kc[layer] : ss.vc[layer]), count * e.kv_element_bytes(key));
+            require(std::all_of(bytes.begin(), bytes.end(), [](unsigned char b) { return b == 0; }), "fresh session KV including MTP must be zero");
+        }
+    }
     for (size_t layer : {size_t(0), size_t(2)}) {
         CK(cudaMemset(e.sess[0].kc[layer], 0x3c, count * e.kv_element_bytes(true)));
         CK(cudaMemset(e.sess[0].vc[layer], 0x3d, count * e.kv_element_bytes(false)));
     }
-    e.copy_session(0, 1);
-    for (size_t layer : {size_t(0), size_t(2)}) for (bool key : {true, false}) {
-        const size_t width = m.g.head_dim * e.kv_element_bytes(key);
-        auto bytes = read_device(static_cast<unsigned char*>(key ? e.sess[1].kc[layer] : e.sess[1].vc[layer]), count * e.kv_element_bytes(key));
-        for (size_t i = 0; i < bytes.size(); ++i)
-            require(bytes[i] == ((i % (e.ctx * width) < 3 * width) ? (key ? 0x3c : 0x3d) : 0), "session prefix copy or suffix boundary");
+    for (int prefix : {0, 3, e.ctx - 1, e.ctx}) {
+        e.pos = prefix;
+        for (size_t layer : {size_t(0), size_t(2)}) {
+            CK(cudaMemset(e.sess[1].kc[layer], 0, count * e.kv_element_bytes(true)));
+            CK(cudaMemset(e.sess[1].vc[layer], 0, count * e.kv_element_bytes(false)));
+        }
+        e.copy_session(0, 1);
+        require(e.sess[1].pos == prefix, "copied session position");
+        for (size_t layer : {size_t(0), size_t(2)}) for (bool key : {true, false}) {
+            const size_t width = m.g.head_dim * e.kv_element_bytes(key);
+            auto bytes = read_device(static_cast<unsigned char*>(key ? e.sess[1].kc[layer] : e.sess[1].vc[layer]), count * e.kv_element_bytes(key));
+            for (size_t i = 0; i < bytes.size(); ++i)
+                require(bytes[i] == ((i % (e.ctx * width) < size_t(prefix) * width) ? (key ? 0x3c : 0x3d) : 0), "session prefix copy or suffix boundary");
+        }
     }
+    bool rejected = false;
+    e.pos = e.ctx + 1;
+    try { e.copy_session(0, 1); } catch (const std::invalid_argument&) { rejected = true; }
+    require(rejected, "session prefix beyond capacity must be rejected");
+    e.pos = 3;
+    const auto original = e.sess[1].key_layout;
+    e.sess[1].key_layout = make_kv_layout(key_half ? Q36KvType::Fp32 : Q36KvType::Fp16, e.ctx, m.g.n_head_kv, m.g.head_dim);
+    rejected = false;
+    try { e.copy_session(0, 1); } catch (const std::invalid_argument&) { rejected = true; }
+    require(rejected, "session K type mismatch must be rejected");
+    e.sess[1].key_layout = original;
     e.clear_private_cache();
     for (size_t layer : {size_t(0), size_t(2)}) for (bool key : {true, false}) {
         auto bytes = read_device(static_cast<unsigned char*>(key ? e.kc[layer] : e.vc[layer]), count * e.kv_element_bytes(key));
@@ -163,7 +196,27 @@ void session_case(bool key_half, bool value_half) {
         for (auto p : ss.S) if (p) CK(cudaFree(p));
         CK(cudaFree(ss.hlast));
     }
-    std::printf("PASS sessions K=%s V=%s copy/private/MTP\n", key_half ? "f16" : "f32", value_half ? "f16" : "f32");
+    std::printf("PASS sessions K=%s V=%s init/empty/partial/full/reject/private/MTP\n", key_half ? "f16" : "f32", value_half ? "f16" : "f32");
+}
+
+void memory_receipt_case() {
+    Model m{};
+    Engine e{};
+    e.m = &m;
+    const std::string prefix = "INFO q36_memory_mode=";
+    const std::string scope = " q36_memory_scope=expert-working-storage q36_memory_total_process_bound=0";
+    const std::string zero = " q36_memory_cpu_stage_bytes=0 q36_memory_h2d_stage_bytes=0 q36_memory_io_scratch_bytes=0";
+    require(e.memory_info() == prefix + "legacy" + scope + zero, "absent allocation receipt");
+    m.pin_pool = std::make_unique<strata::qwen35::ExpertPinPool>(2, 1024);
+    require(e.memory_info() == prefix + "legacy" + scope + " q36_memory_cpu_stage_bytes=0 q36_memory_h2d_stage_bytes=2048 q36_memory_io_scratch_bytes=0",
+            "legacy receipt must include actual H2D storage");
+    m.bounded_experts = true;
+    e.cpu_staging = std::make_unique<strata::qwen35::ExpertCpuStaging>(64);
+    require(e.memory_info() == prefix + "bounded-experts-v1" + scope + " q36_memory_cpu_stage_bytes=33280 q36_memory_h2d_stage_bytes=2048 q36_memory_io_scratch_bytes=0",
+            "receipt reports committed CPU storage including tail, not requested blob bytes");
+    e.cpu_staging.reset(); m.pin_pool.reset(); m.bounded_experts = false;
+    require(e.memory_info() == prefix + "legacy" + scope + zero, "freed allocation receipt must return to zero");
+    std::puts("PASS memory INFO actual allocation lifecycle (legacy and bounded)");
 }
 }
 
@@ -172,6 +225,7 @@ int main() {
         size_t free = 0, total = 0;
         CK(cudaMemGetInfo(&free, &total));
         require(free > 512ull * 1024 * 1024, "requires 512 MiB free VRAM");
+        memory_receipt_case();
         kernel_case<float, float>(); kernel_case<__half, __half>();
         kernel_case<float, __half>(); kernel_case<__half, float>();
         for (bool k : {false, true}) for (bool v : {false, true}) session_case(k, v);
