@@ -414,3 +414,68 @@ def test_preflight_pressure_retains_not_run_receipt(tmp_path, monkeypatch):
     assert result["reason"] == "physical_memory_pressure"
     assert result["requests_status"] == "NOT_RUN"
     assert not (tmp_path / "run/stdout.log").exists()
+
+
+@pytest.mark.parametrize("cause", ["physical_memory_pressure", "total_deadline"])
+def test_hash_preflight_abort_after_healthy_admission(tmp_path, monkeypatch, cause):
+    from perf131k import windows_job
+
+    spec = spec_for(tmp_path)
+    observations = 0
+
+    def memory():
+        nonlocal observations
+        observations += 1
+        return {
+            "available_physical_bytes": (
+                3 * runner.GIB - 1
+                if observations > 1 and cause == "physical_memory_pressure"
+                else 8 * runner.GIB
+            ),
+            "available_commit_bytes": 8 * runner.GIB,
+        }
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("artifact preflight abort must not create a child")
+
+    monkeypatch.setattr(runner, "available_memory", memory)
+    monkeypatch.setattr(
+        runner,
+        "time",
+        SimpleNamespace(
+            monotonic=lambda: (
+                10 if observations > 1 and cause == "total_deadline" else 0
+            )
+        ),
+    )
+    monkeypatch.setattr(windows_job, "run_owned", forbidden)
+    result = runner.run_bounded(spec)
+    assert observations == 2
+    assert result["status"] == "ABORTED"
+    assert result["reason"] == cause
+    assert result["last_stage"] == "preflight"
+    assert result["requests_status"] == "NOT_RUN"
+    assert result["child_exit_code"] is None
+    sample = result["initial_resources"]
+    assert sample["available_physical_bytes"] == (
+        3 * runner.GIB - 1 if cause == "physical_memory_pressure" else 8 * runner.GIB
+    )
+    assert sample["available_commit_bytes"] == 8 * runner.GIB
+    assert sample["disk_free_bytes"] >= runner.GIB
+    assert json.loads((tmp_path / "run/result.json").read_text()) == result
+    assert not (tmp_path / "run/events.jsonl").exists()
+
+
+def test_preflight_digest_mismatch_remains_distinct(tmp_path, monkeypatch):
+    from perf131k import windows_job
+
+    spec = spec_for(tmp_path)
+    spec["engine_sha256"] = "0" * 64
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("digest mismatch must not create a child")
+
+    monkeypatch.setattr(windows_job, "run_owned", forbidden)
+    with pytest.raises(ValueError, match="engine_digest_mismatch"):
+        runner.run_bounded(spec)
+    assert not (tmp_path / "run").exists()

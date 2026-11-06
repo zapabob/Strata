@@ -460,9 +460,7 @@ def run_bounded(spec: dict) -> dict:
             raise ResourceAbort("total_deadline", sample)
         return sample
 
-    try:
-        initial = resources()
-    except (RuntimeError, OSError, ValueError) as error:
+    def abort_preflight(error: Exception) -> dict:
         # Admission failure has no owned process. Keep a small receipt when the
         # destination is writable; an unwritable disk still surfaces its OSError.
         result = {
@@ -487,12 +485,23 @@ def run_bounded(spec: dict) -> dict:
         with (output / "result.json").open("x", encoding="utf-8") as target:
             json.dump(result, target, indent=2)
         return result
-    for kind in ("engine", "model", "prompt_fixture", "pack"):
-        if (
-            kind + "_path" in spec
-            and digest(Path(spec[kind + "_path"]), resources) != spec[kind + "_sha256"]
-        ):
-            raise ValueError(kind + "_digest_mismatch")
+
+    try:
+        initial = resources()
+    except (RuntimeError, OSError, ValueError) as error:
+        return abort_preflight(error)
+    try:
+        for kind in ("engine", "model", "prompt_fixture", "pack"):
+            if (
+                kind + "_path" in spec
+                and digest(Path(spec[kind + "_path"]), resources)
+                != spec[kind + "_sha256"]
+            ):
+                raise ValueError(kind + "_digest_mismatch")
+    except ResourceAbort as error:
+        # Only resource/deadline failures become abort receipts. Invalid artifacts
+        # remain distinct validation errors and never start an owned process.
+        return abort_preflight(error)
     cases = load_cases(
         Path(spec["prompt_fixture_path"]),
         spec["requested_settings"]["context"],
