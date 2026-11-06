@@ -2,9 +2,20 @@
 
 from __future__ import annotations
 
+import ast
+import copy
 import json
+import os
+import re
+import subprocess
+import tempfile
+import threading
+import time
 import unittest
+import uuid
 from pathlib import Path
+from types import SimpleNamespace
+from unittest import mock
 
 from startup_log_analysis import analyze_startup_logs
 
@@ -20,6 +31,47 @@ def _placement(seconds: str, generation: str) -> str:
 
 
 class StartupLogAnalysisTest(unittest.TestCase):
+    def test_real_child_spawn_prefix_owns_a_fresh_generation_on_each_attempt(self) -> None:
+        # Execute the real constructor up to its spawn receipt with a mocked Popen.
+        # No engine, model, server listener, narrator thread or CUDA call is started.
+        path = Path(__file__).resolve().parents[2] / "serve" / "server.py"
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        helper = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "q36_startup_child_env")
+        engine = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == "StrataEngine")
+        init = copy.deepcopy(next(n for n in engine.body if isinstance(n, ast.FunctionDef) and n.name == "__init__"))
+        stop = next(i for i, n in enumerate(init.body) if isinstance(n, ast.Expr) and isinstance(n.value, ast.Call)
+                    and isinstance(n.value.func, ast.Name) and n.value.func.id == "startup_child_receipt"
+                    and n.value.args[0].value == "spawned")
+        init.body = init.body[:stop + 1]
+        fixture_class = ast.ClassDef(name="SpawnPrefix", bases=[], keywords=[], body=[init], decorator_list=[])
+        module = ast.fix_missing_locations(ast.Module(body=[helper, fixture_class], type_ignores=[]))
+        fake_popen = mock.Mock(return_value=SimpleNamespace(pid=8765))
+        namespace = {"os": os, "re": re, "uuid": uuid, "time": time, "Path": Path, "json": json,
+                     "threading": SimpleNamespace(Event=threading.Event, Thread=mock.Mock()), "subprocess": subprocess,
+                     "engine_nice": lambda env: 0, "end_leftover_engines": mock.Mock(), "popen": fake_popen,
+                     "narrate_start": mock.Mock(), "_echoing": set()}
+        exec(compile(module, str(path), "exec"), namespace)
+        supplied = {"STRATA_Q36_LAUNCH_GENERATION": "owned-launch", "STRATA_Q36_STARTUP_GENERATION": "stale", "KEEP": "unchanged"}
+        with tempfile.TemporaryDirectory() as folder, mock.patch.dict(os.environ, {}, clear=True):
+            log = str(Path(folder) / "engine.log")
+            generations = []
+            for _ in range(2):
+                obj = namespace["SpawnPrefix"]("fake-engine", ["--max-context", "4096"], log=log, env=supplied)
+                actual = fake_popen.call_args.kwargs["env"]
+                generations.append(actual["STRATA_Q36_STARTUP_GENERATION"])
+                self.assertEqual(actual["STRATA_Q36_LAUNCH_GENERATION"], "owned-launch")
+                self.assertEqual(actual["KEEP"], "unchanged")
+                obj.log.close()
+            self.assertNotEqual(generations[0], generations[1])
+            self.assertEqual(supplied["STRATA_Q36_STARTUP_GENERATION"], "stale")
+            text = Path(log).read_text(encoding="utf-8")
+            for generation in generations:
+                self.assertIn(f"generation={generation} state=spawned process_id=8765", text)
+            self.assertNotIn("generation=stale", text)
+        child, generation = namespace["q36_startup_child_env"]({"STRATA_Q36_LAUNCH_GENERATION": "bad token", "STRATA_Q36_STARTUP_GENERATION": "stale"})
+        self.assertIsNone(generation)
+        self.assertNotIn("STRATA_Q36_STARTUP_GENERATION", child)
+
     def test_duplicate_upload_is_counted_once(self) -> None:
         one = (
             "strata-q36: context 65536 cells, prompt chunk 2048, 4.91 GiB of VRAM free\n"

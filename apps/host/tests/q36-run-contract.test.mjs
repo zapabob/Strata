@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { finishJob, nativeFixture } from './helpers/native-fixture.mjs';
@@ -12,6 +12,7 @@ import {
   fileIdentitySync,
   gibToBytes,
   prepareQ36Launch,
+  observeQ36Runtime,
   Q36_MAPPED_PACK_DIGESTS,
   q36FileSha256,
   q36PersistentKvBytes,
@@ -64,6 +65,69 @@ test('the launch contract is frozen from the snapshot that was checked', () => {
   assert.equal(out.contract.effective.expertStoreMode, 'legacy');
   assert.equal(out.contract.effective.mtp, 2);
   assert.equal(out.preservedUserArgs.includes('--cache-type-v'), false);
+});
+
+test('an unobserved auto prefill stays unknown and requested/effective differences are explicit', () => {
+  const contract = prepareQ36Launch({ generation: 'launch', args: ['--max-context', '65536', '--prefill', 'auto'] }).contract;
+  assert.equal(observeQ36Runtime(contract, { launchGeneration: 'old' }), contract);
+  assert.equal(contract.observed.status, 'unobserved');
+  assert.equal(contract.effective.prefill, null);
+  const state = { launchGeneration: 'launch', child: { generation: 'child', processId: 123 }, effective: {
+    generation: 'child', processId: 123, context: 32768, prefill: 1024, parallel: 1, mtp: 0, kv_k: 'f16', kv_v: 'f32', kv_bytes: '9007199254740993',
+  } };
+  const result = observeQ36Runtime(contract, state);
+  assert.equal(result.observed.status, 'mismatch');
+  assert.deepEqual(result.observed.mismatches.map(item => item.field), ['context', 'kv_k']);
+  assert.equal(result.effective.prefill, 1024);
+  assert.equal(result.observed.kv_bytes, '9007199254740993');
+  assert.equal(result.effective.persistentKv, 'fp32'); // Observation did not grant a new capability.
+  assert.equal(observeQ36Runtime(contract, { ...state, child: { generation: 'next-child', processId: 124 } }), contract);
+});
+
+test('the real Host launch consumer owns the generation and resolves only its actual child log', async () => {
+  const f = nativeFixture();
+  const until = async predicate => {
+    const deadline = Date.now() + 4000;
+    while (Date.now() < deadline) { if (predicate()) return; await new Promise(resolve => setTimeout(resolve, 20)); }
+    assert.fail('Host child telemetry was not observed');
+  };
+  try {
+    await f.control.refresh(true);
+    const path = join(f.repo, 'strata-iq3_s.json');
+    const config = JSON.parse(readFileSync(path, 'utf8'));
+    Object.assign(config, { arch: 'qwen35moe', model_name: 'Qwen3.6-35B-A3B', args: ['--max-context', '65536', '--prefill', 'auto'] });
+    writeFileSync(path, JSON.stringify(config));
+    f.setHealthWait(true);
+    const job = f.control.operation('load', { model: 'iq3_s' });
+    await until(() => f.hasPendingHealth());
+    const call = f.calls.find(c => c.args?.some(arg => String(arg).endsWith('server.py')));
+    const run = JSON.parse(readFileSync(call.args[call.args.indexOf('--config') + 1], 'utf8'));
+    const instance = () => f.control.state().instances[0];
+    const generation = run.q36_run.generation;
+    assert.match(generation, /^[0-9a-f-]{36}$/);
+    assert.equal(run.q36_run.runId, instance().id);
+    assert.equal(instance().q36Run.observed.status, 'unobserved');
+    const receipt = (launch, child, state, pid = 'null') => `Q36_CHILD schema=1 launch_generation=${launch} generation=${child} state=${state} process_id=${pid}\n`;
+    appendFileSync(run.log, receipt('old-launch', 'old-child', 'begin') + receipt(generation, 'child-one', 'begin') + receipt(generation, 'child-one', 'spawned', '8765'));
+    appendFileSync(run.log, 'Q36_EFFECTIVE schema=1 generation=old-child context=7 prefill=7\nQ36_EFFECTIVE schema=1 generation=child-one engine=strata-q36 context=65536 prefill=1024 parallel=1 mtp=0 kv_k=f32 kv_v=f32 kv_bytes=9007199254740993\n');
+    await until(() => instance().q36Run.observed.status === 'observed');
+    assert.equal(instance().q36Run.effective.prefill, 1024);
+    assert.equal(instance().q36Run.observed.kv_bytes, '9007199254740993');
+    assert.equal(instance().q36Run.observed.processId, 8765);
+    assert.equal(instance().q36Run.generation, generation);
+    // A server-owned child restart keeps its launch token but invalidates its predecessor's observation.
+    appendFileSync(run.log, receipt(generation, 'child-two', 'begin') + receipt(generation, 'child-two', 'spawned', '8766'));
+    await until(() => instance().q36Run.observed.status === 'unobserved');
+    assert.equal(instance().q36Run.effective.prefill, null);
+    appendFileSync(run.log, 'Q36_EFFECTIVE schema=1 generation=child-one prefill=4096\nQ36_EFFECTIVE schema=1 generation=child-two context=32768 prefill=512 parallel=1 mtp=0 kv_k=f32 kv_v=f32\n');
+    await until(() => instance().q36Run.observed.status === 'mismatch');
+    assert.equal(instance().q36Run.effective.prefill, 512);
+    assert.equal(instance().q36Run.observed.processId, 8766);
+    f.releaseHealth();
+    const loaded = await finishJob(f.control, job.id);
+    assert.equal(loaded.state, 'done', loaded.error);
+    assert.equal(instance().q36Run.observed.status, 'mismatch');
+  } finally { f.releaseHealth(); await f.cleanup(); }
 });
 
 test('an explicit unsupported setting stops the launch and is not called applied', () => {

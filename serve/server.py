@@ -1104,6 +1104,18 @@ class _RequestOwned:
         self._store(obj)[self.name] = value
 
 
+def q36_startup_child_env(env):
+    """Bind diagnostics to this Popen attempt, including restarts of the same server."""
+    child = dict(os.environ if env is None else env)
+    launch = child.get("STRATA_Q36_LAUNCH_GENERATION", "")
+    if not re.fullmatch(r"[a-zA-Z0-9-]{1,80}", launch):
+        child.pop("STRATA_Q36_STARTUP_GENERATION", None)
+        return child, None
+    generation = uuid.uuid4().hex
+    child["STRATA_Q36_STARTUP_GENERATION"] = generation
+    return child, generation
+
+
 class StrataEngine:
     """The resident engine: `strata --serve` reads `GEN <max_new> <ids>` lines and streams `T <id>` lines, then
     `DONE ...`.  Requests are serialized by the service's FIFO, so one pipe is enough.
@@ -1211,16 +1223,27 @@ class StrataEngine:
                   "STRATA_ENGINE_NICE=0 turns it off)", flush=True)
         end_leftover_engines(exe)                        # one an earlier run lost still holds the GPU and the memory
         spawned_at = time.monotonic()
+        child_env, startup_generation = q36_startup_child_env(env)
+        def startup_child_receipt(state, pid="null"):
+            if log and startup_generation:
+                try:
+                    self.log.write(f"Q36_CHILD schema=1 launch_generation={child_env['STRATA_Q36_LAUNCH_GENERATION']} "
+                                   f"generation={startup_generation} state={state} process_id={pid}\n")
+                    self.log.flush()
+                except OSError:
+                    pass  # Missing diagnostic evidence stays unobserved; it must not change engine startup.
+        startup_child_receipt("begin")
         try:
             self.proc = popen("the Strata engine", [exe, "--serve", *args], cwd=cwd, stdin=subprocess.PIPE,
                               stdout=subprocess.PIPE, stderr=self.log, text=True, encoding="utf-8", errors="replace",
-                              bufsize=1, env=env, **pin)    # (#5044: a byte that is not UTF-8 killed the reader thread)
+                              bufsize=1, env=child_env, **pin)    # (#5044: a byte that is not UTF-8 killed the reader thread)
         except OSError:                                  # nothing started: the narrator stops, the log handle goes back
             loading.set()
             if log:
                 self.log.close()
             raise
         proc = self.proc                                 # THIS start's process: a close() from another thread may set self.proc to None meanwhile (#4792)
+        startup_child_receipt("spawned", proc.pid)
         # the READY read has a timeout (#1317): the lines come from a thread, up to READY, so the rest of the stream
         # stays for _pump (one reader at a time)
         ready_q: queue.Queue = queue.Queue()
@@ -4432,6 +4455,13 @@ def child_env(cfg: dict, *, offline: bool = False) -> dict:
         env["CUDA_VISIBLE_DEVICES"] = ",".join(str(i) for i in ordered_gpus(cfg))
     for k, v in (cfg.get("env") or {}).items():      # engine settings the config carries (AMD: the GEMM tuning table)
         env[str(k)] = str(v)
+    # The owning Host start supplies this token; ambient/saved env cannot reuse an old child generation.
+    env.pop("STRATA_Q36_STARTUP_GENERATION", None)
+    env.pop("STRATA_Q36_LAUNCH_GENERATION", None)
+    run = cfg.get("q36_run")
+    generation = run.get("generation") if isinstance(run, dict) else None
+    if isinstance(generation, str) and re.fullmatch(r"[a-zA-Z0-9-]{1,80}", generation):
+        env["STRATA_Q36_LAUNCH_GENERATION"] = generation
     # A config or inherited environment cannot turn off capability confirmation.
     env["STRATA_REQUIRE_Q36_PRIVATE_CACHE"] = str(private_cache.required_capability(cfg))
     if (cfg.get("arch") or "") == "deepseek41":      # (only this engine reads these; Qwen's environment is untouched)

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseQ36StartupLine, q36StartupSentence, reduceQ36Startup, pushEngineLogChunk, q36EngineLogPath } from '../server/q36-startup-events.mjs';
+import { parseQ36StartupLine, parseQ36DetailLine, q36StartupSentence, reduceQ36Startup, pushEngineLogChunk, q36EngineLogPath } from '../server/q36-startup-events.mjs';
 import { admitQ36LegacyPhysical, Q36_UD_Q4_K_XL_HOST_EXPERT_BYTES } from '../server/q36-run-contract.mjs';
 
 test('startup events keep order, drop unknown stages, and do not clear an error', () => {
@@ -52,6 +52,32 @@ test('full-file verification remains visible as loading before expert allocation
     assert.equal(state.startup.stage, stage);
     assert.match(state.sentence, new RegExp(label));
   }
+});
+
+test('child receipts scope split detail and exact byte observations to the owning launch and child', () => {
+  const receipt = (launch, generation, state, pid = 'null') => `Q36_CHILD schema=1 launch_generation=${launch} generation=${generation} state=${state} process_id=${pid}\n`;
+  const detail = (generation, state) => `Q36_STARTUP_DETAIL schema=1 generation=${generation} stage=model_hash state=${state} process_elapsed_ms=123 stage_elapsed_ms=12 completed_bytes=9007199254740993 total_bytes=18446744073709551615 layer_index=-1 error_code=${state === 'error' ? 'read_failed' : 'null'}\n`;
+  const effective = generation => `Q36_EFFECTIVE schema=1 generation=${generation} engine=strata-q36 context=65536 prefill=1024 parallel=1 kv_k=f32 kv_v=f32 kv_bytes=9007199254740993\n`;
+  assert.equal(parseQ36StartupLine(detail('child1', 'begin')), null);
+  assert.equal(parseQ36DetailLine(detail('child1', 'progress')).completed_bytes, '9007199254740993');
+  let state = pushEngineLogChunk({ launchGeneration: 'mine' }, receipt('old', 'oldchild', 'begin') + effective('oldchild'));
+  assert.equal(state.effective, null);
+  state = pushEngineLogChunk(state, receipt('mine', 'child1', 'begin') + receipt('mine', 'child1', 'spawned', '1234'));
+  state = pushEngineLogChunk(state, detail('child1', 'progress').slice(0, 40));
+  assert.equal(state.detail, null);
+  state = pushEngineLogChunk(state, detail('child1', 'progress').slice(40) + effective('child1'));
+  assert.equal(state.detail.total_bytes, '18446744073709551615');
+  assert.equal(state.effective.kv_bytes, '9007199254740993');
+  assert.equal(state.effective.processId, 1234);
+  state = pushEngineLogChunk(state, detail('child1', 'end') + detail('child1', 'error') + detail('child1', 'progress'));
+  assert.equal(state.detail.state, 'error');
+  assert.equal(state.lastCompletedDetail.state, 'end');
+  assert.equal(state.phase, 'error');
+  state = pushEngineLogChunk(state, receipt('mine', 'child2', 'begin') + receipt('mine', 'child2', 'spawned', '1235') + effective('child1'));
+  assert.equal(state.effective, null);
+  assert.equal(state.detail, null);
+  state = pushEngineLogChunk(state, effective('child2'));
+  assert.equal(state.effective.processId, 1235);
 });
 
 test('UD-Q4_K_XL legacy placement is refused when free RAM cannot hold the measured arena', () => {

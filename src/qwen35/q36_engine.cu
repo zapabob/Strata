@@ -72,6 +72,7 @@ namespace MMQ = strata::prefill::mmq;
     do {                                                                                                               \
         cudaError_t e_ = (x);                                                                                          \
         if (e_ != cudaSuccess) {                                                                                       \
+            strata::qwen35::q36_startup_detail_error("cuda_error");                                                    \
             std::fprintf(stderr, "strata-q36: %s failed: %s (%s:%d)\n", #x, cudaGetErrorString(e_), __FILE__, __LINE__); \
             std::exit(1);                                                                                              \
         }                                                                                                              \
@@ -1203,6 +1204,10 @@ struct Engine {
     };
     std::vector<Hy> hy;
     int hybrid_t = 32;
+    // Requested allocation sizes, recorded only after the allocation succeeds; not a total VRAM estimate.
+    uint64_t startup_kv_bytes = 0, startup_recurrent_bytes = 0;
+    uint64_t startup_expert_host_bytes = 0, startup_expert_device_bytes = 0;
+    uint64_t startup_hybrid_host_bytes = 0, startup_hybrid_device_bytes = 0;
     bool main_hybrid = false;   // some main layer is hybrid (else only the MTP block is: the decode graph stays)
     bool mtp_graph = true;      // the MTP draft step may be a graph (not when its layer is hybrid)
     /// state index li's layer runs hybrid (its experts not all in VRAM)
@@ -1275,6 +1280,47 @@ struct Engine {
         }
     }
 
+    void startup_effective(const char* warmup, const char* expert_store, bool placed, bool graph_requested) const {
+        using namespace strata::qwen35;
+        std::fprintf(stderr, "Q36_EFFECTIVE schema=1 generation=%s engine=strata-q36 context=%d prefill=%d parallel=%d "
+                     "kv_k=%s kv_v=%s kv_bytes=%llu recurrent_bytes=%llu warmup=%s",
+                     q36_startup_generation(), ctx, tmax, n_sess, kv_k_f16 ? "f16" : "f32", kv_v_f16 ? "f16" : "f32",
+                     (unsigned long long) startup_kv_bytes, (unsigned long long) startup_recurrent_bytes, warmup);
+        if (placed) {
+            std::string slots;
+            uint64_t mapped_bytes = 0;
+            if (m->expert_pack) for (uint32_t li = 0; li < m->expert_pack->layer_count(); ++li) mapped_bytes += m->expert_pack->layer_bytes(li);
+            for (const Layer& layer : m->layers) { if (!slots.empty()) slots += ','; slots += std::to_string(layer.n_slots); }
+            if (m->has_mtp) { if (!slots.empty()) slots += ','; slots += std::to_string(m->mtp.n_slots); }
+            int workers = 0;
+#if defined(STRATA_Q36_CPU_POOL)
+            if (pool) workers = pool->workers() + (pool->host_works() ? 1 : 0);
+#endif
+            const char* file_staging = std::getenv("STRATA_Q36_FILE_STAGING");
+            std::fprintf(stderr, " mtp=%d slots=%s cpu_workers=%d graph_mode=%s graph_reason=%s expert_store=%s "
+                         "expert_host_bytes=%llu expert_mapped_bytes=%llu expert_device_bytes=%llu pin_pool_bytes=%llu "
+                         "hybrid_host_bytes=%llu hybrid_device_bytes=%llu pin_mode=%s pin_pipeline=%s file_staging=%s",
+                         mtp_d, slots.c_str(), workers, use_graph ? "enabled" : "eager",
+                         !graph_requested ? "requested_off" : main_hybrid ? "hybrid_main" : "enabled",
+                         expert_store, (unsigned long long) startup_expert_host_bytes, (unsigned long long) mapped_bytes,
+                         (unsigned long long) startup_expert_device_bytes,
+                         (unsigned long long) (m->pin_pool ? m->pin_pool->committed_bytes() : 0),
+                         (unsigned long long) startup_hybrid_host_bytes, (unsigned long long) startup_hybrid_device_bytes,
+                         !m->pin_pool ? "none" : m->pin_cuda_host ? "pinned" : "pageable",
+                         m->pin_pool && m->pin_cuda_host && std::getenv("STRATA_Q36_PIN_PIPELINE") ? "enabled" : "off",
+                         m->expert_pack && file_staging && std::strcmp(file_staging, "1") == 0 ? "enabled" : "off");
+        }
+        std::fprintf(stderr, "\n");
+        std::fflush(stderr);
+        if (q36_startup_detail_enabled()) {
+            size_t free_bytes = 0, total_bytes = 0;
+            const char* stage = placed ? "placement" : "buffers";
+            if (cudaMemGetInfo(&free_bytes, &total_bytes) == cudaSuccess)
+                std::fprintf(stderr, "Q36_EFFECTIVE schema=1 generation=%s memory_stage=%s vram_free_bytes=%llu vram_total_bytes=%llu\n",
+                             q36_startup_generation(), stage, (unsigned long long) free_bytes, (unsigned long long) total_bytes);
+            q36_startup_physical_memory(stage);
+        }
+    }
     size_t kv_element_bytes(bool key) const { return (key ? kv_k_f16 : kv_v_f16) ? sizeof(__half) : sizeof(float); }
     void* alloc_kv(size_t n, bool key) const {
         void* p = nullptr;
@@ -1519,6 +1565,10 @@ struct Engine {
         for (const Layer& layer : m->layers) attention_layers += layer.attn ? 1 : 0;
         const size_t kv_bytes = attention_layers * (size_t) ctx * g.n_head_kv * g.head_dim *
                                 (kv_element_bytes(true) + kv_element_bytes(false)) * n_sess;
+        startup_kv_bytes = kv_bytes;
+        for (const Layer& layer : m->layers) if (!layer.attn)
+            startup_recurrent_bytes += ((uint64_t) g.ssm_conv_channels * (g.ssm_d_conv - 1) +
+                                        (uint64_t) g.ssm_v_heads * g.ssm_state_size * g.ssm_state_size) * sizeof(float) * n_sess;
         std::fprintf(stderr, "strata-q36: KV storage K=%s V=%s, %.2f MiB across %d sessions; attention accumulation f32\n",
                      kv_k_f16 ? "f16" : "f32", kv_v_f16 ? "f16" : "f32", kv_bytes / 1048576.0, n_sess);
         strata::qwen35::q36_startup("buffers", "end", 0, 0, nullptr);
@@ -3060,17 +3110,25 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, int hybrid
         }
     }
     if (slots <= 0 && total <= budget2 && total + ((size_t) 256 << 20) <= fr) {
+        uint64_t upload_bytes = 0, uploaded = 0;
+        for (Layer* L : all) upload_bytes += L->L.bytes * (uint64_t) ne;
+        strata::qwen35::Q36StartupDetail upload("initial_slot_h2d", upload_bytes);
         std::vector<uint8_t> blob;
-        for (Layer* L : all) {
+        for (size_t li = 0; li < all.size(); ++li) {
+            Layer* L = all[li];
             CK(cudaMalloc(&L->blobs, L->stride * (size_t) ne + kMmqTail));
+            E.startup_expert_device_bytes += L->stride * (size_t) ne + kMmqTail;
             CK(cudaMemset(L->blobs, 0, L->stride * (size_t) ne + kMmqTail));
             blob.assign(L->L.bytes, 0);
             for (int64_t e = 0; e < ne; ++e) {
                 expert_blob(*L, e, blob.data());
                 CK(cudaMemcpy(L->blobs + (size_t) e * L->stride, blob.data(), L->L.bytes, cudaMemcpyHostToDevice));
+                uploaded += L->L.bytes;
+                upload.progress(uploaded, (int) li);
             }
             L->n_slots = (int) ne;
         }
+        upload.end();
         std::fprintf(stderr, "strata-q36: every routed expert in VRAM (%.2f GiB) in %.1f s\n", (double) total / (1 << 30),
                      ms_since(t0) / 1000.0);
         return true;
@@ -3168,6 +3226,7 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, int hybrid
         m.expert_pack = std::move(opened);
         // Bounded host pin pool for mapped-pack H2D (default 2 x 32 MiB). Not the full arena.
         {
+            strata::qwen35::Q36StartupDetail pin_alloc("pin_pool_alloc");
             uint64_t try_bytes = strata::qwen35::ExpertPinPool::kDefaultSlotBytes;
             uint8_t* slots[2] = {nullptr, nullptr};
             bool got_cuda = false;
@@ -3216,6 +3275,8 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, int hybrid
                              got_cuda ? "cudaHostAlloc" : "pageable", (unsigned long long) (try_bytes >> 20),
                              (double) m.pin_pool->committed_bytes() / (1 << 20));
             }
+            pin_alloc.total(m.pin_pool ? m.pin_pool->committed_bytes() : 0);
+            pin_alloc.end();
         }
         strata::qwen35::q36_startup("expert_host_alloc", "end", (long long) ms_since(t0), (long long) ms_since(t0), nullptr);
     } else {
@@ -3230,13 +3291,18 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, int hybrid
                 return false;
             }
         }
+        E.startup_expert_host_bytes = host;
     }
+    uint64_t upload_bytes = 0;
+    for (Layer* L : all) upload_bytes += mtp_only && L != &m.mtp ? L->L.bytes * (uint64_t) ne : L->stride * (uint64_t) S;
+    strata::qwen35::Q36StartupDetail upload("initial_slot_h2d", upload_bytes);
     size_t off = 0;
     E.hy.resize(all.size());
     for (size_t li = 0; li < all.size(); ++li) {
         Layer& L = *all[li];
         if (mtp_only && &L != &m.mtp) {   // a main layer: every expert in VRAM, as in the all-in-VRAM placement
             CK(cudaMalloc(&L.blobs, L.stride * (size_t) ne + kMmqTail));
+            E.startup_expert_device_bytes += L.stride * (size_t) ne + kMmqTail;
             CK(cudaMemset(L.blobs, 0, L.stride * (size_t) ne + kMmqTail));
             std::vector<uint8_t> blob(L.L.bytes, 0);
             for (int64_t e = 0; e < ne; ++e) {
@@ -3264,12 +3330,15 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, int hybrid
         L.n_slots = S;
         if (S > 0) {
             CK(cudaMalloc(&L.blobs, L.stride * (size_t) S + kMmqTail));
+            E.startup_expert_device_bytes += L.stride * (size_t) S + kMmqTail;
             CK(cudaMemset(L.blobs, 0, L.stride * (size_t) S + kMmqTail));
             if (mapped && m.pin_pool)
                 E.h2d_from_host(L.blobs, L.hblobs, L.stride * (size_t) S, E.st);
             else
                 CK(cudaMemcpy(L.blobs, L.hblobs, L.stride * (size_t) S, cudaMemcpyHostToDevice));
         }
+        // Some mapped copies can still be in flight. Completion is reported only after the existing sync below.
+        upload.progress(0, (int) li);
         Engine::Hy& H = E.hy[li];
         H.slot_of.assign((size_t) ne, -1);
         H.exp_in_slot.assign((size_t) S, 0);
@@ -3287,6 +3356,8 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, int hybrid
         }
     }
     const size_t T = (size_t) E.tmax, N = (size_t) g.n_embd, Kp = (size_t) m.top_k;
+    {
+    strata::qwen35::Q36StartupDetail buffers("hybrid_buffers");
     CK(cudaHostAlloc((void**) &E.h_h, T * N * 4, cudaHostAllocDefault));
     CK(cudaHostAlloc((void**) &E.cpu_out, T * Kp * N * 4, cudaHostAllocDefault));
     CK(cudaHostAlloc((void**) &E.h_ids, T * Kp * 4, cudaHostAllocDefault));
@@ -3306,8 +3377,18 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, int hybrid
             CK(cudaEventRecord(E.ev_used[b], E.st));
         }
     }
-    E.pool = std::make_unique<C::ExpertPool>(threads);
+    E.startup_hybrid_host_bytes = T * N * 4 + T * Kp * N * 4 + 2 * T * Kp * 4 + all.size() * (size_t) ne * 4 +
+                                  (E.acts ? T * C::kNativeActBytes + 64 : 0);
+    E.startup_hybrid_device_bytes = T * Kp * N * 4 + T * Kp * 4 + staging + all.size() * (size_t) ne * 4;
+    buffers.end();
+    }
+    {
+        strata::qwen35::Q36StartupDetail pool_init("cpu_pool_init");
+        E.pool = std::make_unique<C::ExpertPool>(threads);
+        pool_init.end();
+    }
     CK(cudaDeviceSynchronize());
+    upload.end();
     if (mtp_only)
         std::fprintf(stderr, "strata-q36: every main layer's routed experts in VRAM (%.2f GiB); the MTP block's: %d of "
                      "%lld in VRAM, the rest on the CPU pool (its drafts only)\n", (double) total_main / (1 << 30), S,
@@ -4080,6 +4161,7 @@ int serve(Engine& E) {
 }  // namespace
 
 int strata::qwen35::run(int argc, char** argv) {
+    q36_startup_physical_memory("process_start");
     std::string model, tokens, force, dump_full, emb_file;
     std::string cache_type_k = "f32", cache_type_v = "f32";
     int ctx = 32768, chunk = 0, n_gen = 64, bench_pp = 0, bench_tg = 0, mtp_d = 0, cpu_threads = 0, hybrid_rows = 128;
@@ -4248,6 +4330,7 @@ int strata::qwen35::run(int argc, char** argv) {
                          fr / 1073741824.0, fr_raw / 1073741824.0, packed / 1073741824.0, experts / 1073741824.0, chunk);
     }
     E.init(m, ctx, chunk, batch, vision);
+    E.startup_effective(warm ? "pending" : "off", expert_store.c_str(), false, graph);
     if (!place_experts(m, E, expert_vram, cpu_threads, hybrid_rows, expert_slots, err, expert_store, model)) {
         std::fprintf(stderr, "strata-q36: %s\n", err.c_str());
         return 1;
@@ -4283,7 +4366,11 @@ int strata::qwen35::run(int argc, char** argv) {
     E.draft_n = std::max(0, draft_vocab);
     E.bmtp = (batch_mtp || (std::getenv("STRATA_BATCH_MTP") != nullptr && std::string(std::getenv("STRATA_BATCH_MTP")) != "0")) && E.n_sess > 1 && E.mtp_d > 0;
     if (batch_mtp && !E.bmtp) std::fprintf(stderr, "strata-q36: --batch-mtp needs --batch N (2 or more) and --mtp N: ignored\n");
-    if (warm) E.warmup();
+    E.startup_effective(warm ? "pending" : "off", expert_store.c_str(), true, graph);
+    if (warm) {
+        E.warmup();
+        E.startup_effective("complete", expert_store.c_str(), true, graph);
+    }
     if (serve_mode) return serve(E);
     if (bench_pp > 0 || bench_tg > 0) {
         // llama-bench's shapes: a prompt of bench_pp tokens from a fresh state, then bench_tg tokens one at a time

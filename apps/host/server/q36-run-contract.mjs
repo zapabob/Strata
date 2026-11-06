@@ -160,7 +160,7 @@ export function bindLaunchPath({ requestedPath, resolvedPath }) {
 export function fileIdentitySync(filePath) {
   const fd = openSync(filePath, 'r');
   try {
-    const st = fstatSync(fd);
+    const st = fstatSync(fd, { bigint: true });
     let resolvedPath = filePath;
     try { resolvedPath = realpathSync.native(filePath); } catch { resolvedPath = filePath; }
     return {
@@ -371,10 +371,13 @@ export function prepareQ36Launch(input = {}) {
       privateCache,
       scopedConversationCache: argv.includes('--private-conversation-cache'),
     },
+    observed: { status: 'unobserved', generation: null, processId: null, context: null, prefill: null, parallel: null, kv_k: null, kv_v: null },
     securityPolicyDigest: input.securityPolicyDigest ?? null,
     argv,
     warnings,
   };
+  // The digest continues to identify the immutable launch plan. Runtime observations may resolve auto values later.
+  contract.planned = { ...contract.effective };
   contract.configDigest = sha256Text(canonical({
     capabilityRevision: Q36_CAPABILITY_REVISION,
     argv,
@@ -387,6 +390,27 @@ export function prepareQ36Launch(input = {}) {
     ? `Left out because this Qwen3.6 engine does not take them (not applied): ${dropped.map(d => [d.flag, d.value].filter(v => v != null).join(' ')).join(', ')}. Saved settings were kept.`
     : '';
   return { ok: true, argv, note, warnings, dropped, preservedUserArgs: userArgs, contract };
+}
+
+/** Only a receipt from this launch's real child may resolve requested/auto settings. */
+export function observeQ36Runtime(contract, state) {
+  const value = state?.effective;
+  if (!contract?.generation || contract.generation !== state?.launchGeneration || !state.child?.processId ||
+      value?.generation !== state.child.generation || value.processId !== state.child.processId) return contract;
+  const mismatches = [];
+  for (const key of ['context', 'prefill', 'mtp', 'parallel']) {
+    const requested = contract.requested[key];
+    if (value[key] != null && typeof requested === 'number' && value[key] !== requested) mismatches.push({ field: key, requested, observed: value[key] });
+  }
+  // Capability negotiation stays separate: observing f16 never grants permission to request it.
+  if (contract.effective.persistentKv === 'fp32') for (const key of ['kv_k', 'kv_v']) {
+    if (value[key] != null && value[key] !== 'f32') mismatches.push({ field: key, requested: 'f32', observed: value[key] });
+  }
+  const complete = ['context', 'prefill', 'parallel', 'kv_k', 'kv_v', 'mtp'].every(key => value[key] != null);
+  const observed = { ...contract.observed, ...value, mismatches, status: mismatches.length ? 'mismatch' : complete ? 'observed' : 'partial' };
+  const effective = { ...contract.effective };
+  for (const key of ['context', 'prefill', 'mtp', 'parallel']) if (value[key] != null) effective[key] = value[key];
+  return { ...contract, effective, observed };
 }
 
 /** Host arena measured for UD-Q4_K_XL on 2026-11-02: "no host memory for the experts (19195 MiB)". Not a size for every Qwen3.6 file. */
