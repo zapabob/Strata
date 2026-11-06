@@ -41,7 +41,7 @@ export interface Hardware {
   probedAt: string;
   host: { name: string; platform: string; release: string; arch: string; app: string };
   processors?: ProcessorInfo[];
-  cpu: { topologyKnown?:boolean; model: string; cores: number; threads: number; arch: string; ghz: number };
+  cpu: { topologyKnown?:boolean; topologySource?:'live'|'cached'|'unavailable'; model: string; cores: number; threads: number; arch: string; ghz: number };
   memory: { totalGb: number; freeGb: number; usedGb: number; pressure: 'low' | 'medium' | 'high' };
   disk: { path: string; totalGb: number; freeGb: number; modelsDir: string };
   gpus: GpuInfo[];

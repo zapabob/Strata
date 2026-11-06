@@ -68,7 +68,7 @@ export function NativeLocalModel({ onBack, onAlternative }: { onBack: () => void
         setPending(true);
         setError('');
         try {
-            const result = await nativeAction<NativeJob>('operations', { kind: 'install', args: { family: selection.family, model: selection.model, gguf_dir: checked.preview.model_dir ?? checked.path, ...(ownDataFolder ? { data_dir: ownDataFolder } : {}), context: native?.catalog?.recommendation?.context ?? 32768, vision: checked.preview.projectors?.some(p => p.status === 'ok' && p.pinned) && native?.visionReader ? 'yes' : 'no', kv: 'int8', loadAfter: true } });
+            const result = await nativeAction<NativeJob>('operations', { kind: 'install', args: { family: selection.family, model: selection.model, gguf_dir: checked.preview.model_dir ?? checked.path, ...(ownDataFolder ? { data_dir: ownDataFolder } : {}), context: native?.catalog?.recommendation?.context ?? 32768, vision: checked.preview.projectors?.some(p => p.status === 'ok' && p.pinned) && native?.visionReader ? 'yes' : 'no', ...(version && native?.servingPolicies?.[version.id]?.ordinaryKv.includes('int8') ? { kv: 'int8' } : {}), loadAfter: true } });
             setJobId(result.id);
         }
         catch (e) { setError(e instanceof Error ? e.message : String(e)); }

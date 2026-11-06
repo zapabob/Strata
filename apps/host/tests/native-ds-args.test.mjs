@@ -195,7 +195,7 @@ for (const memory of [false, true]) test('a Qwen model with pictures off drops -
   mkdirSync(install, { recursive: true });
   process.env.STRATA_INSTALL_DIR = install;
   const path = join(install, 'strata-q2_0.json');
-  writeFileSync(path, JSON.stringify({ exe: 'component:strata-engine', tokenizer: join(install, 'tok'), args: ['--pack', '/p', '--max-context', '4096', '--vision', '--kv', 'int8'], model_name: 'Qwen', port: 8080, ...(memory ? {} : { hakua_harness: { enabled: false } }) }));
+  writeFileSync(path, JSON.stringify({ arch: 'qwen4exp', exe: 'component:strata-engine', tokenizer: join(install, 'tok'), args: ['--pack', '/p', '--max-context', '4096', '--vision', '--kv', 'int8'], model_name: 'Qwen', port: 8080, ...(memory ? {} : { hakua_harness: { enabled: false } }) }));
   const saved = [];
   const control = {
     control: { dir: join(root, 'control') }, version: '0.2.7',

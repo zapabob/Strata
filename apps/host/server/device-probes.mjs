@@ -29,7 +29,12 @@ export function parseCpuTopology(raw, model, arch, ghz = 0, names = new Map()) {
 export function parseWindowsProcessors(raw, arch) {
   try {
     const parsed = JSON.parse(raw), rows = Array.isArray(parsed)?parsed:[parsed];
-    return rows.filter(r=>r?.DeviceID&&Number(r.NumberOfCores)>0&&Number(r.NumberOfLogicalProcessors)>0).map(r=>({id:String(r.DeviceID),socket:String(r.SocketDesignation??r.DeviceID),model:String(r.Name??'Unknown processor').trim(),cores:Number(r.NumberOfCores),threads:Number(r.NumberOfLogicalProcessors),arch,ghz:round(Number(r.MaxClockSpeed??0)/1000,2)}));
+    // A partial socket list is not a smaller verified computer. Reject the whole response.
+    if (!rows.length || rows.some(r => !r || typeof r.DeviceID !== 'string' || !r.DeviceID.trim() ||
+      typeof r.Name !== 'string' || !r.Name.trim() || !Number.isSafeInteger(Number(r.NumberOfCores)) || Number(r.NumberOfCores) <= 0 ||
+      !Number.isSafeInteger(Number(r.NumberOfLogicalProcessors)) || Number(r.NumberOfLogicalProcessors) < Number(r.NumberOfCores))) return [];
+    const result = rows.map(r=>({id:r.DeviceID.trim(),socket:String(r.SocketDesignation??r.DeviceID).trim(),model:r.Name.trim(),cores:Number(r.NumberOfCores),threads:Number(r.NumberOfLogicalProcessors),arch,ghz:round(Number(r.MaxClockSpeed??0)/1000,2)}));
+    return new Set(result.map(p=>p.id)).size === result.length ? result : [];
   } catch { return []; }
 }
 const number = value => value!=null&&String(value).trim()!==''&&Number.isFinite(Number(value))?Number(value):null;

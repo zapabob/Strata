@@ -20,6 +20,17 @@ export interface RunProfiles {
 export const RUN_PROFILES_KEY = 'strata.run-profiles.v1';
 export const emptyProfiles = (): RunProfiles => ({ schema: 1, profiles: [], defaults: {} });
 
+/** Display-only logical-core fallbacks must never become durable profile provenance. */
+export function profileComputerIdentity(hardware: Hardware | null): string | null {
+  const processors = hardware?.processors;
+  if (!hardware || hardware.cpu.topologyKnown !== true || hardware.cpu.topologySource === 'unavailable' || !processors?.length ||
+    new Set(processors.map(p => p.id)).size !== processors.length || new Set(processors.map(p => p.socket)).size !== processors.length ||
+    processors.some(p => !p.id || !p.socket || !p.model || !Number.isSafeInteger(p.cores) || p.cores <= 0 || !Number.isSafeInteger(p.threads) || p.threads < p.cores) ||
+    processors.reduce((n, p) => n + p.cores, 0) !== hardware.cpu.cores ||
+    processors.reduce((n, p) => n + p.threads, 0) !== hardware.cpu.threads) return null;
+  return computerIdentity(hardware);
+}
+
 export function computerIdentity(hardware: Hardware) {
   return JSON.stringify({
     host: hardware.host.name, platform: hardware.host.platform, arch: hardware.host.arch,

@@ -7,7 +7,8 @@
  */
 import os from 'node:os';
 import { readFile } from 'node:fs/promises';
-import { parseCpuTopology, parseWindowsProcessors, parseNvidiaDevices, detectDrmGpus } from './device-probes.mjs';
+import { parseNvidiaDevices, detectDrmGpus } from './device-probes.mjs';
+import { createCpuDetector } from './cpu-topology.mjs';
 import { CONTEXT_TOKENS, VARIANTS, footprint } from './catalog.mjs';
 import { MODELS_DIR, diskFreeGb, diskTotalGb } from './store.mjs';
 import { probe, round } from './util.mjs';
@@ -16,9 +17,12 @@ import { DX_ADAPTERS_SCRIPT, parseDxAdapters, windowsOtherGpus } from './windows
 
 let cached = null;
 let cachedAt = 0;
+let cachedBinding = null, detectionSequence = 0;
+const cpuDetector = createCpuDetector();
 
 export function invalidate() {
   cached = null;
+  detectionSequence++;
 }
 
 /**
@@ -40,7 +44,10 @@ function testHardware() {
 }
 
 export async function detect({ force = false } = {}) {
-  if (!force && cached && Date.now() - cachedAt < 30_000) return cached;
+  const binding = cpuDetector.bindingKey(process.platform);
+  if (cachedBinding !== binding) cached = null;
+  if (!force && cached && cachedBinding === binding && Date.now() - cachedAt < 30_000) return cached;
+  const request = ++detectionSequence;
 
   const platform = process.platform;
   const arch = process.arch;
@@ -51,7 +58,7 @@ export async function detect({ force = false } = {}) {
   // os.freemem() ignores reclaimable pages, which reads as "0 GB free" on macOS.
   const freeGb = forced?.freeGb ?? (await availableMemoryGb(platform)) ?? os.freemem() / 1024 ** 3;
 
-  const cpu = await detectCpu(platform);
+  const cpu = await cpuDetector.detect(platform);
   const gpus = forced?.gpus ?? await detectGpus(platform, totalGb);
   const accelerator = pickAccelerator(gpus, cpu, totalGb);
 
@@ -89,7 +96,9 @@ export async function detect({ force = false } = {}) {
   hw.verdict = buildVerdict(hw);
   hw.recommendedVariantId = recommend(hw);
 
+  if (request !== detectionSequence) return cached ?? hw;
   cached = hw;
+  cachedBinding = binding;
   cachedAt = Date.now();
   return hw;
 }
@@ -107,32 +116,6 @@ export async function availableMemoryGb(platform) {
   const reclaimable = pages('free') + pages('inactive') + pages('speculative') + pages('purgeable');
   if (!reclaimable) return null;
   return (reclaimable * pageSize) / 1024 ** 3;
-}
-
-async function detectCpu(platform) {
-  const logical = os.cpus(), threads = logical.length || 1;
-  let model = logical[0]?.model?.trim() ?? 'Unknown processor', ghz=round((logical[0]?.speed??0)/1000,2), processors=[];
-  if(platform==='darwin') {
-    const [brand,physical,threadCount,packages]=await Promise.all([
-      probe('sysctl',['-n','machdep.cpu.brand_string']),probe('sysctl',['-n','hw.physicalcpu']),probe('sysctl',['-n','hw.logicalcpu']),probe('sysctl',['-n','hw.packages'])
-    ]);
-    if(brand)model=brand;
-    const cores=Number(physical),count=Number(packages),totalThreads=Number(threadCount)||threads;
-    if(cores>0&&count>0&&cores%count===0&&totalThreads%count===0)processors=Array.from({length:count},(_,i)=>({id:`socket-${i}`,socket:String(i),model,cores:cores/count,threads:totalThreads/count,arch:process.arch,ghz,...(count===1?{logicalIds:logical.map((_,index)=>index)}:{})}));
-  } else if(platform==='linux') {
-    const raw=await probe('lscpu',['-b','-p=CPU,CORE,SOCKET']);
-    const names=new Map();
-    try { for(const block of (await readFile('/proc/cpuinfo','utf8')).split(/\n\s*\n/)) {
-      const fields=Object.fromEntries(block.split('\n').filter(l=>l.includes(':')).map(l=>{const i=l.indexOf(':');return [l.slice(0,i).trim(),l.slice(i+1).trim()];}));
-      if(fields['physical id']&&fields['model name'])names.set(fields['physical id'],fields['model name']);
-    }}catch{}
-    processors=parseCpuTopology(raw,model,process.arch,ghz,names);
-  } else if(platform==='win32') {
-    const raw=await probe('powershell.exe',['-NoProfile','-NonInteractive','-Command',utf8Script('Get-CimInstance Win32_Processor | Select-Object DeviceID,SocketDesignation,Name,NumberOfCores,NumberOfLogicalProcessors,MaxClockSpeed | ConvertTo-Json -Compress')]);
-    processors=parseWindowsProcessors(raw,process.arch);
-  }
-  const names=[...new Set(processors.map(p=>p.model))];
-  return {model:names.length===1?names[0]:names.length>1?names.join(' + '):model,cores:processors.length?processors.reduce((n,p)=>n+p.cores,0):threads,threads:processors.length?processors.reduce((n,p)=>n+p.threads,0):threads,arch:process.arch,ghz,processors,topologyKnown:!!processors.length};
 }
 
 async function detectGpus(platform, totalGb) {

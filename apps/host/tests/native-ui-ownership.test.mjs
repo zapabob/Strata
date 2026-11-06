@@ -12,7 +12,7 @@ const root = resolve(import.meta.dirname, '..');
 const controls = `import React from 'react';
 export const Btn=({children,onClick,disabled})=>React.createElement('button',{onClick,disabled},children);
 export const Select=({ariaLabel,value,options,onChange,disabled})=>React.createElement('select',{'aria-label':ariaLabel,value,disabled,onChange:e=>onChange(e.target.value)},options.map(o=>React.createElement('option',{key:o.value,value:o.value},o.label)));
-export const Screen=({children})=>React.createElement('main',null,children);
+export const Screen=({children,actions})=>React.createElement('main',null,actions,children);
 export const ErrorNotice=({message,onRetry})=>React.createElement('div',{role:'alert'},message,onRetry?React.createElement('button',{onClick:onRetry},'Try again'):null);
 export const Dialog=()=>null,Icon=()=>null,VersionPicker=()=>null,FamilySwitch=()=>null,PcComputer=()=>null,GpuRoles=()=>null,DownloadParts=()=>null,EngineWarning=()=>null,EngineUpdateCard=()=>null,EngineUpdateDialog=()=>null,NativeDeleteDialog=()=>null,NativeSettingsFile=()=>null,NativeTune=()=>null,NativeTuneBadge=()=>null,NativePresets=()=>null,NativeMcpEditor=()=>null,RunImageModel=()=>null;`;
 const boundaries = {
@@ -45,6 +45,7 @@ async function fixture(t,kind='settings',jobs=[]) {
     const html=join(home,'index.html');await writeFile(html,'<!doctype html><div id="root"></div>');
     const env=Object.fromEntries(Object.entries(process.env).filter(([k])=>!/^STRATA_|^DSH_|^WEBVIEW2_/i.test(k)));
     Object.assign(env,{LOCALAPPDATA:dirs.local,APPDATA:dirs.roaming,TEMP:dirs.tmp,TMP:dirs.tmp,STRATA_HOME:dirs.home,STRATA_WORKSPACE:dirs.workspace,STRATA_MODELS_DIR:dirs.models,STRATA_COMPONENTS_DIR:dirs.components,STRATA_RUNTIME_DIR:dirs.runtime,STRATA_SETTINGS_FILE:join(home,'settings.json'),STRATA_NO_ACQUIRE:'1',STRATA_NO_BUNDLED_ENGINE:'1',STRATA_NO_REPAIR_ACCESS:'1',STRATA_AGENT:'off'});
+    if (process.env.STRATA_TEST_WINDOWS_PROFILE) { env.USERPROFILE=process.env.STRATA_TEST_WINDOWS_PROFILE; delete env.HOME; }
     const browser=await chromium.launchPersistentContext(join(home,'browser'),{executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',headless:true,env,timeout:10000,args:['--disable-gpu','--disable-background-networking','--disable-component-update','--no-first-run']});
     t.after(()=>browser.close());t.diagnostic('isolated browser profile: '+join(home,'browser'));
     const page=await browser.newPage();page.setDefaultTimeout(5000);const errors=[];page.on('pageerror',e=>errors.push(e.message));t.after(()=>assert.deepEqual(errors,[]));
@@ -148,4 +149,52 @@ test('returning to A performs a fresh read and ignores the previous visit save r
     await p.evaluate(()=>window.__render('settings','A'));await settingsReady(p,3,0.4);
     assert.deepEqual(await p.evaluate(()=>window.__requests.filter(r=>r.method==='get').map(r=>r.path)),['/api/native/models/A/settings','/api/native/models/B/settings','/api/native/models/A/settings']);
     await settle(p,1,values(0.2));assert.equal(JSON.parse(await p.getByRole('textbox',{name:'Native configuration JSON'}).inputValue()).sampling.temperature,0.4);assert.equal(await p.getByText(/^Saved\. Load/).count(),0);
+});
+
+const ordinaryPolicy={id:'q38',ordinaryKv:['fp16','int8','q4_0','k8v4'],note:'Ordinary serving'};
+function preparedModel(policy=ordinaryPolicy,kv='int8') {
+    const s=state([]);s.catalog.families=[{family:'qwen',title:'Qwen',images:false,sizes:[{id:'B',model:'B',download_gb:1,ram_needed_gb:1,experts_gb:1}]}];
+    s.installed.models=[{model:'B',ready:true,context:32768,contextChosen:true,kv}];s.servingPolicies={B:policy};return s;
+}
+test('NativeModels applies changed ordinary KV directly without preparation and shows FP16',async t=>{
+    const p=await fixture(t,'models');await p.evaluate(s=>window.__putNative(s),preparedModel());
+    await p.getByRole('button',{name:'Expert mode',exact:true}).click();
+    const selector=p.getByRole('combobox',{name:'Native KV format'});
+    assert.equal(await selector.locator('option[value="fp16"]').count(),1);
+    await selector.selectOption('q4_0');await p.getByRole('button',{name:'Load model',exact:true}).click();
+    await p.waitForFunction(()=>window.__actions.length>0||window.__requests.some(r=>r.path==='/api/native/plan'));
+    const actions=await p.evaluate(()=>window.__actions);
+    assert.equal(actions[0]?.body.kind,'load');assert.equal(actions[0]?.body.args.kv,'q4_0');
+    assert.equal(await p.evaluate(()=>window.__requests.some(r=>r.path==='/api/native/plan')),false);
+});
+test('unknown saved ordinary KV needs an explicit choice, not the unchanged-load shortcut',async t=>{
+    const p=await fixture(t,'models');await p.evaluate(s=>window.__putNative(s),preparedModel(ordinaryPolicy,null));
+    await p.getByRole('button',{name:'Load model',exact:true}).click();
+    await p.evaluate(()=>new Promise(r=>setTimeout(r,0)));
+    assert.equal(await p.evaluate(()=>window.__actions.length),0);
+    assert.match(await p.getByRole('alert').textContent(),/KV|context memory/i);
+});
+for(const id of ['q36','deepseek41','unknown'])test(`NativeModels does not offer ordinary Q38 KV for ${id}`,async t=>{
+    const p=await fixture(t,'models');await p.evaluate(s=>window.__putNative(s),preparedModel({id,ordinaryKv:[],note:'Adapter-specific cache'}));
+    await p.getByRole('button',{name:'Expert mode',exact:true}).click();
+    assert.equal(await p.getByRole('combobox',{name:'Native KV format'}).count(),0);
+});
+test('incompatible stored native field stays visible with an actionable clear operation',async t=>{
+    const p=await fixture(t);await p.waitForFunction(()=>window.__requests.length===1);
+    await settle(p,0,{values:{cache_type_k:'q8_0'},mcp:{},fields:[{id:'cache_type_k',label:'KV cache K format',group:'GPU & memory',type:'enum',choices:[],supported:false,unavailableReason:'Ordinary serving cannot use this format.'}],settingsIssues:[{field:'cache_type_k',message:'Clear cache_type_k before ordinary serving.'}]});
+    const panel=p.locator('details.native-settings');await panel.evaluate(el=>el.open=true);
+    assert.match(await panel.textContent(),/q8_0/);
+    await p.getByRole('button',{name:'Clear KV cache K format',exact:true}).click();
+    await p.getByRole('button',{name:'Save settings',exact:true}).click();
+    assert.equal(await p.evaluate(()=>window.__requests.at(-1).body.values.cache_type_k),null);
+});
+
+test('local Q36 preparation does not inject the automatic ordinary Q38 KV choice',async t=>{
+    const p=await fixture(t,'local');const s=preparedModel({id:'q36',ordinaryKv:[],note:'Q36 scalar cache'});s.catalog.families[0].family='qwen36';
+    await p.evaluate(s=>window.__putNative(s),s);
+    await p.getByPlaceholder('Full path to the folder or the file').fill('owned-fixture.gguf');
+    await p.getByRole('button',{name:'Check files',exact:true}).click();
+    const found=preview('owned-fixture.gguf');found.preview.candidate_selection={family:'qwen36',model:'B'};await settle(p,0,found);
+    await p.getByRole('button',{name:'Prepare and load',exact:true}).click();
+    const args=await p.evaluate(()=>window.__actions[0].body.args);assert.equal(args.family,'qwen36');assert.equal('kv' in args,false);
 });

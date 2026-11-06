@@ -21,11 +21,11 @@ import { useRequestOwner } from '../lib/use-request-owner';
 import { RUN_VARIANT_KEY, readLastLocalModel, rememberRunSelection, resolveLocalRunSelection, runModelSettings, type RunModelDraft } from '../lib/run-selection';
 import { contextTokens, estimate, execution } from '../lib/experience';
 import { demoRunExperience, planMemory } from '../lib/run-memory';
-import { computerIdentity, configIdentity, defaultProfileKey, emptyProfiles, readProfiles, recommendedConfig, resourceConfig, RUN_PROFILES_KEY, saveProfile, type ComputerUse, type RunProfiles } from '../lib/run-profiles';
+import { profileComputerIdentity, configIdentity, defaultProfileKey, emptyProfiles, readProfiles, recommendedConfig, resourceConfig, RUN_PROFILES_KEY, saveProfile, type ComputerUse, type RunProfiles } from '../lib/run-profiles';
 import { modelFamilyIcon } from '../lib/model-icons';
 import { familyVersion, modelFamilies } from '../lib/model-versions';
 import { sizeGb } from '../lib/format';
-import { applyImageModel, getState, imageSelectionReady, useLifecycle, loadRuntimeModel, loadVariant, pushToast, restartEngine, saveEngine, selectImageModel, setConfigDraft, useStore, validateEngine } from '../lib/store';
+import { applyImageModel, getState, imageSelectionReady, useLifecycle, loadRuntimeModel, loadVariant, pushToast, refreshHardware, restartEngine, saveEngine, selectImageModel, setConfigDraft, useStore, validateEngine } from '../lib/store';
 import type { ImageModelChoice, RuntimeModels, RuntimeModel } from '../lib/types';
 import { useNative, nativeSettled, subscribeNative } from '../lib/native';
 import { NativeModels } from '../components/NativeModels';
@@ -139,6 +139,10 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
     const [stage, setStage] = useState<RunStage>('idle');
     const [discardOpen, setDiscardOpen] = useState(false);
     const initialized = useRef(false);
+    const defaultsResolved = useRef(new Set<string>());
+    const editedModels = useRef(new Set<string>());
+    const initialDraftModels = useRef(new Set<string>());
+    const [hardwareReading, setHardwareReading] = useState(false);
     const saved = useMemo(() => engine ? configDocument(engine) : null, [engine]);
     const text = rawDraft ?? (saved ? JSON.stringify(saved, null, 2) : '');
     const parsed = useMemo(() => {
@@ -155,12 +159,12 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
     selectionOwner.current = model?.id ?? selected;
     const missingVariant = selectionMissing || !!library && requestedVariant !== undefined && !library.variants.some(v => v.id === requestedVariant);
     const selectionPending = !profilesReady || requestedVariant !== undefined && requestedVariant !== model?.id;
-    const computer = hardware ? computerIdentity(hardware) : '';
+    const computer = profileComputerIdentity(hardware);
     const profileOwner = useRequestOwner(JSON.stringify([requestedVariant, model?.id, computer]));
     const pending = operationPending || profileSaveOwner === profileOwner.current;
     const localProfiles = profiles.profiles.filter(p => p.variantId === model?.id && p.hardware === computer);
     const selectedProfile = localProfiles.find(p => p.id === activeProfile);
-    const personalDefault = model ? profiles.defaults[defaultProfileKey(computer, model.id)] : undefined;
+    const personalDefault = model && computer !== null ? profiles.defaults[defaultProfileKey(computer, model.id)] : undefined;
     const profileChanged = !!selectedProfile && !!config && (configIdentity(config) !== configIdentity(selectedProfile.config) || imageChoice !== (selectedProfile.imageModel ?? 'off'));
     const use = config?.headroom === 'full' ? 'full' : 'shared';
     const ctx = contextTokens(config?.beginner.contextLength ?? 'recommended');
@@ -190,7 +194,7 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
             setProfileError(error instanceof Error ? error.message : 'Run profiles could not be loaded.');
         }
         setProfiles(stored);
-        const profileId = stored.defaults[defaultProfileKey(computer, model.id)];
+        const profileId = computer === null ? undefined : stored.defaults[defaultProfileKey(computer, model.id)];
         const profile = stored.profiles.find(p => p.id === profileId && p.variantId === model.id && p.hardware === computer);
         const matchesProfile = profile && parsed.config && configIdentity(parsed.config) === configIdentity(profile.config);
         const ownedDraft = rawDraft !== null && initialDraftOwner.current === model.id ? {
@@ -199,6 +203,8 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
         } : undefined;
         if (rawDraft !== null && initialDraftOwner.current && initialDraftOwner.current !== model.id)
             modelDrafts.current.set(initialDraftOwner.current, { draft: rawDraft, profile: 'current', image: imageChoice });
+        if (rawDraft !== null && initialDraftOwner.current) initialDraftModels.current.add(initialDraftOwner.current);
+        if (computer !== null) defaultsResolved.current.add(model.id);
         // Identity equality does not establish ownership of the global engine settings.
         const restored = runModelSettings(model, engine, hardware, stored, computer, ownedDraft);
         setActiveProfile(restored.profile);
@@ -206,6 +212,18 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
         void chooseImage(restored.image, model.id);
         setProfilesReady(true);
     }, [hardware, model?.id, engine, computer, rawDraft, missingVariant]);
+    useEffect(() => {
+        if (!profilesReady || !computer || !hardware || !engine || !model || selectionPending || missingVariant || defaultsResolved.current.has(model.id)) return;
+        defaultsResolved.current.add(model.id);
+        // Provisional recommendations are not a person-owned draft. Restore once only,
+        // and never let later hardware replies replace edits made while verification waited.
+        if (editedModels.current.has(model.id)) return;
+        const previous = initialDraftModels.current.has(model.id) ? recogniseInitialDefault(model.id, { draft: rawDraft, profile: activeProfile, image: imageChoice }) : undefined;
+        const restored = runModelSettings(model, engine, hardware, profiles, computer, previous);
+        setActiveProfile(restored.profile);
+        setConfigDraft(restored.draft);
+        void chooseImage(restored.image, model.id);
+    }, [profilesReady, computer, model?.id, selectionPending, missingVariant]);
     useEffect(() => {
         if (requestedVariant === undefined && model && (!selected || !library?.variants.some(v => v.id === selected)))
             setSelected(model.id);
@@ -240,7 +258,7 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
             return;
         const pinned = pinStrataEngineBackend(config, model, importBackendTarget.current === model.id ? preferredBackend : undefined);
         if (pinned !== config)
-            update(pinned);
+            update(pinned, false);
     }, [preferredBackend, model?.id, model?.local, model?.quant, config?.expert?.['runtime.backend'], selectionPending, missingVariant]);
     useEffect(() => {
         if (!config || !model || !connected || selectionPending || missingVariant)
@@ -282,7 +300,24 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
             patch.expert = patch.expert.map(p => p.id === 'gpu.layers' ? { ...p, value: gpuIds.length ? 'Automatic' : 'CPU only' } : p);
         return patch;
     }
-    function update(next: ConfigDocument) { setIssues([]); setStage('idle'); setConfigDraft(JSON.stringify(next, null, 2)); }
+    function markEdited() { if (model) editedModels.current.add(model.id); }
+    function recogniseInitialDefault(id: string, previous: RunModelDraft | undefined) {
+        if (!previous || !computer || !initialDraftModels.current.has(id) || editedModels.current.has(id)) return previous;
+        const savedId = profiles.defaults[defaultProfileKey(computer, id)];
+        const profile = profiles.profiles.find(p => p.id === savedId && p.variantId === id && p.hardware === computer);
+        try {
+            const matches = profile && previous.draft && configIdentity(readConfig(previous.draft)) === configIdentity(profile.config);
+            return { ...previous, profile: matches ? profile.id : 'current' };
+        } catch { return previous; }
+    }
+    function update(next: ConfigDocument, userEdit = true) { if (userEdit) markEdited(); setIssues([]); setStage('idle'); setConfigDraft(JSON.stringify(next, null, 2)); }
+    async function readHardware() {
+        if (hardwareReading) return;
+        setHardwareReading(true);
+        try { await refreshHardware(); }
+        catch (error) { setProfileError(error instanceof Error ? error.message : String(error)); }
+        finally { setHardwareReading(false); }
+    }
     async function chooseImage(choice: ImageModelChoice, owner = model?.id) {
         if (!owner)
             return;
@@ -306,9 +341,11 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
     function chooseProfile(id: string) {
         if (!engine || !hardware)
             return;
+        const profile = localProfiles.find(p => p.id === id);
+        if (!['current', 'recommended', 'maximum'].includes(id) && (!computer || !profile)) return;
+        markEdited();
         setActiveProfile(id);
         setStage('idle');
-        const profile = profiles.profiles.find(p => p.id === id);
         if (profile) {
             update(structuredClone(profile.config));
             void chooseImage(profile.imageModel ?? 'off');
@@ -335,13 +372,15 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
             if (config && model?.local) {
                 const pinned = pinStrataEngineBackend(config, model, hint);
                 if (pinned !== config)
-                    update(pinned);
+                    update(pinned, false);
             }
             return;
         }
         if (model)
             modelDrafts.current.set(model.id, { draft: rawDraft, profile: activeProfile, image: intendedImages.current.get(model.id) ?? imageChoice });
-        const restored = runModelSettings(next, engine, hardware, profiles, computer, modelDrafts.current.get(id), hint);
+        const previous = editedModels.current.has(id) || initialDraftModels.current.has(id) || defaultsResolved.current.has(id) || computer === null ? recogniseInitialDefault(id, modelDrafts.current.get(id)) : undefined;
+        const restored = runModelSettings(next, engine, hardware, profiles, computer, previous, hint);
+        if (computer !== null) defaultsResolved.current.add(id);
         selectionOwner.current = id;
         setSelected(id);
         setProfileOpen(false);
@@ -369,13 +408,14 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
         if (showResult) setProfileError('');
     }
     function openSave(asNew = false) {
+        if (computer === null || profileComputerIdentity(getState().hardware) !== computer) return;
         setUpdateExisting(!asNew && !!selectedProfile);
         setProfileName(!asNew && selectedProfile ? selectedProfile.name : use === 'full' ? 'Maximum performance' : 'Everyday');
         setMakeDefault(!asNew && !!selectedProfile && selectedProfile.id === personalDefault);
         setProfileOpen(true);
     }
     async function storeProfile() {
-        if (!model || !config || !hardware || !engine)
+        if (!model || !config || !hardware || !engine || computer === null || profileComputerIdentity(getState().hardware) !== computer)
             return;
         const visit = profileOwner.current;
         const profile = { id: updateExisting && selectedProfile ? selectedProfile.id : crypto.randomUUID(), name: profileName.trim(), variantId: model.id, hardware: computer, engineVersion: engine.engine.version, config: structuredClone(config), imageModel: imageChoice, updatedAt: new Date().toISOString() };
@@ -429,6 +469,7 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
     async function run() {
         if (!config || !model || pending || imagePending || imageNeedsDownload || imageUnavailable || !imageSelectionReady(imageChoice))
             return;
+        markEdited();
         setPending(true);
         setStage('loading');
         setIssues([]);
@@ -491,6 +532,7 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
       </div>
       {tr(expert ? <RunningModels controls/> : null)}
       {tr(profileError && !profileOpen ? <ErrorNotice message={profileError}/> : null)}
+      {computer === null ? <p className="small muted" role="status">{tr(hardwareReading || !hardware ? 'Reading this computer’s hardware…' : 'Hardware identity is unavailable. Saved profiles will be available after verification. You can still edit and load a model.')} <Btn size="sm" disabled={hardwareReading} onClick={() => void readHardware()}>{tr('Refresh hardware')}</Btn></p> : hardware?.cpu.topologySource === 'cached' ? <p className="small muted" role="status">{tr('Using the last verified CPU topology. The latest hardware reading was unavailable.')}</p> : null}
       {tr(imageError ? <ErrorNotice message={imageError}/> : null)}
       <div className="run-layout">
         <div className="run-setup" data-expert={expert || undefined}>
@@ -498,7 +540,7 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
           <section className="run-card run-model-choice">
             <div className="run-version-choice"><span>{tr("Version")}</span><Select ariaLabel={tr("Model version")} value={model.id} disabled={pending} menuClassName="run-version-menu" options={[...versions.map(v => ({ value: v.id, label: `${v.name} · ${v.quant} · ${sizeGb(v.diskGb)}${v.local ? ' · Local' : ''}` })), { value: 'use-local-model', label: 'Use a local model…' }]} onChange={id => id === 'use-local-model' ? setLocalModelOpen(true) : chooseModel(id)}/></div>
             {tr(model.local ? <div className="run-local-model-note"><Icon name="model-file" size={15}/><span>{tr("Local model \u00B7 ")}{tr(model.local.architecture)}{tr(" \u00B7 Compatibility checked on load.")}</span><button className="text-btn" onClick={() => setLocalModelOpen(true)}>{tr("Change file")}</button></div> : null)}
-            {IMAGE_GENERATION_VISIBLE ? <RunImageModel library={imageModels ? { ...imageModels, selected: imageChoice } : null} disabled={pending || imagePending || !connected} onChange={() => setStage('idle')} onSelect={choice => chooseImage(choice)}/> : null}
+            {IMAGE_GENERATION_VISIBLE ? <RunImageModel library={imageModels ? { ...imageModels, selected: imageChoice } : null} disabled={pending || imagePending || !connected} onChange={() => setStage('idle')} onSelect={choice => { markEdited(); return chooseImage(choice); }}/> : null}
           </section>
           <section className="run-card run-context"><div className="run-card__head"><span><Icon name="chat" size={19}/><h2>{tr("Conversation context")}</h2></span><strong>{tr(ctx / 1024)}{tr("K ")}<small>{tr("tokens")}</small></strong></div><p>{tr("How much your model can keep in mind.")}</p>
             <div className="run-context-presets" role="group" aria-label={tr("Context presets")}>{tr([32, 64, 96, 128, 256].map(k => <button key={k} disabled={k > contextMax} aria-pressed={ctx === k * 1024} onClick={() => setContext(k)}><span>{tr(k)}{tr("K")}</span></button>))}</div>
@@ -524,7 +566,7 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
             <p className="xs muted">{tr(runtime?.capabilities.multipleModels === false ? 'This native host currently supports one model with automatic GPU placement.' : !allowMultiple ? 'One model at a time. Loading switches to the selected model.' : placementPlan?.reloads ? 'Loading applies these settings to this instance. Other models stay loaded.' : 'Loading adds a model. Existing models keep their settings and GPU assignments.')}</p>
             {tr(runtime?.instances.length ? <div className="run-memory-reservations"><span>{tr(placementPlan && !placementPlan.alreadyLoaded ? 'Shared RAM after load' : 'Shared RAM reserved')} <strong>{tr((placementPlan?.budget.ramGb ?? runtime.memory.ramGb).toFixed(1))} / {tr((placementPlan?.budget.budgetGb ?? runtime.memory.budgetGb).toFixed(1))}{tr(" GB")}</strong></span><small>{tr(runtime.memory.reserveGb.toFixed(0))}{tr(" GB RAM headroom \u00B7 estimates include all loaded models")}</small>{tr((placementPlan?.budget.devices ?? runtime.memory.devices).map(d => <span key={d.id}>{tr(d.name)}<strong>{tr(d.usedGb.toFixed(1))} / {tr(d.budgetGb.toFixed(1))}{tr(" GB")}</strong></span>))}</div> : null)}
           </section> : null)}
-          {tr(expert ? <RunExpertEditor engine={engine} config={config} text={text} onChange={update} onText={value => { setStage('idle'); setConfigDraft(value); }} onRestore={() => setDiscardOpen(true)} onError={message => setIssues([{ level: 'error', message }])}/> : null)}
+          {tr(expert ? <RunExpertEditor engine={engine} config={config} text={text} onChange={update} onText={value => { markEdited(); setStage('idle'); setConfigDraft(value); }} onRestore={() => setDiscardOpen(true)} onError={message => setIssues([{ level: 'error', message }])}/> : null)}
           {tr(parsed.error ? <ErrorNotice message={parsed.error}/> : null)}
           {tr(issues.length ? <div className="run-issues" role="status">{tr(issues.map((issue, i) => <p key={i} data-tone={issue.level}><Icon name={issue.level === 'error' ? 'error' : 'info'} size={16}/>{tr(issue.message)}</p>))}</div> : null)}
           {tr((executionMode === 'single' || library.mode === 'real') && !lifecycle.allowed ? <p className="small muted">{tr(lifecycle.reason)}</p> : null)}
@@ -545,14 +587,14 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
       <button role="menuitemradio" aria-checked={!selectedProfile} className="menu__item run-settings-option" onClick={() => { chooseProfile('current'); setProfileMenu(false); }}><span className="run-settings-icon"><Icon name="sliders" size={18}/></span><span>{tr("Current settings")}</span>{tr(!selectedProfile ? <Icon name="check" size={15} className="run-settings-selected"/> : null)}</button>
       {tr(localProfiles.map(profile => <button key={profile.id} role="menuitemradio" aria-checked={profile.id === activeProfile} className="menu__item run-settings-option" onClick={() => { chooseProfile(profile.id); setProfileMenu(false); }}><span className="run-settings-icon"><Icon name="layers" size={18}/></span><span>{profile.name}{tr(profile.id === personalDefault ? <small>{tr("Default for this model")}</small> : null)}{tr(profile.engineVersion !== engine.engine.version ? <small>{tr("Engine changed \u00B7 tune again before running")}</small> : null)}</span>{tr(profile.id === activeProfile ? <Icon name="check" size={15} className="run-settings-selected"/> : null)}</button>))}
       <div className="run-settings-menu-divider" role="separator"/>
-      {tr(selectedProfile ? <button role="menuitem" className="menu__item run-settings-action" disabled={!config} onClick={() => { setProfileMenu(false); openSave(); }}><span className="run-settings-icon"><Icon name="pencil" size={18}/></span>{tr("Edit saved settings\u2026")}</button> : null)}
-      <button role="menuitem" className="menu__item run-settings-action" disabled={!config} onClick={() => { setProfileMenu(false); openSave(true); }}><span className="run-settings-icon"><Icon name={selectedProfile ? 'copy' : 'plus'} size={18}/></span>{tr(selectedProfile ? 'Save as new…' : 'Save current settings…')}</button>
+      {tr(selectedProfile ? <button role="menuitem" className="menu__item run-settings-action" disabled={!config || computer === null} onClick={() => { setProfileMenu(false); openSave(); }}><span className="run-settings-icon"><Icon name="pencil" size={18}/></span>{tr("Edit saved settings\u2026")}</button> : null)}
+      <button role="menuitem" className="menu__item run-settings-action" disabled={!config || computer === null} onClick={() => { setProfileMenu(false); openSave(true); }}><span className="run-settings-icon"><Icon name={selectedProfile ? 'copy' : 'plus'} size={18}/></span>{tr(selectedProfile ? 'Save as new…' : 'Save current settings…')}</button>
       {tr(selectedProfile && profileChanged ? <button role="menuitem" className="menu__item run-settings-action" onClick={() => { setProfileMenu(false); chooseProfile(selectedProfile.id); }}><span className="run-settings-icon"><Icon name="refresh" size={18}/></span>{tr("Restore saved settings")}</button> : null)}
     </FloatingMenu> : null)}
     <Dialog open={libraryOpen} className="run-library-dialog" title={tr("Manage models")} onClose={() => setLibraryOpen(false)}><ModelsScreen embedded familyOverride={model.family} selectedVariant={model.id} contextOverride={ctx} onChoose={id => { chooseModel(id); setLibraryOpen(false); }}/></Dialog>
     <LocalModelImport open={localModelOpen} directory={library.disk.modelsDir} initialPath={importPath} onClose={() => setLocalModelOpen(false)} onChoose={id => chooseModel(id, preferredBackend)}/>
-    <Dialog open={profileOpen} compact title={tr(updateExisting ? 'Update saved settings' : 'Save settings')} onClose={() => !pending && setProfileOpen(false)} actions={<><Btn disabled={pending} onClick={() => setProfileOpen(false)}>{tr("Cancel")}</Btn><Btn variant="primary" disabled={!profileName.trim() || pending || imagePending || invalid} onClick={() => void storeProfile()}>{tr(pending ? 'Saving…' : updateExisting ? 'Update settings' : 'Save settings')}</Btn></>}><div className="run-save-profile"><label className="input-field"><span>{tr("Name")}</span><input className="st-input" aria-label={tr("Settings name")} maxLength={64} value={profileName} onChange={e => setProfileName(e.target.value)}/></label><p className="small muted">{tr(model.name)} · {tr(ctx / 1024)}{tr("K \u00B7 ")}{tr(use === 'full' ? 'Maximum performance' : 'Room for other apps')}</p><label className="run-default-choice"><input type="checkbox" checked={makeDefault} onChange={e => setMakeDefault(e.target.checked)}/><span>{tr("Use by default for this model")}<small>{tr("On this computer. Restore it whenever you open Models.")}</small></span></label>{tr(profileError ? <ErrorNotice message={profileError}/> : null)}</div></Dialog>
+    <Dialog open={profileOpen} compact title={tr(updateExisting ? 'Update saved settings' : 'Save settings')} onClose={() => !pending && setProfileOpen(false)} actions={<><Btn disabled={pending} onClick={() => setProfileOpen(false)}>{tr("Cancel")}</Btn><Btn variant="primary" disabled={computer === null || !profileName.trim() || pending || imagePending || invalid} onClick={() => void storeProfile()}>{tr(pending ? 'Saving…' : updateExisting ? 'Update settings' : 'Save settings')}</Btn></>}><div className="run-save-profile"><label className="input-field"><span>{tr("Name")}</span><input className="st-input" aria-label={tr("Settings name")} maxLength={64} value={profileName} onChange={e => setProfileName(e.target.value)}/></label><p className="small muted">{tr(model.name)} · {tr(ctx / 1024)}{tr("K \u00B7 ")}{tr(use === 'full' ? 'Maximum performance' : 'Room for other apps')}</p><label className="run-default-choice"><input type="checkbox" checked={makeDefault} disabled={computer === null} onChange={e => { if (computer !== null) setMakeDefault(e.target.checked); }}/><span>{tr("Use by default for this model")}<small>{tr("On this computer. Restore it whenever you open Models.")}</small></span></label>{tr(profileError ? <ErrorNotice message={profileError}/> : null)}</div></Dialog>
     <DemoTest open={testOpen} onClose={() => setTestOpen(false)} experience={experience}/>
-    <Dialog open={discardOpen} compact title={tr("Restore saved settings?")} onClose={() => setDiscardOpen(false)} actions={<><Btn onClick={() => setDiscardOpen(false)}>{tr("Keep editing")}</Btn><Btn onClick={() => { setConfigDraft(null); void chooseImage(imageModels?.applied ?? 'off'); setActiveProfile('current'); setIssues([]); setDiscardOpen(false); }}>{tr("Restore settings")}</Btn></>}><p>{tr("Replace this draft with the settings last saved to the engine.")}</p></Dialog>
+    <Dialog open={discardOpen} compact title={tr("Restore saved settings?")} onClose={() => setDiscardOpen(false)} actions={<><Btn onClick={() => setDiscardOpen(false)}>{tr("Keep editing")}</Btn><Btn onClick={() => { markEdited(); setConfigDraft(null); void chooseImage(imageModels?.applied ?? 'off'); setActiveProfile('current'); setIssues([]); setDiscardOpen(false); }}>{tr("Restore settings")}</Btn></>}><p>{tr("Replace this draft with the settings last saved to the engine.")}</p></Dialog>
   </Screen>;
 }
