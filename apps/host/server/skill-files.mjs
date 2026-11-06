@@ -6,8 +6,8 @@
  * list (bundled, written, added, edited, switched on or off) into one folder the Harness is told to scan (`materializeSkills`), every time
  * anything changes. The Harness watches that folder, so a skill saved in the app is there for the next message without a restart.
  */
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 
 /** The kebab-case name the Harness requires, from what a person typed ("Directory opener" -> "directory-opener"). */
 export function skillSlug(name) {
@@ -27,7 +27,7 @@ export function parseSkillFile(text) {
   const m = /^---\n([\s\S]*?)\n---\n?/.exec(raw);
   if (!m) return { name: null, title: null, description: null, body: raw.trim() };
   const field = key => {
-    const line = new RegExp(`^${key}:\\s*(.*)$`, 'mi').exec(m[1])?.[1]?.trim();
+    const line = new RegExp(`^${key}:[ \t]*(.*)$`, 'mi').exec(m[1])?.[1]?.trim();
     if (line === undefined) return null;
     try { if (/^["']/.test(line)) return typeof JSON.parse(line.replace(/^'(.*)'$/, '"$1"')) === 'string' ? JSON.parse(line.replace(/^'(.*)'$/, '"$1"')) : line; } catch { /* plain scalar */ }
     return line;
@@ -35,15 +35,33 @@ export function parseSkillFile(text) {
   return { name: field('name'), title: field('title'), description: field('description'), body: raw.slice(m[0].length).trim() };
 }
 
-/** Where a skill written in the app lives, and writing it there. */
-export function writeCreatedSkill(root, { name, description, body }) {
+/** Stage outside the discovery root, commit preferences, then publish the file.
+ * A crash or cleanup failure before publication cannot expose instructions with
+ * default permissions. Rollback failure leaves only inert saved preferences. */
+export function writeCreatedSkill(root, { name, description, body }, { beforePublish = () => {}, rollback = () => {} } = {}) {
   const id = skillSlug(name);
   if (!id) throw new Error('Give the skill a name with letters or numbers in it.');
   const dir = join(root, id);
   if (existsSync(dir)) throw new Error(`You already have a skill called "${id}". Choose another name, or edit the one you have.`);
-  mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, 'SKILL.md'), skillFileText({ name: id, title: String(name).trim(), description, body }));
-  return id;
+  mkdirSync(root, { recursive: true });
+  const staged = mkdtempSync(join(dirname(root), '.skill-'));
+  let prepared = false;
+  try {
+    writeFileSync(join(staged, 'SKILL.md'), skillFileText({ name: id, title: String(name).trim(), description, body }), { mode: 0o600, flush: true });
+    beforePublish(id);
+    prepared = true;
+    if (existsSync(dir)) throw new Error(`You already have a skill called "${id}". Choose another name, or edit the one you have.`);
+    renameSync(staged, dir);
+    return id;
+  } catch (error) {
+    if (prepared) {
+      try { rollback(id); }
+      catch (rollbackError) { throw new AggregateError([error, rollbackError], 'The skill was not imported. Its unused saved preferences could not be restored.'); }
+    }
+    throw error;
+  } finally {
+    try { rmSync(staged, { recursive: true, force: true }); } catch { /* outside discovery; never remove an existing skill as rollback */ }
+  }
 }
 
 /**

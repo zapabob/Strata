@@ -197,7 +197,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /* -------------------------------------------------------------- the stream --- */
 
-export async function streamChat({ message, history = [], systemPrompt = '', modelLabel, onFrame, signal, engine, candidates = [] }) {
+export async function streamChat({ message, history = [], systemPrompt = '', modelLabel, onFrame, signal, engine, candidates = [], disableTools=false }) {
   const be = await detectBackend();
 
   if (be.kind === 'strata') {
@@ -210,6 +210,7 @@ export async function streamChat({ message, history = [], systemPrompt = '', mod
       signal,
       supervised: false,
       engine,
+      extra: disableTools?{strata_mcp:false}:{},
       modelId: be.modelId || 'strata',
     });
   }
@@ -222,6 +223,7 @@ export async function streamChat({ message, history = [], systemPrompt = '', mod
       systemPrompt,
       onFrame,
       signal,
+      extra: disableTools?{strata_mcp:false}:{},
       supervised: be.kind === 'engine',
       engine,
     });
@@ -232,7 +234,7 @@ export async function streamChat({ message, history = [], systemPrompt = '', mod
     throw new Error(be.error ?? 'No Strata engine is available.');
   }
 
-  return demoCompletion({ message, modelLabel, onFrame, signal, engine, candidates });
+  return demoCompletion({ message, modelLabel, onFrame, signal, engine, candidates, disableTools });
 }
 
 /* --------------------------------------------------------- real engine path --- */
@@ -478,7 +480,7 @@ function proposeTools(message, candidates = []) {
   return tools.slice(0, 2);
 }
 
-async function demoCompletion({ message, modelLabel, onFrame, signal, engine, candidates = [] }) {
+async function demoCompletion({ message, modelLabel, onFrame, signal, engine, candidates = [], disableTools=false }) {
   const variety = modelLabel ?? 'the loaded model';
   const promptTokens = estimateTokens(message);
 
@@ -486,7 +488,7 @@ async function demoCompletion({ message, modelLabel, onFrame, signal, engine, ca
 
   // Propose tool calls before answering — this is how a local agent behaves,
   // and it is the flow the approval card exists for.
-  for (const tool of wantsPreviewExamples(message) ? [] : proposeTools(message, candidates)) {
+  for (const tool of disableTools || wantsPreviewExamples(message) ? [] : proposeTools(message, candidates)) {
     onFrame({ type: 'tool', tool });
   }
   await engine.beginReading(promptTokens, engine.variantId);

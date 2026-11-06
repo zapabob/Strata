@@ -1,6 +1,7 @@
 import { migrateSetup } from './setup.mjs';
 /** Tiny persisted state for the host: one JSON file under STRATA_HOME. */
-import { accessSync, constants, mkdirSync, readFileSync, writeFileSync, existsSync, realpathSync, readdirSync, statSync, statfsSync, symlinkSync } from 'node:fs';
+import { accessSync, constants, mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync, existsSync, realpathSync, readdirSync, statSync, statfsSync, symlinkSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import { alignModels, isDriveRoot, libraryFolderFromPick, makeFolder } from './model-folder.mjs';
 import { dirname, isAbsolute, join, parse, relative, resolve } from 'node:path';
 import { homedir } from 'node:os';
@@ -134,7 +135,7 @@ export function changeModelsDirectory(directory) {
   const installedByDirectory = { ...state.installedByDirectory, [MODELS_DIR]: state.installed ?? {} };
   const updated = { ...state, modelsDir: next, installedByDirectory, installed: installedByDirectory[next] ?? {}, current: null, loaded: null };
   // Commit the preference before exposing it; a persistence error leaves the old library active.
-  writeFileSync(STATE_FILE, JSON.stringify(updated, null, 2));
+  persist(updated);
   state = updated; MODELS_DIR = next;
   return true;
 }
@@ -143,17 +144,36 @@ export function get() {
   return state;
 }
 
+/** Publish a complete state file, never truncate the last committed settings.
+ * Legacy best-effort saves use this too so a later failed write cannot erase a
+ * durably saved skill restriction or credential. */
+function persist(next) {
+  const temporary = `${STATE_FILE}.${randomUUID()}.tmp`;
+  try {
+    writeFileSync(temporary, JSON.stringify(next, null, 2), { flag: 'wx', mode: 0o600, flush: true });
+    renameSync(temporary, STATE_FILE);
+  } finally {
+    // An unrenamed temporary file is not read on restart. Cleanup cannot turn
+    // a failed commit into success or obscure its original filesystem error.
+    try { unlinkSync(temporary); } catch { /* absent after commit, or left inert */ }
+  }
+}
+
 export function save() {
   try {
-    writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
+    persist(state);
   } catch (err) {
     console.error('[strata] could not persist state:', err.message);
   }
 }
 
-export function update(patch) {
-  state = { ...state, ...patch };
-  save();
+/** durable callers get an exception on failure and keep the previous memory
+ * state. Existing callers retain their best-effort, nonthrowing contract. */
+export function update(patch, { durable = false } = {}) {
+  const next = { ...state, ...patch };
+  if (durable) persist(next);
+  state = next;
+  if (!durable) save();
   return state;
 }
 

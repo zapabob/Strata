@@ -87,10 +87,11 @@ export function SettingsTools({ preview }: { preview?: ToolsState }) {
   useEffect(() => { if (!preview) void load(); }, []);
 
   async function save(change: Record<string, unknown>) {
-    if (preview) return;
+    if (preview) return false;
+    const previous = state;
     setBusy(true);
-    try { setState(await api.put<ToolsState>('/api/agent/tools', change)); setError(''); }
-    catch (e) { setError(e instanceof Error ? e.message : 'The change could not be saved.'); void load(); }
+    try { setState(await api.put<ToolsState>('/api/agent/tools', change)); setError(''); return true; }
+    catch (e) { setState(previous); setError(e instanceof Error ? e.message : 'The change could not be saved.'); return false; }
     finally { setBusy(false); }
   }
   const toggle = (id: string, on: boolean) => {
@@ -131,6 +132,8 @@ export function SettingsTools({ preview }: { preview?: ToolsState }) {
 
     <section className="settings-section">
       <h2 className="h4" style={{ marginBottom: 10 }}>{tr('Web search')}</h2>
+      <p className="small muted">{tr('DuckDuckGo / Bing works without an API key. Use Search web in chat to choose a query and attach snippets.')}</p>
+      {keyed && !state.search.keySet ? <p className="small muted">{tr('No key is saved. Autonomous agent search falls back to DuckDuckGo / Bing. Manual Search web supports the built-in provider only.')}</p> : null}
       <div className="st-card st-card--flush">
         <Field label={tr('Where results come from')} hint={tr(keyed ? 'Searches use your own account with this service.' : 'Results come from DuckDuckGo, or from Bing when DuckDuckGo is busy. You do not need an account or a key.')}>
           <Select ariaLabel={tr('Where results come from')} value={state.search.provider} options={SEARCH_CHOICES} onChange={value => { setKey(''); void save({ search: { provider: value } }); }} />
@@ -138,7 +141,7 @@ export function SettingsTools({ preview }: { preview?: ToolsState }) {
         {keyed ? <Field label={tr('Your key')} hint={tr(state.search.keySet ? 'A key is saved on this computer. Enter a new one to replace it.' : 'Saved on this computer only. Strata never shows it again.')}>
           <div className="row">
             <input className="st-input" style={{ width: 190 }} type="password" aria-label={tr('Your key')} autoComplete="new-password" spellCheck={false} placeholder={tr(state.search.keySet ? 'Leave blank to keep the saved key' : 'Paste your key')} value={key} onChange={e => setKey(e.target.value)} />
-            <Btn size="sm" disabled={busy || !key.trim()} onClick={() => { void save({ search: { provider: state.search.provider, key: key.trim() } }); setKey(''); pushToast('success', tr('Key saved')); }}>{tr('Save key')}</Btn>
+            <Btn size="sm" disabled={busy || !key.trim()} onClick={async () => { if(await save({ search: { provider: state.search.provider, key: key.trim() } })) { setKey(''); pushToast('success', tr('Key saved')); } }}>{tr('Save key')}</Btn>
           </div>
         </Field> : null}
         <Field label={tr('Let the assistant search the web without asking')} hint={tr('In Manual mode the assistant asks once per chat before it searches the web or opens a web page. Turn this on to skip that question.')}>

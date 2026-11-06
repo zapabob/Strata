@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createControl } from '../server/control-runtime.mjs';
 import { createNativeControl } from '../server/native-control.mjs';
+import { createHash } from 'node:crypto';
 
 const src = name => read(new URL(`../${name}`, import.meta.url), 'utf8');
 
@@ -16,14 +17,17 @@ function fixture({ updateScript } = {}) {
   mkdirSync(install, { recursive: true });
   process.env.STRATA_INSTALL_DIR = install;
   const config = join(install, 'strata-iq2_xs.json');
-  writeFileSync(config, JSON.stringify({ exe: 'component:strata-engine', tokenizer: join(install, 'tok'), args: ['--max-context', '32768'], model_name: 'Qwen', port: 8080 }));
+  const model=join(install,'model.gguf'),oldExe=join(install,'old-engine.exe'),newExe=join(install,'new-engine.exe');
+  writeFileSync(model,'old model fixture');writeFileSync(oldExe,'old executable fixture');writeFileSync(newExe,'new executable fixture');
+  let primary=oldExe,version='0.1.45',startFailure=null;
+  writeFileSync(config, JSON.stringify({ exe: 'component:strata-engine', tokenizer: join(install, 'tok'), args: ['--max-context', '32768','--native',model], model_name: 'Qwen', port: 8080 }));
   const calls = [];
   const control = {
     control: { dir: join(root, 'control') }, version: '0.1.45',
     async installedModels() { return { install_dir: install, models: [{ id: 'iq2_xs', name: 'Qwen', source_config: config, component_status: 'present', context_tokens: 32768, backend: 'cuda' }] }; },
-    async engine() { return { usable: true, backend: 'cuda', components_dir: 'E:\\c', previous: null, engine: { version: '0.1.45', platform: 'windows-x86_64', backend: 'cuda', exe: 'e', root: 'r' } }; },
+    async engine() { return { usable: true, backend: 'cuda', components_dir: 'E:\\c', previous: null, engine: { version, platform: 'windows-x86_64', backend: 'cuda', exe: primary, root: install } }; },
     async saveProfile(profile) { calls.push(['saveProfile', profile]); return {}; },
-    async start(profile) { calls.push(['start', profile]); return { ok: true, state: 'ready' }; },
+    async start(profile) { calls.push(['start', profile]); if(startFailure)throw startFailure;return { ok: true, state: 'ready' }; },
     async stop(profile) { calls.push(['stop', profile]); return { ok: true }; },
     async update(options) {
       calls.push(['update', options.engine, options.stopModel === true]);
@@ -35,20 +39,56 @@ function fixture({ updateScript } = {}) {
       options.onEvent?.({ event: 'models', phase: 'stopping', models: [{ profile, name: 'Qwen', port: 8080, kind: 'profile', state: 'ready' }] });
       options.onEvent?.({ event: 'models', phase: 'stopped', models: [{ profile, name: 'Qwen', port: 8080, kind: 'profile', state: 'stopped' }] });
       options.onEvent?.({ event: 'models', phase: 'left-stopped', models: [{ profile, name: 'Qwen', port: 8080, kind: 'profile', state: 'stopped' }], start: 'strata launch' });
+      primary=newExe;version='0.1.46';writeFileSync(model,'refreshed model fixture');
       return { ok: true, results: [{ component: 'engine', status: 'updated', installed_after: { version: '0.1.46' } }] };
     },
     async rollbackEngine() { return { ok: true }; },
   };
-  const native = createNativeControl({ control, directory: data, spawnProcess: () => { throw new Error('no process'); }, fetcher: async () => Response.json({}), requests: () => [] });
-  return { native, calls, control, cleanup: () => rmSync(root, { recursive: true, force: true }) };
+  let nextMetrics=null;
+  const fetcher=async url=>{if(url.includes('/metrics')&&nextMetrics){const pending=nextMetrics;nextMetrics=null;await pending;return Response.json({engine:{max_context:1}});}return Response.json({engine:{max_context:32768}});};
+  const native = createNativeControl({ control, directory: data, spawnProcess: () => { throw new Error('no process'); }, observationProbe:async()=>({dedicated:null,shared_gpu_memory:null,processes:null}),fetcher, requests: () => [] });
+  return { native, calls, control,model,newExe,holdNextMetrics(){let release;nextMetrics=new Promise(r=>release=r);return release;},failStart:error=>startFailure=error,cleanup: () => rmSync(root, { recursive: true, force: true }) };
 }
 const finish = async (native, id) => { for (let i = 0; i < 400; i++) { const job = native.state().jobs.find(j => j.id === id); if (job.state !== 'running') return job; await new Promise(r => setTimeout(r, 10)); } throw new Error('job did not finish'); };
-async function loaded(f) {
+async function loaded(f,runObservation=false) {
   await f.native.refresh(true);
-  const load = await finish(f.native, f.native.operation('load', { model: 'iq2_xs' }).id);
+  const load = await finish(f.native, f.native.operation('load', { model: 'iq2_xs',runObservation }).id);
   assert.equal(load.state, 'done', load.error);
   assert.equal(f.native.state().instances.length, 1);
 }
+
+for(const fails of [false,true])test(`observed update/restart ${fails?'failure keeps exit 23':'success gets fresh run identity'} and ends the previous capture`,async t=>{
+ const f=fixture();t.after(async()=>{await f.native.close();f.cleanup();});await loaded(f,true);
+ const old=f.native.runObservations()[0],instance=f.native.state().instances[0].id;
+ assert.equal(old.outcome,'ready');
+ await finish(f.native,f.native.operation('update-engine',{stopModel:true}).id);
+ assert.equal(f.native.runObservations()[0].outcome,'stopped','the update stopped the old process');
+ if(fails)f.failStart(Object.assign(new Error('private restart fixture'),{output:{engine_exit_code:23,log_tail:'private path'}}));
+ const job=await finish(f.native,f.native.operation('restart-models',{}).id);
+ assert.equal(job.state,fails?'error':'done',job.error);
+ let rows;for(let i=0;i<100;i++){rows=f.native.runObservations();if(rows.at(-1)?.identity.executable.sha256.value)break;await new Promise(r=>setTimeout(r,10));}
+ assert.equal(rows.length,2);assert.equal(rows[0].runId,old.runId);assert.equal(rows[0].outcome,'stopped');
+ const next=rows[1];assert.notEqual(next.runId,old.runId);assert.equal(next.outcome,fails?'error':'ready');assert.equal(next.exitCode,fails?23:null);
+ assert.equal(next.identity.executable.sha256.value,createHash('sha256').update(read(f.newExe)).digest('hex'));
+ assert.equal(next.identity.executable.version.value,'0.1.46');assert.equal(next.identity.model.metadataSignature.value,createHash('sha256').update(read(f.model)).digest('hex'));
+ assert.equal(f.native.state().instances[0].id,instance,'public instance identity remains stable');assert.ok(!JSON.stringify(next).includes('private'));
+ if(!fails){await f.native.unload(instance);assert.equal(f.native.runObservations()[1].outcome,'stopped');}
+ else{
+  f.failStart(null);await loaded(f,true);const recovered=f.native.runObservations();
+  assert.equal(recovered.length,3);assert.equal(recovered[1].outcome,'error');assert.equal(recovered[1].exitCode,23);
+  assert.equal(recovered[2].outcome,'ready');assert.notEqual(recovered[2].runId,next.runId);
+ }
+});
+
+test('a late pre-update metrics reply cannot change the replacement run observation',async t=>{
+ const f=fixture();let release;t.after(async()=>{release?.();await f.native.close();f.cleanup();});await loaded(f,true);
+ release=f.holdNextMetrics();const oldPoll=f.native.poll();
+ await finish(f.native,f.native.operation('update-engine',{stopModel:true}).id);
+ const restarted=await finish(f.native,f.native.operation('restart-models',{}).id);assert.equal(restarted.state,'done',restarted.error);
+ assert.equal(f.native.runObservations().at(-1).effective.contextCapacity.value,32768);
+ release();await oldPoll;
+ assert.equal(f.native.runObservations().at(-1).effective.contextCapacity.value,32768);
+});
 
 test('Control is called with --stop-model only when the app asks for it', async () => {
   const seen = [];
@@ -90,6 +130,7 @@ test('a loaded model is stopped for the update only with the person\'s yes, and 
     assert.equal(after.instances.length, 1);
     assert.equal(after.instances[0].status, 'ready');
     assert.equal(after.stoppedForUpdate, null);
+    assert.deepEqual(f.native.runObservations(),[],'ordinary update/restart does not enable capture');
   } finally { await f.native.close(); f.cleanup(); }
 });
 

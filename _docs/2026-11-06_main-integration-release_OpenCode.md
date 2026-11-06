@@ -114,3 +114,33 @@ No new installation, release, or tag has been performed by this session.
 Next: verify the merged KV/UI changes, integrate the reviewed missing features,
 resume bounded Spin8 development with separate spec and quality review, then
 collect final GUI/native/package/install/publication evidence.
+
+## Local-install-first steering and integration checkpoint
+
+The user explicitly requested this PC's overwrite installation first, then said
+to continue. Prioritize a local GUI/Control candidate and preserve the installed
+qualified native engine 0.5.1; unfinished Spin8 CUDA/native changes are not being
+represented as installed or released. The current C-drive shell reports 0.5.1
+and is stopped. A stale HKCU uninstall entry still names an older H-drive preview,
+so the actual C-drive target and shortcuts require explicit verification.
+
+The 11-commit hybrid branch was integrated after independent SPEC and QUALITY
+review. Review found and the branch fixed durable settings/import failures,
+lost packaged engine exit codes, stale update/restart observations and loss of
+the first unsent chat draft when opening search. The final branch is 7523fdb9.
+Independent final review ran 47/47 focused CPU checks and approved the change.
+After merging with the saved-native-KV display fix, 40/43 selected checks passed;
+three failed before exercising code because direct invocation omitted the required
+scratch environment. Re-running those three with the retained isolated runner and
+the actual private Node 24.22.2 passed 3/3. No assertion or cleanup guard changed.
+
+The earlier historical-log assertion fix passed all 10 tests in its module.
+Main contains ff340b92 (KV/UI merge), cbe1d6e1 (reviewed Spin8 CPU merge), f30b8cf0
+(saved KV labels), a9354008 (RAM documentation), and c0ae10b9 (historical setup log).
+Full browser/installed checks remain pending. No remote push or release yet.
+
+Self-review-event: qa_defect, review-only. Evidence: the incorrect C-drive pytest
+temp selection and missing isolated Node runner caused setup failures. Preserve
+the required H-drive output and existing scratch-environment runner in subsequent
+commands. Rejected alternative: weaken the guards or count pre-execution failures
+as application failures. No AGENTS/skill/SOP changes are needed.

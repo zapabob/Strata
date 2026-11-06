@@ -26,4 +26,13 @@ Writes `results/baseline-<timestamp>.json` with git SHAs, nvidia-smi dedicated V
 
 ## Rollback
 
-Remove or ignore `bench/strata-16gb/results/*` local captures. Feature modules are additive; disable by not importing them from launch paths until PR-C/D wire-up.
+Remove or ignore `bench/strata-16gb/results/*` local captures. The baseline capture remains a separate, explicit command.
+
+## Opt-in lifecycle and attach-only capture
+
+See [LIFECYCLE.md](LIFECYCLE.md) for startup capture enabled with
+`STRATA_RUN_OBSERVATION=1` and the attach-only synthetic runner `run.mjs`.
+Those observations use [run-observation.schema.json](run-observation.schema.json).
+The baseline command, `measurement-schema.json` and existing results retain
+their original contract. Unset the flag and restart the source host to disable
+lifecycle capture.

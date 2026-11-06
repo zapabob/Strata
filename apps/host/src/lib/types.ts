@@ -321,9 +321,16 @@ export interface MonitorState {
   };
 }
 
+export interface WebSearchResult {
+  resultId:string;
+  query:string;
+  expiresAt:number;
+  sources:{url:string;title:string;snippet:string}[];
+}
 export interface ChatMessage {
   /** Tool calls the model is writing right now (a file, a command): live data for the writing card; see ToolDraft. */
   drafts?: ToolDraft[];
+  webSources?:{url:string;title:string}[];
   /** The person's message is written with Markdown (a task handover: bold headings and lists), so the bubble draws it as such. */
   markdown?: boolean;
   photos?:import('./chat-photos').ChatPhoto[];

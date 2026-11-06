@@ -14,13 +14,13 @@ export function readGGUF(file) {
   function u64(){const n=bytes(8).readBigUInt64LE();if(n>BigInt(Number.MAX_SAFE_INTEGER))throw new Error('GGUF metadata contains an unsupported integer.');return Number(n);}
   const u32=()=>bytes(4).readUInt32LE();
   function string(keep=true,limit=8*1024**2){const n=u64();if(n>limit)throw new Error('GGUF metadata contains an oversized string.');bounded(n);if(!keep){p+=n;return null;}return bytes(n).toString('utf8');}
-  function value(type,keep,depth=0){
+  function value(type,keep,depth=0,keepRecurrent=false){
    if(type===8)return string(keep);
    if(type===9){if(depth>4)throw new Error('GGUF metadata arrays are too deeply nested.');const element=u32(),count=u64();if(count>MAX_COUNT)throw new Error('GGUF metadata array is too large.');
-    // Integer arrays kept for hybrid layer maps (attention.recurrent_layers); other arrays stay count-only.
-    if(keep&&widths[element]&&[0,1,2,3,4,5,10,11].includes(element)){
-     const values=[];for(let i=0;i<count;i++)values.push(value(element,true,depth+1));
-     return {count,values};
+    // Only the layer map may retain array elements. Tokenizer and arbitrary
+    // arrays retain a count only; invalid explicit maps cannot become defaults.
+    if(keepRecurrent&&count<=4096&&[0,1,2,3,4,5,7,10,11].includes(element)){
+     bounded(count*widths[element]);return Array.from({length:count},()=>value(element,true,depth+1));
     }
     if(widths[element]){bounded(count*widths[element]);p+=count*widths[element];}else for(let i=0;i<count;i++)value(element,false,depth+1);return {count};}
    const w=widths[type];if(!w)throw new Error('GGUF metadata uses an unsupported value type.');const b=bytes(w);if(!keep)return null;
@@ -32,11 +32,9 @@ export function readGGUF(file) {
   const metadata=Object.create(null),keys=new Set();
   for(let i=0;i<count;i++){
    const key=string(true,65535);if(keys.has(key))throw new Error('GGUF metadata contains a duplicate key.');keys.add(key);
-   // Hybrid Qwen3.5/Hikari: keep full_attention_interval and optional recurrent/SSM layout keys
-   // so architecture-aware KV estimates do not fall back to counting every layer.
-   const keep=/^(general\.(architecture|name|type|file_type|alignment|size_label)|split\.(no|count|tensors.count)|tokenizer\.(ggml.model|ggml.tokens|chat_template))$/.test(key)
-    ||/\.(context_length|block_count|embedding_length|expert_count|full_attention_interval|attention\.(head_count|head_count_kv|key_length|value_length|recurrent_layers)|ssm\.(state_size|group_count|time_step_rank|inner_size))$/.test(key);
-   const item=value(u32(),keep);if(keep)metadata[key]=key==='tokenizer.chat_template'?!!item:item;
+    const recurrent=/\.attention\.recurrent_layers$/.test(key);
+   const keep=/^(general\.(architecture|name|type|file_type|alignment|size_label)|split\.(no|count|tensors.count)|tokenizer\.(ggml.model|ggml.tokens|chat_template))$/.test(key)||/\.(context_length|block_count|embedding_length|expert_count|full_attention_interval|nextn_predict_layers|ssm\.(conv_kernel|inner_size|state_size|time_step_rank|group_count)|attention\.(head_count|head_count_kv|key_length|value_length|recurrent_layers))$/.test(key);
+   const item=value(u32(),keep,0,recurrent);if(keep)metadata[key]=key==='tokenizer.chat_template'?!!item:item;
   }
   const alignment=metadata['general.alignment']??32;if(!Number.isInteger(alignment)||alignment<1||alignment>4096||(alignment&(alignment-1)))throw new Error('GGUF tensor alignment is invalid.');
   let tensorEnd=0,parameters=0;const names=new Set();

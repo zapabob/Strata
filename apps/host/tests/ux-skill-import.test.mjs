@@ -1,0 +1,33 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {component,nodes,button,flush} from './helpers/ux-component.mjs';
+test('SKILL.md preview and cancel write nothing; explicit import preserves instructions, scope and enable choice',async()=>{
+  const posts=[],created={id:'my-test',name:'test',description:'test',body:'Exact instructions',triggers:['trigger'],enabled:true,onlyIn:'root'};
+  const preview={name:'test',description:'test',body:'Exact instructions',triggers:['trigger']};let imported;
+  const c=await component('SkillImportDialog.tsx',{post:async(path,body)=>{posts.push({path,body});return path.endsWith('preview')?preview:{id:created.id,skills:[created]};}});
+  const props={open:true,onClose:()=>{},onImported:value=>imported=value};c.render('SkillImportDialog',props);let tree=c.render('SkillImportDialog',props);
+  nodes(tree,n=>n.type==='textarea')[0].props.onChange({target:{value:'raw skill markdown'}});tree=c.render('SkillImportDialog',props);await button(tree,'Preview skill').props.onClick();await flush();
+  tree=c.render('SkillImportDialog',props);assert.equal(posts.length,1);assert.equal(posts[0].path,'/api/skills/preview');button(tree,'Cancel').props.onClick();assert.equal(posts.length,1);
+  assert.equal(nodes(tree,n=>n.type==='button'&&n.props.role==='switch')[0].props['aria-checked'],false);
+  nodes(tree,n=>n.type==='Select')[0].props.onChange('root');nodes(tree,n=>n.type==='button'&&n.props.role==='switch')[0].props.onClick();
+  tree=c.render('SkillImportDialog',props);await button(tree,'Import').props.onClick();await flush();
+  assert.deepEqual(posts[1].body,{markdown:'raw skill markdown',importConfirmed:true,triggers:['trigger'],onlyIn:'root',enabled:true});assert.equal(imported,created);
+  assert.equal(c.ctx.loads,0,'successful POST supplies the list without another failure-prone request');assert.deepEqual(c.ctx.store.skills,[created]);
+});
+test('late file reads cannot replace pasted, previewed instructions or a reopened dialog',async()=>{
+ const posts=[];let finish;
+ const c=await component('SkillImportDialog.tsx',{post:async(path,body)=>{posts.push({path,body});return path.endsWith('preview')?{name:'current',description:'current',body:body.markdown,triggers:['current']}:{id:'new',skills:[]};}});
+ const props={open:true,onClose:()=>{},onImported:()=>{}};
+ c.render('SkillImportDialog',props);let tree=c.render('SkillImportDialog',props);
+ nodes(tree,n=>n.type==='input'&&n.props.type==='file')[0].props.onChange({target:{files:[{name:'SKILL.md',size:10,text:()=>new Promise(r=>finish=r)}]}});
+ nodes(tree,n=>n.type==='textarea')[0].props.onChange({target:{value:'Reviewed instructions'}});
+ button(c.render('SkillImportDialog',props),'Preview skill').props.onClick();await flush();
+ finish('Stale file instructions');await flush();tree=c.render('SkillImportDialog',props);
+ assert.equal(nodes(tree,n=>n.type==='textarea')[0].props.value,'Reviewed instructions');
+ button(tree,'Import').props.onClick();await flush();assert.equal(posts[1].body.markdown,'Reviewed instructions');
+ c.render('SkillImportDialog',{...props,open:false});c.render('SkillImportDialog',props);tree=c.render('SkillImportDialog',props);
+ nodes(tree,n=>n.type==='input'&&n.props.type==='file')[0].props.onChange({target:{files:[{name:'SKILL.md',size:10,text:()=>new Promise(r=>finish=r)}]}});
+ c.render('SkillImportDialog',{...props,open:false});c.render('SkillImportDialog',props);
+ finish('Old dialog file');await flush();tree=c.render('SkillImportDialog',props);
+ assert.equal(nodes(tree,n=>n.type==='textarea')[0].props.value,'');
+});
