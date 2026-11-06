@@ -111,6 +111,15 @@ const HOST_DIR = fileURLToPath(new URL('../..', import.meta.url));
 
 const deferred = () => { let resolve; const promise = new Promise(r => { resolve = r; }); return { promise, resolve }; };
 
+/** An explicit local-only allowance; absent configuration retains the existing local watchdog. */
+export function localSilenceLimit(value, fallback) {
+  if (value == null || value === '') return fallback;
+  if (!/^\d+$/.test(String(value))) throw new Error('STRATA_LOCAL_STALL_MS must be a positive integer in milliseconds (at most 86400000).');
+  const limit = Number(value);
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 86_400_000) throw new Error('STRATA_LOCAL_STALL_MS must be a positive integer in milliseconds (at most 86400000).');
+  return limit;
+}
+
 /** A local model can spend several minutes reading a prompt before its first reply. Keep a finite silence guard. */
 export function turnStallLimit({ local, toolRunning, stallMs, localStallMs, stallToolMs }) {
   return toolRunning ? stallToolMs : local ? localStallMs : stallMs;
@@ -128,6 +137,7 @@ export function turnStallLimit({ local, toolRunning, stallMs, localStallMs, stal
  * @param {(line:string)=>void} [options.log]
  */
 export function createAgentBridge({ dataDir, componentsDir = null, bundledDir = null, gate = true, localInstances, connections, tools = () => undefined, defaultLocalId = () => null, skillsDir = () => null, onGoal = () => {}, onPlan = () => {}, onQueue = () => {}, proxyBase = null, searchMock = null, expertSampling = () => null, engineProgress = () => null, engineGraceMs = 30 * 60_000, stallMs = 4 * 60_000, localStallMs = 30 * 60_000, stallToolMs = 20 * 60_000, env = process.env, nodePath = process.execPath, log = () => {}, startTimeoutMs = 120_000, sessionReadyMs = 60_000, sessionRetryMs = 1_500 }) {
+  localStallMs = localSilenceLimit(env.STRATA_LOCAL_STALL_MS, localStallMs);
   const root = join(dataDir, 'agent');
   const home = join(root, 'home');
   const sessionsFile = join(root, 'sessions.json');
