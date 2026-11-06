@@ -2,7 +2,8 @@ import { DecimalInput } from './DecimalInput';
 import { tr } from '../lib/i18n';
 import {nativeSettingsResponse,nativeSettingsValues} from '../lib/native-settings-response';
 import { describeChange, type TunedChange } from '../lib/tune-values';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useRequestOwner } from '../lib/use-request-owner';
 import { api } from '../lib/client';
 import { refreshNative, useNative, type NativeField } from '../lib/native';
 import { Btn, ErrorNotice, Select } from './ui';
@@ -28,6 +29,8 @@ export function NativeSettings({ model }: {
 }) {
     const native = useNative();
     const [revision,setRevision]=useState(0);
+    const owner = useRequestOwner(JSON.stringify([model, revision]));
+    const saveRequest = useRef(0);
     const [modelFields, setModelFields] = useState<NativeField[] | null>([]);
     const [switches, setSwitches] = useState<SpeedSwitch[]>([]);   // the speed switches that apply to this model on this PC
     const [dsExperts, setDsExperts] = useState(false);      // the installed DeepSeek engine knows --experts (0.1.50 or newer)
@@ -35,6 +38,8 @@ export function NativeSettings({ model }: {
     const [values, setValues] = useState<Record<string, any>>({}), [mcp, setMcp] = useState('{}'), [original, setOriginal] = useState(''), [text, setText] = useState(''), [tab, setTab] = useState('fields'), [pending, setPending] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState(''), [query, setQuery] = useState('');
     useEffect(() => {
         let active = true;
+        const visit = owner.current;
+        setPending(false);
         setOriginal('');
         setModelFields([]);
         setValues({});
@@ -50,7 +55,7 @@ export function NativeSettings({ model }: {
             speedSwitches?: SpeedSwitch[];
             fields?: NativeField[];
         }>(`/api/native/models/${model}/settings`).then(input => {
-            if (!active)
+            if (!active || owner.current !== visit)
                 return;
             setModelFields(input.fields ?? null);
             setDsExperts(!!input.capabilities?.dsExperts);
@@ -62,7 +67,7 @@ export function NativeSettings({ model }: {
             setMcp(JSON.stringify(value.mcp ?? {}, null, 2));
             setOriginal(JSON.stringify({ values: value.values, mcp: value.mcp ?? {} }));
         }).catch(e => {
-            if (active)
+            if (active && owner.current === visit)
                 setError(e.message);
         });
         return () => { active = false; };
@@ -71,6 +76,8 @@ export function NativeSettings({ model }: {
     /** The default removes the switch's environment entries, the other state writes them: the model's file then carries nothing for a default launch. */
     const changeSwitch = (sw: SpeedSwitch, on: boolean) => { const env = { ...(values.env ?? {}) }; const write = on !== (sw.default === 'on'); for (const [name, value] of Object.entries(sw.env)) { if (write) env[name] = value; else delete env[name]; } if (!write) for (const name of Object.keys(sw.legacy ?? {})) delete env[name]; change('env', env); };
     async function save() {
+        const visit = owner.current, request = ++saveRequest.current;
+        const current = () => owner.current === visit && saveRequest.current === request;
         setPending(true);
         setError('');
         try {
@@ -80,6 +87,7 @@ export function NativeSettings({ model }: {
                 values: Record<string, any>;
                 mcp: Record<string, any>;
             }>(`/api/native/models/${model}/settings`, { values: parsed, mcp: tools });
+            if (!current()) return;
             const result = nativeSettingsResponse(input);
             setValues(result.values);
             setMcp(JSON.stringify(result.mcp, null, 2));
@@ -89,10 +97,10 @@ export function NativeSettings({ model }: {
             await refreshNative(true);
         }
         catch (e) {
-            setError(e instanceof Error ? e.message : String(e));
+            if (current()) setError(e instanceof Error ? e.message : String(e));
         }
         finally {
-            setPending(false);
+            if (current()) setPending(false);
         }
     }
     function chooseTab(next: string) {

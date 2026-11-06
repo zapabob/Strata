@@ -17,6 +17,7 @@ import { FloatingMenu } from '../components/FloatingMenu';
 import { ModelsScreen } from './Models';
 import { configDocument, configPatch, readConfig, type ConfigDocument } from '../lib/config';
 import { pinStrataEngineBackend } from '../lib/strata-engine-backend';
+import { useRequestOwner } from '../lib/use-request-owner';
 import { RUN_VARIANT_KEY, readLastLocalModel, rememberRunSelection, resolveLocalRunSelection, runModelSettings, type RunModelDraft } from '../lib/run-selection';
 import { contextTokens, estimate, execution } from '../lib/experience';
 import { demoRunExperience, planMemory } from '../lib/run-memory';
@@ -125,7 +126,8 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
     const [profileError, setProfileError] = useState('');
     const [imageError, setImageError] = useState('');
     const [issues, setIssues] = useState<Issue[]>([]);
-    const [pending, setPending] = useState(false);
+    const [operationPending, setPending] = useState(false);
+    const [profileSaveOwner, setProfileSaveOwner] = useState<object | null>(null);
     const [placementError, setPlacementError] = useState('');
     const [placementPlan, setPlacementPlan] = useState<{
         memory: RuntimeModel['memory'];
@@ -154,6 +156,8 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
     const missingVariant = selectionMissing || !!library && requestedVariant !== undefined && !library.variants.some(v => v.id === requestedVariant);
     const selectionPending = !profilesReady || requestedVariant !== undefined && requestedVariant !== model?.id;
     const computer = hardware ? computerIdentity(hardware) : '';
+    const profileOwner = useRequestOwner(JSON.stringify([requestedVariant, model?.id, computer]));
+    const pending = operationPending || profileSaveOwner === profileOwner.current;
     const localProfiles = profiles.profiles.filter(p => p.variantId === model?.id && p.hardware === computer);
     const selectedProfile = localProfiles.find(p => p.id === activeProfile);
     const personalDefault = model ? profiles.defaults[defaultProfileKey(computer, model.id)] : undefined;
@@ -340,6 +344,8 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
         const restored = runModelSettings(next, engine, hardware, profiles, computer, modelDrafts.current.get(id), hint);
         selectionOwner.current = id;
         setSelected(id);
+        setProfileOpen(false);
+        setProfileError('');
         setStage('idle');
         setIssues([]);
         setActiveProfile(restored.profile);
@@ -357,10 +363,10 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
         if (config && hardware)
             update(resourceConfig(config, value, hardware));
     }
-    function persist(next: RunProfiles) {
+    function persist(next: RunProfiles, showResult = true) {
         localStorage.setItem(RUN_PROFILES_KEY, JSON.stringify(next));
         setProfiles(next);
-        setProfileError('');
+        if (showResult) setProfileError('');
     }
     function openSave(asNew = false) {
         setUpdateExisting(!asNew && !!selectedProfile);
@@ -371,24 +377,28 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
     async function storeProfile() {
         if (!model || !config || !hardware || !engine)
             return;
-        setPending(true);
+        const visit = profileOwner.current;
+        const profile = { id: updateExisting && selectedProfile ? selectedProfile.id : crypto.randomUUID(), name: profileName.trim(), variantId: model.id, hardware: computer, engineVersion: engine.engine.version, config: structuredClone(config), imageModel: imageChoice, updatedAt: new Date().toISOString() };
+        const defaultChoice = makeDefault;
+        setProfileSaveOwner(visit);
         try {
-            const checked = await validateEngine({ ...configPatch(config), variantId: model.id });
+            const checked = await validateEngine({ ...configPatch(profile.config), variantId: profile.variantId });
             if (!checked.ok) {
-                setIssues(checked.issues);
+                if (profileOwner.current === visit) setIssues(checked.issues);
                 throw new Error('Correct the configuration before saving a profile.');
             }
-            const profile = { id: updateExisting && selectedProfile ? selectedProfile.id : crypto.randomUUID(), name: profileName.trim(), variantId: model.id, hardware: computer, engineVersion: engine.engine.version, config: structuredClone(config), imageModel: imageChoice, updatedAt: new Date().toISOString() };
-            persist(saveProfile(profiles, profile, makeDefault));
+            // The requested save may finish for A after navigation; merge with later saves for B.
+            persist(saveProfile(readProfiles(localStorage.getItem(RUN_PROFILES_KEY)), profile, defaultChoice), profileOwner.current === visit);
+            if (profileOwner.current !== visit) return;
             setActiveProfile(profile.id);
             setProfileOpen(false);
-            pushToast('success', 'Settings saved', makeDefault ? 'Selected automatically for this model on this computer.' : 'Ready to restore from Saved settings.');
+            pushToast('success', 'Settings saved', defaultChoice ? 'Selected automatically for this model on this computer.' : 'Ready to restore from Saved settings.');
         }
         catch (error) {
-            setProfileError(error instanceof Error ? error.message : String(error));
+            if (profileOwner.current === visit) setProfileError(error instanceof Error ? error.message : String(error));
         }
         finally {
-            setPending(false);
+            setProfileSaveOwner(current => current === visit ? null : current);
         }
     }
     async function tune() {

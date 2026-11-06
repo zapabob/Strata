@@ -15,7 +15,8 @@ export const Select=({ariaLabel,value,options,onChange,disabled})=>React.createE
 export const Screen=({children,titleDetail,actions})=>React.createElement('main',null,titleDetail,actions,children);
 export const ErrorNotice=({message})=>React.createElement('p',{role:'alert'},message);
 export const RunImageModel=({library,onSelect})=>React.createElement(React.Fragment,null,React.createElement('output',{'data-image':true},library?.selected??'off'),React.createElement('button',{'data-retry-image':true,onClick:()=>onSelect(library?.selected??'off')},'Retry image selection'));
-export const Dialog=()=>null,ActionError=()=>null,Icon=()=>null,DemoTest=()=>null,RunExpertEditor=()=>null,RunPreview=()=>null,RunningModels=()=>null,LocalModelImport=()=>null,GpuRoles=()=>null,FloatingMenu=()=>null,NativeModels=()=>null,NativeLocalModel=()=>null,ModelsScreen=()=>null;`;
+export const Dialog=({open,children,actions})=>open?React.createElement('section',{role:'dialog'},children,actions):null,FloatingMenu=({children})=>React.createElement('div',null,children);
+export const ActionError=()=>null,Icon=()=>null,DemoTest=()=>null,RunExpertEditor=()=>null,RunPreview=()=>null,RunningModels=()=>null,LocalModelImport=()=>null,GpuRoles=()=>null,NativeModels=()=>null,NativeLocalModel=()=>null,ModelsScreen=()=>null;`;
 const store = `import {useSyncExternalStore} from 'react';
 const listeners=new Set();
 export const getState=()=>window.__fixture;
@@ -27,7 +28,7 @@ export function selectImageModel(selected){const request=window.__requests.lengt
 export const useLifecycle=()=>({allowed:true});
 const forbidden=async()=>{throw Error('unexpected model operation')};
 export const applyImageModel=async(selected=getState().imageSelection.intent)=>{if(!window.__allowRun)return forbidden();if(!imageSelectionReady(selected))throw getState().imageSelection.error??Error('unconfirmed image selection');window.__applies.push(window.__hostSelected);},loadRuntimeModel=async()=>{if(!window.__allowRun)return forbidden();window.__loads++;},loadVariant=forbidden,restartEngine=forbidden,saveEngine=forbidden;
-export const pushToast=()=>{},validateEngine=async()=>window.__holdValidation?new Promise(resolve=>window.__validationGates.push(resolve)):({ok:true,issues:[]});`;
+export const pushToast=()=>{},validateEngine=async()=>window.__holdValidation?new Promise((resolve,reject)=>window.__validationGates.push(Object.assign(resolve,{reject}))):({ok:true,issues:[]});`;
 const stubs = {
     store,
     native: 'export const useNative=()=>null,nativeSettled=()=>true,subscribeNative=()=>()=>{};',
@@ -178,4 +179,54 @@ test('mounted run rechecks confirmation after delayed validation before any fake
     await page.waitForFunction(()=>!window.__fixture.busy['image:select']);
     await page.evaluate(async()=>{window.__holdValidation=false;for(const resolve of window.__validationGates)resolve({ok:true,issues:[]});for(let n=0;n<8;n++)await Promise.resolve();});
     assert.deepEqual(await page.evaluate(()=>({loads:window.__loads,applies:window.__applies})),{loads:0,applies:[]});
+});
+
+async function startProfileSave(page,name){
+    await page.getByRole('button',{name:/Saved settings/}).click();
+    await page.getByRole('menuitem',{name:/Save current settings|Save as new/}).click();
+    await page.getByRole('textbox',{name:'Settings name',exact:true}).fill(name);
+    await page.getByRole('button',{name:'Save settings',exact:true}).click();
+}
+for(const outcome of ['success','invalid','failure'])test(`profile save A ${outcome} after B selection cannot own B dialog, error or pending`,async t=>{
+    const page=await fixture(t,'q36');
+    await page.waitForFunction(()=>window.__requests.length===1);
+    await page.evaluate(()=>window.__requests[0].resolve());
+    await page.waitForFunction(()=>window.__fixture.imageSelection.confirmed);
+    await page.evaluate(()=>{window.__holdValidation=true});
+    await startProfileSave(page,'A saved profile');
+    await page.waitForFunction(()=>window.__validationGates.length===1);
+    await page.evaluate(()=>{location.hash='/models/local?variant=hikari'});
+    await page.waitForFunction(()=>JSON.parse(window.__fixture.configDraft??'{}').beginner?.contextLength==='32k');
+    await page.evaluate(()=>window.__requests.at(-1).resolve());
+    await page.waitForFunction(()=>window.__fixture.imageSelection.confirmed);
+    const picker=page.getByRole('combobox',{name:'Model version',exact:true});
+    const free=await picker.isEnabled();
+    assert.equal(free,true,'new model must not inherit the previous model pending save');
+    await startProfileSave(page,'B pending profile');
+    await page.waitForFunction(()=>window.__validationGates.length===2);
+    // Finish the old operation only after the current model's draft is visible.
+    await page.evaluate(outcome=>{const gate=window.__validationGates[0];outcome==='failure'?gate.reject(Error('obsolete A validation failure')):gate({ok:outcome==='success',issues:outcome==='invalid'?[{level:'error',message:'obsolete A issue'}]:[]})},outcome);
+    await page.evaluate(()=>new Promise(r=>setTimeout(r,0)));
+    assert.equal(await page.getByRole('alert').count(),0);
+    assert.equal(await page.getByRole('dialog').count(),1);
+    assert.equal(await page.getByRole('textbox',{name:'Settings name',exact:true}).inputValue(),'B pending profile');
+    assert.equal(await page.getByRole('button',{name:'Saving…',exact:true}).isDisabled(),true);
+    assert.equal(await picker.inputValue(),'hikari');
+    const records=await page.evaluate(()=>JSON.parse(localStorage.getItem('strata.run-profiles.v1')).profiles);
+    assert.equal(records.length,outcome==='success'?1:0);
+    if(outcome==='success'){assert.equal(records[0].variantId,'q36');assert.equal(records[0].name,'A saved profile');}
+    await page.evaluate(()=>window.__validationGates[1]({ok:true,issues:[]}));
+    await page.getByRole('dialog').waitFor({state:'hidden'});
+    const final=await page.evaluate(()=>JSON.parse(localStorage.getItem('strata.run-profiles.v1')).profiles);
+    assert.equal(final.length,outcome==='success'?2:1);assert.equal(final.at(-1).variantId,'hikari');
+});
+
+test('late A profile save merges with a newer completed B save and leaves B active',async t=>{
+    const page=await fixture(t,'q36');await page.waitForFunction(()=>window.__requests.length===1);await page.evaluate(()=>window.__requests[0].resolve());await page.waitForFunction(()=>window.__fixture.imageSelection.confirmed);
+    await page.evaluate(()=>{window.__holdValidation=true});await startProfileSave(page,'A late');await page.waitForFunction(()=>window.__validationGates.length===1);
+    await page.evaluate(()=>{location.hash='/models/local?variant=hikari'});await page.waitForFunction(()=>JSON.parse(window.__fixture.configDraft??'{}').beginner?.contextLength==='32k');await page.evaluate(()=>window.__requests.at(-1).resolve());await page.waitForFunction(()=>window.__fixture.imageSelection.confirmed);
+    await startProfileSave(page,'B first');await page.waitForFunction(()=>window.__validationGates.length===2);await page.evaluate(()=>window.__validationGates[1]({ok:true,issues:[]}));await page.getByRole('dialog').waitFor({state:'hidden'});
+    await page.evaluate(()=>window.__validationGates[0]({ok:true,issues:[]}));await page.waitForFunction(()=>JSON.parse(localStorage.getItem('strata.run-profiles.v1')).profiles.length===2);
+    assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('strata.run-profiles.v1')).profiles.map(p=>[p.variantId,p.name])),[['hikari','B first'],['q36','A late']]);
+    assert.equal(await page.locator('.run-saved-settings').textContent(),'B first');
 });

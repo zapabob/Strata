@@ -1,4 +1,5 @@
 import type { TuneResult } from './native-tune';
+import type { NativeJob } from './native';
 
 /**
  * One layout for every way a tune can end: a tone (the round tile's colour and icon), a headline, one plain sentence, up to three facts, and
@@ -26,7 +27,7 @@ export interface Outcome {
 
 const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 
-export function readOutcome(result: TuneResult | null | undefined, jobState: 'done' | 'error' | 'cancelled' | 'running' | undefined): Outcome {
+export function readOutcome(result: TuneResult | null | undefined, jobState: NativeJob['state'] | undefined): Outcome {
   const v = result?.values ?? {};
   const facts = {
     gainPct: num(v.gain_pct) ?? num(result?.gain_pct),

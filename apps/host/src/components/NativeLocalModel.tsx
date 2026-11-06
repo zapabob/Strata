@@ -4,7 +4,7 @@ import { Screen } from './layout';
 import { Btn, ErrorNotice, Icon } from './ui';
 import { api } from '../lib/client';
 import { parseLocation } from '../lib/router';
-import { nativeAction, useNative, type NativeJob } from '../lib/native';
+import { isNativeJobBusy, nativeAction, useNative, type NativeJob } from '../lib/native';
 import { nativeCatalogModels, catalogVersionLabel } from '../lib/native-catalog';
 import { sizeGb } from '../lib/format';
 import { NativeProgress } from './NativeModels';
@@ -33,7 +33,7 @@ export function NativeLocalModel({ onBack, onAlternative }: { onBack: () => void
     const native = useNative();
     const [typed, setTyped] = useState(''), [checked, setChecked] = useState<Preview | null>(null), [pending, setPending] = useState(false), [error, setError] = useState(''), [jobId, setJobId] = useState('');
     const job = native?.jobs.find(j => j.id === jobId);
-    const active = native?.jobs.find(j => j.state === 'running');
+    const active = native?.jobs.find(isNativeJobBusy);
     const checking = useRef(false);
     const selection = checked?.preview.candidate_selection;
     const usable = !!checked && checked.preview.file_set_status === 'plausible' && !!selection;
@@ -45,6 +45,8 @@ export function NativeLocalModel({ onBack, onAlternative }: { onBack: () => void
         setPending(true);
         setError('');
         setChecked(null);
+        // Only detach this preview's outcome; global active jobs and diagnostics stay intact.
+        setJobId('');
         try {
             const result = await api.post<Preview & { cancelled?: boolean }>('/api/native/local/preview', { path });
             if (!result.cancelled) {
