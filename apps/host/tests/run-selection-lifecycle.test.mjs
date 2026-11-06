@@ -10,11 +10,11 @@ import { pathToFileURL } from 'node:url';
 
 const root = resolve(import.meta.dirname, '..');
 const ui = `import React from 'react';
-export const Btn=({children,onClick,disabled})=>React.createElement('button',{onClick,disabled},children);
+export const Btn=({children,onClick,disabled})=>{if(children==='Load model')window.__runModel=onClick;return React.createElement('button',{onClick,disabled},children)};
 export const Select=({ariaLabel,value,options,onChange,disabled})=>React.createElement('select',{'aria-label':ariaLabel,value,disabled,onChange:e=>onChange(e.target.value)},options.map(o=>React.createElement('option',{key:o.value,value:o.value},o.label)));
 export const Screen=({children,titleDetail,actions})=>React.createElement('main',null,titleDetail,actions,children);
 export const ErrorNotice=({message})=>React.createElement('p',{role:'alert'},message);
-export const RunImageModel=({library})=>React.createElement('output',{'data-image':true},library?.selected??'off');
+export const RunImageModel=({library,onSelect})=>React.createElement(React.Fragment,null,React.createElement('output',{'data-image':true},library?.selected??'off'),React.createElement('button',{'data-retry-image':true,onClick:()=>onSelect(library?.selected??'off')},'Retry image selection'));
 export const Dialog=()=>null,ActionError=()=>null,Icon=()=>null,DemoTest=()=>null,RunExpertEditor=()=>null,RunPreview=()=>null,RunningModels=()=>null,LocalModelImport=()=>null,GpuRoles=()=>null,FloatingMenu=()=>null,NativeModels=()=>null,NativeLocalModel=()=>null,ModelsScreen=()=>null;`;
 const store = `import {useSyncExternalStore} from 'react';
 const listeners=new Set();
@@ -22,14 +22,16 @@ export const getState=()=>window.__fixture;
 function put(patch){window.__fixture={...window.__fixture,...patch};listeners.forEach(f=>f());}
 export const useStore=select=>select(useSyncExternalStore(f=>{listeners.add(f);return()=>listeners.delete(f)},getState));
 export function setConfigDraft(configDraft){put({configDraft});}
-export function selectImageModel(selected){return new Promise((resolve,reject)=>window.__requests.push({selected,resolve:()=>{put({imageModels:{...window.__fixture.imageModels,selected}});resolve()},reject}));}
+export function imageSelectionReady(selected){const s=getState();return !s.busy['image:select']&&s.imageModels?.selected===selected&&s.imageSelection.confirmed&&s.imageSelection.intent===selected&&!s.imageSelection.error;}
+export function selectImageModel(selected){const request=window.__requests.length;put({imageSelection:{intent:selected,confirmed:false,error:null},busy:{'image:select':true}});return new Promise((resolve,reject)=>window.__requests.push({selected,resolve:()=>{window.__hostSelected=selected;const latest=request===window.__requests.length-1;put({imageModels:{...window.__fixture.imageModels,selected},...(latest?{imageSelection:{intent:selected,confirmed:true,error:null},busy:{'image:select':false}}:{})});resolve()},reject:reason=>{if(request===window.__requests.length-1)put({imageSelection:{intent:selected,confirmed:false,error:reason},busy:{'image:select':false}});reject(reason)}}));}
 export const useLifecycle=()=>({allowed:true});
-export const applyImageModel=async()=>{throw Error('unexpected apply')},loadRuntimeModel=applyImageModel,loadVariant=applyImageModel,restartEngine=applyImageModel,saveEngine=applyImageModel;
-export const pushToast=()=>{},validateEngine=async()=>({ok:true,issues:[]});`;
+const forbidden=async()=>{throw Error('unexpected model operation')};
+export const applyImageModel=async(selected=getState().imageSelection.intent)=>{if(!window.__allowRun)return forbidden();if(!imageSelectionReady(selected))throw getState().imageSelection.error??Error('unconfirmed image selection');window.__applies.push(window.__hostSelected);},loadRuntimeModel=async()=>{if(!window.__allowRun)return forbidden();window.__loads++;},loadVariant=forbidden,restartEngine=forbidden,saveEngine=forbidden;
+export const pushToast=()=>{},validateEngine=async()=>window.__holdValidation?new Promise(resolve=>window.__validationGates.push(resolve)):({ok:true,issues:[]});`;
 const stubs = {
     store,
     native: 'export const useNative=()=>null,nativeSettled=()=>true,subscribeNative=()=>()=>{};',
-    client: 'export const api={post:async()=>{throw Error("unexpected API")}};',
+    client: 'export const api={post:async path=>{if(window.__allowRun&&path==="/api/runtime/plan"){window.__plans++;return {allowed:true,memory:{},budget:{}}}throw Error("unexpected API")}};',
     i18n: 'export const tr=value=>value;',
     experience: 'export const contextTokens=value=>value==="recommended"?131072:parseFloat(value)*1024,estimate=()=>({}),execution=()=>({threads:4});',
     'run-memory': 'export const planMemory=()=>null,demoRunExperience=value=>value;',
@@ -57,7 +59,7 @@ const saved = { schema: 1, defaults: { [computer+'\nq36']: 'q', [computer+'\nhik
     { id: 'h', name: 'H', variantId: 'hikari', hardware: computer, engineVersion: 'test', config: { ...qconfig, beginner: { contextLength: '32k' }, expert: { 'ctx.length': '32K', 'gpu.cpuMoeLayers': 0, 'runtime.backend': 'PrismML' } }, imageModel: 'off' },
 ] };
 
-async function fixture(t, id, profiles = empty, draft = null) {
+async function fixture(t, id, profiles = empty, draft = null, allowRun = false) {
     const home = await mkdtemp(join(tmpdir(), 'strata-e2-component-'));
     const dirs = Object.fromEntries(['home','local','roaming','workspace','models','components','runtime','tmp'].map(name=>[name,join(home,name)]));
     await Promise.all(Object.values(dirs).map(path=>mkdir(path,{recursive:true})));
@@ -72,14 +74,15 @@ async function fixture(t, id, profiles = empty, draft = null) {
     const errors=[]; page.on('pageerror',e=>errors.push(e.message));
     await page.route(/^https?:/,route=>route.abort());
     await page.goto(pathToFileURL(html).href);
-    await page.evaluate(({id,profiles,engine,hardware,models,draft})=>{
+    await page.evaluate(({id,profiles,engine,hardware,models,draft,allowRun})=>{
         localStorage.clear();sessionStorage.clear();localStorage.setItem('strata.run-profiles.v1',JSON.stringify(profiles));
         if(id===null)localStorage.setItem('strata.run-local-variant.v1','hikari');
         if(draft)sessionStorage.setItem('strata.run-variant.v1',id);
         location.hash=id===null?'/models/local':'/models/local?variant='+id;
         window.__requests=[];
-        window.__fixture={engine,hardware,library:{loaded:null,current:null,variants:models,disk:{modelsDir:'isolated'}},runtime:null,imageModels:{selected:'q6',applied:'off',generationAvailable:true,variants:[]},configDraft:draft,busy:{},connection:'offline'};
-    },{id,profiles,engine,hardware,draft,models:[model('q36','Q4_K_M'),model('hikari','PQ2_0')]});
+        window.__allowRun=allowRun;window.__hostSelected='q6';window.__loads=0;window.__applies=[];window.__plans=0;window.__validationGates=[];
+        window.__fixture={engine,hardware,library:{mode:'simulated',loaded:null,current:null,variants:models,disk:{modelsDir:'isolated'}},runtime:null,imageModels:{selected:'q6',applied:'off',generationAvailable:true,variants:[]},imageSelection:{intent:null,confirmed:false,error:null},configDraft:draft,busy:{},connection:allowRun?'live':'offline'};
+    },{id,profiles,engine,hardware,draft,allowRun,models:[model('q36','Q4_K_M'),model('hikari','PQ2_0')]});
     await page.addScriptTag({content:bundle.outputFiles[0].text});
     await page.locator('select[aria-label="Model version"]').waitFor();
     t.after(()=>assert.deepEqual(errors,[]));
@@ -135,4 +138,44 @@ test('mounted rapid Back/Forward binds intended images before delayed replies an
     await page.goBack();
     await page.waitForFunction(n=>window.__requests.length>n+3,initial);
     assert.equal(await page.locator('[data-image]').textContent(),'q6');
+});
+
+test('mounted failed off intent stays visible but disables loading and guards direct run admission until recovery', async t => {
+    const page=await fixture(t,'hikari',empty,null,true);
+    await page.waitForFunction(()=>window.__plans>0&&window.__requests.length===1);
+    const load=page.getByRole('button',{name:'Load model',exact:true});
+    assert.equal(await load.isDisabled(),true);
+    await page.evaluate(()=>window.__requests[0].reject(new Error('Host selection failed: exact source reason')));
+    await page.waitForFunction(()=>!window.__fixture.busy['image:select']);
+    assert.equal(await page.locator('[data-image]').textContent(),'off');
+    const disabled=await load.isDisabled();
+    const attempts=await page.evaluate(async()=>{window.__runModel();for(let n=0;n<8;n++)await Promise.resolve();return {loads:window.__loads,applies:window.__applies};});
+    assert.deepEqual(attempts,{loads:0,applies:[]},'calling the real handler bypassing DOM disabled must still refuse');
+    assert.equal(disabled,true);
+    assert.equal(await page.getByRole('alert').textContent(),'Host selection failed: exact source reason');
+    await page.locator('[data-retry-image]').click();
+    await page.waitForFunction(()=>window.__requests.length===2);
+    assert.equal(await load.isDisabled(),true);
+    await page.evaluate(()=>window.__requests[1].resolve());
+    await page.waitForFunction(()=>!document.querySelector('button')?.disabled&&window.__fixture.imageSelection.confirmed);
+    assert.equal(await load.isEnabled(),true);
+    assert.equal(await page.getByRole('alert').count(),0);
+    await page.evaluate(async()=>{window.__runModel();for(let n=0;n<8;n++)await Promise.resolve();});
+    await page.waitForFunction(()=>window.__applies.length===1);
+    assert.deepEqual(await page.evaluate(()=>({loads:window.__loads,applies:window.__applies})),{loads:1,applies:['off']});
+});
+
+test('mounted run rechecks confirmation after delayed validation before any fake model load', async t => {
+    const page=await fixture(t,'hikari',empty,null,true);
+    await page.waitForFunction(()=>window.__plans>0&&window.__requests.length===1);
+    await page.evaluate(()=>window.__requests[0].resolve());
+    await page.waitForFunction(()=>window.__fixture.imageSelection.confirmed);
+    await page.evaluate(()=>{window.__holdValidation=true;window.__runModel();});
+    await page.waitForFunction(()=>window.__validationGates.length>0);
+    await page.locator('[data-retry-image]').click();
+    await page.waitForFunction(()=>window.__requests.length===2);
+    await page.evaluate(()=>{window.__requests[1].reject(new Error('selection changed during validation'));});
+    await page.waitForFunction(()=>!window.__fixture.busy['image:select']);
+    await page.evaluate(async()=>{window.__holdValidation=false;for(const resolve of window.__validationGates)resolve({ok:true,issues:[]});for(let n=0;n<8;n++)await Promise.resolve();});
+    assert.deepEqual(await page.evaluate(()=>({loads:window.__loads,applies:window.__applies})),{loads:0,applies:[]});
 });

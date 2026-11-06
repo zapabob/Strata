@@ -112,6 +112,7 @@ export interface AppState {
   hardware: Hardware | null;
   library: ModelLibrary | null;
   imageModels: ImageModelLibrary | null;
+  imageSelection: { intent: ImageModelChoice | null; confirmed: boolean; error: Error | null };
   runtime: RuntimeModels | null;
   providers: ModelProviders | null;
   remoteModel: RemoteModelSelection | null;
@@ -317,6 +318,7 @@ let state: AppState = {
   hardware: null,
   library: null,
   imageModels: null,
+  imageSelection: { intent: null, confirmed: false, error: null },
   runtime: null,
   providers: null,
   /** The open chat's API model, or null for the local model (the default for every chat). */
@@ -989,13 +991,30 @@ function modelFits(id: string) {
 }
 
 let imageSelectionRequest = 0;
-/** Publish selection intent immediately; a preceding model's late reply has no ownership. */
+let imageOperationQueue: Promise<void> = Promise.resolve();
+/** Intent is applicable only after its ordered write was acknowledged by the Host. */
+export function imageSelectionReady(selected: ImageModelChoice): boolean {
+  return !!state.imageModels && state.imageModels.selected === selected && !state.busy['image:select']
+    && (state.imageSelection.intent === null || state.imageSelection.intent === selected && state.imageSelection.confirmed && !state.imageSelection.error);
+}
+function imageSelectionRefusal(): Error {
+  return state.imageSelection.error ?? new Error('Confirm the image model selection before applying it.');
+}
+/** Preserve draft intent immediately, but serialize Host writes before confirming it. */
 export async function selectImageModel(selected: ImageModelChoice) {
   const request = ++imageSelectionRequest;
-  set(s => ({ imageModels: s.imageModels ? { ...s.imageModels, selected } : null, busy: { ...s.busy, 'image:select': true } }));
-  try {
+  set(s => ({ imageModels: s.imageModels ? { ...s.imageModels, selected } : null, imageSelection: { intent: selected, confirmed: false, error: null }, busy: { ...s.busy, 'image:select': true } }));
+  const operation = imageOperationQueue.then(async () => {
     const imageModels = await api.patch<ImageModelLibrary>('/api/image-models', { selected });
-    if (request === imageSelectionRequest) set({ imageModels });
+    if (imageModels.selected !== selected) throw new Error('The Host did not confirm the selected image model.');
+    if (request === imageSelectionRequest) set({ imageModels, imageSelection: { intent: selected, confirmed: true, error: null } });
+  });
+  // The caller still receives the error; the queue must let an explicit retry proceed.
+  imageOperationQueue = operation.catch(() => {});
+  try { await operation; }
+  catch (reason) {
+    if (request === imageSelectionRequest) set({ imageSelection: { intent: selected, confirmed: false, error: reason instanceof Error ? reason : new Error(String(reason)) } });
+    throw reason;
   }
   finally {
     if (request === imageSelectionRequest) set(s => ({ busy: { ...s.busy, 'image:select': false } }));
@@ -1007,8 +1026,16 @@ export async function installImageModel(id: Exclude<ImageModelChoice, 'off'>) {
 export async function cancelImageModel(id: Exclude<ImageModelChoice, 'off'>) {
   set({ imageModels: await api.post<ImageModelLibrary>(`/api/image-models/${id}/cancel`) });
 }
-export async function applyImageModel() {
-  set({ imageModels: await api.post<ImageModelLibrary>('/api/image-models/apply') });
+export async function applyImageModel(selected = state.imageSelection.intent ?? state.imageModels?.selected) {
+  if (selected === undefined || !imageSelectionReady(selected)) throw imageSelectionRefusal();
+  const request = imageSelectionRequest;
+  const operation = imageOperationQueue.then(async () => {
+    if (request !== imageSelectionRequest || !imageSelectionReady(selected)) throw imageSelectionRefusal();
+    const imageModels = await api.post<ImageModelLibrary>('/api/image-models/apply');
+    if (request === imageSelectionRequest) set({ imageModels });
+  });
+  imageOperationQueue = operation.catch(() => {});
+  await operation;
 }
 
 export async function installVariant(id: string) {

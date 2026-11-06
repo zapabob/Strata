@@ -24,7 +24,7 @@ import { computerIdentity, configIdentity, defaultProfileKey, emptyProfiles, rea
 import { modelFamilyIcon } from '../lib/model-icons';
 import { familyVersion, modelFamilies } from '../lib/model-versions';
 import { sizeGb } from '../lib/format';
-import { applyImageModel, getState, useLifecycle, loadRuntimeModel, loadVariant, pushToast, restartEngine, saveEngine, selectImageModel, setConfigDraft, useStore, validateEngine } from '../lib/store';
+import { applyImageModel, getState, imageSelectionReady, useLifecycle, loadRuntimeModel, loadVariant, pushToast, restartEngine, saveEngine, selectImageModel, setConfigDraft, useStore, validateEngine } from '../lib/store';
 import type { ImageModelChoice, RuntimeModels, RuntimeModel } from '../lib/types';
 import { useNative, nativeSettled, subscribeNative } from '../lib/native';
 import { NativeModels } from '../components/NativeModels';
@@ -99,6 +99,7 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
     const imageRequest = useRef(0);
     const selectionOwner = useRef(selected);
     const imageChoice = intendedImages.current.get(selected) ?? imageModels?.selected ?? 'off';
+    const imageConfirmed = useStore(() => imageSelectionReady(imageChoice));
     const imageVersion = imageModels?.variants.find(v => v.id === imageChoice);
     const imageNeedsDownload = imageChoice !== 'off' && imageVersion?.state !== 'installed';
     const imageUnavailable = imageChoice !== 'off' && !imageModels?.generationAvailable;
@@ -122,6 +123,7 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
     const [profiles, setProfiles] = useState<RunProfiles>(emptyProfiles);
     const [profilesReady, setProfilesReady] = useState(false);
     const [profileError, setProfileError] = useState('');
+    const [imageError, setImageError] = useState('');
     const [issues, setIssues] = useState<Issue[]>([]);
     const [pending, setPending] = useState(false);
     const [placementError, setPlacementError] = useState('');
@@ -283,13 +285,14 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
         const request = ++imageRequest.current;
         // A route can change before PATCH completes; snapshots must use this intent.
         intendedImages.current.set(owner, choice);
+        setImageError('');
         setStage('idle');
         try {
             await selectImageModel(choice);
         }
         catch (error) {
             if (request === imageRequest.current && owner === selectionOwner.current)
-                setProfileError(error instanceof Error ? error.message : String(error));
+                setImageError(error instanceof Error ? error.message : String(error));
         }
     }
     function setContext(k: number) {
@@ -414,7 +417,7 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
         }
     }
     async function run() {
-        if (!config || !model || pending || imagePending || imageNeedsDownload || imageUnavailable)
+        if (!config || !model || pending || imagePending || imageNeedsDownload || imageUnavailable || !imageSelectionReady(imageChoice))
             return;
         setPending(true);
         setStage('loading');
@@ -426,6 +429,8 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
                 setIssues(checked.issues);
                 throw new Error('Review the highlighted settings before loading.');
             }
+            if (selectionOwner.current !== model.id || !imageSelectionReady(imageChoice))
+                throw getState().imageSelection.error ?? new Error('Confirm the image model selection before loading.');
             if (library?.mode === 'simulated')
                 await loadRuntimeModel({ variantId: model.id, gpuIds, config: patch, executionMode });
             else {
@@ -438,7 +443,9 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
                 if (!ok)
                     throw new Error(getState().actionError?.message ?? 'The model could not be loaded.');
             }
-            await applyImageModel();
+            if (selectionOwner.current !== model.id || !imageSelectionReady(imageChoice))
+                throw getState().imageSelection.error ?? new Error('Confirm the image model selection before applying it.');
+            await applyImageModel(imageChoice);
             setStage('ready');
             pushToast('success', 'Model loaded', executionMode === 'multiple' ? 'Other loaded models stay available.' : 'Ready for requests.');
         }
@@ -474,6 +481,7 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
       </div>
       {tr(expert ? <RunningModels controls/> : null)}
       {tr(profileError && !profileOpen ? <ErrorNotice message={profileError}/> : null)}
+      {tr(imageError ? <ErrorNotice message={imageError}/> : null)}
       <div className="run-layout">
         <div className="run-setup" data-expert={expert || undefined}>
           <div className="run-basics" id="run-basic-settings" hidden={expert && !basicsOpen}>
@@ -514,7 +522,7 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
           {tr(placementPlan && !placementPlan.allowed ? <p className="small inline-error" role="status">{tr(executionMode === 'multiple' ? 'Other loaded models have reserved this memory. Choose another GPU, reduce context, or unload a model.' : 'Reduce context or choose a smaller version to fit this model.')}</p> : null)}
           <section className="run-actions" aria-label={tr("Run model")}>
             <Btn icon="sliders" disabled={invalid || pending || !connected} onClick={() => void tune()}>{tr(pending && stage === 'checking' ? 'Tuning…' : 'Tune model')}</Btn>
-            <Btn variant="primary" icon="models" disabled={!installed || invalid || !!placementError || placementPlan?.allowed === false || pending || imagePending || imageNeedsDownload || imageUnavailable || !connected || ((executionMode === 'single' || library.mode === 'real') && !lifecycle.allowed) || working} onClick={() => void run()}>{tr(pending && stage === 'loading' ? 'Loading…' : 'Load model')}</Btn>
+            <Btn variant="primary" icon="models" disabled={!installed || invalid || !!placementError || placementPlan?.allowed === false || pending || imagePending || !imageConfirmed || imageNeedsDownload || imageUnavailable || !connected || ((executionMode === 'single' || library.mode === 'real') && !lifecycle.allowed) || working} onClick={() => void run()}>{tr(pending && stage === 'loading' ? 'Loading…' : 'Load model')}</Btn>
           </section>
           {tr(imageUnavailable ? <p className="small muted">{tr("This engine cannot run image models yet. Choose Off to run the chat model.")}</p> : null)}
           {tr(!installed ? <Btn icon={model.local ? 'folder' : 'download'} onClick={() => model.local ? setLocalModelOpen(true) : setLibraryOpen(true)}>{tr(model.local ? 'Reconnect local file' : 'Download model version')}</Btn> : null)}
