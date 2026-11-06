@@ -1,4 +1,5 @@
 import {createHash} from 'node:crypto';
+import {spawnSync} from 'node:child_process';
 import {existsSync, readFileSync, readdirSync, statSync} from 'node:fs';
 import {join, relative, resolve, isAbsolute} from 'node:path';
 
@@ -48,7 +49,16 @@ export function verifyEngine(folder, version) {
   if(JSON.stringify(actual)!==JSON.stringify(expected))throw new Error('Unexpected engine package membership');
   return manifest;
 }
-export function verifyNativeBuild(folder,root,manifest) {
+/** A separately shipped engine may bind to a pinned source checkout, never silently to another tree. */
+export function verifyNativeBuild(folder,root,manifest,{sourceRoot,sourceCommit,manifestSHA256}={}) {
+  const separate=sourceRoot!==undefined || sourceCommit!==undefined || manifestSHA256!==undefined;
+  if(separate) {
+    if(typeof sourceRoot!=='string'||!isAbsolute(sourceRoot)||!/^[a-f0-9]{40}$/.test(sourceCommit??'')||!/^[a-f0-9]{64}$/.test(manifestSHA256??''))throw new Error('Separate native source requires an absolute root, full commit and manifest SHA-256');
+    if(sha256(join(folder,'engine-component.json'))!==manifestSHA256)throw new Error('Separate native manifest changed');
+    const head=spawnSync('git',['-C',sourceRoot,'rev-parse','HEAD'],{encoding:'utf8',timeout:15000,windowsHide:true});
+    if(head.error||head.status!==0||head.stdout.trim()!==sourceCommit)throw new Error('Separate native source commit changed');
+    root=sourceRoot;
+  }
   const record=JSON.parse(readFileSync(join(folder,'native-build.json'),'utf8'));
   if(record.version!==manifest.version || record.entrypoint!==manifest.entrypoint || record.sha256!==sha256(join(folder,manifest.entrypoint)))throw new Error('Stale native build identity');
   if(JSON.stringify(record.sources)!==JSON.stringify(nativeSources(root)))throw new Error('Native engine sources changed: rebuild the engine');
@@ -58,6 +68,12 @@ export function verifyNativeBuild(folder,root,manifest) {
     const path=resolve(root,baseline.path),name=relative(resolve(root),path);
     if(isAbsolute(name)||name.startsWith('..')||sha256(path)!==baseline.sha256)throw new Error('CUDA resource baseline changed: rebuild and qualify the engine');
   }
+  if(separate) {
+    const paths=['src','include','cmake','spin8','tqcodec','CMakeLists.txt',...(baseline?[baseline.path]:[])];
+    const status=spawnSync('git',['-C',root,'status','--porcelain','--untracked-files=all','--',...paths],{encoding:'utf8',timeout:15000,windowsHide:true});
+    if(status.error||status.status!==0||status.stdout.trim())throw new Error('Separate native source checkout is not frozen');
+  }
+  return {sourceRoot:resolve(root),sourceCommit:sourceCommit??null,manifestSHA256:sha256(join(folder,'engine-component.json')),engineSHA256:record.sha256,buildId:manifest.build_id??null};
 }
 /** The one model-derived fixture allowed in the base runtime, with its full licence. */
 export function verifyControlData(source,staged) {

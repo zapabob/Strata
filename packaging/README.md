@@ -77,6 +77,16 @@ The script refuses an archive whose SHA-256 differs from the digest recorded for
 
 ## Desktop app
 
+For an app-only candidate with a separately shipped Windows engine, the optional
+`STRATA_NATIVE_SOURCE_ROOT` must name an absolute frozen source checkout.
+Also set `STRATA_NATIVE_SOURCE_COMMIT` to its full Git SHA and
+`STRATA_NATIVE_MANIFEST_SHA256` to the intended signed component manifest hash.
+The packaging guard still checks every native source, any recorded CUDA spill
+baseline, the engine bytes, manifest membership and signature using Control's
+built-in trusted keys. It prints the independent source binding without rewriting
+engine provenance. Omitting these variables keeps the strict app-root source check.
+The Windows NSIS installer still excludes GPU runtimes.
+
 ```sh
 cd apps/desktop
 ./scripts/fetch-node.sh                                                      # the sidecar (once)

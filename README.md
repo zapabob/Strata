@@ -1,5 +1,7 @@
 # Hakua / Strata
 
+This source tree is the unpublished app `0.5.2-local.1` / Control `0.5.2` candidate. Its local installer retains the independently signed native `0.5.1` component. The release links and measurements below describe published `0.5.1`.
+
 Version 0.5.1 adds manual model loading and fixes native Qwen3.6 startup. Existing models and verified expert packs are retained.
 
 Run local language models in a Windows desktop app, with chat, model controls,

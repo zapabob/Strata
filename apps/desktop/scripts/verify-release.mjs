@@ -77,7 +77,18 @@ if(process.platform==='win32') {
  if(manifests.length!==1) throw new Error('Stage exactly one current Windows engine package');
  const path=manifests[0],folder=resolve(path,'..');
  const manifest=verifyEngine(folder,engine);
- verifyNativeBuild(folder,root,manifest);
+ const nativeSource=verifyNativeBuild(folder,root,manifest,{
+  sourceRoot:process.env.STRATA_NATIVE_SOURCE_ROOT,
+  sourceCommit:process.env.STRATA_NATIVE_SOURCE_COMMIT,
+  manifestSHA256:process.env.STRATA_NATIVE_MANIFEST_SHA256,
+ });
+ if(nativeSource.sourceCommit) {
+  // Use the packaged verifier and its built-in keys, not environment-supplied trust.
+  const code="import sys,json; sys.path.insert(0,sys.argv[1]); from strata_control import signing,engine_component; m=json.load(open(sys.argv[2],encoding='utf-8')); signing.verify_bytes(signing.load_trusted_keys(environ={}),engine_component.signing_payload(m),m.get('signature'))";
+  const signed=spawnSync(py,['-I','-B','-c',code,control,path],{encoding:'utf8',timeout:30000,windowsHide:true});
+  if(signed.error||signed.status!==0)throw new Error('Separate native component signature verification failed');
+  console.log('Verified separate native source: '+JSON.stringify(nativeSource));
+ }
  const run=spawnSync(join(folder,manifest.entrypoint),['--version'],{encoding:'utf8',timeout:15000,windowsHide:true});
  if(run.error || run.status!==0 || !run.stdout.includes(engine)) throw new Error('Bundled executable version does not match engine manifest');
 }
