@@ -59,9 +59,28 @@ tracked diffs rather than recording their contents and does not read untracked
 files, arbitrary environment variables, model metadata or credentials.
 
 A later runtime comparison must freeze the same driver, selected model/pack hashes,
-layer CRCs, router top-8, expert quantisation, context, MTP and single session/GPU.
-Unspecified runtime inputs in `workload.json` block runtime qualification. Preserve
-FP32 for rollback and name the effective precision explicitly. If a driver update
-becomes necessary, measure the three distinct arms in `driver_change_arms` rather
-than attributing the driver's difference to the compiler. Preserve the previous
-binary, config and DLLs so returning to the old launch path remains possible.
+layer CRCs, expert quantisation, context, MTP and single session/GPU. Freeze the
+selected family's actual router count from model metadata and its effective
+precision/layout from that metadata and the existing engine settings. The
+`runtime.families` contracts apply independently; unknown fields and reasons block
+runtime qualification until the actual values are recorded.
+
+Qwen3.6 retains top-8 routing and FP32 attention K/V for comparison and rollback;
+confirm the selected model metadata agrees. Its FP16, Q8_0 and NVFP4 candidates
+are family-specific proposals. Each opt-in format needs engine capability,
+rounding, scale and layout checks before use.
+
+Generic Qwen3.8 retains its selected model's router count and existing effective
+FP16 QSA, grouped-64 INT8, rotated Q4_0 or K8V4 contract as applicable. Do not assign
+the Qwen3.6 FP32 baseline or proposed formats to this family. Its grouped-64 INT8
+is distinct from GGUF Q8_0. DeepSeek V4.1 retains its own metadata-derived router
+count, FP8 window ring, compressed E2M1/E4M3 KV, E2M1/UE8M0 index keys and BF16
+working rows. Its compressed latent rows and index keys have separate precision,
+scale and layout contracts. No additional formats are selected for these two
+families; proposals require their own capability/layout checks. See
+`docs/NATIVE_CUDA_PRECISION_SCOPE.md` for the existing family contracts.
+
+If a driver update becomes necessary, measure the three distinct arms in
+`driver_change_arms` rather than attributing the driver's difference to the
+compiler. Preserve the previous binary, config and DLLs so returning to the old
+launch path remains possible.
