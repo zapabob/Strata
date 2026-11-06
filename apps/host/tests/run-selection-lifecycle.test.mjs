@@ -10,7 +10,7 @@ import { pathToFileURL } from 'node:url';
 
 const root = resolve(import.meta.dirname, '..');
 const ui = `import React from 'react';
-export const Btn=({children,onClick,disabled})=>{if(children==='Load model')window.__runModel=onClick;return React.createElement('button',{onClick,disabled},children)};
+export const Btn=({children,onClick,disabled})=>{if(children==='Load model')window.__runModel=onClick;if(children==='Save settings'||children==='Update settings')window.__saveProfile=onClick;return React.createElement('button',{onClick,disabled},children)};
 export const Select=({ariaLabel,value,options,onChange,disabled})=>React.createElement('select',{'aria-label':ariaLabel,value,disabled,onChange:e=>onChange(e.target.value)},options.map(o=>React.createElement('option',{key:o.value,value:o.value},o.label)));
 export const Screen=({children,titleDetail,actions})=>React.createElement('main',null,titleDetail,actions,children);
 export const ErrorNotice=({message})=>React.createElement('p',{role:'alert'},message);
@@ -21,6 +21,8 @@ const store = `import {useSyncExternalStore} from 'react';
 const listeners=new Set();
 export const getState=()=>window.__fixture;
 function put(patch){window.__fixture={...window.__fixture,...patch};listeners.forEach(f=>f());}
+window.__putHardware=hardware=>put({hardware});
+export const refreshHardware=async()=>{window.__refreshes++;};
 export const useStore=select=>select(useSyncExternalStore(f=>{listeners.add(f);return()=>listeners.delete(f)},getState));
 export function setConfigDraft(configDraft){put({configDraft});}
 export function imageSelectionReady(selected){const s=getState();return !s.busy['image:select']&&s.imageModels?.selected===selected&&s.imageSelection.confirmed&&s.imageSelection.intent===selected&&!s.imageSelection.error;}
@@ -28,7 +30,7 @@ export function selectImageModel(selected){const request=window.__requests.lengt
 export const useLifecycle=()=>({allowed:true});
 const forbidden=async()=>{throw Error('unexpected model operation')};
 export const applyImageModel=async(selected=getState().imageSelection.intent)=>{if(!window.__allowRun)return forbidden();if(!imageSelectionReady(selected))throw getState().imageSelection.error??Error('unconfirmed image selection');window.__applies.push(window.__hostSelected);},loadRuntimeModel=async()=>{if(!window.__allowRun)return forbidden();window.__loads++;},loadVariant=forbidden,restartEngine=forbidden,saveEngine=forbidden;
-export const pushToast=()=>{},validateEngine=async()=>window.__holdValidation?new Promise((resolve,reject)=>window.__validationGates.push(Object.assign(resolve,{reject}))):({ok:true,issues:[]});`;
+export const pushToast=()=>{},validateEngine=async()=>{window.__validations++;return window.__holdValidation?new Promise((resolve,reject)=>window.__validationGates.push(Object.assign(resolve,{reject}))):({ok:true,issues:[]})};`;
 const stubs = {
     store,
     native: 'export const useNative=()=>null,nativeSettled=()=>true,subscribeNative=()=>()=>{};',
@@ -50,23 +52,26 @@ const bundle = await build({
 });
 
 const model = (id, quant) => ({ id, name: id, label: id, family: 'Local models', quant, params: '27B', local: { architecture: 'qwen35' }, state: 'installed', contextMax: id === 'q36' ? 131072 : 32768, diskGb: 20, tags: [], kvModes: ['FP16'] });
-const hardware = { host: { name: 'Test', platform: 'win32', arch: 'x64' }, cpu: { model: 'CPU', cores: 6 }, memory: { totalGb: 32 }, gpus: [], accelerator: { backend: 'cpu', unified: false } };
+const hardware = { host: { name: 'Test', platform: 'win32', arch: 'x64' }, cpu: { model: 'CPU', cores: 6, threads: 12, topologyKnown: true, topologySource: 'live' }, processors: [{ id: 'CPU0', socket: 'CPU0', model: 'CPU', cores: 6, threads: 12 }], memory: { totalGb: 32 }, gpus: [], accelerator: { backend: 'cpu', unified: false } };
+const unknownHardware = { ...hardware, cpu: { ...hardware.cpu, cores: 12, topologyKnown: false, topologySource: 'unavailable' }, processors: [] };
 const qconfig = { schema: 'strata.engine/1', beginner: { contextLength: '128k' }, expert: { 'ctx.length': '128K', 'gpu.cpuMoeLayers': 28, 'runtime.backend': 'Automatic' } };
 const engine = { engine: { version: 'test' }, beginner: qconfig.beginner, expert: Object.entries(qconfig.expert).map(([id, value]) => ({ id, value, recommended: id === 'gpu.cpuMoeLayers' ? 0 : value })) };
-const computer = JSON.stringify({ host: 'Test', platform: 'win32', arch: 'x64', cpu: 'CPU', cores: 6, ram: 32, gpus: [], backend: 'cpu' });
+const computer = JSON.stringify({ host: 'Test', platform: 'win32', arch: 'x64', cpu: 'CPU', cores: 6, ram: 32, processors: [['CPU0', 'CPU', 6]], gpus: [], backend: 'cpu' });
 const empty = { schema: 1, profiles: [], defaults: {} };
 const saved = { schema: 1, defaults: { [computer+'\nq36']: 'q', [computer+'\nhikari']: 'h' }, profiles: [
     { id: 'q', name: 'Q', variantId: 'q36', hardware: computer, engineVersion: 'test', config: qconfig, imageModel: 'q6' },
     { id: 'h', name: 'H', variantId: 'hikari', hardware: computer, engineVersion: 'test', config: { ...qconfig, beginner: { contextLength: '32k' }, expert: { 'ctx.length': '32K', 'gpu.cpuMoeLayers': 0, 'runtime.backend': 'PrismML' } }, imageModel: 'off' },
 ] };
 
-async function fixture(t, id, profiles = empty, draft = null, allowRun = false) {
+async function fixture(t, id, profiles = empty, draft = null, allowRun = false, hw = hardware) {
     const home = await mkdtemp(join(tmpdir(), 'strata-e2-component-'));
     const dirs = Object.fromEntries(['home','local','roaming','workspace','models','components','runtime','tmp'].map(name=>[name,join(home,name)]));
     await Promise.all(Object.values(dirs).map(path=>mkdir(path,{recursive:true})));
     const html = join(home,'index.html'); await writeFile(html,'<!doctype html><html><body><div id="root"></div></body></html>');
     const env = Object.fromEntries(Object.entries(process.env).filter(([key])=>!/^STRATA_|^DSH_|^WEBVIEW2_/i.test(key)));
     Object.assign(env,{LOCALAPPDATA:dirs.local,APPDATA:dirs.roaming,TEMP:dirs.tmp,TMP:dirs.tmp,STRATA_HOME:dirs.home,STRATA_WORKSPACE:dirs.workspace,STRATA_MODELS_DIR:dirs.models,STRATA_COMPONENTS_DIR:dirs.components,STRATA_RUNTIME_DIR:dirs.runtime,STRATA_SETTINGS_FILE:join(home,'settings.json'),STRATA_NO_ACQUIRE:'1',STRATA_NO_BUNDLED_ENGINE:'1',STRATA_NO_REPAIR_ACCESS:'1',STRATA_AGENT:'off'});
+    // Windows token discovery needs the real user root; browser/app data remain task-only.
+    if (process.env.STRATA_TEST_WINDOWS_PROFILE) { env.USERPROFILE=process.env.STRATA_TEST_WINDOWS_PROFILE; delete env.HOME; }
     const browser = await chromium.launchPersistentContext(join(home,'browser'),{ executablePath: 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', headless: true, env, timeout:10000,args: ['--disable-gpu','--disable-background-networking','--disable-component-update','--no-first-run'] });
     t.diagnostic('isolated browser profile: '+join(home,'browser'));
     t.after(async()=>{await browser.close();});
@@ -81,9 +86,9 @@ async function fixture(t, id, profiles = empty, draft = null, allowRun = false) 
         if(draft)sessionStorage.setItem('strata.run-variant.v1',id);
         location.hash=id===null?'/models/local':'/models/local?variant='+id;
         window.__requests=[];
-        window.__allowRun=allowRun;window.__hostSelected='q6';window.__loads=0;window.__applies=[];window.__plans=0;window.__validationGates=[];
+        window.__allowRun=allowRun;window.__hostSelected='q6';window.__loads=0;window.__applies=[];window.__plans=0;window.__validationGates=[];window.__validations=0;window.__refreshes=0;
         window.__fixture={engine,hardware,library:{mode:'simulated',loaded:null,current:null,variants:models,disk:{modelsDir:'isolated'}},runtime:null,imageModels:{selected:'q6',applied:'off',generationAvailable:true,variants:[]},imageSelection:{intent:null,confirmed:false,error:null},configDraft:draft,busy:{},connection:allowRun?'live':'offline'};
-    },{id,profiles,engine,hardware,draft,allowRun,models:[model('q36','Q4_K_M'),model('hikari','PQ2_0')]});
+    },{id,profiles,engine,hardware:hw,draft,allowRun,models:[model('q36','Q4_K_M'),model('hikari','PQ2_0')]});
     await page.addScriptTag({content:bundle.outputFiles[0].text});
     await page.locator('select[aria-label="Model version"]').waitFor();
     t.after(()=>assert.deepEqual(errors,[]));
@@ -229,4 +234,75 @@ test('late A profile save merges with a newer completed B save and leaves B acti
     await page.evaluate(()=>window.__validationGates[0]({ok:true,issues:[]}));await page.waitForFunction(()=>JSON.parse(localStorage.getItem('strata.run-profiles.v1')).profiles.length===2);
     assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('strata.run-profiles.v1')).profiles.map(p=>[p.variantId,p.name])),[['hikari','B first'],['q36','A late']]);
     assert.equal(await page.locator('.run-saved-settings').textContent(),'B first');
+});
+
+test('unverified hardware leaves manual settings usable but disables profile provenance writes', async t => {
+    const page = await fixture(t, 'q36', saved, null, false, unknownHardware);
+    await page.getByRole('button', { name: /Saved settings/ }).click();
+    assert.equal(await page.getByRole('menuitem', { name: /Save current settings|Save as new/ }).isDisabled(), true);
+    assert.match(await page.locator('main').textContent(), /hardware.*unavailable|reading.*hardware/i);
+    assert.equal(await page.getByRole('button', { name: '128K', exact: true }).isEnabled(), true);
+    assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('strata.run-profiles.v1'))), saved);
+});
+
+test('unknown startup defers the verified default and restores it exactly once on verification', async t => {
+    const page = await fixture(t, 'q36', saved, null, false, unknownHardware);
+    assert.equal(await page.locator('.run-saved-settings').textContent(), 'Saved settings');
+    await page.evaluate(hw => window.__putHardware(hw), hardware);
+    await page.waitForFunction(() => document.querySelector('.run-saved-settings').textContent === 'Q');
+    assert.equal(await page.evaluate(() => JSON.parse(window.__fixture.configDraft).expert['gpu.cpuMoeLayers']), 28);
+    await page.getByRole('button', { name: '96K', exact: true }).click();
+    await page.evaluate(hw => window.__putHardware({ ...hw, cpu: { ...hw.cpu, topologySource: 'cached' } }), hardware);
+    assert.equal(await page.evaluate(() => JSON.parse(window.__fixture.configDraft).beginner.contextLength), '96k');
+    assert.equal(await page.locator('.run-saved-settings').textContent(), 'Q');
+});
+
+test('edits while identity waits survive verification and model round trips', async t => {
+    const page = await fixture(t, 'q36', saved, null, false, unknownHardware);
+    await page.getByRole('button', { name: '96K', exact: true }).click();
+    await page.getByRole('combobox', { name: 'Model version' }).selectOption('hikari');
+    await page.evaluate(hw => window.__putHardware(hw), hardware);
+    await page.waitForFunction(() => document.querySelector('.run-saved-settings').textContent === 'H');
+    await page.getByRole('combobox', { name: 'Model version' }).selectOption('q36');
+    assert.equal(await page.evaluate(() => JSON.parse(window.__fixture.configDraft).beginner.contextLength), '96k');
+    assert.equal(await page.locator('.run-saved-settings').textContent(), 'Saved settings');
+    await page.getByRole('button', { name: /Saved settings/ }).click();
+    assert.equal(await page.getByRole('menuitemradio', { name: /Q/ }).count(), 1, 'exact verified profile remains available explicitly');
+});
+
+for (const update of [false, true]) test(`real profile ${update ? 'update/default' : 'save/default'} handler refuses unknown identity before validation`, async t => {
+    const page = await fixture(t, 'q36', update ? saved : empty);
+    await page.waitForFunction(() => window.__requests.length === 1);
+    await page.evaluate(() => window.__requests[0].resolve());
+    await page.getByRole('button', { name: /Saved settings/ }).click();
+    await page.getByRole('menuitem', { name: update ? /Edit saved settings/ : /Save current settings/ }).click();
+    const before = await page.evaluate(() => ({ validations: window.__validations, data: localStorage.getItem('strata.run-profiles.v1') }));
+    await page.evaluate(hw => window.__putHardware(hw), unknownHardware);
+    await page.evaluate(async () => { window.__saveProfile(); for (let n = 0; n < 10; n++) await Promise.resolve(); });
+    assert.deepEqual(await page.evaluate(() => ({ validations: window.__validations, data: localStorage.getItem('strata.run-profiles.v1') })), before);
+});
+
+test('cold verification recognises an exact saved session default but preserves a different existing session draft',async t=>{
+    const exact=await fixture(t,'q36',saved,JSON.stringify(qconfig),false,unknownHardware);
+    await exact.evaluate(hw=>window.__putHardware(hw),hardware);
+    await exact.waitForFunction(()=>document.querySelector('.run-saved-settings').textContent==='Q');
+    const own={...qconfig,expert:{...qconfig.expert,'gpu.cpuMoeLayers':17}};
+    const editing=await fixture(t,'q36',saved,JSON.stringify(own),false,unknownHardware);
+    await editing.evaluate(hw=>window.__putHardware(hw),hardware);
+    assert.equal(await editing.evaluate(()=>JSON.parse(window.__fixture.configDraft).expert['gpu.cpuMoeLayers']),17);
+    assert.equal(await editing.locator('.run-saved-settings').textContent(),'Saved settings');
+});
+
+test('unknown profile identity permits manual load and a bounded refresh, preserving old fallback-bound records',async t=>{
+    const oldComputer=JSON.stringify({host:'Test',platform:'win32',arch:'x64',cpu:'CPU',cores:12,ram:32,processors:[],gpus:[],backend:'cpu'});
+    const old={...saved,profiles:[...saved.profiles,{...saved.profiles[0],id:'old',name:'Old fallback',hardware:oldComputer}],defaults:{...saved.defaults,[oldComputer+'\nq36']:'old'}};
+    const p=await fixture(t,'q36',old,null,true,unknownHardware);
+    await p.waitForFunction(()=>window.__plans>0&&window.__requests.length===1);await p.evaluate(()=>window.__requests[0].resolve());
+    const load=p.getByRole('button',{name:'Load model',exact:true});assert.equal(await load.isEnabled(),true);
+    await p.getByRole('button',{name:'Refresh hardware',exact:true}).click();assert.equal(await p.evaluate(()=>window.__refreshes),1);
+    await p.evaluate(async()=>{window.__runModel();for(let n=0;n<10;n++)await Promise.resolve();});await p.waitForFunction(()=>window.__loads===1);
+    await p.evaluate(hw=>window.__putHardware(hw),hardware);
+    assert.equal(await p.locator('.run-saved-settings').textContent(),'Saved settings','manual load keeps its selected draft');
+    assert.deepEqual(await p.evaluate(()=>JSON.parse(localStorage.getItem('strata.run-profiles.v1'))),old);
+    await p.getByRole('button',{name:/Saved settings/}).click();assert.equal(await p.getByRole('menuitemradio',{name:/Old fallback/}).count(),0);
 });

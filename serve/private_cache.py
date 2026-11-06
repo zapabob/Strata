@@ -9,6 +9,8 @@ import json
 import re
 import secrets
 
+from serve.native_family import native_admission
+
 _SECRET = secrets.token_bytes(32)
 
 
@@ -34,12 +36,9 @@ def conversation_scope(api_key, session_id):
     return hmac.new(_SECRET, payload, hashlib.sha256).hexdigest()
 
 
-def required_capability(cfg):
-    args = cfg.get("args") or []
-    q36 = cfg.get("arch") == "qwen35moe" or "strata-q36" in str(cfg.get("exe", ""))
-    if q36 and any(flag in args for flag in ("--prompt-cache", "--conversation-cache-mib", "--private-conversation-cache")):
-        return 2 if "--private-conversation-cache" in args else 1
-    return 0
+def required_capability(cfg: dict) -> int:
+    """Choose the required acknowledgement, not evidence that the engine has it."""
+    return native_admission(cfg).private_cache
 
 
 def capability_confirmed(info, required):

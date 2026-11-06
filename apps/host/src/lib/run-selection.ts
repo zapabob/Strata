@@ -42,7 +42,7 @@ export interface RunModelDraft {
 }
 
 /** Restore this identity's draft/default without applying settings or starting an engine. */
-export function runModelSettings(model: ModelVariant, engine: EngineConfig, hardware: Hardware, profiles: RunProfiles, computer: string, previous?: RunModelDraft, backendHint?: string): RunModelDraft {
+export function runModelSettings(model: ModelVariant, engine: EngineConfig, hardware: Hardware, profiles: RunProfiles, computer: string | null, previous?: RunModelDraft, backendHint?: string): RunModelDraft {
     if (previous) {
         let restored;
         try { restored = previous.draft ? readConfig(previous.draft) : null; }
@@ -50,7 +50,7 @@ export function runModelSettings(model: ModelVariant, engine: EngineConfig, hard
         const pinned = restored ? pinStrataEngineBackend(restored, model, backendHint) : null;
         return { ...previous, draft: pinned ? JSON.stringify(pinned, null, 2) : previous.draft };
     }
-    const profileId = profiles.defaults[defaultProfileKey(computer, model.id)];
+    const profileId = computer === null ? undefined : profiles.defaults[defaultProfileKey(computer, model.id)];
     const profile = profiles.profiles.find(p => p.id === profileId && p.variantId === model.id && p.hardware === computer);
     const config = profile ? structuredClone(profile.config) : recommendedConfig(engine, hardware);
     if (!profile && model.local) {

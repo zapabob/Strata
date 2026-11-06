@@ -88,6 +88,7 @@ from serve import lifeline  # noqa: E402
 from serve import perf131k_e2e as perf_e2e  # noqa: E402
 from serve import memory_harness  # noqa: E402
 from serve import private_cache  # noqa: E402
+from serve.native_family import is_q36_config, native_admission, native_admission_from_env  # noqa: E402
 from serve.structured import StructuredOutputError, prepare_format, validated_json, extract_json  # noqa: E402
 from serve import responses as responses_api  # noqa: E402
 from serve.responses import ResponsesError, error_body as responses_error_body  # noqa: E402
@@ -1161,6 +1162,10 @@ class StrataEngine:
     def __init__(self, exe: str, args: list[str], cwd: str | None = None, log: str | None = None,
                  env: dict | None = None, lazy: bool = False, cpus: list[int] | None = None, _attempt: int = 0,
                  retry_args: list[str] | None = None, retry_vram_args: list[str] | None = None):
+        # Proof and READY admission must describe the same captured start.
+        args = list(args)
+        env = dict(os.environ if env is None else env)
+        admission = native_admission_from_env(env, args)
         # retry_args: the arguments to start again with, once, when this start ends before the engine is ready (an Auto start that picked DFlash2: mtp_retry_args)
         # retry_vram_args: the same start with no drafter (nodraft_retry_args), used instead when the engine ended because a card ran out of memory: swapping DFlash2 for
         # the MTP takes MORE memory from a card that is already short, so that direction is never taken then
@@ -1193,8 +1198,8 @@ class StrataEngine:
         if lazy:
             return
         q36_cap = None
-        if (env or {}).get("STRATA_REQUIRE_Q36_KV") == "1":
-            q36_cap = q36_verify_kv_args(exe, args, (env or {}).get("STRATA_Q36_KV_HOST_SHA256"))
+        if admission.q36:
+            q36_cap = q36_verify_kv_args(exe, args, admission.expected_kv_sha256)
         self.unloaded = False            # `ended` stays True until READY (below): not alive while starting (#344)
         self.log = open(log, "a", encoding="utf-8") if log else subprocess.DEVNULL
         loading = threading.Event()                     # set once READY: the narrator below stops
@@ -1345,8 +1350,7 @@ class StrataEngine:
                 tail += "\n  (those are the launcher's own lines: the engine itself wrote nothing)"
             raise EngineDied(why + (f" (see {log})" if log else "") + note +
                              start_failure_hint(log, log_start) + tail)
-        required_cache = (env or {}).get("STRATA_REQUIRE_Q36_PRIVATE_CACHE", "0")
-        if not private_cache.capability_confirmed(self.info, int(required_cache)):
+        if not private_cache.capability_confirmed(self.info, admission.private_cache):
             self.proc.kill()
             self.proc.wait(timeout=5)
             self.proc.stdin.close()
@@ -3979,8 +3983,7 @@ def _flag_value(args: list[str], *flags: str) -> str | None:
 
 def q36_config(cfg: dict) -> bool:
     """Identify only the Q36 family; other families retain their own codec rules."""
-    return (cfg.get("arch") == "qwen35moe" or "strata-q36" in str(cfg.get("exe", ""))
-            or bool(re.search(r"qwen3\.6|qwen36|35b-a3b", str(cfg.get("model_name", "")), re.I)))
+    return is_q36_config(cfg)
 
 
 def q36_binary_sha256(exe: str) -> str | None:
@@ -4079,6 +4082,7 @@ def q36_verify_kv_args(exe: str | None, args: list[str], expected_sha: str | Non
 
 def q36_cache_args(cfg: dict, args: list[str], exe: str | None) -> list[str]:
     """Merge Q36 top-level settings without overriding independent K/V argv."""
+    admission = native_admission(cfg)
     if any(cfg.get(key) is not None for key in ("spin8_mode", "spin8_native_config", "spin8_native_sha256")) or any(a.startswith("--spin8") for a in args):
         raise ValueError("Spin8 is not a Q36 KV capability")
     combined = list(args)
@@ -4094,12 +4098,9 @@ def q36_cache_args(cfg: dict, args: list[str], exe: str | None) -> list[str]:
                 raise ValueError(f"{flag}: conflicting Q36 cache request")
         else:
             combined += [flag, value]
-    run = cfg.get("q36_run") or {}
-    backend = run.get("backend") or {}
-    expected = backend.get("binarySha256") if backend.get("kvCapability") else None
     # The CLI validates before resolving the component path. The real child checks again.
     if exe is not None:
-        q36_verify_kv_args(exe, combined, expected)
+        q36_verify_kv_args(exe, combined, admission.expected_kv_sha256)
     args[:] = combined
     return []
 
@@ -4611,6 +4612,7 @@ def gdn_stack_env(env: dict, cfg: dict, archs: dict | None = None) -> None:
 def child_env(cfg: dict, *, offline: bool = False) -> dict:
     """The engine's environment: the CUDA libraries setup installed (pip's nvidia packages, or the toolkit that
     compiled it) first on the library search path."""
+    admission = native_admission(cfg)
     env = dict(os.environ)
     if gpu_all_off(cfg):                             # every card Off: the engine sees none (a CPU engine runs; the others say so at start)
         env["CUDA_VISIBLE_DEVICES"] = ""
@@ -4625,16 +4627,14 @@ def child_env(cfg: dict, *, offline: bool = False) -> dict:
     # The owning Host start supplies this token; ambient/saved env cannot reuse an old child generation.
     env.pop("STRATA_Q36_STARTUP_GENERATION", None)
     env.pop("STRATA_Q36_LAUNCH_GENERATION", None)
-    run = cfg.get("q36_run")
-    generation = run.get("generation") if isinstance(run, dict) else None
-    if isinstance(generation, str) and re.fullmatch(r"[a-zA-Z0-9-]{1,80}", generation):
-        env["STRATA_Q36_LAUNCH_GENERATION"] = generation
+    if admission.generation is not None:
+        env["STRATA_Q36_LAUNCH_GENERATION"] = admission.generation
     # A config or inherited environment cannot turn off capability confirmation.
-    env["STRATA_REQUIRE_Q36_PRIVATE_CACHE"] = str(private_cache.required_capability(cfg))
-    env["STRATA_REQUIRE_Q36_KV"] = "1" if q36_config(cfg) else "0"
+    env["STRATA_REQUIRE_Q36_PRIVATE_CACHE"] = str(admission.private_cache)
+    env["STRATA_REQUIRE_Q36_KV"] = "1" if admission.q36 else "0"
     env.pop("STRATA_Q36_KV_HOST_SHA256", None)
-    if isinstance(run, dict) and run.get("backend", {}).get("kvCapability"):
-        env["STRATA_Q36_KV_HOST_SHA256"] = str(run["backend"].get("binarySha256", ""))
+    if admission.expected_kv_sha256 is not None:
+        env["STRATA_Q36_KV_HOST_SHA256"] = admission.expected_kv_sha256
     if (cfg.get("arch") or "") == "deepseek41":      # (only this engine reads these; Qwen's environment is untouched)
         deepseek_slot_env(env, cfg)
     parallel_stack_env(env, cfg)

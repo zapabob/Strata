@@ -154,7 +154,7 @@ export function GuidedSetup() {
         setTuneJobId(tuneJob.id);
         void persist(4, { tuneJobId: tuneJob.id }).catch(e => setError(e.message));
     } }, [step, installJob?.id, tuneJob?.id]);
-    const values = { guided: true, family: version?.sourceFamily, model: version?.model, context, ...(contextTouched ? { contextChosen: true } : {}), vision: version?.images ? 'yes' : 'no', kv: 'int8', low_ram: 'auto', loadAfter: false, multiple: false, ...(directory ? { data_dir: directory } : {}) };
+    const values = { guided: true, family: version?.sourceFamily, model: version?.model, context, ...(contextTouched ? { contextChosen: true } : {}), vision: version?.images ? 'yes' : 'no', ...(version && native?.servingPolicies?.[version.id]?.ordinaryKv.includes('int8') ? { kv: 'int8' } : {}), low_ram: 'auto', loadAfter: false, multiple: false, ...(directory ? { data_dir: directory } : {}) };
     async function review() {
         await perform(async () => {
             setInstallJobId('');
