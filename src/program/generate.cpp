@@ -145,6 +145,7 @@
 #include "strata/core/family_layout.hpp"
 #if defined(STRATA_HAVE_QWEN35)
 #include "strata/qwen35/engine.hpp"
+#include "strata/qwen35/kv_layout.hpp"
 #endif
 #if defined(_WIN32)
 #include <windows.h>
@@ -3277,6 +3278,15 @@ static void exit_if_gpu_fatal(const std::string& err) {
 static int engine_main(int argc, char** argv) {   // main() is at the end of this file (#3431)
 #else
 int main(int argc, char** argv) {
+#endif
+#if defined(STRATA_HAVE_QWEN35)
+    // A capability query never opens a model or initialises a GPU. Older releases
+    // already accept --help, but do not emit this structured capability marker.
+    if (argc == 2 && std::strcmp(argv[1], "--help") == 0) {
+        usage();
+        std::puts(strata::qwen35::q36_kv_capabilities);
+        return 0;
+    }
 #endif
     strata::perf131k::Runtime host_trace;
     // **UNBUFFERED, BECAUSE THE INTERESTING OUTPUT IS THE OUTPUT BEFORE A CRASH.**  `stdout` redirected to a

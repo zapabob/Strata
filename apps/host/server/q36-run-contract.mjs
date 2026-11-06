@@ -18,7 +18,7 @@ import { basename } from 'node:path';
 import { flagOf, groups } from './native-user-args.mjs';
 
 export const Q36_SOURCE_BASELINE = '170e0d330edd9c03b5dcddfc64b77e498387ff86';
-export const Q36_CAPABILITY_REVISION = 'q36-argv-private-cache-1';
+export const Q36_CAPABILITY_REVISION = 'q36-typed-kv-1';
 // Private-cache support is negotiated with the running engine's INFO response
 // by serve/server.py, before requests are accepted. It is not a binary allowlist.
 /** Release strata.exe files that contain --q36-expert-store. A digest
@@ -49,7 +49,7 @@ export const Q36_MAPPED_PACK_DIGESTS = new Set([
   '907341c74d5a9f26c784e4aaad3460e376d4cabd84635c5d032879c59b08d150',
 ]);
 export const Q36_ENGINE_DEFAULT_CONTEXT = 32768;
-export const Q36_KV_BYTES_PER_CELL_PER_SEQ = 45056n;
+
 
 /** Options that take one following value. */
 export const Q36_VALUE_FLAGS = new Set([
@@ -57,7 +57,7 @@ export const Q36_VALUE_FLAGS = new Set([
   '--chunk', '--prefill', '--tokens', '--n', '--force', '--emb', '--dump-full-logits',
   '--bench-pp', '--bench-tg', '--mtp', '--draft-vocab', '--batch', '--slots',
   '--expert-vram', '--cpu-threads', '--expert-slots', '--hybrid-rows', '--q36-expert-store',
-  '--prompt-cache', '--conversation-cache-mib',
+  '--prompt-cache', '--conversation-cache-mib', '--cache-type-k', '--cache-type-v',
 ]);
 /** Options that stand alone. */
 export const Q36_SWITCH_FLAGS = new Set([
@@ -103,13 +103,16 @@ function fail(code, message) {
   return { ok: false, error: { code, message } };
 }
 
-/** Persistent FP32 K+V bytes for Qwen3.6: 45056 * cells * sequences. Not a Hikari layer map. */
-export function q36PersistentKvBytes(cells, sequences = 1) {
-  if (!Number.isInteger(cells) || !Number.isInteger(sequences) || cells < 0 || sequences < 0) {
-    return { ok: false, error: { code: 'kv_invalid', message: 'Qwen3.6 KV capacity must be a non-negative integer.' } };
-  }
-  const bytes = Q36_KV_BYTES_PER_CELL_PER_SEQ * BigInt(cells) * BigInt(sequences);
-  return { ok: true, bytes, bytesDecimal: bytes.toString() };
+/** Theoretical persistent bytes, excluding recurrent state and scratch. Geometry is explicit. */
+export function q36PersistentKvBytes(cells, sequences = 1, { k = 'f32', v = 'f32', heads = 2, headDim = 256, attentionStates = 11 } = {}) {
+  if (![cells, sequences, heads, headDim, attentionStates].every(n => Number.isSafeInteger(n) && n > 0) ||
+      !['f32', 'f16'].includes(k) || !['f32', 'f16'].includes(v)) return fail('kv_invalid', 'Qwen3.6 KV geometry or format is invalid.');
+  const one = BigInt(cells) * BigInt(heads) * BigInt(headDim);
+  const keyBytes = one * (k === 'f32' ? 4n : 2n), valueBytes = one * (v === 'f32' ? 4n : 2n);
+  const bytes = (keyBytes + valueBytes) * BigInt(attentionStates) * BigInt(sequences);
+  if (bytes > (1n << 64n) - 1n) return fail('kv_overflow', 'Qwen3.6 KV allocation exceeds size_t.');
+  return { ok: true, bytes, bytesDecimal: bytes.toString(), keyAllocationBytes: keyBytes.toString(), valueAllocationBytes: valueBytes.toString(),
+    layoutVersion: 1, scaleSchema: 'none', basis: 'theoretical', attentionStates, heads, headDim };
 }
 
 /** Decimal GiB (up to 2 places) to bytes. 18.75 and 11.89 stay exact at hundredths of a GiB. */
@@ -235,8 +238,27 @@ export function prepareQ36Launch(input = {}) {
     }
     if (input.privacyRequired && !args.includes('--private-conversation-cache')) args.push('--private-conversation-cache');
   }
-  if (requested.persistentKv && requested.persistentKv !== 'fp32') {
-    return fail('unsupported_setting', 'Qwen3.6 keeps FP32 KV for this launch. Another KV storage was not applied.');
+  const cap = input.kvCapability ? structuredClone(input.kvCapability) : null;
+  const verified = cap?.schema === 1 && cap.family === 'qwen35moe' && cap.layoutVersion === 1 && cap.scaleSchema === 'none' &&
+    /^[0-9a-f]{64}$/.test(input.binarySha256 ?? '') && cap.binarySha256 === input.binarySha256;
+  const kv = { k: 'f32', v: 'f32' };
+  for (const [side, key, flag] of [['k', 'cacheTypeK', '--cache-type-k'], ['v', 'cacheTypeV', '--cache-type-v']]) {
+    const occurrences = args.filter(a => a.split('=')[0] === flag);
+    const at = args.indexOf(flag);
+    if (occurrences.length > 1 || (occurrences.length && (at < 0 || !valueSpan(args, at)))) return fail('unsupported_setting', `${flag} is malformed or repeated; not applied.`);
+    const argValue = at >= 0 ? args[at + 1] : null;
+    const persistent = requested.persistentKv ? ({ fp32: 'f32', fp16: 'f16' }[requested.persistentKv] ?? 'unsupported') : null;
+    const values = [argValue, requested[key], persistent].filter(v => v != null);
+    if (new Set(values).size > 1) return fail('unsupported_setting', `${flag} conflicts with another requested KV format; not applied.`);
+    const type = values[0] ?? 'f32';
+    const supported = cap?.[side === 'k' ? 'cacheTypesK' : 'cacheTypesV'];
+    if (!['f32', 'f16'].includes(type) || (values.length && type !== 'f32' && (!verified || !supported?.includes(type))))
+      return fail('unsupported_setting', `${flag} ${type} was not applied. This binary has not verified that format; the legacy FP32 KV path remains available.`);
+    // Even explicit f32 does not send an unknown flag to a legacy binary.
+    if (values.length && !verified && at >= 0) args.splice(at, 2);
+    if (values.length && verified && (!Array.isArray(supported) || !supported.includes(type))) return fail('unsupported_setting', `${flag} ${type} is not applied by this binary.`);
+    if (values.length && verified && at < 0) args.push(flag, type);
+    kv[side] = type;
   }
   if (requested.expertStoreMode && !['legacy', 'mapped-pack'].includes(requested.expertStoreMode)) {
     return fail('expert_store_not_available', 'The requested expert store is not part of this engine. The launch was not switched.');
@@ -244,7 +266,7 @@ export function prepareQ36Launch(input = {}) {
   if (requested.warmupMode && !['legacy', 'off'].includes(requested.warmupMode)) {
     return fail('unsupported_setting', `Qwen3.6 warmup mode "${requested.warmupMode}" is not in capability ${Q36_CAPABILITY_REVISION}.`);
   }
-  for (const [key, flag] of [['cacheTypeK', '--cache-type-k'], ['cacheTypeV', '--cache-type-v'], ['spin8Mode', '--spin8-mode']]) {
+  for (const [key, flag] of [['spin8Mode', '--spin8-mode']]) {
     if (requested[key]) {
       return fail('unsupported_setting', `${flag} ${requested[key]} is not a Qwen3.6 option. It was not applied and the model was not started.`);
     }
@@ -343,7 +365,7 @@ export function prepareQ36Launch(input = {}) {
     schemaVersion: 1,
     runId: input.runId ?? null,
     generation: input.generation ?? null,
-    backend: { family: 'qwen36', binarySha256: input.binarySha256 ?? null, capabilityRevision: Q36_CAPABILITY_REVISION },
+    backend: { family: 'qwen36', binarySha256: input.binarySha256 ?? null, capabilityRevision: Q36_CAPABILITY_REVISION, kvCapability: verified ? cap : null },
     model: {
       requestedPath: identity.requestedPath ?? (pathAt >= 0 ? argv[pathAt + 1] : null),
       resolvedPath: identity.resolvedPath ?? null,
@@ -359,13 +381,19 @@ export function prepareQ36Launch(input = {}) {
       prefill: requested.prefill ?? (prefillText === 'auto' ? 'auto' : prefill),
       mtp: requested.mtp ?? mtp,
       parallel,
+      kv_k: kv.k, kv_v: kv.v,
     },
     effective: {
       context,
       prefill,
       mtp,
       parallel,
-      persistentKv: 'fp32',
+      persistentKv: kv.k === kv.v ? (kv.k === 'f32' ? 'fp32' : 'fp16') : 'mixed',
+      kv_k: kv.k, kv_v: kv.v,
+      kvLayoutVersion: verified ? 1 : null,
+      kvScaleSchema: verified ? 'none' : null,
+      kvQuality: 'experimental-unqualified',
+      kvEstimate: (() => { const estimate = q36PersistentKvBytes(context, parallel, kv); if (!estimate.ok) return null; const { bytes, ...serial } = estimate; return serial; })(),
       warmupMode,
       expertStoreMode,
       privateCache,
@@ -403,10 +431,16 @@ export function observeQ36Runtime(contract, state) {
     if (value[key] != null && typeof requested === 'number' && value[key] !== requested) mismatches.push({ field: key, requested, observed: value[key] });
   }
   // Capability negotiation stays separate: observing f16 never grants permission to request it.
-  if (contract.effective.persistentKv === 'fp32') for (const key of ['kv_k', 'kv_v']) {
-    if (value[key] != null && value[key] !== 'f32') mismatches.push({ field: key, requested: 'f32', observed: value[key] });
+  for (const key of ['kv_k', 'kv_v']) {
+    const wanted = contract.requested[key] ?? 'f32';
+    if (value[key] != null && value[key] !== wanted) mismatches.push({ field: key, requested: wanted, observed: value[key] });
   }
-  const complete = ['context', 'prefill', 'parallel', 'kv_k', 'kv_v', 'mtp'].every(key => value[key] != null);
+  if (value.kv_layout_version === 1 && value.kv_scale_schema === 'none') {
+    const actual = q36PersistentKvBytes(value.context, value.parallel, { k: value.kv_k, v: value.kv_v, heads: value.kv_heads, headDim: value.kv_head_dim, attentionStates: value.kv_attention_states });
+    if (!actual.ok || actual.bytesDecimal !== value.kv_bytes) mismatches.push({ field: 'kv_bytes', requested: actual.bytesDecimal ?? null, observed: value.kv_bytes });
+  }
+  const complete = ['context', 'prefill', 'parallel', 'kv_k', 'kv_v', 'mtp', ...(contract.backend.kvCapability ? ['kv_layout_version', 'kv_scale_schema', 'kv_heads', 'kv_head_dim', 'kv_attention_states', 'kv_bytes'] : [])].every(key => value[key] != null);
+  if (contract.backend.kvCapability && value.kv_layout_version != null && (value.kv_layout_version !== 1 || value.kv_scale_schema !== 'none')) mismatches.push({ field: 'kv_layout', requested: '1:none', observed: `${value.kv_layout_version}:${value.kv_scale_schema}` });
   const observed = { ...contract.observed, ...value, mismatches, status: mismatches.length ? 'mismatch' : complete ? 'observed' : 'partial' };
   const effective = { ...contract.effective };
   for (const key of ['context', 'prefill', 'mtp', 'parallel']) if (value[key] != null) effective[key] = value[key];

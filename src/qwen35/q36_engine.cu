@@ -26,11 +26,13 @@
 #include "strata/prefill/gemm.hpp"
 #include "strata/prefill/moe_mmq.hpp"
 #include "strata/qwen35/engine.hpp"
+#include "strata/qwen35/kv_layout.hpp"
 #include "strata/qwen35/sampling.hpp"
 #include "strata/qwen35/expert_store.hpp"
 #include "strata/qwen35/hotspot_trace.hpp"
 #include "strata/qwen35/startup_trace.hpp"
 #include "q36_kernels.cuh"
+#include "q36_kv_cache.cuh"
 #if defined(STRATA_Q36_CPU_POOL)
 #include "strata/kernels/cpu/native_expert.hpp"
 #include "strata/kernels/cpu/pool.hpp"
@@ -42,6 +44,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cerrno>
 #include <atomic>
 #include <chrono>
 #include <cmath>
@@ -1150,7 +1153,9 @@ struct Engine {
     // ---- sessions: the conversation states.  One for a single-request engine; --batch N keeps N, each with its own
     // recurrent state and KV cache, so N requests run at once: their rows share one decode window (forward_rows).  The
     // members conv / S / kc / vc / pos / hlast above are the CURRENT session's (select() swaps them).
+    strata::qwen35::Q36KvLayout key_layout, value_layout;
     struct Sess {
+        strata::qwen35::Q36KvLayout key_layout, value_layout;
         std::vector<float*> conv, S;
         std::vector<void*> kc, vc;
         float* hlast = nullptr;
@@ -1287,6 +1292,12 @@ struct Engine {
                      "kv_k=%s kv_v=%s kv_bytes=%llu recurrent_bytes=%llu warmup=%s",
                      q36_startup_generation(), ctx, tmax, n_sess, kv_k_f16 ? "f16" : "f32", kv_v_f16 ? "f16" : "f32",
                      (unsigned long long) startup_kv_bytes, (unsigned long long) startup_recurrent_bytes, warmup);
+        size_t attention_states = m->has_mtp ? 1 : 0;
+        for (const Layer& layer : m->layers) attention_states += layer.attn ? 1 : 0;
+        std::fprintf(stderr, " kv_layout_version=1 kv_scale_schema=none kv_heads=%llu kv_head_dim=%llu kv_attention_states=%llu kv_k_allocation_bytes=%llu kv_v_allocation_bytes=%llu",
+                     (unsigned long long) key_layout.kv_heads, (unsigned long long) key_layout.head_dim,
+                     (unsigned long long) attention_states, (unsigned long long) key_layout.allocation_bytes,
+                     (unsigned long long) value_layout.allocation_bytes);
         if (placed) {
             std::string slots;
             uint64_t mapped_bytes = 0;
@@ -1323,9 +1334,9 @@ struct Engine {
         }
     }
     size_t kv_element_bytes(bool key) const { return (key ? kv_k_f16 : kv_v_f16) ? sizeof(__half) : sizeof(float); }
-    void* alloc_kv(size_t n, bool key) const {
+    void* alloc_kv(bool key) const {
         void* p = nullptr;
-        const size_t bytes = n * kv_element_bytes(key);
+        const size_t bytes = (key ? key_layout : value_layout).allocation_bytes;
         CK(cudaMalloc(&p, bytes));
         CK(cudaMemset(p, 0, bytes));
         return p;
@@ -1340,12 +1351,13 @@ struct Engine {
     void alloc_session(Sess& ss) const {
         const auto& g = m->g;
         const size_t C = (size_t) g.ssm_conv_channels;
+        ss.key_layout = key_layout; ss.value_layout = value_layout;
         for (const Layer& L : m->layers) {
             if (L.attn) {
                 ss.conv.push_back(nullptr);
                 ss.S.push_back(nullptr);
-                ss.kc.push_back(alloc_kv((size_t) g.n_head_kv * ctx * g.head_dim, true));
-                ss.vc.push_back(alloc_kv((size_t) g.n_head_kv * ctx * g.head_dim, false));
+                ss.kc.push_back(alloc_kv(true));
+                ss.vc.push_back(alloc_kv(false));
             } else {
                 ss.conv.push_back(dalloc(C * (g.ssm_d_conv - 1)));
                 ss.S.push_back(dalloc((size_t) g.ssm_v_heads * g.ssm_state_size * g.ssm_state_size));
@@ -1356,8 +1368,8 @@ struct Engine {
         if (m->has_mtp) {   // the MTP block's own K / V (an attention layer at index n_layers)
             ss.conv.push_back(nullptr);
             ss.S.push_back(nullptr);
-            ss.kc.push_back(alloc_kv((size_t) g.n_head_kv * ctx * g.head_dim, true));
-            ss.vc.push_back(alloc_kv((size_t) g.n_head_kv * ctx * g.head_dim, false));
+            ss.kc.push_back(alloc_kv(true));
+            ss.vc.push_back(alloc_kv(false));
         }
         ss.hlast = dalloc((size_t) g.n_embd);
     }
@@ -1371,6 +1383,8 @@ struct Engine {
     }
     void load_cur() {
         Sess& ss = sess[(size_t) cur];
+        strata::qwen35::require_kv_identity(key_layout, ss.key_layout, (size_t) ss.pos);
+        strata::qwen35::require_kv_identity(value_layout, ss.value_layout, (size_t) ss.pos);
         conv = ss.conv; S = ss.S; kc = ss.kc; vc = ss.vc;
         hlast = ss.hlast;
         pos = ss.pos;
@@ -1393,6 +1407,19 @@ struct Engine {
         vision = vision_;
         tmax = std::max(tmax_, kVerify);
         const auto& g = m->g;
+        // Validate every device-index geometry before the first CUDA allocation.
+        if (ctx <= 0 || ctx > std::numeric_limits<int>::max() - 255 || g.n_head_kv <= 0 ||
+            g.head_dim <= 0 || g.n_head <= 0 || g.n_head % g.n_head_kv != 0 ||
+            g.head_dim > std::numeric_limits<int>::max() / ctx ||
+            g.n_head_kv > std::numeric_limits<int>::max() / g.head_dim ||
+            n_sessions < 0 || n_sessions > kVerify)
+            throw std::invalid_argument("Q36 KV geometry exceeds device index limits");
+        key_layout = strata::qwen35::make_kv_layout(kv_k_f16 ? strata::qwen35::Q36KvType::Fp16 : strata::qwen35::Q36KvType::Fp32, ctx, g.n_head_kv, g.head_dim);
+        value_layout = strata::qwen35::make_kv_layout(kv_v_f16 ? strata::qwen35::Q36KvType::Fp16 : strata::qwen35::Q36KvType::Fp32, ctx, g.n_head_kv, g.head_dim);
+        size_t kv_states = m->has_mtp ? 1 : 0;
+        for (const Layer& layer : m->layers) kv_states += layer.attn ? 1 : 0;
+        const size_t planned_kv_bytes = strata::qwen35::kv_checked_mul(strata::qwen35::kv_checked_mul(kv_states, (size_t) n_sess),
+            strata::qwen35::kv_checked_add(key_layout.allocation_bytes, value_layout.allocation_bytes));
         const size_t T = (size_t) tmax, N = (size_t) g.n_embd, Kp = (size_t) m->top_k, FF = (size_t) g.n_ff;
         const size_t C = (size_t) g.ssm_conv_channels;
         CK(cudaStreamCreateWithFlags(&st, cudaStreamNonBlocking));
@@ -1503,7 +1530,7 @@ struct Engine {
             // the MTP block, and its recurrent state)
             size_t n_attn = m->has_mtp ? 1 : 0, n_gdn = 0;
             for (const Layer& L : m->layers) (L.attn ? n_attn : n_gdn) += 1;
-            const size_t per = (size_t) (g.n_head_kv * g.head_dim) * (kv_element_bytes(true) + kv_element_bytes(false)) * (size_t) ctx * n_attn +
+            const size_t per = strata::qwen35::kv_checked_mul(strata::qwen35::kv_checked_add(key_layout.allocation_bytes, value_layout.allocation_bytes), n_attn) +
                                (size_t) g.ssm_v_heads * g.ssm_state_size * g.ssm_state_size * 4 * n_gdn;
             size_t fr0 = 0, tot0 = 0;
             CK(cudaMemGetInfo(&fr0, &tot0));
@@ -1562,10 +1589,7 @@ struct Engine {
         CK(cudaMemGetInfo(&fr, &tot));
         std::fprintf(stderr, "strata-q36: context %d cells, prompt chunk %d%s, %.2f GiB of VRAM free\n", ctx, tmax,
                      m->has_mtp ? ", MTP block loaded" : "", (double) fr / (1 << 30));
-        size_t attention_layers = m->has_mtp ? 1 : 0;
-        for (const Layer& layer : m->layers) attention_layers += layer.attn ? 1 : 0;
-        const size_t kv_bytes = attention_layers * (size_t) ctx * g.n_head_kv * g.head_dim *
-                                (kv_element_bytes(true) + kv_element_bytes(false)) * n_sess;
+        const size_t kv_bytes = planned_kv_bytes;
         startup_kv_bytes = kv_bytes;
         for (const Layer& layer : m->layers) if (!layer.attn)
             startup_recurrent_bytes += ((uint64_t) g.ssm_conv_channels * (g.ssm_d_conv - 1) +
@@ -1597,10 +1621,9 @@ struct Engine {
         cache_scope.clear();
         reset();
         const auto& g = m->g;
-        const size_t kv_elements = (size_t) ctx * g.n_head_kv * g.head_dim;
         for (size_t l = 0; l < kc.size(); ++l) {
-            if (kc[l]) CK(cudaMemsetAsync(kc[l], 0, kv_elements * kv_element_bytes(true), st));
-            if (vc[l]) CK(cudaMemsetAsync(vc[l], 0, kv_elements * kv_element_bytes(false), st));
+            if (kc[l]) CK(strata::qwen35::q36_clear_kv({kc[l], key_layout}, st));
+            if (vc[l]) CK(strata::qwen35::q36_clear_kv({vc[l], value_layout}, st));
         }
         if (d_img) CK(cudaMemsetAsync(d_img, 0, img_cap * sizeof(float), st));
         if (d_mtab) CK(cudaMemsetAsync(d_mtab, 0, (size_t) ctx * 3 * sizeof(int32_t), st));
@@ -2891,8 +2914,8 @@ struct Engine {
         const Sess& a = sess[(size_t) src];
         Sess& b = sess[(size_t) dst];
         const size_t C = (size_t) g.ssm_conv_channels;
-        const size_t key_row = (size_t) ctx * g.head_dim * kv_element_bytes(true);
-        const size_t value_row = (size_t) ctx * g.head_dim * kv_element_bytes(false);
+        strata::qwen35::require_kv_identity(a.key_layout, b.key_layout, (size_t) a.pos);
+        strata::qwen35::require_kv_identity(a.value_layout, b.value_layout, (size_t) a.pos);
         for (size_t l = 0; l < a.conv.size(); ++l) {
             if (a.conv[l]) {
                 CK(cudaMemcpyAsync(b.conv[l], a.conv[l], C * (g.ssm_d_conv - 1) * 4, cudaMemcpyDeviceToDevice, st));
@@ -2900,10 +2923,8 @@ struct Engine {
                                    cudaMemcpyDeviceToDevice, st));
             }
             if (a.kc[l] && a.pos > 0) {
-                CK(cudaMemcpy2DAsync(b.kc[l], key_row, a.kc[l], key_row, (size_t) a.pos * g.head_dim * kv_element_bytes(true), (size_t) g.n_head_kv,
-                                     cudaMemcpyDeviceToDevice, st));
-                CK(cudaMemcpy2DAsync(b.vc[l], value_row, a.vc[l], value_row, (size_t) a.pos * g.head_dim * kv_element_bytes(false), (size_t) g.n_head_kv,
-                                     cudaMemcpyDeviceToDevice, st));
+                CK(strata::qwen35::q36_copy_kv_prefix({b.kc[l], b.key_layout}, {a.kc[l], a.key_layout}, (size_t) a.pos, st));
+                CK(strata::qwen35::q36_copy_kv_prefix({b.vc[l], b.value_layout}, {a.vc[l], a.value_layout}, (size_t) a.pos, st));
             }
         }
         CK(cudaMemcpyAsync(b.hlast, a.hlast, (size_t) g.n_embd * 4, cudaMemcpyDeviceToDevice, st));
@@ -4110,6 +4131,11 @@ struct Serve {
 
     int run() {
         E.clear_private_cache();            // remove warmup state before accepting the first request
+        size_t kv_states = E.m->has_mtp ? 1 : 0;
+        for (const Layer& layer : E.m->layers) kv_states += layer.attn ? 1 : 0;
+        std::printf("INFO kv_layout_version=1 kv_scale_schema=none kv_heads=%llu kv_head_dim=%llu kv_attention_states=%llu kv_context=%d kv_sessions=%d kv_allocation_bytes=%llu\n",
+                    (unsigned long long) E.key_layout.kv_heads, (unsigned long long) E.key_layout.head_dim,
+                    (unsigned long long) kv_states, E.ctx, E.n_sess, (unsigned long long) E.startup_kv_bytes);
         std::printf("INFO kv_cache_k=%s kv_cache_v=%s kv_accumulation=f32\n", E.kv_k_f16 ? "f16" : "f32", E.kv_v_f16 ? "f16" : "f32");
         if (E.private_cache) std::printf("INFO q36_private_cache=%d prompt_cache=0 conversation_cache_mib=0\n", E.scoped_cache ? 2 : 1);
         if (E.n_sess > 1) std::printf("INFO batch_slots=%d slot_cache=1\n", E.n_sess);
@@ -4177,6 +4203,11 @@ int serve(Engine& E) {
 }  // namespace
 
 int strata::qwen35::run(int argc, char** argv) {
+    if (argc == 2 && std::strcmp(argv[1], "--help") == 0) {
+        std::puts("strata-q36: --cache-type-k f32|f16 --cache-type-v f32|f16 (default f32)");
+        std::puts(strata::qwen35::q36_kv_capabilities);
+        return 0;
+    }
     q36_startup_physical_memory("process_start");
     std::string model, tokens, force, dump_full, emb_file;
     std::string cache_type_k = "f32", cache_type_v = "f32";
@@ -4202,7 +4233,16 @@ int strata::qwen35::run(int argc, char** argv) {
         else if (a == "--gpu") (void) next();   // applied by strata before the switch (CUDA/HIP_VISIBLE_DEVICES)
         else if (a == "--greedy") {}            // --tokens decodes greedily here anyway
         else if (a == "--serve") serve_mode = true;
-        else if (a == "--max-context" || a == "--ctx") ctx = std::atoi(next().c_str());
+        else if (a == "--max-context" || a == "--ctx") {
+            const std::string value = next();
+            char* end = nullptr;
+            errno = 0;
+            const long long parsed = std::strtoll(value.c_str(), &end, 10);
+            if (errno || value.empty() || *end || parsed < 256 || parsed > std::numeric_limits<int>::max() - 255) {
+                std::fprintf(stderr, "strata-q36: invalid KV context capacity\n"); return 2;
+            }
+            ctx = (int) parsed;
+        }
         else if (a == "--chunk" || a == "--prefill") { const std::string v = next(); chunk = v == "auto" ? 0 : std::atoi(v.c_str()); }
         else if (a == "--tokens") tokens = next();
         else if (a == "--n") n_gen = std::atoi(next().c_str());

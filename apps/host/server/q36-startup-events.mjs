@@ -29,13 +29,13 @@ export function parseQ36EffectiveLine(line) {
   const f = record(line, 'Q36_EFFECTIVE');
   if (!f) return null;
   const out = { schema: 1, generation: f.generation ?? null };
-  for (const key of ['context', 'prefill', 'parallel', 'cpu_workers', 'mtp']) out[key] = number(f[key]);
-  for (const key of ['engine', 'kv_k', 'kv_v', 'graph_mode', 'graph_reason', 'warmup', 'expert_store', 'pin_mode', 'pin_pipeline', 'file_staging', 'memory_stage']) {
+  for (const key of ['context', 'prefill', 'parallel', 'cpu_workers', 'mtp', 'kv_layout_version', 'kv_heads', 'kv_head_dim', 'kv_attention_states']) out[key] = number(f[key]);
+  for (const key of ['engine', 'kv_k', 'kv_v', 'kv_scale_schema', 'graph_mode', 'graph_reason', 'warmup', 'expert_store', 'pin_mode', 'pin_pipeline', 'file_staging', 'memory_stage']) {
     out[key] = f[key] && f[key] !== 'null' ? f[key] : null;
   }
   out.slots = f.slots && /^\d+(,\d+)*$/.test(f.slots) ? f.slots.split(',').map(number) : null;
   if (out.slots?.some(value => value == null)) out.slots = null;
-  for (const key of ['kv_bytes', 'recurrent_bytes', 'expert_host_bytes', 'expert_mapped_bytes', 'expert_device_bytes', 'pin_pool_bytes', 'hybrid_host_bytes', 'hybrid_device_bytes', 'vram_free_bytes', 'vram_total_bytes', 'ram_free_bytes', 'ram_total_bytes']) out[key] = decimal(f[key]);
+  for (const key of ['kv_bytes', 'kv_k_allocation_bytes', 'kv_v_allocation_bytes', 'recurrent_bytes', 'expert_host_bytes', 'expert_mapped_bytes', 'expert_device_bytes', 'pin_pool_bytes', 'hybrid_host_bytes', 'hybrid_device_bytes', 'vram_free_bytes', 'vram_total_bytes', 'ram_free_bytes', 'ram_total_bytes']) out[key] = decimal(f[key]);
   return out;
 }
 
