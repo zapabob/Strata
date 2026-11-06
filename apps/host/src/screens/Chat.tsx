@@ -108,7 +108,7 @@ export function ChatScreen() {
     const [searchChat,setSearchChat]=useState<string|null>(null);
     const [webSearch,setWebSearch]=useState<(import('../lib/types').WebSearchResult & {sessionId:string})|null>(null);
     useEffect(()=>{if(webSearch&&webSearch.sessionId!==session?.id)setWebSearch(null);if(searchChat&&session?.id&&searchChat!==session.id)setSearchChat(null);},[session?.id]);
-    function openSearch(){const id=session?.id??newSession().id;setSearchChat(id);}
+    function openSearch(){const id=session?.id??newSession({draft:sessionStorage.getItem(draftKey)??draft}).id;setSearchChat(id);}
     const searchDialog=<WebSearchDialog open={!!searchChat} sessionId={searchChat} onClose={()=>setSearchChat(null)} onUse={result=>{if(searchChat)setWebSearch({...result,sessionId:searchChat});}}/>;
     const searchControls=<div className="row chat-reference-controls"><Btn size="sm" icon="search" disabled={streaming} onClick={openSearch}>{tr('Search web')}</Btn><Btn size="sm" icon="skills" onClick={()=>navigate('skills')}>{tr('Skills')}</Btn>{webSearch?<><span className="xs muted">{tr('Search references ready · tools off for this answer')}</span><Btn size="sm" onClick={()=>setWebSearch(null)}>{tr('Remove references')}</Btn></>:null}</div>;
     const draftKey = `strata.chat-draft.${session?.id ?? 'new'}`;

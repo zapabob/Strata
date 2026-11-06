@@ -368,3 +368,94 @@ Final static checks: `git diff --check` and `git diff --cached --check` passed;
 `git diff a2a209c6 --exit-code -- apps/host/src apps/host/server/lifecycle-observation.mjs apps/host/server/model-memory.mjs apps/host/server/model-memory-geometry.mjs apps/host/server/run-observation.mjs bench/strata-16gb apps/host/package.json apps/host/package-lock.json`
 returned no diff. The scoped follow-up commit is titled
 `[GUI] require durable settings saves and retain native exit codes`.
+
+## QUALITY review corrections after ad05fc4d
+
+Scope: the two P2 findings in the same dedicated hybrid worktree, with the
+previous SPEC corrections retained. Applicable prompt/SOP/skill context remains
+the baseline recorded above; no delegation or governance changes were used.
+
+The update's confirmed `models/stopped` event now finishes the old observation
+and stops its obsolete startup watcher before removing the instance. A restart
+gets a new run UUID and owner job, while preserving the public instance/profile
+ID and the saved launch settings. It re-reads profile metadata and the current
+engine identity, then fingerprints the executable and model again. The previous
+capture is retained in the bounded twelve-record history. Success reaches READY;
+failure is finalized directly in the restart path with its structured numeric
+exit code, including code 23. A later successful load does not erase that failed
+receipt. Default-off update/restart remains unobserved. Optional identity lookup
+failures remain unknown and do not block the runtime operation.
+
+The first-chat draft transfer now uses `newSession({draft})`. It writes the
+existing `strata.chat-draft.<id>` session-storage entry before publishing the
+new conversation to subscribers and removes the transferred first-chat draft.
+Search passes the current draft-store value, including the synchronously
+normalized topic from `/research topic`. No hydration effect is bypassed and
+no search query is derived from the draft. Tests execute the actual store's
+newSession, actual Chat hydration effects and actual WebSearchDialog handlers:
+typed first-chat text survives Cancel, close and reopen; the query remains blank
+until separately typed, and no search POST occurs on those actions.
+
+### RED/GREEN and final checks
+
+Initial command from the worktree root:
+
+```powershell
+node _docs/hybrid-intake-tests.mjs engine-update-model.test.mjs ux-chat-handoff.test.mjs
+```
+
+RED: **19 tests, 15 passed, 4 failed, 0 skipped**, 1.838 seconds,
+scratch `strata-hybrid-NliaKw`. The old observations incorrectly remained READY
+after the update stop; both typed first-chat and `/research` drafts hydrated to
+empty strings. Initial GREEN: **19/19 passed**, 2.007 seconds,
+scratch `strata-hybrid-MVize9`.
+
+A related restart-ownership regression was then added: a pre-update metrics
+reply arriving after restart must not update the replacement run's capture.
+`node _docs/hybrid-intake-tests.mjs engine-update-model.test.mjs` reproduced it:
+**14 tests, 13 passed, 1 failed**, 1.431 seconds, scratch `strata-hybrid-7uJwlz`.
+The new run incorrectly received the old reply's context value 1 instead of
+32768. Poll results/failures now check the actual instance owner after awaiting
+the response. The final affected run includes this passing regression.
+
+```powershell
+node _docs/hybrid-intake-tests.mjs engine-update-model.test.mjs native-run-observation.test.mjs lifecycle-observation.test.mjs native-control.test.mjs native-load-cancel.test.mjs ux-chat-handoff.test.mjs ux-web-search.test.mjs chat-web-search.test.mjs explicit-reference-routes.test.mjs chat-files.test.mjs turn-reattach.test.mjs session-persist.test.mjs manual-model-start.test.mjs
+```
+
+Final: **84 tests, 83 passed, 0 failed, 1 skipped**, 36.710 seconds,
+scratch `strata-hybrid-xuNOMy`. The skip needs a built real Harness for a
+chat-folder move. Existing chat-file persistence, whole-message restoration,
+reattachment/background ownership, explicit search routing, native load/cancel,
+SPEC exit-code paths and manual startup passed. Assertions were not weakened.
+From `apps/host`, `npm run typecheck` and `npm run build` passed. Vite reported
+456 modules and 8.88 seconds; the existing store dynamic/static-import and
+large-chunk warnings remain visible.
+
+Changed files in this correction: `apps/host/server/native-control.mjs`,
+`apps/host/src/lib/store.ts`, `apps/host/src/screens/Chat.tsx`,
+`apps/host/tests/engine-update-model.test.mjs`,
+`apps/host/tests/ux-chat-handoff.test.mjs`, and this log. The CPU native fixture
+uses small local executable/model identity files and mocked Control events;
+it does not update or start a real engine. The Chat checks use real owning
+handlers/store/hydration with controlled UI boundaries, not a full browser E2E.
+No installed application, main worktree, dependency, feed or release asset was
+changed. No push occurred. Real GPU/update/install and full GUI/release checks
+remain parent-owned. The prior SPEC persistence implementation is unchanged.
+
+Self-review-event: type=rework_returned scope=hybrid-intake/lifecycle-boundaries category=qa-coverage evidence=QUALITY-review-red-19-and-red-14
+
+Self-review-event: type=ticket_completed scope=hybrid-intake/quality-corrections category=correctness evidence=final-84
+
+Review decision: exercise the actual first-session hydration boundary and the
+separate update/restart path, including an old in-flight response. Add the
+focused behavioral regressions rather than alter shared governance. Parent
+re-review should check run-versus-instance identity, refreshed file identity,
+terminal code retention and draft publication order. The scoped commit is
+titled `[GUI] preserve restart observations and first-chat search drafts`.
+
+Final static checks passed: `git diff --check` and `node --check` for
+native-control, engine-update-model and ux-chat-handoff. Status/diff/recent log
+review shows only the six listed files. Preservation comparison against
+`ad05fc4d` returned no diff for the prior SPEC persistence files, lifecycle
+observation module, estimator, search/import dialogs, benchmark files and
+package manifest/lock.

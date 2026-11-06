@@ -132,6 +132,16 @@ export function createNativeControl({directory,requests=()=>[],changed=()=>{},sp
  const desktopMemoryAccess=new Map();
  const observations=new Map();
  const runObservations=()=>[...observations.values()].map(({capture})=>capture.snapshot());
+ function beginObservation(id,job,cfg,identity={}){
+  const capture=createRunObservation({backend:'native',requested:requestedFromNativeConfig(cfg),requestedSource:'native_config',gpuProbe:observationProbe});
+  // An update restart reuses the public instance id, but is a different run.
+  const previous=observations.get(id);
+  if(previous){observations.delete(id);observations.set(`history:${previous.capture.snapshot().runId}`,previous);}
+  observations.set(id,{capture,job:job.id});while(observations.size>12)observations.delete(observations.keys().next().value);
+  const nativeArgs=Array.isArray(cfg.args)?cfg.args:[],modelIndex=nativeArgs.findIndex(a=>a==='--native'||a==='--pack'||a==='--model');
+  const modelPath=modelIndex>=0?resolve(cfg.cwd??repo(),nativeArgs[modelIndex+1]??''):undefined;
+  void capture.identify({...identity,modelPath});void capture.sampleGpu();return capture;
+ }
  async function loadEngine(job,args){try{return await loadEngineCore(job,args);}catch(error){for(const row of observations.values())if(row.job===job.id)row.capture.failure(error,job.state==='running'?'error':'cancelled');throw error;}}
  const savedJobs=readJson(join(directory,'native-jobs.json'),[]);/* An app update ends the app on purpose: the installer replaces it and starts it again. The job that asked for it was saved as running together with the app version it started from (appUpdateFrom); a start that finds a different version knows the update finished, instead of calling it an interrupted operation. */
  const thisAppVersion=()=>process.env.STRATA_APP_VERSION||null;
@@ -628,8 +638,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   writeFileSync(configPath,JSON.stringify(cfg,null,2),{mode:0o600});
   if(memoryAccess)desktopMemoryAccess.set(id,memoryAccess);
   const instance={id,apiModelId,fingerprint,context:entry.context??0,aliases:cfg.aliases??[],vision:!!cfg.vision,resourceProfile:cfg.ui_resource_profile??null,model:args.model,label:friendlyModelName(snapshot.catalog,args.model)??entry.model_name??args.model,port:cfg.port,gpus:Array.isArray(cfg.gpu)?cfg.gpu:cfg.gpu===undefined?[]:[cfg.gpu],status:'loading',phase:'loading',parallel:cfg.parallel??1,mcpServers:cfg.mcp_servers??cfg.mcpServers??{},key,configPath,ownerJob:job.id,loadedAt:new Date().toISOString(),metrics:null,error:null,...(picturesNote?{picturesNote}:{})};
-  const capture=(args.runObservation===true||observationEnabled())?createRunObservation({backend:'native',requested:requestedFromNativeConfig(cfg),requestedSource:'native_config',gpuProbe:observationProbe}):null;
-  if(capture){observations.set(id,{capture,job:job.id});while(observations.size>12)observations.delete(observations.keys().next().value);const nativeArgs=cfg.args??[],modelIndex=nativeArgs.findIndex(a=>a==='--native'||a==='--pack'||a==='--model');const modelPath=modelIndex>=0?resolve(cfg.cwd??repo(),nativeArgs[modelIndex+1]??''):undefined;void capture.identify({executable:trustedEngineExe??undefined,modelPath});void capture.sampleGpu();}
+  const capture=(args.runObservation===true||observationEnabled())?beginObservation(id,job,cfg,{executable:trustedEngineExe??undefined}):null;
   /* Another model on the same graphics card: the engine takes the card's free memory, so a second one usually finds none. Loading goes on (recommend, never force); if it fails, the reason is said. */
   const sharedWith=instance.gpus.length?[...instances.values()].find(i=>i.id!==id&&i.status!=='error'&&i.model!==args.model&&i.gpus.some(g=>instance.gpus.includes(g))):null;
   const sharedSentence=sharedWith?`GPU ${instance.gpus.find(g=>sharedWith.gpus.includes(g))+1} is already used by ${sharedWith.label}, so this model did not fit there. Load it on another GPU, or unload ${sharedWith.label} first.`:null;
@@ -731,7 +740,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
  let pollCount=0;
  /* The engine's metrics carry every finished request with `?requests=all`: a long session makes that a large JSON that the host parses and
     pushes to the window every 2 s. The last dozen is what the app shows live; the full list is refreshed every tenth poll. */
- async function poll(){if(polling||closing)return;polling=true;const full=pollCount++%10===0;try{await Promise.all([...instances.values()].map(async instance=>{if(instance.status!=='ready')return;try{const response=await fetcher(`http://127.0.0.1:${instance.port}/metrics${full?'?requests=all':''}`,{headers:{authorization:`Bearer ${instance.key}`},signal:AbortSignal.timeout(1500)});if(!response.ok)throw new Error('Metrics unavailable');const fresh=await response.json();observations.get(instance.id)?.capture.observeContext(fresh?.engine?.max_context);const older=instance.metrics?.requests,recent=fresh.requests;instance.metrics=full||!Array.isArray(older)||!Array.isArray(recent)||!recent.length?fresh:{...fresh,requests:[...recent,...older.filter(r=>Number(r.time)<Math.min(...recent.map(x=>Number(x.time))))]};const tools=await fetcher(`http://127.0.0.1:${instance.port}/mcp`,{headers:{authorization:`Bearer ${instance.key}`},signal:AbortSignal.timeout(1500)});if(tools.ok)instance.metrics.mcp=await tools.json();instance.phase=instance.metrics.live?.state??'idle';instance.misses=0;}catch{instance.metrics=null;instance.phase='unavailable';instance.misses=(instance.misses??0)+1;await reconcileLost(instance);}}));emit();}finally{polling=false;}}
+ async function poll(){if(polling||closing)return;polling=true;const full=pollCount++%10===0;try{await Promise.all([...instances.values()].map(async instance=>{if(instance.status!=='ready')return;try{const response=await fetcher(`http://127.0.0.1:${instance.port}/metrics${full?'?requests=all':''}`,{headers:{authorization:`Bearer ${instance.key}`},signal:AbortSignal.timeout(1500)});if(!response.ok)throw new Error('Metrics unavailable');const fresh=await response.json();if(instances.get(instance.id)!==instance||instance.status!=='ready')return;observations.get(instance.id)?.capture.observeContext(fresh?.engine?.max_context);const older=instance.metrics?.requests,recent=fresh.requests;instance.metrics=full||!Array.isArray(older)||!Array.isArray(recent)||!recent.length?fresh:{...fresh,requests:[...recent,...older.filter(r=>Number(r.time)<Math.min(...recent.map(x=>Number(x.time))))]};const tools=await fetcher(`http://127.0.0.1:${instance.port}/mcp`,{headers:{authorization:`Bearer ${instance.key}`},signal:AbortSignal.timeout(1500)});if(tools.ok)instance.metrics.mcp=await tools.json();instance.phase=instance.metrics.live?.state??'idle';instance.misses=0;}catch{if(instances.get(instance.id)!==instance||instance.status!=='ready')return;instance.metrics=null;instance.phase='unavailable';instance.misses=(instance.misses??0)+1;await reconcileLost(instance);}}));emit();}finally{polling=false;}}
  /* The engine of a ready instance stopped answering. After a few looks in a row Control is asked: an owner that says the engine is stopped, failed or lost ends the "ready" the app was still showing (the model looked loaded for good while every request failed, #4973); an engine that is only busy stays as it is. */
  async function reconcileLost(instance){if(instance.misses<3||instance.status!=='ready'||!instance.profile||typeof control.status!=='function')return;let st=null;try{st=await control.status(instance.profile);}catch{return;}if(instance.status==='ready'&&['stopped','failed','stale'].includes(st?.state)){observations.get(instance.id)?.capture.finish(st.state==='stopped'?'stopped':'error',st.engine_exit_code);instance.status='error';instance.error='Engine stopped. Open diagnostics or reload.';}}
  function ensurePoll(){if(!timer){timer=setInterval(()=>void poll(),2000);timer.unref?.();}void poll();}
@@ -796,7 +805,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
     job.step='getting-ready';job.models=models.map(label);job.summary=`Getting the new engine ready. ${job.models.join(' and ')} keeps running until it is ready.`;
    }
    else if(e.phase==='stopping'){for(const m of models){const i=mine.get(m.profile);if(i)i.status='unloading';}job.step='stopping';job.models=models.map(label);job.summary=`Stopping ${job.models.join(' and ')}. Answers in progress finish first.`;}
-   else if(e.phase==='stopped'){for(const m of models){const i=mine.get(m.profile);if(i&&instances.get(i.id)===i){instances.delete(i.id);stopped.push(i);if(defaultId===i.id)defaultId=instances.keys().next().value??null;}}job.step='stopped';job.models=models.map(label);job.summary=`${job.models.join(' and ')} stopped. Updating the engine…`;}
+   else if(e.phase==='stopped'){for(const m of models){const i=mine.get(m.profile);if(i&&instances.get(i.id)===i){observations.get(i.id)?.capture.finish('stopped');q36Watches.get(i.id)?.();q36Watches.delete(i.id);q36Pending.delete(i.id);instances.delete(i.id);stopped.push(i);if(defaultId===i.id)defaultId=instances.keys().next().value??null;}}job.step='stopped';job.models=models.map(label);job.summary=`${job.models.join(' and ')} stopped. Updating the engine…`;}
    emit();
   },finish(updated){stoppedForUpdate=stopped.length?{updated,at:new Date().toISOString(),instances:stopped}:null;emit();}};
   return gate;
@@ -807,16 +816,29 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   stoppedForUpdate=null;emit();
   const labels=[];
   for(const old of offer.instances){
-   const instance={...old,status:'loading',phase:'loading',error:null,metrics:null,loadedAt:new Date().toISOString()};
+   const instance={...old,ownerJob:job.id,status:'loading',phase:'loading',error:null,metrics:null,loadedAt:new Date().toISOString()};
    instances.set(instance.id,instance);if(!defaultId||!instances.has(defaultId))defaultId=instance.id;job.summary=`Starting ${instance.label}. Loading can take a few minutes.`;emit();
    let wait=960;try{const {config,entry}=record(instance.model);wait=startWaitFor(config,entry,instance.model);}catch{/* the usual wait */}
+   let capture=null;
    try{
+    if(observations.has(instance.id)||observationEnabled()){
+     let cfg={},engine=null;
+     try{cfg=checkedSettingsConfig(readFileSync(instance.configPath,'utf8'));}catch{/* unavailable profile metadata remains unknown */}
+     try{engine=await control.engine();}catch{/* optional identity lookup must not fail the restart */}
+     const executable=typeof cfg.exe==='string'&&!cfg.exe.startsWith('component:')?resolve(cfg.cwd??repo(),cfg.exe):engine?.engine?.exe;
+     capture=beginObservation(instance.id,job,cfg,{executable,version:executable===engine?.engine?.exe?engine?.engine?.version:undefined});
+    }
+    if(job.state!=='running'){capture?.finish('cancelled');await stopCancelledLoad(job,instance,instance.id);return;}
     await control.start(instance.profile,{waitSeconds:wait});
     const deadline=Date.now()+300000;let ready=false;
     while(!ready&&Date.now()<deadline&&job.state==='running'){try{const response=await fetcher(`http://127.0.0.1:${instance.port}/health`,{headers:{authorization:`Bearer ${instance.key}`},signal:AbortSignal.timeout(2000)});ready=response.ok;}catch{/* not yet */}if(!ready)await new Promise(resolve=>setTimeout(resolve,1200));}
+    if(job.state!=='running'){capture?.finish('cancelled');await stopCancelledLoad(job,instance,instance.id);return;}
     if(!ready)throw new Error('Loading took more than five minutes. Check the engine log and free memory.');
-    instance.status='ready';instance.phase='idle';ensurePoll();emit();labels.push(instance.label);
+    instance.status='ready';instance.phase='idle';if(capture)await noteDrafting(job,instance,instance.key);
+    if(job.state!=='running'){capture?.finish('cancelled');await stopCancelledLoad(job,instance,instance.id);return;}
+    ensurePoll();emit();labels.push(instance.label);
    }catch(error){
+    capture?.failure(error,job.state==='running'?'error':'cancelled');
     await control.stop(instance.profile).catch(()=>{});
     instance.status='error';instance.error=humanStartError(error);emit();throw startFailure(error,`${instance.label} did not start again. ${instance.error}`);
    }

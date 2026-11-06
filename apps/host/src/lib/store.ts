@@ -1384,7 +1384,7 @@ async function syncChatsFromHost() {
   sessionWriter.enable();
 }
 
-export function newSession(): Session {
+export function newSession({ draft }: { draft?: string } = {}): Session {
   const session: Session = {
     id: uid('s'),
     title: 'New conversation',
@@ -1397,6 +1397,12 @@ export function newSession(): Session {
     tokensOut: 0,
     ...(state.activeSession === null && state.remoteModel ? { preferences: { remoteModel: state.remoteModel } } : {}),
   };
+  // Seed the existing per-chat draft store before subscribers can hydrate the
+  // newly selected conversation (Search web can create the first chat).
+  if (draft !== undefined) {
+    sessionStorage.setItem(`strata.chat-draft.${session.id}`, draft);
+    if (!state.sessions.length) sessionStorage.removeItem('strata.chat-draft.new');
+  }
   const sessions = [session, ...state.sessions];
   persistSessions(sessions);
   set({ sessions, activeSession: session.id });
