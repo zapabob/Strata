@@ -33,7 +33,8 @@ class Q36KvContract(unittest.TestCase):
         init.body = init.body[:stop + 1]
         pump = copy.deepcopy(next(n for n in klass.body if isinstance(n, ast.FunctionDef) and n.name == "_ready_pump"))
         verify = copy.deepcopy(next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "q36_verify_kv_args"))
-        module = ast.fix_missing_locations(ast.Module(body=[verify, ast.ClassDef(name="ReadyPrefix", bases=[], keywords=[], body=[init, pump], decorator_list=[])], type_ignores=[]))
+        memory_verify = copy.deepcopy(next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "q36_verify_memory_args"))
+        module = ast.fix_missing_locations(ast.Module(body=[verify, memory_verify, ast.ClassDef(name="ReadyPrefix", bases=[], keywords=[], body=[init, pump], decorator_list=[])], type_ignores=[]))
         namespace = dict(vars(server))
         namespace.update(engine_nice=lambda env: 0, end_leftover_engines=mock.Mock(),
                          q36_probe_kv_capabilities=mock.Mock(return_value=VERIFIED),

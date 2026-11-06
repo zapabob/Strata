@@ -1,4 +1,11 @@
 {
+  "q36m1": "Memoria de trabajo de expertos Q36",
+  "q36m2": "El modo predeterminado es el anterior. Los expertos acotados son una opción experimental que debe activarse explícitamente y aún no está validada. Solo se ofrecen modos verificados para este binario. Requiere mapped-pack y un número positivo explícito de ranuras de expertos en los argumentos JSON. Limita solo la memoria de trabajo de expertos, no la memoria total del proceso; no garantiza que el modelo quepa.",
+  "q36m3": "Modo anterior (predeterminado)",
+  "q36m4": "Modo anterior",
+  "q36m5": "Expertos acotados (experimental)",
+  "q36m6": "Aún no se ha informado de la memoria real de trabajo de expertos.",
+  "q36m7": "Memoria real de trabajo de expertos: {0}. Preparación CPU: {1} bytes; preparación H2D: {2} bytes; espacio temporal de E/S: {3} bytes. Solo memoria de trabajo de expertos; la memoria total del proceso no está limitada.",
 "fx01": "dejará de ejecutarse y se eliminará.",
   "fx02": "Descargado, pero no cargado. Abre Modelos para cargarlo.",
   "fx03": "{0} líneas añadidas, {1} eliminadas",

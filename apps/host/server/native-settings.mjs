@@ -22,6 +22,7 @@ export const NATIVE_FIELDS=[
  {id:'gpu_order',label:'GPU order',group:'GPU & memory',type:'enum',choices:['auto','as_given']},
  {id:'split_skip_if_fits',label:'Use one GPU when the model fits',group:'GPU & memory',type:'boolean'},
  {id:'vram_elastic',label:'Elastic GPU expert cache',group:'GPU & memory',type:'boolean'},
+ {id:'q36_memory',label:'Q36 expert working storage',group:'GPU & memory',type:'enum',choices:['legacy','bounded-experts-v1'],defaultLabel:'Legacy (default)',choiceLabels:{legacy:'Legacy','bounded-experts-v1':'Bounded experts (experimental)'},hint:'Default is legacy. Bounded experts is an experimental opt-in, not yet qualified. Only modes verified for this binary are offered. Requires mapped-pack and positive explicit expert slots in JSON arguments. Bounds expert working storage only, not total process memory; it does not guarantee the model fits.'},
  {id:'vram_reserve_mib',label:'GPU memory for other apps (MiB)',group:'GPU & memory',type:'number',min:0,max:131072,hint:'Applied as --vram-reserve-mib when loading.'},
  {id:'cache_type_k',label:'KV cache K format',group:'GPU & memory',type:'enum',choices:NATIVE_CACHE_TYPES,hint:'Leave Default to use the model KV format, or pick a native K cache quantization (--cache-type-k).'},
  {id:'cache_type_v',label:'KV cache V format',group:'GPU & memory',type:'enum',choices:NATIVE_CACHE_TYPES,hint:'Leave Default to use the model KV format, or pick a native V cache quantization (--cache-type-v).'},
@@ -94,7 +95,7 @@ export function setSpeedSwitch(env,id,on){
 /** What the settings answer carries: each switch that applies, with its words, its default, the entries it writes outside the default, and whether the feature is on. */
 export function speedSwitchRows(env,context){return SPEED_SWITCHES.filter(s=>speedSwitchApplies(s.id,context)).map(s=>({...s,on:speedSwitchIsOn(env,s.id)}));}
 /** Settings the app itself applies when it starts a model (they are not read from the engine's source, so the engine's text never says it supports them). */
-export const APP_OWNED_FIELDS=['mtp','batchMtp','drafting','ds_experts'];
+export const APP_OWNED_FIELDS=['mtp','batchMtp','drafting','ds_experts','q36_memory'];
 /** The families that have a Drafting choice and the model names the DFlash2 drafter was made for (strata_control/drafting.py SUPPORTED_FAMILIES, _SUPPORTED_NAME): Qwen3.8-Flash-Next, Gyro and Unsloth's quantizations of the same weights; not Swift, Coder or NVFP4. */
 export const DRAFTING_FAMILIES=['qwen','gyro','unsloth'];
 const DFLASH2_MODEL=/^qwen3\.8-flash-next(-gyro-[a-z0-9._-]+|-unsloth-[a-z0-9._-]+|-(q|iq|tq)\d[a-z0-9_.]*)?$/i;

@@ -7,6 +7,7 @@ import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import {NATIVE_FIELDS} from '../server/native-settings.mjs';
 
 const root = resolve(import.meta.dirname, '..');
 const controls = `import React from 'react';
@@ -54,6 +55,27 @@ async function fixture(t,kind='settings',jobs=[]) {
     return page;
 }
 const values = n=>({values:{sampling:{temperature:n}},mcp:{},fields:[]});
+
+test('memory selector is explicitly experimental and actual storage never follows the selected value',async t=>{
+    const p=await fixture(t);
+    await p.waitForFunction(()=>window.__requests.length===1);
+    const field=NATIVE_FIELDS.find(f=>f.id==='q36_memory');
+    await settle(p,0,{values:{q36_memory:'bounded-experts-v1'},mcp:{},fields:[{...field,supported:true,choices:['legacy','bounded-experts-v1']}]});
+    await p.locator('details.native-settings').evaluate(el=>el.open=true);
+    const selector=p.getByRole('combobox',{name:'Q36 expert working storage'});
+    assert.match(await selector.locator('option[value="bounded-experts-v1"]').textContent(),/experimental/);
+    assert.equal(await p.getByText('Actual expert storage is not reported yet.',{exact:true}).count(),1);
+    const s=state([]);s.instances=[{id:'a',model:'A',status:'ready',metrics:{engine:{q36_memory_mode:'bounded-experts-v1',q36_memory_scope:'expert-working-storage',q36_memory_total_process_bound:0,q36_memory_cpu_stage_bytes:100,q36_memory_h2d_stage_bytes:200,q36_memory_io_scratch_bytes:300}}}];
+    await p.evaluate(s=>window.__putNative(s),s);
+    assert.equal(await p.locator('[data-q36-memory-observed="bounded-experts-v1"]').count(),1);
+    await selector.selectOption('legacy');
+    assert.equal(await p.locator('[data-q36-memory-observed="bounded-experts-v1"]').count(),1,'editing a future choice cannot rewrite the running receipt');
+    await p.getByRole('button',{name:'Save settings',exact:true}).click();
+    await p.waitForFunction(()=>window.__requests.length===2);
+    assert.equal(await p.evaluate(()=>window.__requests[1].body.values.q36_memory),'legacy');
+    await p.evaluate(s=>window.__putNative(s),{...s,instances:[{...s.instances[0],status:'error'}]});
+    assert.equal(await p.locator('[data-q36-memory-observed]').count(),0,'stopped/error receipts are not current observations');
+});
 async function settle(page,index,value,error=false){await page.evaluate(({index,value,error})=>{const r=window.__requests[index];error?r.reject(Error(value)):r.resolve(value)}, {index,value,error});await page.evaluate(()=>new Promise(r=>setTimeout(r,0)));}
 async function settingsReady(page,index,n){await page.waitForFunction(i=>window.__requests.length>i,index);await settle(page,index,values(n));await page.locator('details.native-settings').evaluate(el=>el.open=true);await page.getByRole('tab',{name:'JSON',exact:true}).click();}
 

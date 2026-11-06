@@ -89,6 +89,7 @@ from serve import perf131k_e2e as perf_e2e  # noqa: E402
 from serve import memory_harness  # noqa: E402
 from serve import private_cache  # noqa: E402
 from serve.native_family import is_q36_config, native_admission, native_admission_from_env  # noqa: E402
+from serve.native_family import NativeAdmission, q36_memory_mode, validate_q36_memory_args, valid_q36_memory_capability  # noqa: E402
 from serve.structured import StructuredOutputError, prepare_format, validated_json, extract_json  # noqa: E402
 from serve import responses as responses_api  # noqa: E402
 from serve.responses import ResponsesError, error_body as responses_error_body  # noqa: E402
@@ -1198,8 +1199,15 @@ class StrataEngine:
         if lazy:
             return
         q36_cap = None
+        memory_cap = None
         if admission.q36:
-            q36_cap = q36_verify_kv_args(exe, args, admission.expected_kv_sha256)
+            capabilities = q36_verify_memory_args(exe, args, admission)
+            memory_cap = capabilities["memoryCapability"] if capabilities else None
+            q36_cap = q36_verify_kv_args(exe, args, admission.expected_kv_sha256, capabilities)
+        # Reject an already-changed bounded binary before orphan cleanup or log writes.
+        # The final check below also covers changes during cleanup/start preparation.
+        if memory_cap and q36_binary_sha256(exe) != memory_cap["binarySha256"]:
+            raise OSError("Qwen3.6 engine binary changed after memory capability negotiation")
         self.unloaded = False            # `ended` stays True until READY (below): not alive while starting (#344)
         self.log = open(log, "a", encoding="utf-8") if log else subprocess.DEVNULL
         loading = threading.Event()                     # set once READY: the narrator below stops
@@ -1244,6 +1252,8 @@ class StrataEngine:
         try:
             if q36_cap and q36_binary_sha256(exe) != q36_cap["binarySha256"]:
                 raise OSError("Qwen3.6 engine binary changed after KV capability negotiation")
+            if memory_cap and q36_binary_sha256(exe) != memory_cap["binarySha256"]:
+                raise OSError("Qwen3.6 engine binary changed after memory capability negotiation")
             self.proc = popen("the Strata engine", [exe, "--serve", *args], cwd=cwd, stdin=subprocess.PIPE,
                               stdout=subprocess.PIPE, stderr=self.log, text=True, encoding="utf-8", errors="replace",
                               bufsize=1, env=child_env, **pin)    # (#5044: a byte that is not UTF-8 killed the reader thread)
@@ -1366,6 +1376,14 @@ class StrataEngine:
             if log:
                 self.log.close()
             raise EngineDied("Qwen3.6 did not confirm requested KV layout and allocation; the engine was stopped")
+        if memory_cap and not q36_memory_receipt_matches(self.info, admission.memory_mode):
+            self.proc.kill()
+            self.proc.wait(timeout=5)
+            self.proc.stdin.close()
+            self.proc.stdout.close()
+            if log:
+                self.log.close()
+            raise EngineDied("Qwen3.6 did not confirm requested memory mode, scope and storage bounds; the engine was stopped")
         self.known_ctx = self.max_context   # survives a failed restart: requests keep their limit and restart it
         # (from PR #41, midhatn) a locally built engine can sit next to another release's BUILD.json: engines that
         # report their own version (INFO engine=, 0.1.8+) win, the manifest stays the fallback for older ones
@@ -4017,11 +4035,26 @@ def q36_parse_kv_capabilities(text: str) -> dict | None:
         return None
 
 
-def q36_probe_kv_capabilities(exe: str) -> dict | None:
+def q36_parse_memory_capabilities(text: str) -> dict | None:
+    """A separate strict schema, never a KV format or a process-fit promise."""
+    if not isinstance(text, str) or len(text.encode("utf-8")) > 65536:
+        return None
+    lines = [line for line in text.splitlines() if line.startswith("Q36_MEMORY_CAPABILITIES")]
+    if len(lines) != 1 or not lines[0].startswith("Q36_MEMORY_CAPABILITIES "):
+        return None
+    try:
+        cap = json.loads(lines[0][len("Q36_MEMORY_CAPABILITIES "):])
+        return cap if valid_q36_memory_capability(cap) else None
+    except (ValueError, TypeError):
+        return None
+
+
+def q36_probe_capabilities(exe: str) -> dict:
     """Bounded no-model help query. Legacy help has no marker and remains unknown."""
+    unknown = {"kvCapability": None, "memoryCapability": None}
     before = q36_binary_sha256(exe)
     if not before:
-        return None
+        return unknown
     env = {k: v for k, v in os.environ.items() if k.upper() in
            ("PATH", "SYSTEMROOT", "WINDIR", "LD_LIBRARY_PATH", "CUDA_PATH")}
     chunks: list[bytes] = []
@@ -4042,17 +4075,57 @@ def q36_probe_kv_capabilities(exe: str) -> dict | None:
                 proc.kill()
                 proc.wait(timeout=3)
                 reader.join(timeout=1)
-                return None
+                return unknown
             reader.join(timeout=1)
             if reader.is_alive() or code != 0 or not chunks:
-                return None
-        cap = q36_parse_kv_capabilities(chunks[0].decode("utf-8", errors="replace"))
-        return {**cap, "binarySha256": before} if cap and q36_binary_sha256(exe) == before else None
+                return unknown
+        if q36_binary_sha256(exe) != before:
+            return unknown
+        text = chunks[0].decode("utf-8", errors="replace")
+        return {key: {**cap, "binarySha256": before} if cap else None
+                for key, cap in (("kvCapability", q36_parse_kv_capabilities(text)),
+                                 ("memoryCapability", q36_parse_memory_capabilities(text)))}
     except (OSError, subprocess.SubprocessError):
+        return unknown
+
+
+def q36_probe_kv_capabilities(exe: str) -> dict | None:
+    """Keep the public KV probe's original return shape."""
+    return q36_probe_capabilities(exe)["kvCapability"]
+
+
+def q36_verify_memory_args(exe: str | None, args: list[str], admission: NativeAdmission) -> dict | None:
+    """Independently bind memory support to the actual child, even for default F32."""
+    mode = q36_memory_mode(args)
+    if mode != admission.memory_mode:
+        raise ValueError("Q36 memory expectation differs from runtime argv")
+    validate_q36_memory_args(args, mode)
+    if mode == "legacy":
+        if "--q36-memory" in args:
+            at = args.index("--q36-memory")
+            del args[at:at + 2]
         return None
+    capabilities = q36_probe_capabilities(exe) if exe else {}
+    cap = capabilities.get("memoryCapability")
+    digest = cap.get("binarySha256") if isinstance(cap, dict) else None
+    if (not digest or not valid_q36_memory_capability(cap, digest) or mode not in cap["modes"]
+            or admission.expected_memory_sha256 and digest != admission.expected_memory_sha256):
+        raise ValueError("Q36 memory capability is unavailable or differs from the Host-negotiated binary")
+    return capabilities
 
 
-def q36_verify_kv_args(exe: str | None, args: list[str], expected_sha: str | None = None) -> dict | None:
+def q36_memory_receipt_matches(info: dict, mode: str) -> bool:
+    """Only pre-READY INFO from the actual child proves effective bounded storage."""
+    return (info.get("q36_memory_mode") == mode
+            and info.get("q36_memory_scope") == "expert-working-storage"
+            and type(info.get("q36_memory_total_process_bound")) is int
+            and info["q36_memory_total_process_bound"] == 0
+            and all(type(info.get(key)) is int and 0 < info[key] < 2**64 for key in (
+                "q36_memory_cpu_stage_bytes", "q36_memory_h2d_stage_bytes", "q36_memory_io_scratch_bytes")))
+
+
+def q36_verify_kv_args(exe: str | None, args: list[str], expected_sha: str | None = None,
+                       capabilities: dict | None = None) -> dict | None:
     """Verify actual child support. Remove explicit default flags for legacy binaries."""
     requested = {}
     for side in ("k", "v"):
@@ -4068,7 +4141,7 @@ def q36_verify_kv_args(exe: str | None, args: list[str], expected_sha: str | Non
     # path. That expectation still requires an actual-child probe and receipt.
     if not requested and not expected_sha:
         return None
-    cap = q36_probe_kv_capabilities(exe) if exe else None
+    cap = capabilities.get("kvCapability") if capabilities is not None else q36_probe_kv_capabilities(exe) if exe else None
     if expected_sha and (not cap or cap["binarySha256"] != expected_sha):
         raise ValueError("Q36 binary differs from the Host-negotiated binary")
     for side, value in requested.items():
@@ -4086,6 +4159,10 @@ def q36_cache_args(cfg: dict, args: list[str], exe: str | None) -> list[str]:
     if any(cfg.get(key) is not None for key in ("spin8_mode", "spin8_native_config", "spin8_native_sha256")) or any(a.startswith("--spin8") for a in args):
         raise ValueError("Spin8 is not a Q36 KV capability")
     combined = list(args)
+    mode = q36_memory_mode(combined, admission.memory_mode)
+    if mode != "legacy" and "--q36-memory" not in combined:
+        combined += ["--q36-memory", mode]
+    validate_q36_memory_args(combined, mode)
     for side in ("k", "v"):
         value, flag = cfg.get(f"cache_type_{side}"), f"--cache-type-{side}"
         if value is None:
@@ -4100,7 +4177,11 @@ def q36_cache_args(cfg: dict, args: list[str], exe: str | None) -> list[str]:
             combined += [flag, value]
     # The CLI validates before resolving the component path. The real child checks again.
     if exe is not None:
-        q36_verify_kv_args(exe, combined, admission.expected_kv_sha256)
+        capabilities = q36_verify_memory_args(exe, combined, admission)
+        q36_verify_kv_args(exe, combined, admission.expected_kv_sha256, capabilities)
+    elif mode == "legacy" and "--q36-memory" in combined:
+        at = combined.index("--q36-memory")
+        del combined[at:at + 2]
     args[:] = combined
     return []
 
@@ -4635,6 +4716,13 @@ def child_env(cfg: dict, *, offline: bool = False) -> dict:
     env.pop("STRATA_Q36_KV_HOST_SHA256", None)
     if admission.expected_kv_sha256 is not None:
         env["STRATA_Q36_KV_HOST_SHA256"] = admission.expected_kv_sha256
+    for key in ("STRATA_Q36_MEMORY_MODE", "STRATA_Q36_MEMORY_HOST_SHA256", "STRATA_Q36_MEMORY_CAPABILITY"):
+        env.pop(key, None)
+    if admission.q36:
+        env["STRATA_Q36_MEMORY_MODE"] = admission.memory_mode
+    if admission.expected_memory_sha256 is not None:
+        env["STRATA_Q36_MEMORY_HOST_SHA256"] = admission.expected_memory_sha256
+        env["STRATA_Q36_MEMORY_CAPABILITY"] = admission.memory_capability_json
     if (cfg.get("arch") or "") == "deepseek41":      # (only this engine reads these; Qwen's environment is untouched)
         deepseek_slot_env(env, cfg)
     parallel_stack_env(env, cfg)

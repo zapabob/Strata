@@ -17,7 +17,7 @@ import os from 'node:os';
 import { markPictures, runtimeVision } from './native-vision.mjs';
 import { dsEngineArgs, dsUserArgs, dsArgsNote, withoutVisionFlag } from './native-ds-args.mjs';
 import { admitQ36LegacyPhysical, prepareQ36Launch, q36FileSha256, observeQ36Runtime } from './q36-run-contract.mjs';
-import { probeQ36KvCapabilities } from './q36-kv-capabilities.mjs';
+import { probeQ36Capabilities, verifiedQ36MemoryCapability } from './q36-kv-capabilities.mjs';
 import { nativeServingPolicy, servingSettingsView, servingValue, assertServingSettings, applyServingPatch, applyOrdinaryKv, persistOrdinaryKv } from './native-serving-policy.mjs';
 import { parseQ36StartupLine, q36StartupSentence, reduceQ36Startup, pushEngineLogChunk, q36EngineLogPath } from './q36-startup-events.mjs';
 import { componentsDirectory, installerEnvironment, controlEnvironment, sourceServerEnvironment } from './control-runtime.mjs';
@@ -130,7 +130,7 @@ function watchQ36EngineLog(logPath, onChunk, pollMs) {
   return stop;
 }
 
-export function createNativeControl({directory,requests=()=>[],changed=()=>{},spawnProcess=spawn,fetcher=fetch,modelsDirectory,nativeDataDirectory=value=>value,beforeLoad=async()=>{},hardwareProbe=()=>[],observationProbe,control=null,ready=null,appUpdater=null,appDirectory=dirname(ROOT),defaultRepo=process.env.STRATA_NATIVE_REPO??resolve(ROOT,'../../Strata'),engineLogPollMs=200,q36CapabilityProbe=probeQ36KvCapabilities}={}){
+export function createNativeControl({directory,requests=()=>[],changed=()=>{},spawnProcess=spawn,fetcher=fetch,modelsDirectory,nativeDataDirectory=value=>value,beforeLoad=async()=>{},hardwareProbe=()=>[],observationProbe,control=null,ready=null,appUpdater=null,appDirectory=dirname(ROOT),defaultRepo=process.env.STRATA_NATIVE_REPO??resolve(ROOT,'../../Strata'),engineLogPollMs=200,q36CapabilityProbe=probeQ36Capabilities}={}){
  mkdirSync(directory,{recursive:true});
  const settingsPath=join(directory,'native-host.json');
  let preferences=readJson(settingsPath,{repo:defaultRepo});
@@ -166,6 +166,7 @@ export function createNativeControl({directory,requests=()=>[],changed=()=>{},sp
  const packaged=!!control;
  const logPollMs=Number.isFinite(engineLogPollMs)&&engineLogPollMs>=20?engineLogPollMs:200;
  const q36Pending=new Map();
+ const q36Known=new Map();let selectedEngineExe=null;
  const q36Watches=new Map();
  /* The auto-tuner and the saved tunings are Strata Control's (`strata tune auto`, `strata presets`): the app runs them and follows their status file. */
  const autotuner=createAutoTune({spawnProcess,workDir:join(directory,'native-tune'),launcher:()=>{if(packaged)return {command:control.control.python,prefix:[control.control.cli],cwd:control.control.dir,env:controlEnvironment(control.control)};const py=python();return {command:py.command,prefix:[...py.args,join(repo(),'strata.py')],cwd:repo(),env:{...process.env,PYTHONUNBUFFERED:'1',PYTHONUTF8:'1',PYTHONIOENCODING:'utf-8'}};}});
@@ -283,7 +284,8 @@ export function createNativeControl({directory,requests=()=>[],changed=()=>{},sp
    // back to an older command-line Strata's folder remembered in %APPDATA% (tester report 2026-10-17: logs landed in T:\Strata).
    const list=await control.installedModels({installDir:installRoot()});
    packagedInstall=list.install_dir;
-   const engine=await control.engine();
+    const engine=await control.engine();
+    selectedEngineExe=engine.usable?engine.engine?.exe??null:null;
    const installer=await mcpCall('strata_status',{hardware:true}).catch(error=>({error:error.message}));
    const disk=Object.fromEntries((installer.installed?.models??[]).map(m=>[m.model,{diskGb:m.disk_gb,diskBytes:m.disk_bytes,sharedBytes:m.shared_bytes,removableGb:m.removable_gb,partsMissing:m.parts_missing??0,missingFiles:m.missing_files}]));
    const onlyPictures=m=>m.component_status==='missing_or_invalid'&&Array.isArray(m.missing)&&m.missing.length>0&&m.missing.every(p=>p?.part==='vision/mmproj')&&Array.isArray(m.issue_codes)&&m.issue_codes.length===m.missing.length&&m.issue_codes.every(c=>/^COMPONENT_(MISSING|INVALID)$/.test(c));
@@ -319,14 +321,27 @@ export function createNativeControl({directory,requests=()=>[],changed=()=>{},sp
  /* Fork: parse+validate run-config (spin8 / known keys). Upstream: assertSettingsFile exists for the same gate; we keep the parsed config. */
  function checkedSettingsConfig(text){const check=checkAndParseRunConfig(text);if(!check.ok)throw new Error(`The settings file for this model has a mistake, so the model was not started. ${describeIssues(check.issues,'error').join(' ')}`);return check.config;}
  function assertSettingsFile(path){checkedSettingsConfig(readFileSync(path,'utf8'));}
- function policyFor(model,config,capability=null,catalog=snapshot.catalog){
+ function policyFor(model,config,capability=null,catalog=snapshot.catalog,memoryCapability=null){
   const family=catalog?.families?.find(f=>f.sizes?.some(s=>s.id===model))?.family??null;
-  return nativeServingPolicy(config,family,capability);
+  return nativeServingPolicy(config,family,capability,memoryCapability);
  }
- function servingConfig(args,config,{kvCapability=null,negotiating=false}={}){
-  const policy=policyFor(args.model,config,kvCapability);
+ async function probeQ36For(model,exe){
+  const result=await q36CapabilityProbe(exe);
+  // Older injected/public KV probes keep their flat return shape.
+  const kvCapability=result?.kvCapability??(result?.schema===1?result:null);
+  const memoryCapability=verifiedQ36MemoryCapability(result?.memoryCapability,exe?q36FileSha256(exe):null);
+  q36Known.set(model,{exe,memoryCapability});
+  return {kvCapability,memoryCapability};
+ }
+ function knownQ36Memory(model,config){
+  const known=q36Known.get(model),exe=packaged?selectedEngineExe:typeof config.exe==='string'?resolve(config.cwd??repo(),config.exe):null;
+  if(!known||known.exe!==exe)return {};
+  return {memoryKnown:true,memoryCapability:verifiedQ36MemoryCapability(known.memoryCapability,exe?q36FileSha256(exe):null)};
+ }
+ function servingConfig(args,config,{kvCapability=null,memoryCapability=null,negotiating=false,memoryKnown=false}={}){
+  const policy=policyFor(args.model,config,kvCapability,snapshot.catalog,memoryCapability);
   const next=applyOrdinaryKv(applyServingPatch(config,validateNativeSettings(args.values??{})),args.kv,policy);
-  assertServingSettings(next,policy,{negotiating});
+  assertServingSettings(next,policy,{negotiating,memoryKnown});
   // Carry every resolved adapter across the process boundary. A known non-Q36
   // family must not fall back to legacy filename hints in the Python consumer.
   if(!policy.runtimeArch)return next;
@@ -339,22 +354,22 @@ export function createNativeControl({directory,requests=()=>[],changed=()=>{},sp
  function settings(model){const {entry,config}=record(model);const values=Object.fromEntries(NATIVE_FIELDS.map(f=>[f.id,servingValue(config,f.id)]));if(typeof values.aliases==='string')values.aliases=values.aliases.split(',').map(v=>v.trim()).filter(Boolean);values.sampling=config.sampling??{};values.args=config.args??[];values.env=publicNativeEnv(config.env??{});return {model,values,mcp:publicMcpServers(config.mcp_servers??config.mcpServers??{}),restartNeeded:true,capabilities:{dsExperts:ownEngine(config,model)&&dsExpertsSupported(config),...(q36Config(config,model)?{q36Kv:{status:'unknown',defaultK:'f32',defaultV:'f32',quality:'experimental-unqualified'}}:{})},speedSwitches:speedSwitchRows(config.env??{},{deepseek:ownEngine(config,model),arch:config.arch??null,backend:config.backend??entry?.backend??snapshot.installed?.engine?.backend??null,gpus:snapshot.hardware?.gpus??[]})};}
  async function settingsKv(model){
   const {config}=record(model);
-  let capability=null;
+  let kvCapability=null,memoryCapability=null;
   if(policyFor(model,config).id==='q36'){
    let exe=null;
    if(packaged){const engine=await control.engine();if(engine.usable)exe=engine.engine?.exe??null;}
    else if(typeof config.exe==='string')exe=resolve(config.cwd??repo(),config.exe);
-   capability=await q36CapabilityProbe(exe);
+   ({kvCapability,memoryCapability}=await probeQ36For(model,exe));
   }
-  return {...servingSettingsView(config,policyFor(model,config,capability),nativeFields()),q36KvCapability:capability??{status:'unknown',quality:'experimental-unqualified'}};
+  return {...servingSettingsView(config,policyFor(model,config,kvCapability,snapshot.catalog,memoryCapability),nativeFields()),q36KvCapability:kvCapability??{status:'unknown',quality:'experimental-unqualified'},q36MemoryCapability:memoryCapability};
  }
  // The HTTP boundary negotiates Q36 before saving; synchronous internal callers remain conservative.
- async function saveChecked(model,input){const before=JSON.stringify(record(model).config);const view=await settingsKv(model);if(JSON.stringify(record(model).config)!==before)throw new Error('The settings changed while checking the engine. Read them again before saving.');return save(model,input,view.q36KvCapability);}
- function save(model,{values,mcp},capability=null){
+ async function saveChecked(model,input){const before=JSON.stringify(record(model).config);const view=await settingsKv(model);if(JSON.stringify(record(model).config)!==before)throw new Error('The settings changed while checking the engine. Read them again before saving.');return save(model,input,view.q36KvCapability,view.q36MemoryCapability);}
+ function save(model,{values,mcp},capability=null,memoryCapability=null){
   if([...jobs.values()].some(j=>j.state==='running'||j.state==='cancelling'))throw new Error('Finish the current operation before saving native settings.');
   const {path,config}=record(model);
   if(busy(requests().filter(r=>instances.get(r.instanceId)?.model===model)))throw new Error('Finish this model’s requests before saving its settings.');
-  const patch=validateNativeSettings(values??{}),next=applyServingPatch(config,patch),policy=policyFor(model,config,capability);
+  const patch=validateNativeSettings(values??{}),next=applyServingPatch(config,patch),policy=policyFor(model,config,capability,snapshot.catalog,memoryCapability);
   assertServingSettings(next,policy);
   if(patch.ds_experts!=null&&!dsExpertsSupported(config))throw new Error('The Speed choice needs the newer DeepSeek engine. Update the engine in Settings, then choose it.');
   for(const field of servingSettingsView(next,policy,nativeFields()).fields)if(field.supported===false&&patch[field.id]!=null&&JSON.stringify(patch[field.id])!==JSON.stringify(config[field.id]))throw new Error(`${field.label} needs a newer native Strata installation. Update it in Settings → About.`);
@@ -366,17 +381,17 @@ export function createNativeControl({directory,requests=()=>[],changed=()=>{},sp
   return {...settings(model),...servingSettingsView(next,policy,nativeFields())};
  }
  function previousEngine(){if(packaged)return !!snapshot.engine?.previous;try{const data=snapshot.installed?.data_dir??snapshot.installed?.data_folder;return [join(preferences.repo,'engine/.previous'),data&&join(data,'engine/.previous')].filter(Boolean).some(existsSync)&&readFileSync(join(preferences.repo,'setup.py'),'utf8').includes('--rollback-engine');}catch{return false;}}
- function installSettings(args,capability=null,negotiating=true){
+ function installSettings(args,capability=null,negotiating=true,memoryCapability=null){
   const family=snapshot.catalog?.families?.find(f=>f.family===args.family),size=family?.sizes?.find(s=>s.model===args.model);
   const existing=size&&snapshot.installed?.models?.find(m=>m.model===size.id);
-  const config=existing?record(existing.model).config:{},policy=nativeServingPolicy(config,family?.family??null,capability);
+  const config=existing?record(existing.model).config:{},known=existing?knownQ36Memory(existing.model,config):{},policy=nativeServingPolicy(config,family?.family??null,capability,memoryCapability??known.memoryCapability);
   const next=applyOrdinaryKv(applyServingPatch(config,validateNativeSettings(args.values??{})),args.kv,policy);
-  assertServingSettings(next,policy,{negotiating});
+  assertServingSettings(next,policy,{negotiating,memoryKnown:known.memoryKnown});
   return {model:existing?.model,policy};
  }
  async function preflightInstall(args){
   const {model,policy}=installSettings(args);
-  if(model&&policy.id==='q36')installSettings(args,(await settingsKv(model)).q36KvCapability,false);
+  if(model&&policy.id==='q36'){const view=await settingsKv(model);installSettings(args,view.q36KvCapability,false,view.q36MemoryCapability);}
  }
  async function plan(args){await refresh();if(!snapshot.available)throw new Error(snapshot.error);await preflightInstall(args);const result=await tool('strata_install',installArgs(args,false));
   /* A chosen drafter that is not on this computer yet is part of the download: its size is listed beside the model's (Control decides; nothing is fetched here). */
@@ -558,9 +573,10 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   else delete cfg.ds_experts;
   const privacyRequired=packaged&&hakuaChatbotEnabled()&&!ownEngine(cfg,args.model)&&cfg.hakua_harness===undefined;
   if(q36Config(cfg,args.model)){
-   const prepared=prepareQ36Launch({args:cfg.args??[],userArgs:cfg[USER_KEY]??[],privacyRequired,binarySha256:typeof trusted.binarySha256==='string'?trusted.binarySha256:null,kvCapability:trusted.kvCapability??null,requested:{cacheTypeK:cfg.cache_type_k,cacheTypeV:cfg.cache_type_v,spin8Mode:cfg.spin8_mode,context:cfg.max_context??undefined,mtp:cfg.mtp===false?0:undefined,parallel:cfg.parallel??undefined}});
+   const prepared=prepareQ36Launch({args:cfg.args??[],userArgs:cfg[USER_KEY]??[],privacyRequired,binarySha256:typeof trusted.binarySha256==='string'?trusted.binarySha256:null,kvCapability:trusted.kvCapability??null,memoryCapability:trusted.memoryCapability??null,requested:{memoryMode:cfg.q36_memory,cacheTypeK:cfg.cache_type_k,cacheTypeV:cfg.cache_type_v,spin8Mode:cfg.spin8_mode,context:cfg.max_context??undefined,mtp:cfg.mtp===false?0:undefined,parallel:cfg.parallel??undefined}});
    if(!prepared.ok)throw Object.assign(new Error(prepared.error.message),{code:prepared.error.code});
    cfg.args=prepared.argv;q36Note=prepared.note;cfg.q36_run=prepared.contract;
+   if(prepared.contract.requested.q36_memory==='legacy'&&Array.isArray(cfg[USER_KEY]))cfg[USER_KEY]=setUserFlag(cfg[USER_KEY],'--q36-memory',null);
   }else if(privacyRequired)privateMemoryArgs(cfg);
   return {cfg,resources,visionPreferences,parallelChoice,parallelNote,dsNote,q36Note};
  }
@@ -677,10 +693,10 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   if(externalRunning().length)throw new Error('A Strata server is already running outside this UI. Stop it before loading here, or connect its API in Settings → Models.');
   if(args.multiple&&instances.size>=8)throw new Error('Unload an instance before adding another. Up to eight native instances can run here.');
   if(!packaged&&typeof config.exe==='string')trustedEngineExe=resolve(config.cwd??repo(),config.exe);
-  const kvCapability=q36Config(config,args.model)?await q36CapabilityProbe(trustedEngineExe):null;
-  if(kvCapability)trustedEngineSha=kvCapability.binarySha256;
+  const {kvCapability=null,memoryCapability=null}=q36Config(config,args.model)?await probeQ36For(args.model,trustedEngineExe):{};
+  if(memoryCapability||kvCapability)trustedEngineSha=(memoryCapability??kvCapability).binarySha256;
   // Admission precedes picture/drafter acquisition, config writes and replacement, not just engine spawn.
-  servingConfig(args,config,{kvCapability});
+  servingConfig(args,config,{kvCapability,memoryCapability});
   /* Read pictures is on and the picture files are not here: the Load fetches those files (about 0.9 GB, once) and nothing else of the model, then goes on. No internet: the model loads without pictures and the page says so. */
   let picturesNote=null;{const got=await ensurePictures(job,args,configFile,config,{missing:entry.picturesMissing===true});if(job.state!=='running')return;config=got.config;args=got.args;picturesNote=got.note;}
   /* One drafter per run (strata_control/drafting.py): switching to the MTP on a model set up for DFlash2 fetches the layer once, here; DFlash2 is fetched below. */
@@ -688,7 +704,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   if(drafts?.mtp_needed===true&&(args.values?.drafting!==undefined||drafts.split===true&&(config.drafting==null||String(config.drafting).toLowerCase()==='auto'))){/* the Models screen's own Load carries the choice; a plain Auto load fetches the layer too when Control says the all-cards split engine will take the start (it runs the MTP and nothing else): the same as the Terminal */await installMtpLayer(job,args,config);if(job.state!=='running')return;await refresh(true);config=checkedSettingsConfig(readFileSync(recordFile(args.model).path,'utf8'));drafts=await draftPlan(args,configFile);
    /* The draft layer for the split could not be had (no internet, disk): the load goes on as the 0.2.10 app did, the normal layer split with the plan DFlash2's again (the Models screen's own Load fetches that drafter below). One plain line says so. */
    if(drafts?.split===true&&drafts.mtp_needed===true){noSplit=true;job.drafterNote=job.drafterNote??'The MTP drafter could not be downloaded.';job.summary='Loading the model…';emit();drafts=await draftPlan(args,configFile,{noSplit:true});}}
-  const {cfg,resources,visionPreferences,parallelChoice,parallelNote:chosenNote,dsNote,q36Note}=buildConfig(args,config,drafts?.choice==='dflash2'&&drafts.needed===true&&args.values?.drafting===undefined?'mtp':drafts?.choice??null,{binarySha256:trustedEngineSha,kvCapability});/* (a drafter that is not here and will not be fetched by this load: the MTP runs, and the request slots stay) */
+  const {cfg,resources,visionPreferences,parallelChoice,parallelNote:chosenNote,dsNote,q36Note}=buildConfig(args,config,drafts?.choice==='dflash2'&&drafts.needed===true&&args.values?.drafting===undefined?'mtp':drafts?.choice??null,{binarySha256:trustedEngineSha,kvCapability,memoryCapability});/* (a drafter that is not here and will not be fetched by this load: the MTP runs, and the request slots stay) */
   let parallelNote=chosenNote;
   await prepareDrafter(job,args,cfg,configFile,drafts,{noSplit});if(job.state!=='running')return;
  /* The server negotiates private-cache support with the running engine. */
@@ -960,7 +976,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   return {...loaded,...measured,summary:'Your model is tuned and ready.',profile:args.profile};
  }
  /* What the tuner measures is what a load would start: the saved model config with the user's choices and the resource profile. */
- async function tuneConfig(args){const {config,entry}=record(args.model);if(!entry.ready)throw new Error('Prepare the model before tuning it.');let binarySha256=null,exe=null;if(packaged&&q36Config(config,args.model)){const engine=await control.engine();if(engine.usable&&engine.engine?.exe){exe=engine.engine.exe;binarySha256=q36FileSha256(exe);}}if(!packaged&&typeof config.exe==='string')exe=resolve(config.cwd??repo(),config.exe);const kvCapability=q36Config(config,args.model)?await q36CapabilityProbe(exe):null;if(kvCapability)binarySha256=kvCapability.binarySha256;const {cfg}=buildConfig({model:args.model,vision:args.vision,resourceProfile:args.resourceProfile,gpus:args.gpus,values:args.values},config,null,{binarySha256,kvCapability});return {path:writeTuneConfig(directory,args.model,cfg),entry};}
+ async function tuneConfig(args){const {config,entry}=record(args.model);if(!entry.ready)throw new Error('Prepare the model before tuning it.');let binarySha256=null,exe=null;if(packaged&&q36Config(config,args.model)){const engine=await control.engine();if(engine.usable&&engine.engine?.exe){exe=engine.engine.exe;binarySha256=q36FileSha256(exe);}}if(!packaged&&typeof config.exe==='string')exe=resolve(config.cwd??repo(),config.exe);const {kvCapability=null,memoryCapability=null}=q36Config(config,args.model)?await probeQ36For(args.model,exe):{};if(memoryCapability||kvCapability)binarySha256=(memoryCapability??kvCapability).binarySha256;const {cfg}=buildConfig({model:args.model,vision:args.vision,resourceProfile:args.resourceProfile,gpus:args.gpus,values:args.values},config,null,{binarySha256,kvCapability,memoryCapability});return {path:writeTuneConfig(directory,args.model,cfg),entry};}
  async function tuneReadConfig(args){try{return await tuneConfig(args);}catch(error){if(error.code!=='q36_private_cache_parallel')throw error;return {unavailable:{available:false,reason:error.message,code:error.code}};}}
  async function tuneStatus(args){await refresh();const {path,unavailable}=await tuneReadConfig(args);return unavailable?{...unavailable,ok:true,active:null,state:null,reasons:[unavailable.reason],presets:[],can_undo:false}:autotuner.status(path);}
  async function tuneEffective(args){await refresh();const {path,unavailable}=await tuneReadConfig(args);return unavailable?{...unavailable,applied:false,preset:null,args:[],env:{},changed:[],why_not:unavailable.reason}:autotuner.effective(path);}
@@ -986,7 +1002,8 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
    const refusal=engineRefusal(snapshot.catalog,args.model,snapshot.engineInfo);if(refusal)throw new Error(refusal);
    if(kind==='load'){
     const found=recordFile(args.model),text=readFileSync(found.path,'utf8');
-    servingConfig(args,checkedSettingsConfig(text),{negotiating:true});
+    const config=checkedSettingsConfig(text);
+    servingConfig(args,config,{negotiating:true,...knownQ36Memory(args.model,config)});
     captured={...found,text};
    }
    else installSettings(args);

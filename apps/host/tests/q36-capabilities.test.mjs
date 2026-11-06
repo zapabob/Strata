@@ -14,11 +14,14 @@ test('the capability table matches the flags strata-q36 actually reads', () => {
   const run = source.slice(start, source.indexOf('if (model.empty())', start));
   const found = [...run.matchAll(/a == "(--[^"]+)"/g)].map(match => match[1]);
   assert.ok(found.length > 10);
-  for (const flag of found.filter(f => f !== '--help')) assert.equal(Q36_SUPPORTED_FLAGS.has(flag), true, flag);
+  // The native parser recognises this name only to explicitly refuse it.
+  assert.match(run, /else if \(a == "--vram-reserve-mib"[\s\S]*?not an option of this engine[\s\S]*?return 2;/);
+  for (const flag of found.filter(f => !['--help','--vram-reserve-mib'].includes(f))) assert.equal(Q36_SUPPORTED_FLAGS.has(flag), true, flag);
   assert.equal(Q36_SUPPORTED_FLAGS.has('--resident-budget-gib'), false);
   assert.equal(Q36_SUPPORTED_FLAGS.has('--vram-reserve-mib'), false);
   assert.equal(Q36_SUPPORTED_FLAGS.has('--cache-type-k'), true);
   assert.equal(Q36_SUPPORTED_FLAGS.has('--q36-expert-store'), true);
+  assert.equal(Q36_SUPPORTED_FLAGS.has('--q36-memory'), true);
   assert.equal(Q36_SUPPORTED_FLAGS.has('--prompt-cache'), true);
   assert.equal(Q36_SUPPORTED_FLAGS.has('--conversation-cache-mib'), true);
   assert.equal(Q36_SUPPORTED_FLAGS.has('--private-conversation-cache'), true);

@@ -1,4 +1,11 @@
 {
+  "q36m1": "Memória de trabalho dos especialistas Q36",
+  "q36m2": "O padrão é o modo anterior. Especialistas limitados é uma opção experimental de ativação explícita, ainda não qualificada. Só são oferecidos modos verificados para este binário. Exige mapped-pack e um número positivo explícito de slots de especialistas nos argumentos JSON. Limita apenas a memória de trabalho dos especialistas, não a memória total do processo; não garante que o modelo caiba.",
+  "q36m3": "Modo anterior (padrão)",
+  "q36m4": "Modo anterior",
+  "q36m5": "Especialistas limitados (experimental)",
+  "q36m6": "A memória real de trabalho dos especialistas ainda não foi informada.",
+  "q36m7": "Memória real de trabalho dos especialistas: {0}. Buffer CPU: {1} bytes; buffer H2D: {2} bytes; espaço temporário de E/S: {3} bytes. Apenas memória de trabalho dos especialistas; a memória total do processo não é limitada.",
 "fx01": "vai parar de funcionar e será removido.",
   "fx02": "Baixado, mas não carregado. Abra Modelos para carregá-lo.",
   "fx03": "{0} linhas adicionadas, {1} removidas",

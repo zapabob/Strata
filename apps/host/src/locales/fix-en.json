@@ -1,4 +1,11 @@
 {
+  "q36m1": "Q36 expert working storage",
+  "q36m2": "Default is legacy. Bounded experts is an experimental opt-in, not yet qualified. Only modes verified for this binary are offered. Requires mapped-pack and positive explicit expert slots in JSON arguments. Bounds expert working storage only, not total process memory; it does not guarantee the model fits.",
+  "q36m3": "Legacy (default)",
+  "q36m4": "Legacy",
+  "q36m5": "Bounded experts (experimental)",
+  "q36m6": "Actual expert storage is not reported yet.",
+  "q36m7": "Actual expert storage: {0}. CPU staging {1} bytes; H2D staging {2} bytes; I/O scratch {3} bytes. Expert working storage only; total process memory is not bounded.",
 "fx01": "will stop running and be removed.",
   "fx02": "Downloaded, not loaded. Open Models to load it.",
   "fx03": "{0} lines added, {1} removed",

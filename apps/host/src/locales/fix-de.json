@@ -1,4 +1,11 @@
 {
+  "q36m1": "Q36-Experten-Arbeitsspeicher",
+  "q36m2": "Standard ist der bisherige Modus. Begrenzte Experten sind eine ausdrücklich zu aktivierende, noch nicht qualifizierte experimentelle Funktion. Nur für diese Binärdatei bestätigte Modi werden angeboten. Erfordert mapped-pack und eine explizite positive Experten-Slotzahl in den JSON-Argumenten. Begrenzt nur den Experten-Arbeitsspeicher, nicht den gesamten Prozessspeicher; keine Garantie, dass das Modell hineinpasst.",
+  "q36m3": "Bisheriger Modus (Standard)",
+  "q36m4": "Bisheriger Modus",
+  "q36m5": "Begrenzte Experten (experimentell)",
+  "q36m6": "Der tatsächliche Experten-Arbeitsspeicher wurde noch nicht gemeldet.",
+  "q36m7": "Tatsächlicher Experten-Arbeitsspeicher: {0}. CPU-Staging {1} Bytes; H2D-Staging {2} Bytes; temporärer E/A-Speicher {3} Bytes. Nur Experten-Arbeitsspeicher; der gesamte Prozessspeicher ist nicht begrenzt.",
 "fx01": "wird nicht mehr ausgeführt und entfernt.",
   "fx02": "Heruntergeladen, aber nicht geladen. Öffne „Modelle“, um es zu laden.",
   "fx03": "{0} Zeilen hinzugefügt, {1} entfernt",

@@ -5,7 +5,7 @@ import { describeChange, type TunedChange } from '../lib/tune-values';
 import { useEffect, useRef, useState } from 'react';
 import { useRequestOwner } from '../lib/use-request-owner';
 import { api } from '../lib/client';
-import { refreshNative, useNative, type NativeField } from '../lib/native';
+import { refreshNative, useNative, type NativeField, type Q36MemoryReceipt } from '../lib/native';
 import { Btn, ErrorNotice, Select } from './ui';
 import { speedOptions } from '../lib/deepseek-speed';
 import { draftingChoices } from '../lib/drafting';
@@ -144,8 +144,13 @@ export function NativeSettings({ model }: {
     const draftingOffered = !!draftingChoices(family, native?.capabilities?.dflash2);
     const rows = (modelFields ?? []).filter(f => (f.id !== 'ds_experts' || dsExperts || values[f.id] != null) && (f.id !== 'drafting' || draftingOffered || values[f.id] != null) && `${tr(f.label)} ${f.id} ${tr(f.group)}`.toLowerCase().includes(query.toLowerCase()));
     const switchRows = switches.filter(sw => `${tr(sw.label)} ${sw.id} ${tr('Speed')}`.toLowerCase().includes(query.toLowerCase()));
+    const memoryOffered = modelFields?.some(f => f.id === 'q36_memory' && f.supported !== false) || values.q36_memory != null;
+    const memory = actualMemoryReceipt(native?.instances.find(i => i.model === model && i.status === 'ready')?.metrics?.engine);
     return <details className="native-settings" ref={details}><summary>{tr("Native engine settings")}</summary>{tr(tuned?.changed?.length ? <div className="native-tuned"><p className="small"><strong>{tr("Your tuning '{0}' sets", [tuned.preset?.name ?? ''])}</strong></p><ul>{tuned.changed.map(c => { const d = describeChange(c); return <li key={c.flag}><span>{d.name}</span><b>{d.now || tr('off')}</b>{d.was !== null ? <small className="muted">{tr("was {0}", [d.was])}</small> : null}</li>; })}</ul></div> : null)}<p className="small muted">{tr(!original ? 'Reading saved settings… ' : '')}{tr("Settings for this model. Blank values use Strata\u2019s defaults.")}</p><div className="editor-tabs" role="tablist" aria-label={tr("Native settings editor")}>{tr(['fields', 'json', 'tools'].map(t => <button key={t} role="tab" aria-selected={tab === t} onClick={() => chooseTab(t)}>{tr(t === 'fields' ? 'Parameters' : t === 'json' ? 'JSON' : 'MCP tools')}</button>))}</div>
   {settingsIssues.map(issue => <ErrorNotice key={issue.field} message={issue.message}/>)}
+  {memoryOffered ? <p className="small muted" data-q36-memory-observed={memory?.mode}>{memory
+    ? tr('Actual expert storage: {0}. CPU staging {1} bytes; H2D staging {2} bytes; I/O scratch {3} bytes. Expert working storage only; total process memory is not bounded.', [memory.mode, String(memory.cpuStageBytes), String(memory.h2dStageBytes), String(memory.ioScratchBytes)])
+    : tr('Actual expert storage is not reported yet.')}</p> : null}
   {modelFields === null ? <p className="small muted">{tr('Serving capabilities are unavailable. Read the settings again before choosing cache formats.')}</p> : null}
   {tr(tab === 'fields' ? <><input className="st-input" type="search" aria-label={tr("Search native parameters")} placeholder={tr("Search parameters…")} value={query} onChange={e => setQuery(e.target.value)}/>{tr(['Responses', 'GPU & memory', 'Serving', 'Image reading', 'Tools', 'Recovery'].map(group => rows.some(f => f.group === group) ? <section className="native-settings-group" key={group}><h3 className="h4">{tr(group)}</h3>{tr(rows.filter(f => f.group === group).map(f => <label className="native-setting-row" key={f.id}><span><strong>{tr(f.label)}</strong>{tr(f.supported === false ? <small>{f.unavailableReason ?? tr("Requires a newer Strata installation.")}</small> : f.hint ? <small>{tr(f.hint)}</small> : null)}</span><NativeFieldInput field={f} model={model} value={values[f.id]} onChange={v => change(f.id, v)}/></label>))}</section> : null))}
    {tr(switchRows.length ? <section className="native-settings-group"><h3 className="h4">{tr("Speed")}</h3>{tr(switchRows.map(sw => <label className="native-setting-row" key={sw.id}><span><strong>{tr(sw.label)}</strong><small>{tr(sw.hint)}</small></span><Select ariaLabel={tr(sw.label)} value={switchIsOn(sw, values.env) ? 'on' : 'off'} options={sw.default === 'on' ? [{ value: 'on', label: 'On (recommended)' }, { value: 'off', label: 'Off' }] : [{ value: 'off', label: 'Off (recommended)' }, { value: 'on', label: 'On' }]} onChange={v => changeSwitch(sw, v === 'on')}/></label>))}</section> : null)}
@@ -169,10 +174,18 @@ function NativeFieldInput({ field, value, onChange, model }: {
     if (field.id === 'ds_experts')
         return <DeepSeekSpeed field={field} model={model} value={value} onChange={onChange}/>;
     if (field.type === 'enum')
-        return <Select ariaLabel={tr(field.label)} value={value ?? ''} options={[{ value: '', label: 'Default' }, ...(value != null && value !== '' && !field.choices?.includes(value) ? [{ value, label: `${value} (stored; not supported)` }] : []), ...(field.choices ?? []).map(v => ({ value: v, label: v }))]} onChange={v => onChange(v || null)}/>;
+        return <Select ariaLabel={tr(field.label)} value={value ?? ''} options={[{ value: '', label: tr(field.defaultLabel ?? 'Default') }, ...(value != null && value !== '' && !field.choices?.includes(value) ? [{ value, label: `${value} (stored; not supported)` }] : []), ...(field.choices ?? []).map(v => ({ value: v, label: tr(field.choiceLabels?.[v] ?? v) }))]} onChange={v => onChange(v || null)}/>;
     if (field.type === 'number')
         return <DecimalInput ariaLabel={tr(field.label)} placeholder={tr("Default")} value={value === null || value === undefined || value === '' || !Number.isFinite(Number(value)) ? null : Number(value)} onChange={onChange}/>;
     return <input className="st-input" aria-label={tr(field.label)} placeholder={tr("Default")} value={Array.isArray(value) ? value.join(', ') : value ?? ''} onChange={e => onChange(e.target.value === '' ? null : field.type === 'array' ? e.target.value.split(',').map(s => s.trim()).filter(Boolean) : field.type === 'number' ? Number(e.target.value) : e.target.value)}/>;
+}
+/** Server metrics carry the actual child's pre-READY INFO, never the editor's future choice. */
+function actualMemoryReceipt(info: Record<string, unknown> | undefined): Q36MemoryReceipt | null {
+    if (!info || !['legacy', 'bounded-experts-v1'].includes(String(info.q36_memory_mode)) ||
+        info.q36_memory_scope !== 'expert-working-storage' || info.q36_memory_total_process_bound !== 0) return null;
+    const bytes = [info.q36_memory_cpu_stage_bytes, info.q36_memory_h2d_stage_bytes, info.q36_memory_io_scratch_bytes];
+    if (!bytes.every(n => typeof n === 'number' && Number.isSafeInteger(n) && n >= (info.q36_memory_mode === 'legacy' ? 0 : 1))) return null;
+    return {mode: info.q36_memory_mode as Q36MemoryReceipt['mode'], cpuStageBytes: bytes[0] as number, h2dStageBytes: bytes[1] as number, ioScratchBytes: bytes[2] as number};
 }
 /** DeepSeek's Speed choice. The engine decides the default itself (--experts auto); the labels name the same default (lib/deepseek-speed.ts). */
 function DeepSeekSpeed({ field, value, onChange, model }: { field: NativeField; model?: string; value: any; onChange: (v: any) => void }) {

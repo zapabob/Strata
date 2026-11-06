@@ -33,16 +33,44 @@ export function parseQ36KvCapabilities(text) {
   } catch { return null; }
 }
 
+/** Memory is an independent contract; never extend the strict KV marker schema. */
+export function parseQ36MemoryCapabilities(text) {
+  if (typeof text !== 'string' || Buffer.byteLength(text) > Q36_HELP_LIMIT) return null;
+  const lines = text.split(/\r?\n/).filter(line => line.startsWith('Q36_MEMORY_CAPABILITIES'));
+  if (lines.length !== 1 || !lines[0].startsWith('Q36_MEMORY_CAPABILITIES ')) return null;
+  try {
+    const c = JSON.parse(lines[0].slice('Q36_MEMORY_CAPABILITIES '.length));
+    if (!c || Object.keys(c).sort().join(',') !== 'family,flag,modes,qualification,requiresExpertStore,requiresExplicitSlots,schema,scope,totalProcessBound' ||
+        c.schema !== 1 || c.family !== 'qwen35moe' || c.flag !== '--q36-memory' || c.requiresExpertStore !== 'mapped-pack' ||
+        c.requiresExplicitSlots !== true || c.scope !== 'expert-working-storage' || c.totalProcessBound !== false ||
+        c.qualification !== 'experimental-unqualified' || !['[]','["bounded-experts-v1"]'].includes(JSON.stringify(c.modes))) return null;
+    return c;
+  } catch { return null; }
+}
+
+export function verifiedQ36MemoryCapability(capability, sha = capability?.binarySha256) {
+  if (!capability || !/^[a-f0-9]{64}$/.test(sha ?? '') || capability.binarySha256 !== sha) return null;
+  const { binarySha256, ...marker } = capability;
+  return parseQ36MemoryCapabilities(`Q36_MEMORY_CAPABILITIES ${JSON.stringify(marker)}`) ? structuredClone(capability) : null;
+}
+
 /** No model/user args or saved environment reaches this bounded, no-model help query. */
-export async function probeQ36KvCapabilities(exe, { run = execFile, hash = q36FileSha256 } = {}) {
+export async function probeQ36Capabilities(exe, { run = execFile, hash = q36FileSha256 } = {}) {
+  const unknown = { kvCapability: null, memoryCapability: null };
   const before = exe ? hash(exe) : null;
-  if (!before) return null;
+  if (!before) return unknown;
   const env = Object.fromEntries(Object.entries(process.env).filter(([key]) =>
     ['PATH', 'SYSTEMROOT', 'WINDIR', 'LD_LIBRARY_PATH', 'CUDA_PATH'].includes(key.toUpperCase())));
   const output = await new Promise(resolve => {
     run(exe, ['--help'], { cwd: dirname(exe), windowsHide: true, timeout: 3000, maxBuffer: Q36_HELP_LIMIT, env },
       (error, stdout, stderr) => resolve(error ? null : `${stdout ?? ''}\n${stderr ?? ''}`));
   });
-  const capability = parseQ36KvCapabilities(output);
-  return capability && hash(exe) === before ? { ...capability, binarySha256: before } : null;
+  if (hash(exe) !== before) return unknown;
+  const bind = cap => cap ? { ...cap, binarySha256: before } : null;
+  return { kvCapability: bind(parseQ36KvCapabilities(output)), memoryCapability: bind(parseQ36MemoryCapabilities(output)) };
+}
+
+/** Public KV-only return shape is retained for existing callers. */
+export async function probeQ36KvCapabilities(exe, options) {
+  return (await probeQ36Capabilities(exe, options)).kvCapability;
 }

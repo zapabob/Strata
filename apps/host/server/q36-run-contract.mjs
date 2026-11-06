@@ -16,6 +16,7 @@ import { createHash } from 'node:crypto';
 import { closeSync, fstatSync, openSync, readFileSync, realpathSync } from 'node:fs';
 import { basename } from 'node:path';
 import { flagOf, groups } from './native-user-args.mjs';
+import { verifiedQ36MemoryCapability } from './q36-kv-capabilities.mjs';
 
 export const Q36_SOURCE_BASELINE = '170e0d330edd9c03b5dcddfc64b77e498387ff86';
 export const Q36_CAPABILITY_REVISION = 'q36-typed-kv-1';
@@ -58,7 +59,7 @@ export const Q36_VALUE_FLAGS = new Set([
   '--model', '--native', '--max-new', '--pool-workers', '--gpu', '--max-context', '--ctx',
   '--chunk', '--prefill', '--tokens', '--n', '--force', '--emb', '--dump-full-logits',
   '--bench-pp', '--bench-tg', '--mtp', '--draft-vocab', '--batch', '--slots',
-  '--expert-vram', '--cpu-threads', '--expert-slots', '--hybrid-rows', '--q36-expert-store',
+  '--expert-vram', '--cpu-threads', '--expert-slots', '--hybrid-rows', '--q36-expert-store', '--q36-memory',
   '--prompt-cache', '--conversation-cache-mib', '--cache-type-k', '--cache-type-v',
 ]);
 /** Options that stand alone. */
@@ -103,6 +104,32 @@ function valueSpan(list, at) {
 
 function fail(code, message) {
   return { ok: false, error: { code, message } };
+}
+
+/** Validate the mode and its actual argv prerequisites before any start side effect. */
+export function q36MemoryRequest(args, requested = null) {
+  const read = flag => {
+    const found = args.filter(a => a === flag || a.startsWith(flag + '='));
+    const at = args.indexOf(flag);
+    if (found.length > 1 || (found.length && (at < 0 || !valueSpan(args, at))))
+      throw new Error(`${flag} is malformed or repeated.`);
+    return at < 0 ? null : args[at + 1];
+  };
+  try {
+    const value = read('--q36-memory');
+    const modes = [value, requested].filter(v => v != null && v !== '');
+    if (new Set(modes).size > 1 || modes.some(v => !['legacy', 'bounded-experts-v1'].includes(v)))
+      throw new Error('q36_memory is conflicting or unsupported.');
+    const mode = modes[0] ?? 'legacy';
+    if (mode === 'bounded-experts-v1') {
+      if (read('--q36-expert-store') !== 'mapped-pack') throw new Error('q36_memory requires explicit --q36-expert-store mapped-pack.');
+      const slots = read('--expert-slots');
+      // Match q36_explicit_slots' checked native int parser, including leading zeroes.
+      if (!/^\d+$/.test(slots ?? '') || Number(slots) < 1 || Number(slots) > 2147483647)
+        throw new Error('q36_memory requires positive explicit --expert-slots.');
+    }
+    return { ok: true, mode };
+  } catch (error) { return fail('q36_memory_invalid', error.message); }
 }
 
 /** Theoretical persistent bytes, excluding recurrent state and scratch. Geometry is explicit. */
@@ -223,6 +250,17 @@ export function prepareQ36Launch(input = {}) {
   const userFlags = new Set(groups(userArgs).map(flagOf).filter(Boolean));
   const warnings = [];
 
+  const memory = q36MemoryRequest(args, requested.memoryMode);
+  if (!memory.ok) return memory;
+  const memoryCapability = verifiedQ36MemoryCapability(input.memoryCapability, input.binarySha256 ?? null);
+  const bounded = memory.mode === 'bounded-experts-v1';
+  if (bounded && !memoryCapability?.modes.includes(memory.mode))
+    return fail('q36_memory_unavailable', 'q36_memory bounded-experts-v1 is not verified for this engine binary. Clear the setting or choose legacy.');
+  const memoryAt = args.indexOf('--q36-memory');
+  // Legacy is the binary default, including engines that do not know this flag.
+  if (!bounded && memoryAt >= 0) args.splice(memoryAt, 2);
+  if (bounded && memoryAt < 0) args.push('--q36-memory', memory.mode);
+
   const privateCache = input.privacyRequired === true || [...args, ...userArgs].some(a => PRIVATE_CACHE_FLAGS.has(a.split('=')[0]) || a === '--private-conversation-cache');
   if (privateCache) {
     for (const flag of PRIVATE_CACHE_FLAGS) {
@@ -302,7 +340,7 @@ export function prepareQ36Launch(input = {}) {
       if (item === '--q36-expert-store' && value !== 'legacy' && value !== 'mapped-pack') {
         return fail('unsupported_setting', `${item} ${value} is not a Qwen3.6 expert store. It was not applied and the model was not started.`);
       }
-      if (item === '--q36-expert-store' && value === 'mapped-pack' && !q36MappedPackAllowed(input)) {
+      if (item === '--q36-expert-store' && value === 'mapped-pack' && !bounded && !q36MappedPackAllowed(input)) {
         return fail('expert_store_not_available', MAPPED_PACK_REFUSAL);
       }
       argv.push(item, value);
@@ -367,7 +405,7 @@ export function prepareQ36Launch(input = {}) {
     schemaVersion: 1,
     runId: input.runId ?? null,
     generation: input.generation ?? null,
-    backend: { family: 'qwen36', binarySha256: input.binarySha256 ?? null, capabilityRevision: Q36_CAPABILITY_REVISION, kvCapability: verified ? cap : null },
+    backend: { family: 'qwen36', binarySha256: input.binarySha256 ?? null, capabilityRevision: Q36_CAPABILITY_REVISION, kvCapability: verified ? cap : null, memoryCapability: bounded ? memoryCapability : null },
     model: {
       requestedPath: identity.requestedPath ?? (pathAt >= 0 ? argv[pathAt + 1] : null),
       resolvedPath: identity.resolvedPath ?? null,
@@ -384,6 +422,7 @@ export function prepareQ36Launch(input = {}) {
       mtp: requested.mtp ?? mtp,
       parallel,
       kv_k: kv.k, kv_v: kv.v,
+      q36_memory: memory.mode,
     },
     effective: {
       context,
@@ -398,6 +437,7 @@ export function prepareQ36Launch(input = {}) {
       kvEstimate: (() => { const estimate = q36PersistentKvBytes(context, parallel, kv); if (!estimate.ok) return null; const { bytes, ...serial } = estimate; return serial; })(),
       warmupMode,
       expertStoreMode,
+      q36_memory: memory.mode,
       privateCache,
       scopedConversationCache: argv.includes('--private-conversation-cache'),
     },

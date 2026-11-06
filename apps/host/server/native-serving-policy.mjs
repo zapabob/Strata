@@ -1,16 +1,18 @@
 /** Ordinary serving contracts. Weight names, compiler/GPU features and capsules are not capabilities. */
 import { capture, merge, setFlag, USER_KEY } from './native-user-args.mjs';
-import { q36KvFields, parseQ36KvCapabilities } from './q36-kv-capabilities.mjs';
+import { q36KvFields, parseQ36KvCapabilities, verifiedQ36MemoryCapability } from './q36-kv-capabilities.mjs';
+import { q36MemoryRequest } from './q36-run-contract.mjs';
 
 const Q38_FAMILIES = new Set(['qwen', 'swift', 'coder', 'unsloth', 'gyro']);
 const RUNTIME_ARCH = {q38:'qwen4exp',q36:'qwen35moe',deepseek41:'deepseek41'};
 export const ORDINARY_KV = ['fp16', 'int8', 'q4_0', 'k8v4'];
 export const SERVING_FLAGS = {
+  q36_memory: ['--q36-memory'],
   cache_type_k: ['--cache-type-k', '-ctk'], cache_type_v: ['--cache-type-v', '-ctv'],
   spin8_mode: ['--spin8-mode'], spin8_native_config: ['--spin8-native-config'], spin8_native_sha256: ['--spin8-native-sha256'],
 };
 const present = value => value !== undefined && value !== null && value !== '';
-export function nativeServingPolicy(config = {}, family = null, capability = null) {
+export function nativeServingPolicy(config = {}, family = null, capability = null, memoryCapability = null) {
   // The saved architecture wins over the catalog; neither executable nor model filename is consulted.
   const identity = config.arch || config.family || family;
   const id = identity === 'qwen35moe' || identity === 'qwen36' ? 'q36' : identity === 'deepseek41' ? 'deepseek41'
@@ -22,7 +24,8 @@ export function nativeServingPolicy(config = {}, family = null, capability = nul
     : id === 'q36' ? 'Qwen3.6 uses negotiated FP32/FP16 storage. Unknown engines retain the legacy FP32 path. Spin(8) serving is unavailable.'
     : id === 'deepseek41' ? 'DeepSeek uses its own packed FP8 window and FP4 latent/index cache, not generic Qwen KV or Spin(8) controls.'
     : 'The serving adapter is unknown. Generic KV and Spin(8) choices are unavailable.';
-  return { id, runtimeArch: RUNTIME_ARCH[id] ?? null, ordinaryKv: id === 'q38' ? [...ORDINARY_KV] : [], note, kvCapability };
+  return { id, runtimeArch: RUNTIME_ARCH[id] ?? null, ordinaryKv: id === 'q38' ? [...ORDINARY_KV] : [], note, kvCapability,
+    memoryCapability: id === 'q36' ? verifiedQ36MemoryCapability(memoryCapability) : null };
 }
 
 const effectiveArgs = config => merge(config.args ?? [], capture(config));
@@ -35,13 +38,20 @@ function options(args, flags) {
     return flag ? [{ flag, value: arg === flag ? args[i + 1] : arg.slice(flag.length + 1), malformed: arg !== flag || !args[i + 1] || args[i + 1].startsWith('-') }] : [];
   });
 }
-export function servingSettingsIssues(config, policy, { negotiating = false } = {}) {
+export function servingSettingsIssues(config, policy, { negotiating = false, memoryKnown = false } = {}) {
   const issues = [], args = effectiveArgs(config);
   const reject = (field, detail) => issues.push({ field, code: 'unsupported_serving_setting', message: `${field}: ${detail} Clear this setting before loading. ${policy.note}` });
   for (const [field, flags] of Object.entries(SERVING_FLAGS)) {
     const found = options(args, flags), value = config[field];
     if (!present(value) && !found.length) continue;
     if (policy.id !== 'q36' || field.startsWith('spin8_')) { reject(field, 'not supported by this serving adapter.'); continue; }
+    if (field === 'q36_memory') {
+      const request = q36MemoryRequest(args, value);
+      if (!request.ok) reject(field, request.error.message);
+      else if (request.mode !== 'legacy' && (!negotiating || memoryKnown) && !policy.memoryCapability?.modes.includes(request.mode))
+        reject(field, 'bounded-experts-v1 is not verified for this engine binary. Choose legacy or clear it.');
+      continue;
+    }
     // Q36's native contract uses long flags once, with matching top-level settings.
     const values = [...found.map(o => o.value), ...(present(value) ? [value] : [])];
     const choices = policy.kvCapability?.[field === 'cache_type_k' ? 'cacheTypesK' : 'cacheTypesV'] ?? (negotiating ? ['f32', 'f16'] : ['f32']);
@@ -70,6 +80,8 @@ export function servingSettingsView(config, policy, fields) {
         policy.id === 'deepseek41' && ['mtp', 'batchMtp', 'drafting'].includes(field.id) || field.id === 'ds_experts' && policy.id !== 'deepseek41';
       // UI uses this actual adapter decision, not forModel's historical filename test.
       const { forModel, notForModel, ...row } = field;
+      if (field.id === 'q36_memory' && policy.id === 'q36') return { ...row, supported: true,
+        choices: ['legacy', ...(policy.memoryCapability?.modes ?? [])] };
       return blocked ? { ...row, supported: false, choices: [], unavailableReason: policy.note } : row;
     }),
   };
