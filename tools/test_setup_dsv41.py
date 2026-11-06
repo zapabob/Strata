@@ -18,6 +18,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -1226,7 +1227,9 @@ class CardsAndLayout(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             line = ("03:00.0 VGA compatible controller [0300]: Advanced Micro Devices, Inc. [AMD/ATI] Navi 31 [Radeon RX 7900 XTX] [1002:744c] (rev c8)\n"
                     "0e:00.0 Display controller [0380]: Advanced Micro Devices, Inc. [AMD/ATI] Raphael [1002:164e] (rev c1)\n")
-            with mock.patch("shutil.which", lambda n: "/usr/bin/lspci"), \
+            # This fixture exercises Linux's lspci fallback even on a Windows test host.
+            with mock.patch.object(ec, "os", SimpleNamespace(name="posix")), \
+                 mock.patch("shutil.which", lambda n: "/usr/bin/lspci"), \
                  mock.patch.object(ec.subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(a[0], 0, line, "")):
                 self.assertEqual(ec.hip_archs_from_pci(t), ["gfx1100"])                      # the integrated Raphael is no card
 

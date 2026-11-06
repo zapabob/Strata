@@ -2573,6 +2573,64 @@ def free_gb(path):
     return shutil.disk_usage(path).free / 1e9
 
 
+def setup_partial_bytes(dst: Path, total: int | None = None) -> int:
+    """Reusable download bytes, not the logical length of a sparse parallel .part.
+
+    Invalid or oversized partials receive no credit. A legacy single-stream
+    partial without a piece map is a contiguous prefix. Never change these files.
+    """
+    part = dst.with_name(dst.name + ".part")
+    try:
+        if not part.is_file():
+            return 0
+        size = part.stat().st_size
+        if total is not None and size > total:
+            return 0
+        side = part.with_name(part.name + ".chunks")
+        if not side.exists():
+            return size
+        data = json.loads(side.read_text(encoding="utf-8"))
+        expected = total if total is not None else int(data["total"])
+        if data.get("v") != 1 or data.get("total") != expected or data.get("chunk") != DL_CHUNK or expected <= 0:
+            return 0
+        n = -(-expected // DL_CHUNK)
+        pieces = {i for a, b in data["done"] for i in range(max(int(a), 0), min(int(b), n))}
+        return sum(min(DL_CHUNK, expected - i * DL_CHUNK) for i in pieces
+                   if min((i + 1) * DL_CHUNK, expected) <= size)
+    except (OSError, ValueError, TypeError, KeyError, AttributeError, OverflowError):
+        return 0
+
+
+def check_setup_space(writes: list, margin_gb: float = 0, hint: str = "use --data-dir / --models-dir on a bigger drive",
+                      detail: str = "") -> None:
+    """Check (destination folder, bytes still to write), pooled by actual filesystem.
+
+    A read-only GGUF source contributes no writes. Resolve new folders through
+    their nearest existing parent so mounted volumes and links count correctly.
+    Only planned writes can refuse setup; the working margin is a warning.
+    """
+    pools = []
+    for folder, nbytes in writes:
+        if nbytes <= 0:
+            continue
+        folder = Path(folder)
+        probe = folder
+        while not probe.exists() and probe.parent != probe:
+            probe = probe.parent
+        for pool in pools:
+            if same_drive(probe, pool[1]):
+                pool[2] += nbytes
+                break
+        else:
+            pools.append([folder, probe, nbytes])
+    for folder, probe, nbytes in pools:
+        needed, free = nbytes / 1e9, free_gb(probe)
+        if free < needed:
+            fail(f"not enough free disk space in {folder}: need ~{needed:.0f} GB, {free:.0f} GB free" + detail, hint)
+        if free < needed + margin_gb:
+            warn(f"little free disk space in {folder}: {free:.1f} GB free for about {needed:.1f} GB. Setup goes on and should fit")
+
+
 def room_for_setup_files(models_dir: Path, data: Path, gguf_dir) -> Path:
     """The folder whose free space still has to hold what setup will write.
 
@@ -7238,15 +7296,21 @@ def share_sibling_file(dst: Path, parent: Path, name: str, size: int) -> bool:
         sibs = sorted(p for p in parent.glob("*/" + name) if p.is_file() and p != dst and p.stat().st_size == size)
     except OSError:
         return False
+    # Try every zero-byte hard link before demanding space for a fallback copy.
     for src in sibs:
         try:
             dst.parent.mkdir(parents=True, exist_ok=True)
-            try:
-                os.link(src, dst)
-            except OSError:
-                tmp = dst.with_name(dst.name + ".copying")
-                shutil.copyfile(src, tmp)
-                os.replace(tmp, dst)
+            os.link(src, dst)
+            return True
+        except OSError:
+            continue
+    for src in sibs:
+        try:
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            tmp = dst.with_name(dst.name + ".copying")
+            check_setup_space([(dst.parent, size)])
+            shutil.copyfile(src, tmp)
+            os.replace(tmp, dst)
             return True
         except OSError:
             continue
@@ -8511,20 +8575,15 @@ def install_own_path(a, family, gpu, hip, amd, cuda_tk, multi, port, ram, adopte
     # --gguf-dir is files the person already has. Setup does not download into that folder: a missing
     # pinned file is said here, before the free-space check. Charging the download's size to that
     # folder failed a small C: drive even when --data-dir already pointed at a bigger one.
-    if a.gguf_dir and not (Path(a.gguf_dir) / pinned_name).exists():
+    if a.gguf_dir and not (Path(a.gguf_dir) / pinned_name).is_file():
         fail(f"{Path(a.gguf_dir) / pinned_name} is missing",
              f"put {pinned_name} in {a.gguf_dir}, or drop --gguf-dir so it downloads into {download_folder} (--data-dir)")
     folder = Path(a.gguf_dir) if a.gguf_dir else download_folder
     gguf = folder / pinned_name
     size = fam["sha256"][gguf.name][0]
-    part = gguf.with_name(gguf.name + ".part")
     def have(p: Path) -> bool:                         # --gguf-dir: the person's own file has no finish mark; verify_sha256 checks and writes it
         return p.exists() and (done(p) or bool(a.gguf_dir))
-    left = 0 if have(gguf) else (size - (part.stat().st_size if part.is_file() else 0)) / 1e9
-    if left and free_gb(folder) < left:
-        fail(f"not enough free disk space in {folder}: need ~{left:.0f} GB, {free_gb(folder):.0f} GB free", ("use --data-dir on a bigger drive (strata launch --data-dir)" if CONTROL else "use --models-dir on a bigger drive"))
-    if left and free_gb(folder) < left + 1:
-        warn(f"little free disk space in {folder}: {free_gb(folder):.1f} GB free for about {left:.1f} GB. Setup goes on and should fit")
+    check_setup_space([] if have(gguf) else [(folder, size - setup_partial_bytes(gguf, size))], 1)
 
     step(3, "Python packages")
     pip_install(runtime_packages(),
@@ -8542,6 +8601,19 @@ def install_own_path(a, family, gpu, hip, amd, cuda_tk, multi, port, ram, adopte
         fail(f"this engine ({meta.get('version')}) does not run {fam['title']} yet",
              "update Strata, or compile the engine with --build, and run setup again")
     ok("engine: the engine component (looked up when the model loads)" if CONTROL else f"engine: {eng / EXE}")
+
+    # The engine may have switched pictures off. Check the combined writes now,
+    # before downloading either file. A sibling hard link needs no new space.
+    picture = folder / fam["mmproj"]
+    required = [gguf] + ([picture] if vision != "none" else [])
+    if a.gguf_dir and picture in required and not picture.is_file():
+        fail(f"{picture} is missing", f"put {picture.name} in {folder}, or drop --gguf-dir to download it")
+    reuse_picture = vision != "none" and not a.gguf_dir and not picture.with_name(picture.name + ".part").exists() and any(
+        p != picture and p.is_file() and p.stat().st_size == fam["sha256"][picture.name][0]
+        and same_drive(p.parent, folder if folder.exists() else Path(a.models_dir))
+        for p in Path(a.models_dir).glob("*/" + picture.name))
+    check_setup_space([(f.parent, fam["sha256"][f.name][0] - setup_partial_bytes(f, fam["sha256"][f.name][0]))
+                       for f in required if not have(f) and not (f == picture and reuse_picture)], 1)
 
     step(5, f"downloading {fam['title']} {model}")
     if have(gguf):
@@ -8869,8 +8941,7 @@ def dsv41_shared_missing(model: str, models_dir, gguf_dir=None, vision: bool = T
         f = dsv41_find_shared(a, n, folder, shared_dir, (md["engram_shard"],) if (udlow and n == DSV41_ISTA_ENGRAM) else ())
         if f.exists() and (done(f) or a.gguf_dir or f.parent != shared_dir):
             continue
-        part = f.with_name(f.name + ".part")
-        have = part.stat().st_size if part.is_file() else 0
+        have = setup_partial_bytes(f, fam["sha256"][n][0])
         out.append((n, max(fam["sha256"][n][0] - have, 0)))
     return out
 
@@ -9259,36 +9330,25 @@ def install_dsv41(a, family, gpu, hip, amd, cuda_tk, multi, port, ram, adopted, 
     mmproj_file = shared[len(md.get("shared", []))] if ds_vision == "on" else None
     own_files = {f: bool(a.gguf_dir) or f.parent != shared_dir for f in shared}         # a file found outside setup's own folder is the person's
 
+    if a.gguf_dir:
+        for f in shards:
+            if not f.is_file():
+                fail(f"{f} is missing", f"put {f.name} in {folder}, or drop --gguf-dir to download it")
+
     def partial(f: Path) -> int:
-        p = f.with_name(f.name + ".part")
-        return p.stat().st_size if p.is_file() else 0
+        return setup_partial_bytes(f, fam["sha256"][f.name][0])
 
     def owed(f: Path) -> int:
-        # already here, or a --gguf-dir file (no finish mark yet). A shard --gguf-dir does not contain is not
-        # downloaded into that folder (step 5 says it is missing), so its size is not room that drive must have.
+        # Already here, or a --gguf-dir file (no finish mark yet).
         if f.exists() and (done(f) or a.gguf_dir or own_files.get(f) or f.name in DSV41_LEGACY_FILES):
             return 0
-        if a.gguf_dir and f in shards and not f.exists():
-            return 0
-        return fam["sha256"][f.name][0] - partial(f)
+        return max(fam["sha256"][f.name][0] - partial(f), 0)
 
     pending = [(f.parent, owed(f)) for f in [*shards, *shared]]
     pending = [(dest, n) for dest, n in pending if n > 0]
     left = sum(n for _, n in pending) / 1e9
-    # Bytes on one drive are one pool (the shards and the shared Engram usually share it). A --gguf-dir on
-    # another drive is not that pool: shared files are fetched into the data folder.
-    by_drive: dict[str, tuple[Path, int]] = {}
-    for dest, n in pending:
-        anchor = dest if dest.exists() else (dest.parent if dest.parent.exists() else Path(a.models_dir))
-        drive = os.path.normcase(os.path.splitdrive(os.path.abspath(anchor))[0] or str(anchor))
-        label, have = by_drive.get(drive, (folder if dest == folder else dest, 0))
-        if dest == folder:
-            label = folder
-        by_drive[drive] = (label, have + n)
-    room = max(by_drive.values(), key=lambda it: it[1])[0] if by_drive else folder
-    probe = room if room.exists() else (room.parent if room.parent.exists() else Path(a.models_dir))
-    free = free_gb(probe)
-    plan = dsv41_fit.plan([{**c, "vram_gb": float(c.get("vram_gb") or 0)} for c in cards], ram, free if left else None, ctx, model=model,
+    # The fit planner describes memory; actual remaining writes are pooled below.
+    plan = dsv41_fit.plan([{**c, "vram_gb": float(c.get("vram_gb") or 0)} for c in cards], ram, None, ctx, model=model,
                          named=True)               # `cards` are decided above (dsv41_auto_cards / the person's): the plan describes them
     say()
     for line in plan["lines"]:
@@ -9322,16 +9382,9 @@ def install_dsv41(a, family, gpu, hip, amd, cuda_tk, multi, port, ram, adopted, 
                      f"{model} needs about {plan['ram_needed_gb']:.0f} GB of RAM", f"more RAM or cards fix it; --model {model} --yes "
                      "installs it anyway", "  Install it anyway?")
         warn(f"installing {model} with {ram:.0f} GB of RAM, as you chose")
-    for label, nbytes in by_drive.values():
-        gb = nbytes / 1e9
-        anchor = label if label.exists() else (label.parent if label.parent.exists() else Path(a.models_dir))
-        here = free_gb(anchor)
-        if here < gb:
-            fail(f"not enough free disk space in {label}: need ~{gb:.0f} GB, {here:.0f} GB free",
-                 "use --data-dir / --models-dir on a bigger drive (an NVMe drive is best: the n-gram table is read from it while the model "
-                 "answers), or --gguf-dir for files you already have")
-    if left and free < left + dsv41_fit.DISK_HEADROOM_GB:
-        warn(f"little free disk space in {room}: {free:.1f} GB free for about {left:.1f} GB. Setup goes on and should fit")
+    check_setup_space(pending, dsv41_fit.DISK_HEADROOM_GB,
+                      "use --data-dir / --models-dir on a bigger drive (an NVMe drive is best: the n-gram table is read from it while the model "
+                      "answers), or --gguf-dir for files you already have")
     if ctx > DSV41_CONTEXT:       # 128K is the default now (owner, 2026-11-01); only a longer one the person asked for is said to be untested
         warn(f"{ctx // 1024}K tokens of context: longer than the {DSV41_CONTEXT // 1024}K the engine is checked at; kept as you chose, but untested")
     # Pictures are on by default (owner rule): the engine reads them with its own vision tower (319 MiB, loaded with the model, no separate
@@ -10792,6 +10845,10 @@ def main() -> int:
     problem = gguf_dir_problem(models_dir, shards[0], fam, model) if a.gguf_dir else None
     if problem:                                        # #444: files Strata cannot run, or another choice's files
         fail(*problem)
+    if a.gguf_dir and not ready:
+        for f in shards:
+            if not f.is_file():
+                fail(f"{f} is missing", f"put {f.name} in {models_dir}, or drop --gguf-dir to download it")
     if not ready and not a.gguf_dir and not all(sh.exists() and done(sh) for sh in shards):
         for r in elsewhere:                            # already downloaded in a Strata folder on another drive
             cand = [r / "models" / tag / sh.name for sh in shards]
@@ -10804,7 +10861,9 @@ def main() -> int:
         all(s.exists() and (done(s) or a.gguf_dir) for s in shards)
     # #425 (jctaborda): a download that resumes needs room only for what is still missing - the finished shards and
     # the .part files already on the disk count
-    on_disk = sum(f.stat().st_size for s in shards for f in (s, s.with_name(s.name + ".part")) if f.is_file()) / 1e9
+    on_disk = sum(s.stat().st_size if s.is_file() and done(s) else setup_partial_bytes(s,
+                  (file_pin(model_hf(fam, model) + s.name) or (None,))[0] if not ready else None)
+                  for s in shards) / 1e9
     to_fetch = 0 if a.gguf_dir or have_model else max(MODELS[model]["download_gb"] - on_disk, 0)
     if ready and not have_model and MODELS[model].get("prepare") and prepared_done(model, models_dir):
         to_fetch = sum(f[4] for f in ready_needed(model, models_dir)
@@ -10823,18 +10882,19 @@ def main() -> int:
     copy_gb = MODELS[model]["arena_gb"] + 1 if low_ram and not q2_avx and not pack_bin else 0
     if copy_gb:
         copy_gb = remaining_pack_gb(pack_now, copy_gb)
-    real = to_fetch + prep_gb + mtp_fetch + \
-        (40 if q2_avx and not pack_bin else 0) + (1 if vision != "none" else 0) + copy_gb
-    need = real + margin
-    room = room_for_setup_files(models_dir, data, a.gguf_dir)
-    free_now = free_gb(room)
-    problem = disk_room_problem(room, pack_now, real - copy_gb, copy_gb,
-                                (f" ({on_disk:.0f} GB of the model is already there)" if on_disk >= 1 and not have_model else ""))
-    if problem:
-        fail(*problem)
-    if free_now < need:
-        warn(f"little free disk space in {room}: {free_now:.0f} GB free for about {real:.0f} GB of files. "
-             "Setup goes on and should fit; free up space if it stops")
+    pack_gb = (40 if q2_avx and not pack_bin else 0) + copy_gb
+    mmproj = Path(a.models_dir) / fam.get("mmproj", MMPROJ)
+    if not mmproj.exists():
+        mmproj = find_in(roots, f"models/{fam['mmproj']}") or mmproj
+    near = None if mmproj.exists() or vision == "none" else mmproj_beside(
+        a.gguf_dir, fam["mmproj"], (fam.get("mmproj_sha256") or ISTA_FILES.get(fam["mmproj"]) or (None,))[0])
+    if near is not None:
+        mmproj = near
+    picture_gb = 1 if vision != "none" and near is None and not (mmproj.exists() and done(mmproj)) else 0
+    # Each write pays its actual destination, preserving allocated partial-pack credit.
+    check_setup_space([(models_dir, (to_fetch + prep_gb) * 1e9), (pack_now, pack_gb * 1e9),
+                       (data / "mtp", mtp_fetch * 1e9), (mmproj.parent, picture_gb * 1e9)], margin,
+                      detail=(f" ({on_disk:.0f} GB of the model is already there)" if on_disk >= 1 and not have_model else ""))
 
     # ---- 3. python packages
     step(3, "Python packages")
@@ -10904,14 +10964,8 @@ def main() -> int:
         if s.name in fam.get("sha256", {}):
             verify_sha256(s, *fam_pin(fam, s), own=bool(a.gguf_dir))
     ok("model files present")
-    mmproj = Path(a.models_dir) / fam.get("mmproj", MMPROJ)
-    if not mmproj.exists():                            # an earlier install's copy (the same file for every family)
-        mmproj = find_in(roots, f"models/{fam['mmproj']}") or mmproj
     if vision != "none":
-        near = None if mmproj.exists() else mmproj_beside(a.gguf_dir, fam["mmproj"], (fam.get("mmproj_sha256") or ISTA_FILES.get(fam["mmproj"]) or (None,))[0])
-        if near is not None:                           # the person's own folder (or the one above it) has the picture file: used where it is
-            mmproj = near
-        else:
+        if near is None:                              # an owned picture file beside the GGUF is used in place
             download(fam["mmproj_hf"] + fam["mmproj"], mmproj, "vision encoder")
         if fam.get("mmproj_sha256"):                   # the NVFP4 family pins it by size and SHA-256 too
             verify_sha256(mmproj, *fam["mmproj_sha256"])
