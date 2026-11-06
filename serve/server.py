@@ -4061,7 +4061,9 @@ def q36_verify_kv_args(exe: str | None, args: list[str], expected_sha: str | Non
             if at + 1 >= len(args) or args[at + 1] not in ("f32", "f16"):
                 raise ValueError(f"{flag}: Q36 supports only f32 or f16; not applied")
             requested[side] = args[at + 1]
-    if not requested:
+    # Host can bind a capable binary without adding flags for the default F32
+    # path. That expectation still requires an actual-child probe and receipt.
+    if not requested and not expected_sha:
         return None
     cap = q36_probe_kv_capabilities(exe) if exe else None
     if expected_sha and (not cap or cap["binarySha256"] != expected_sha):

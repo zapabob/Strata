@@ -20,7 +20,8 @@ LINE = "Q36_KV_CAPABILITIES " + json.dumps(CAP)
 
 
 class Q36KvContract(unittest.TestCase):
-    def test_real_constructor_refuses_wrong_ready_receipt_and_changed_binary(self):
+    @staticmethod
+    def _constructor_namespace():
         # Execute the real production constructor through the READY gate, replacing
         # process IO only. Do not start a server, engine, model, or GPU operation.
         path = Path(server.__file__)
@@ -31,12 +32,17 @@ class Q36KvContract(unittest.TestCase):
                     and any(isinstance(t, ast.Attribute) and t.attr == "known_ctx" for t in n.targets))
         init.body = init.body[:stop + 1]
         pump = copy.deepcopy(next(n for n in klass.body if isinstance(n, ast.FunctionDef) and n.name == "_ready_pump"))
-        module = ast.fix_missing_locations(ast.Module(body=[ast.ClassDef(name="ReadyPrefix", bases=[], keywords=[], body=[init, pump], decorator_list=[])], type_ignores=[]))
+        verify = copy.deepcopy(next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "q36_verify_kv_args"))
+        module = ast.fix_missing_locations(ast.Module(body=[verify, ast.ClassDef(name="ReadyPrefix", bases=[], keywords=[], body=[init, pump], decorator_list=[])], type_ignores=[]))
         namespace = dict(vars(server))
         namespace.update(engine_nice=lambda env: 0, end_leftover_engines=mock.Mock(),
-                         q36_probe_kv_capabilities=lambda exe: VERIFIED, q36_verify_kv_args=lambda exe, args, sha: VERIFIED,
+                         q36_probe_kv_capabilities=mock.Mock(return_value=VERIFIED),
                          q36_binary_sha256=lambda exe: SHA)
         exec(compile(module, str(path), "exec"), namespace)
+        return namespace
+
+    def test_real_constructor_refuses_wrong_ready_receipt_and_changed_binary(self):
+        namespace = self._constructor_namespace()
         for valid in (True, False):
             proc = mock.Mock(pid=1)
             proc.stdin = io.StringIO()
@@ -57,6 +63,61 @@ class Q36KvContract(unittest.TestCase):
         with self.assertRaisesRegex(OSError, "binary changed"):
             namespace["ReadyPrefix"]("fake", ["--cache-type-k", "f16"], env={"STRATA_REQUIRE_Q36_KV": "1"})
         namespace["popen"].assert_not_called()
+
+    def test_negotiated_flag_free_f32_uses_production_negotiation_and_ready_gate(self):
+        args = ["--max-context", "256"]
+        env = {"STRATA_REQUIRE_Q36_KV": "1", "STRATA_Q36_KV_HOST_SHA256": SHA}
+        receipt = ("INFO kv_layout_version=1 kv_scale_schema=none kv_cache_k=f32 kv_cache_v=f32 "
+                   "kv_context=256 kv_sessions=1 kv_heads=2 kv_head_dim=256 kv_attention_states=11 "
+                   "kv_allocation_bytes=11534336\n")
+        for supplied, valid in ((receipt, True), ("", False),
+                                (receipt.replace("kv_cache_k=f32", "kv_cache_k=f16"), False),
+                                (receipt.replace("11534336", "1"), False),
+                                (receipt.replace("kv_context=256", "kv_context=128"), False)):
+            with self.subTest(receipt=supplied):
+                namespace = self._constructor_namespace()
+                proc = mock.Mock(pid=1, stdin=io.StringIO(), stdout=io.StringIO(supplied + "READY 256 stop\n"))
+                namespace["popen"] = mock.Mock(return_value=proc)
+                original_args = list(args)
+                if valid:
+                    result = namespace["ReadyPrefix"]("fake", args, env=env)
+                    self.assertEqual(result.known_ctx, 256)
+                    proc.kill.assert_not_called()
+                else:
+                    with self.assertRaisesRegex(server.EngineDied, "KV layout"):
+                        namespace["ReadyPrefix"]("fake", args, env=env)
+                    proc.kill.assert_called_once()
+                namespace["q36_probe_kv_capabilities"].assert_called_once_with("fake")
+                self.assertEqual(args, original_args)
+                self.assertEqual(namespace["popen"].call_args.args[1], ["fake", "--serve", *args])
+
+    def test_negotiated_flag_free_f32_rejects_different_or_changed_binary(self):
+        args = ["--max-context", "256"]
+        env = {"STRATA_REQUIRE_Q36_KV": "1", "STRATA_Q36_KV_HOST_SHA256": SHA}
+        for capability in (None, {**VERIFIED, "binarySha256": "cd" * 32}):
+            namespace = self._constructor_namespace()
+            namespace["q36_probe_kv_capabilities"].return_value = capability
+            namespace["popen"] = mock.Mock(side_effect=AssertionError("Unverified binary reached spawn"))
+            with self.assertRaisesRegex(ValueError, "Host-negotiated binary"):
+                namespace["ReadyPrefix"]("fake", args, env=env)
+            namespace["popen"].assert_not_called()
+        namespace = self._constructor_namespace()
+        namespace["q36_binary_sha256"] = lambda exe: "cd" * 32
+        namespace["popen"] = mock.Mock(side_effect=AssertionError("Changed binary reached spawn"))
+        with self.assertRaisesRegex(OSError, "binary changed"):
+            namespace["ReadyPrefix"]("fake", args, env=env)
+        namespace["popen"].assert_not_called()
+
+    def test_legacy_flag_free_f32_without_host_expectation_keeps_ordinary_argv(self):
+        namespace = self._constructor_namespace()
+        proc = mock.Mock(pid=1, stdin=io.StringIO(), stdout=io.StringIO("READY 256 stop\n"))
+        namespace["popen"] = mock.Mock(return_value=proc)
+        args = ["--max-context", "256"]
+        result = namespace["ReadyPrefix"]("legacy", args, env={"STRATA_REQUIRE_Q36_KV": "1"})
+        self.assertEqual(result.known_ctx, 256)
+        self.assertEqual(namespace["popen"].call_args.args[1], ["legacy", "--serve", "--max-context", "256"])
+        namespace["q36_probe_kv_capabilities"].assert_not_called()
+        proc.kill.assert_not_called()
 
     def test_schema_is_strict_and_proposals_never_become_capabilities(self):
         self.assertEqual(server.q36_parse_kv_capabilities(LINE), CAP)
