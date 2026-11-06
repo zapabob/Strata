@@ -13,7 +13,7 @@ const controls = `import React from 'react';
 export const Btn=({children,onClick,disabled})=>React.createElement('button',{onClick,disabled},children);
 export const Select=({ariaLabel,value,options,onChange,disabled})=>React.createElement('select',{'aria-label':ariaLabel,value,disabled,onChange:e=>onChange(e.target.value)},options.map(o=>React.createElement('option',{key:o.value,value:o.value},o.label)));
 export const Screen=({children})=>React.createElement('main',null,children);
-export const ErrorNotice=({message})=>React.createElement('p',{role:'alert'},message);
+export const ErrorNotice=({message,onRetry})=>React.createElement('div',{role:'alert'},message,onRetry?React.createElement('button',{onClick:onRetry},'Try again'):null);
 export const Dialog=()=>null,Icon=()=>null,VersionPicker=()=>null,FamilySwitch=()=>null,PcComputer=()=>null,GpuRoles=()=>null,DownloadParts=()=>null,EngineWarning=()=>null,EngineUpdateCard=()=>null,EngineUpdateDialog=()=>null,NativeDeleteDialog=()=>null,NativeSettingsFile=()=>null,NativeTune=()=>null,NativeTuneBadge=()=>null,NativePresets=()=>null,NativeMcpEditor=()=>null,RunImageModel=()=>null;`;
 const boundaries = {
     ui: controls,
@@ -55,6 +55,51 @@ async function fixture(t,kind='settings',jobs=[]) {
 const values = n=>({values:{sampling:{temperature:n}},mcp:{},fields:[]});
 async function settle(page,index,value,error=false){await page.evaluate(({index,value,error})=>{const r=window.__requests[index];error?r.reject(Error(value)):r.resolve(value)}, {index,value,error});await page.evaluate(()=>new Promise(r=>setTimeout(r,0)));}
 async function settingsReady(page,index,n){await page.waitForFunction(i=>window.__requests.length>i,index);await settle(page,index,values(n));await page.locator('details.native-settings').evaluate(el=>el.open=true);await page.getByRole('tab',{name:'JSON',exact:true}).click();}
+
+test('settings expansion during a pending GET survives successful settlement',async t=>{
+    const p=await fixture(t);const panel=p.locator('details.native-settings');
+    await p.waitForFunction(()=>window.__requests.length===1);
+    assert.equal(await panel.evaluate(el=>el.open),false);
+    assert.equal(await panel.getByText('Reading saved settings…',{exact:true}).count(),1);
+    await panel.locator(':scope > summary').click();
+    assert.equal(await panel.getByRole('status').isVisible(),true);
+    await settle(p,0,values(0.3));
+    assert.equal(await panel.evaluate(el=>el.open),true,'GET success must preserve the user expansion');
+    assert.equal(await panel.getByRole('searchbox',{name:'Search native parameters'}).isVisible(),true);
+    const temperature=panel.locator('.native-setting-row input').first();
+    assert.equal(await temperature.isVisible(),true);assert.equal(await temperature.inputValue(),'0.3');
+    await panel.getByRole('tab',{name:'JSON',exact:true}).click();
+    assert.equal(JSON.parse(await panel.getByRole('textbox',{name:'Native configuration JSON'}).inputValue()).sampling.temperature,0.3);
+});
+test('settings stays initially closed and accepts manual collapse after a successful GET',async t=>{
+    const p=await fixture(t);const panel=p.locator('details.native-settings');
+    await p.waitForFunction(()=>window.__requests.length===1);await settle(p,0,values(0.3));
+    assert.equal(await panel.evaluate(el=>el.open),false);
+    const summary=panel.locator(':scope > summary');await summary.click();
+    assert.equal(await panel.getByRole('searchbox',{name:'Search native parameters'}).isVisible(),true);
+    await summary.click();await p.evaluate(s=>window.__putNative(s),state([]));
+    assert.equal(await panel.evaluate(el=>el.open),false);
+});
+for(const collapse of [false,true]) test(`settings load error expands and retry preserves the user's ${collapse?'collapsed':'expanded'} choice`,async t=>{
+    const p=await fixture(t);const panel=p.locator('details.native-settings');const summary=panel.locator(':scope > summary');
+    await p.waitForFunction(()=>window.__requests.length===1);await settle(p,0,'current load failed',true);
+    assert.equal(await panel.evaluate(el=>el.open),true);
+    assert.equal(await panel.getByRole('alert').isVisible(),true);
+    await panel.locator('.native-settings-diagnostic > summary').click();
+    assert.equal(await panel.getByText('current load failed',{exact:true}).isVisible(),true);
+    await summary.click();await p.evaluate(s=>window.__putNative(s),state([]));
+    assert.equal(await panel.evaluate(el=>el.open),false,'an existing error must allow manual collapse');
+    await summary.click();await panel.getByRole('button',{name:'Try again',exact:true}).click();
+    await p.waitForFunction(()=>window.__requests.length===2);
+    assert.equal(await panel.evaluate(el=>el.open),true,'retry must preserve the open panel');
+    assert.equal(await panel.getByRole('status').isVisible(),true);
+    if(collapse) await summary.click();
+    await settle(p,1,values(0.6));
+    assert.equal(await panel.evaluate(el=>el.open),!collapse,'retry success must preserve the current choice');
+    assert.equal(await panel.getByRole('alert').count(),0);
+    if(collapse) await summary.click();
+    assert.equal(await panel.getByRole('searchbox',{name:'Search native parameters'}).isVisible(),true);
+});
 
 for(const fail of [false,true]) test(`settings model B ignores model A PATCH ${fail?'failure':'success'} and finally`,async t=>{
     const p=await fixture(t);await settingsReady(p,0,0.1);await p.getByRole('textbox',{name:'Native configuration JSON'}).fill(JSON.stringify({sampling:{temperature:0.2}}));await p.getByRole('button',{name:'Save settings',exact:true}).click();
