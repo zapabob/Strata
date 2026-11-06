@@ -1,19 +1,26 @@
 # Hakua Windows release qualification
 
-## Startup repair candidate: 0.5.1
+## Windows release: 0.5.1
 
-This candidate is not published. Product, Control and native CUDA source are
-`0.5.1`; the published download remains `0.5.0` below. Metal source and the
-independent PrismML, TurboQuant and Hakua-memory packages retain their versions.
+Product, Control and the native CUDA package are `0.5.1`. The immutable release
+is `v0.5.1`; `latest` and GitHub Latest select it after publication. The release
+page records publication and anonymous-download checks. Metal source remains
+`0.5.0-metal`; PrismML/TurboQuant and Hakua-memory retain their package versions.
+The previous 0.5.0 results are retained below as historical evidence.
 
 The Host now starts without loading the remembered or newly discovered model.
 The selected model and library remain saved; **Load** starts the chosen model.
 Two real-Host regression scenarios pass. A local hotfix in the installed 0.5.0
 app was checked through its actual WebView2 with Playwright: ten seconds of
 startup remained unloaded and stopped, with no page errors or registry changes.
-This hotfix is not an installed 0.5.1 release package.
+The later 0.5.1 NSIS package was extracted, compared with the staged payload,
+self-tested and checked through real WebView2. Its in-place installation and
+manual startup checks passed while preserving the user profile and models.
+The installed payload matched 29,462 archive files and preserved all 665
+backed-up user files. Ten one-second startup observations stayed unloaded;
+the normal profile selected Host, shell, Control and signed engine 0.5.1.
 
-The native candidate reports model and expert-pack verification progress. Its
+The native engine reports model and expert-pack verification progress. Its
 Windows sequential verification uses bounded aligned I/O where supported. After
 a complete SHA-256 and CRC check, unchanged NTFS files can reuse a local receipt
 protected with Windows DPAPI. File identity, size, change time and USN must match;
@@ -36,12 +43,17 @@ first owner, same-owner prefix reuse, a different owner, missing owner,
 decode cancellation, and clearing after cancellation. The same-owner request
 reused four tokens; the other requests reused none. These used four or five
 synthetic input token IDs, not a full 4096-token prompt or a quality benchmark.
-The lowest sampled available RAM across packaging and qualification was
+The lowest sampled available RAM during native qualification was
 4.48 GiB, above the unchanged 3 GiB floor. The runtime hashes and model/pack
 sizes and modification timestamps matched before and after the trial.
 
-The final installer and installed-package check are still pending. These
-results do not qualify a 98K or 131K context window, FP16 KV, or CUDA 13.5.
+The NSIS payload, thirteen production self-tests, packaged WebView2 checks,
+in-place installation and signed component import passed. These results do not
+qualify a 98K or 131K context window, FP16 KV, or CUDA 13.5. The initial installer
+build stopped because Windows PowerShell treated an informational stderr line
+as an error; the PowerShell 7 retry passed. The digest expectation test was
+updated for the measured engine and its eleven cases passed on rerun; the other
+thirteen focused host cases passed in the first run.
 
 CUDA 13.5 evaluation is separate from the startup repair. The opt-in
 `tools/bench_cuda135.cu` measures the existing transfer modes and FP16/BF16 GEMMs
@@ -59,6 +71,16 @@ across the three transfer modes. Numerical fixtures and byte comparisons passed.
 These are small synthetic measurements, not model throughput or a compiler A/B
 comparison. They do not justify enabling every new path by default.
 
+### 0.5.1 build identities
+
+Native source is fixed at `00ce436f69a984304cbbd8da276da0ec1de9b3a3`.
+`strata.exe` SHA-256 is
+`e75716a9d5deb6289e87741d42e7003ba82b7696f6121d5203e615d9fe596a96`.
+Host and shell source is fixed at `15fa71ef5e0bab3b4669c711d55eb6ba43e1cec9`.
+The installer is 112,006,044 bytes, SHA-256
+`8af65aec986a22999a85ae9d84ef6c85746848c173b9df2e08fbd98cc89fdf33`.
+Subsequent documentation-only commits do not change these payloads.
+
 ## Windows release: 0.5.0
 
 Publication policy: release 0.5.0 with the known limits recorded below. Native
@@ -68,7 +90,7 @@ Publishing this version does not change those failed or NOT_RUN results. The
 prepared 0.4.1 packaging-only candidate was superseded by this integration.
 
 Product, native CUDA engine and Control are independently versioned as `0.5.0`.
-The immutable release tag is `v0.5.0`; `latest` identifies the same commit.
+The immutable release tag is `v0.5.0`; `latest` selected that commit when 0.5.0 was published.
 The [release page](https://github.com/zapabob/Strata/releases/tag/v0.5.0) records
 publication and public-download verification. Existing historical assets remain unchanged. Metal source is `0.5.0-metal`, with no newly qualified
 Metal package. PrismML/TurboQuant remain `0.4.0`; Hakua-memory remains `0.3.5`.

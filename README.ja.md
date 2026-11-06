@@ -1,6 +1,6 @@
 # Hakua / Strata
 
-このソースツリーでは0.5.1（`Strata-0.5.1-windows-x64-setup.exe`）を準備しています。起動時のモデル自動読み込みを停止し、Qwen3.6の起動処理を修正します。この候補版は未公開で、実モデルの起動確認も未完了です。以下の公開済みダウンロードは0.5.0です。
+0.5.1では起動時のモデル自動読み込みを停止し、ネイティブQwen3.6の起動処理を修正しました。既存モデルと検証済みexpert packは保持します。
 
 ローカルの言語モデルをWindowsのデスクトップ画面から使うアプリです。
 チャット、モデルの準備と読み込み、ツール、任意のHakuaメモリーを利用できます。
@@ -11,27 +11,27 @@
 
 ## Windows版の導入
 
-0.5.0にはネイティブQwen3.6の起動に既知の制限があります。4K設定の試験は6分以内に起動完了せず、会話キャッシュ分離の実機要求は未実施です。導入前に[検証結果と制限](docs/HAKUA_RELEASE.md)をご確認ください。
+ネイティブQwen3.6は4096セル設定で41.250秒でREADYに到達し、短い会話キャッシュ分離試験6件を通過しました。98K／131Kの全文入力、FP16／NVFP4での実モデル品質は未検証です。[検証結果と制限](docs/HAKUA_RELEASE.md)をご確認ください。
 
 Windows x64 CUDA sm_120向けのリリースです。RTX 5060 Ti（VRAM 16GB）・RAM 32GBの実機で確認しました。導入前に[検証結果と残っている制限](docs/HAKUA_RELEASE.md)をご覧ください。
 
-製品バージョンは **0.5.0** です。配布物はsetup EXEとチェックサムです。
+製品バージョンは **0.5.1** です。配布物はsetup EXEとチェックサムです。
 Windowsコード署名のない、手動更新用のリリースです。
 
-1. [Windowsインストーラー](https://github.com/zapabob/Strata/releases/download/v0.5.0/Strata-0.5.0-windows-x64-setup.exe)を取得し、
-   [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.5.0/SHA256SUMS.txt)と照合します。
+1. [Windowsインストーラー](https://github.com/zapabob/Strata/releases/download/v0.5.1/Strata-0.5.1-windows-x64-setup.exe)を取得し、
+   [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.5.1/SHA256SUMS.txt)と照合します。
 2. 導入済みの場合はトレイも含めてStrataを終了してから実行します。
    モデルと個人データはアプリのインストール先とは別の場所に保存してください。
-3. 準備画面から署名済みCUDAコンポーネントを導入します。latest配信先、または同梱の`strata-engine-0.5.0-windows-x86_64-cuda-cuda13.tar.gz`を使用できます。専用Node・Pythonを同梱しているため、別途の導入やpip、コンパイラーは不要です。
+3. 準備画面から署名済みCUDAコンポーネントを導入します。latest配信先、または同梱の`strata-engine-0.5.1-windows-x86_64-cuda-cuda13.tar.gz`を使用できます。専用Node・Pythonを同梱しているため、別途の導入やpip、コンパイラーは不要です。
 4. PCに収まるモデルを選びます。手元のGGUFは「ローカルGGUFを使用」から選択できます。
 
 詳しい手順は[導入ガイド](docs/HAKUA_INSTALL.md)、検証条件は[リリース記録](docs/HAKUA_RELEASE.md)、
-配布物は[リリースページ](https://github.com/zapabob/Strata/releases/tag/v0.5.0)をご覧ください。
+配布物は[リリースページ](https://github.com/zapabob/Strata/releases/tag/v0.5.1)をご覧ください。
 このフォーク専用のインストーラーとコンポーネント配信先を使用します。
 
-バージョンは[SemVer 2.0.0](https://semver.org/)に従い、アプリが`0.5.0`、ネイティブエンジンが`0.5.0`、Controlが`0.5.0`です。変更のないPrismML／TurboQuantは`0.4.0`のままです。通常のアプリ導入先はCドライブの`%LOCALAPPDATA%\Programs\Strata`で、モデルの保存先とは別です。既存環境では以前の導入先を引き継ぐ場合があります。
+バージョンは[SemVer 2.0.0](https://semver.org/)に従い、アプリが`0.5.1`、ネイティブエンジンが`0.5.1`、Controlが`0.5.1`です。変更のないPrismML／TurboQuantは`0.4.0`のままです。通常のアプリ導入先はCドライブの`%LOCALAPPDATA%\Programs\Strata`で、モデルの保存先とは別です。既存環境では以前の導入先を引き継ぐ場合があります。
 
-NSISインストーラーは、署名済みCUDAコンポーネント、Control、チェックサム、導入手順と一緒に[tar.7z一括パッケージ](https://github.com/zapabob/Strata/releases/download/v0.5.0/Strata-0.5.0-windows-x64.tar.7z)にも収録します。モデルの重みや個人データは含みません。公開には`v0.5.0`、同じコミットを指す`latest`タグ、GitHubのLatest指定を使用します。
+NSISインストーラーは、署名済みCUDAコンポーネント、Control、チェックサム、導入手順と一緒に[tar.7z一括パッケージ](https://github.com/zapabob/Strata/releases/download/v0.5.1/Strata-0.5.1-windows-x64.tar.7z)にも収録します。モデルの重みや個人データは含みません。公開には`v0.5.1`、同じコミットを指す`latest`タグ、GitHubのLatest指定を使用します。
 
 ## すでにあるモデルを使う
 
@@ -63,15 +63,15 @@ GGUF内の名前が`Hf`などの一般的な値なら、識別できるようフ
 
 | 構成 | バージョン・配布先 |
 | --- | --- |
-| GUI / Host | `0.5.0` |
-| ネイティブエンジン | `0.5.0` |
-| Control | `0.5.0` |
+| GUI / Host | `0.5.1` |
+| ネイティブエンジン | `0.5.1` |
+| Control | `0.5.1` |
 | 専用ランタイム | Node `24.22.2`、CPython `3.12.15` |
 | Hakua-memory | `0.3.5` |
 | CUDA / PrismML / TurboQuantの配布候補 | [リリース状況](docs/HAKUA_RELEASE.md) |
 | 参照した上流ソース | `5d37280d`、上流`0.2.11` |
 
-0.5.0は公式0.2.11と`5d37280d`までの修正を取り込みます。チャットごとのファイル保存、生成中の再接続、IME入力と画面復旧、モデル一覧、ストリーム分離、Pillow 13の更新を含みます。Hakuaメモリ、既存GGUFの再利用、Qwen3.6のプライベートキャッシュは維持します。新しいCUDAビルドは個別に検証し、過去の0.4.1の測定値を新しい既定値の実績として扱いません。ネイティブでの全文入力は未検証です。[検証・公開状況](docs/HAKUA_RELEASE.md)をご覧ください。
+0.5.1は公式0.2.11と`5d37280d`までの修正を取り込みます。チャットごとのファイル保存、生成中の再接続、IME入力と画面復旧、モデル一覧、ストリーム分離、Pillow 13の更新を含みます。Hakuaメモリ、既存GGUFの再利用、Qwen3.6のプライベートキャッシュは維持します。新しいCUDAビルドは個別に検証し、過去の0.4.1の測定値を新しい既定値の実績として扱いません。ネイティブでの全文入力は未検証です。[検証・公開状況](docs/HAKUA_RELEASE.md)をご覧ください。
 
 対応モデルを読み込んだ後、サイドバーのHakuaメモリーを開きます。
 記憶の読み取りと保存は、それぞれの発言で個別に選択します。

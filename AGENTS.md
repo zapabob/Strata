@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Hakua product version 0.5.1, engine 0.5.1 (Metal source 0.5.0-metal); Windows x64 CUDA sm_120 0.5.1 candidate; measured checks and publication status are in docs/HAKUA_RELEASE.md. Integrated upstream Niko1221 0.2.11 plus main fixes at 5d37280d and documentation through 9f7d977d (upstream engine 0.1.57, taken as source; this fork's native engine/Control package is independently versioned). Upstream reference: the public model families are DeepSeekV4.1-Flash-1017,
+Hakua product version 0.5.1, engine 0.5.1 (Metal source 0.5.0-metal); Windows x64 CUDA sm_120 release; measured checks and publication status are in docs/HAKUA_RELEASE.md. Integrated upstream Niko1221 0.2.11 plus main fixes at 5d37280d and documentation through 9f7d977d (upstream engine 0.1.57, taken as source; this fork's native engine/Control package is independently versioned). Upstream reference: the public model families are DeepSeekV4.1-Flash-1017,
 Qwen3.8-Flash-Next and Qwen3.6-35B-A3B. DeepSeek V4.1-Flash runs in the app and in the Terminal
 (`strata launch --family deepseek41 --model ist-das-2.00bpw`; sets in
 [docs/MODELS.md](docs/MODELS.md#deepseek-v41-flash)). Read **[docs/AI_REFERENCE.md](docs/AI_REFERENCE.md)** for model availability, APIs, hardware limits and
@@ -13,7 +13,7 @@ existing executable defaults may differ, so inspect the plan and choose the fami
 
 ## Installing this Hakua fork
 
-For a Hakua Windows request, use [docs/HAKUA_INSTALL.md](docs/HAKUA_INSTALL.md) and the [fork release](https://github.com/zapabob/Strata/releases/tag/v0.5.0): `Strata-0.5.0-windows-x64-setup.exe`. The same NSIS installer, signed CUDA component, Control and instructions are also in `Strata-0.5.0-windows-x64.tar.7z`. The app includes private Node/Python, Control 0.5.0 and Hakua-memory 0.3.5. The signed stable feed offers native engine 0.5.0; unchanged PrismML/PQ2_0 and TurboQuant packages remain 0.4.0. Use the immutable SemVer tag `v0.5.0`, the `latest` alias and GitHub Latest. Preserve older published assets. Read [docs/HAKUA_RELEASE.md](docs/HAKUA_RELEASE.md) for the measured limits and actual publication status. Native Qwen3.6 did not reach READY within the bounded six-minute 4K trial; private-cache requests and full-window generation are not qualified.
+For a Hakua Windows request, use [docs/HAKUA_INSTALL.md](docs/HAKUA_INSTALL.md) and the [fork release](https://github.com/zapabob/Strata/releases/tag/v0.5.1): `Strata-0.5.1-windows-x64-setup.exe`. The same NSIS installer, signed CUDA component, Control and instructions are also in `Strata-0.5.1-windows-x64.tar.7z`. The app includes private Node/Python, Control 0.5.1 and Hakua-memory 0.3.5. The signed stable feed offers native engine 0.5.1; unchanged PrismML/PQ2_0 and TurboQuant packages remain 0.4.0. Use the immutable SemVer tag `v0.5.1`, the `latest` alias and GitHub Latest. Preserve older published assets. Read [docs/HAKUA_RELEASE.md](docs/HAKUA_RELEASE.md) for the measured limits and actual publication status. Native mapped-pack Qwen3.6 startup and six short private-cache requests passed with 4096 context cells. Full-window generation and low-precision model quality remain unqualified.
 
 The model-family overview above is upstream reference. This fork Windows release has no native image input or separate native DeepSeek engine. See docs/HAKUA_RELEASE.md for the measured paths and limits.
 

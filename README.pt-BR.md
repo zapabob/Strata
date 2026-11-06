@@ -1,6 +1,6 @@
 # Strata · Hakua
 
-Este código prepara a versão 0.5.1 (`Strata-0.5.1-windows-x64-setup.exe`), com carregamento manual de modelos e correções na inicialização do Qwen3.6. Esta versão candidata ainda não foi publicada nem validada na inicialização de um modelo real. O download publicado abaixo continua na versão 0.5.0.
+A versão 0.5.1 carrega modelos manualmente e corrige a inicialização do Qwen3.6 nativo. Preserva os modelos existentes e os pacotes de especialistas verificados.
 
 Modelos locais, chat, ferramentas e memória Hakua opcional. Este é o [fork de zapabob](https://github.com/zapabob/Strata) de [Niko1221/Strata](https://github.com/Niko1221/Strata).
 
@@ -8,20 +8,20 @@ Modelos locais, chat, ferramentas e memória Hakua opcional. Este é o [fork de 
 
 ## Versão para Windows
 
-A versão 0.5.0 tem uma limitação conhecida na inicialização do Qwen3.6 nativo: o teste com contexto de 4K não atingiu READY em seis minutos; as solicitações de isolamento de cache privado não foram executadas. Leia os [resultados e limites](docs/HAKUA_RELEASE.md) antes de instalar.
+O Qwen3.6 nativo atingiu READY em 41,250 segundos com capacidade de 4096 células e passou em seis testes curtos de cache privado. Entradas completas de 98K/131K e a qualidade do modelo com FP16/NVFP4 não foram validadas. Leia os [resultados e limites](docs/HAKUA_RELEASE.md).
 
 Esta versão se destina ao Windows x64 CUDA sm_120. As verificações locais usaram uma RTX 5060 Ti com 16 GB de VRAM e 32 GB de RAM. Leia os [resultados e limites restantes](docs/HAKUA_RELEASE.md) antes de instalar.
 
-**0.5.0** exige atualização manual e não tem assinatura de código do Windows. [Versão](https://github.com/zapabob/Strata/releases/tag/v0.5.0) · [Instalação](docs/HAKUA_INSTALL.md) · [Testes e limites](docs/HAKUA_RELEASE.md).
+**0.5.1** exige atualização manual e não tem assinatura de código do Windows. [Versão](https://github.com/zapabob/Strata/releases/tag/v0.5.1) · [Instalação](docs/HAKUA_INSTALL.md) · [Testes e limites](docs/HAKUA_RELEASE.md).
 
-1. Baixe o [instalador](https://github.com/zapabob/Strata/releases/download/v0.5.0/Strata-0.5.0-windows-x64-setup.exe) e compare seu hash com [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.5.0/SHA256SUMS.txt).
+1. Baixe o [instalador](https://github.com/zapabob/Strata/releases/download/v0.5.1/Strata-0.5.1-windows-x64-setup.exe) e compare seu hash com [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.5.1/SHA256SUMS.txt).
 2. Feche o Strata, inclusive o ícone na bandeja, e execute o instalador. Mantenha modelos e dados pessoais fora da pasta do aplicativo.
-3. Instale o componente CUDA assinado na tela de preparação pelo canal latest ou pelo arquivo incluído `strata-engine-0.5.0-windows-x86_64-cuda-cuda13.tar.gz`.
+3. Instale o componente CUDA assinado na tela de preparação pelo canal latest ou pelo arquivo incluído `strata-engine-0.5.1-windows-x86_64-cuda-cuda13.tar.gz`.
 4. Escolha um modelo adequado ou **Use a local GGUF** para arquivos existentes. Node e Python já estão incluídos; não é necessário um interpretador do sistema nem um compilador.
 
-As versões seguem [SemVer 2.0.0](https://semver.org/): aplicativo `0.5.0`, mecanismo nativo `0.5.0`; Control `0.5.0`; os ambientes PrismML/TurboQuant sem alterações permanecem em `0.4.0`. O local habitual do aplicativo é `%LOCALAPPDATA%\Programs\Strata` em C:, separado dos modelos. Uma instalação existente pode manter outro local.
+As versões seguem [SemVer 2.0.0](https://semver.org/): aplicativo `0.5.1`, mecanismo nativo `0.5.1`; Control `0.5.1`; os ambientes PrismML/TurboQuant sem alterações permanecem em `0.4.0`. O local habitual do aplicativo é `%LOCALAPPDATA%\Programs\Strata` em C:, separado dos modelos. Uma instalação existente pode manter outro local.
 
-O [pacote tar.7z](https://github.com/zapabob/Strata/releases/download/v0.5.0/Strata-0.5.0-windows-x64.tar.7z) inclui o mesmo instalador NSIS, o componente CUDA assinado, Control, as somas de verificação e as instruções. Modelos e dados pessoais não estão incluídos. A publicação usa `v0.5.0`, o alias de tag `latest` e GitHub Latest.
+O [pacote tar.7z](https://github.com/zapabob/Strata/releases/download/v0.5.1/Strata-0.5.1-windows-x64.tar.7z) inclui o mesmo instalador NSIS, o componente CUDA assinado, Control, as somas de verificação e as instruções. Modelos e dados pessoais não estão incluídos. A publicação usa `v0.5.1`, o alias de tag `latest` e GitHub Latest.
 
 ## Reutilizar modelos existentes
 
@@ -43,9 +43,9 @@ Abra **Hakua memory** na barra lateral. Ler e salvar dependem de consentimentos 
 
 ## Componentes e limites
 
-Aplicativo/Host: `0.5.0`; mecanismo nativo: `0.5.0`; Control `0.5.0`; Node: `24.22.2`; CPython: `3.12.15`; Hakua-memory: `0.3.5`. Referência upstream: `5d37280d` / `0.2.11`.
+Aplicativo/Host: `0.5.1`; mecanismo nativo: `0.5.1`; Control `0.5.1`; Node: `24.22.2`; CPython: `3.12.15`; Hakua-memory: `0.3.5`. Referência upstream: `5d37280d` / `0.2.11`.
 
-0.5.0 integra o upstream 0.2.11 e correções até `5d37280d`: arquivos por conversa, reconexão de respostas ativas, correções de IME e do renderizador, novos modelos, isolamento de fluxos e Pillow 13. Preserva a memória Hakua, a reutilização de GGUF locais e os caches privados do Qwen3.6. A nova compilação CUDA exige verificação própria; as medições de 0.4.1 não validam os novos padrões. A geração nativa com toda a janela permanece sem validação. Consulte os [testes e o estado de publicação](docs/HAKUA_RELEASE.md).
+0.5.1 integra o upstream 0.2.11 e correções até `5d37280d`: arquivos por conversa, reconexão de respostas ativas, correções de IME e do renderizador, novos modelos, isolamento de fluxos e Pillow 13. Preserva a memória Hakua, a reutilização de GGUF locais e os caches privados do Qwen3.6. A nova compilação CUDA exige verificação própria; as medições de 0.4.1 não validam os novos padrões. A geração nativa com toda a janela permanece sem validação. Consulte os [testes e o estado de publicação](docs/HAKUA_RELEASE.md).
 
 Os testes Windows x64 abrangem RTX 5060 Ti, CUDA sm_120 e 32 GB de RAM. Não qualificam outros GPUs ou sistemas, entrada nativa de imagens ou um mecanismo nativo DeepSeek separado. A alocação legada do Qwen3.6 na RAM pode exigir cerca de 18,7 GiB mais reserva; 32 GB não garantem a inicialização. Uma resposta curta com contexto de 131.072 tokens não valida toda a janela nem sua qualidade. Os modos K do TurboQuant continuam desativados após falhas nos testes de qualidade. Spin(8), Triality, Query-v3 e Bonsai são experimentos opcionais. Desempenho e recursos necessários dependem do modelo e do computador.
 

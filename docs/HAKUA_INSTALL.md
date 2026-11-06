@@ -1,17 +1,17 @@
 # Install Hakua / Strata on Windows
 
-Product `0.5.0` uses native engine `0.5.0`, Control `0.5.0` and Hakua-memory `0.3.5`.
+Product `0.5.1` uses native engine `0.5.1`, Control `0.5.1` and Hakua-memory `0.3.5`.
 PrismML and TurboQuant retain their independently verified `0.4.0` runtime packages.
 This is a Windows x64 CUDA sm_120 release, tested on an RTX 5060 Ti with 16 GB VRAM and
 32 GB system RAM. See the [release record](HAKUA_RELEASE.md) for publication status,
-exact tests and limits. Native Qwen3.6 did not reach READY within the six-minute
-4K startup trial; its private-cache requests did not run. Do not treat this release
-as a verified native Qwen3.6 startup or full-context-window result.
+exact tests and limits. Native Qwen3.6 reached READY in 41.250 seconds with a
+4096-cell configuration and passed six short scoped-cache requests. Full 98K/131K
+input and low-precision model quality are not qualified. Model loading is manual.
 
 ## Install or update
 
-Download the [Windows setup EXE](https://github.com/zapabob/Strata/releases/download/v0.5.0/Strata-0.5.0-windows-x64-setup.exe)
-and compare it with [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.5.0/SHA256SUMS.txt).
+Download the [Windows setup EXE](https://github.com/zapabob/Strata/releases/download/v0.5.1/Strata-0.5.1-windows-x64-setup.exe)
+and compare it with [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.5.1/SHA256SUMS.txt).
 The desktop installer has no Windows code signature. Component signatures and checksums
 are separate checks; they are not Windows executable signing.
 
@@ -27,12 +27,12 @@ folder does not move them. Leave existing model files where they are and select
 that model folder in Strata. System Node, Python, pip and compilers are not required.
 
 GPU runtimes are separate from the NSIS app. The signed stable feed supplies
-`strata-engine-0.5.0-windows-x86_64-cuda-cuda13.tar.gz`; it can also be downloaded
-from the [release](https://github.com/zapabob/Strata/releases/tag/v0.5.0) and imported
+`strata-engine-0.5.1-windows-x86_64-cuda-cuda13.tar.gz`; it can also be downloaded
+from the [release](https://github.com/zapabob/Strata/releases/tag/v0.5.1) and imported
 on the preparation screen. The app checks the signature and file hashes before
 activation. Previous releases remain available for rollback.
 
-For one download, use [Strata-0.5.0-windows-x64.tar.7z](https://github.com/zapabob/Strata/releases/download/v0.5.0/Strata-0.5.0-windows-x64.tar.7z).
+For one download, use [Strata-0.5.1-windows-x64.tar.7z](https://github.com/zapabob/Strata/releases/download/v0.5.1/Strata-0.5.1-windows-x64.tar.7z).
 Extract the 7z, then the tar. The folder contains the same setup EXE, signed CUDA
 component, Control ZIP, feed, install scripts and INSTALL.md. Check the outer
 SHA256SUMS.txt before extraction, and BUNDLE-SHA256SUMS.txt inside. Models and
@@ -89,21 +89,22 @@ Windows release. Other GPUs, HIP, SYCL, Linux and Metal need their own builds an
 
 ## 日本語の導入手順
 
-ネイティブQwen3.6は4K設定でも6分以内に起動完了せず、会話キャッシュ分離の
-実機要求は未実施です。この制限を確認してから導入してください。
+ネイティブQwen3.6は4096セル設定で41.250秒で起動し、短いキャッシュ分離試験6件を
+通過しました。98K／131Kの全文入力や低精度での品質を保証する結果ではありません。
+起動時にはモデルを自動読み込みせず、利用者が読み込みを開始します。
 
-`0.5.0`のsetup EXEとチェックサムを取得します。更新前にモデルをアンロードし、
+`0.5.1`のsetup EXEとチェックサムを取得します。更新前にモデルをアンロードし、
 トレイのStrataも終了してから、一度だけインストーラーを実行してください。
 Cドライブに入れる場合は、導入先を`%LOCALAPPDATA%\Programs\Strata`に指定します。
 以前Hドライブを選んだ環境では、その場所が引き継がれることがあります。
 モデル・会話・記憶の保存先は別なので、モデルを移したり消したりする必要はありません。
 
 専用Node・Pythonは同梱されています。GPUエンジンは別配布で、署名付きのstable配信から
-`strata-engine-0.5.0-windows-x86_64-cuda-cuda13.tar.gz`を取得します。同じリリースページから
+`strata-engine-0.5.1-windows-x86_64-cuda-cuda13.tar.gz`を取得します。同じリリースページから
 ダウンロードして準備画面で読み込むこともできます。署名と全ファイルのハッシュを
 確認してから有効化します。旧コンポーネントはロールバック用に残します。
 
-一括で取得する場合は`Strata-0.5.0-windows-x64.tar.7z`を使います。7z、tarの順で展開すると、
+一括で取得する場合は`Strata-0.5.1-windows-x64.tar.7z`を使います。7z、tarの順で展開すると、
 同じNSISインストーラー、署名付きエンジン、Control、配信情報、導入スクリプト、説明書が
 入っています。モデルや個人データは含まれません。検証済みの範囲と既知の制限は
 [リリース記録](HAKUA_RELEASE.md)で確認してください。

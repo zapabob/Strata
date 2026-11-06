@@ -1,6 +1,6 @@
 # Hakua / Strata
 
-The source tree prepares 0.5.1 (`Strata-0.5.1-windows-x64-setup.exe`): manual model loading and Qwen3.6 startup fixes. This candidate is not published or qualified for real-model startup yet. The published download below remains 0.5.0.
+Version 0.5.1 adds manual model loading and fixes native Qwen3.6 startup. Existing models and verified expert packs are retained.
 
 Run local language models in a Windows desktop app, with chat, model controls,
 tools and optional Hakua memory. This is the [zapabob fork](https://github.com/zapabob/Strata)
@@ -10,28 +10,28 @@ of [Niko1221/Strata](https://github.com/Niko1221/Strata).
 
 ## Windows release
 
-Release 0.5.0 has a known native Qwen3.6 startup limitation: the 4K trial did not reach READY within six minutes; private-cache requests were not run. Read the [test results and limits](docs/HAKUA_RELEASE.md) before installing.
+Native Qwen3.6 reached READY in 41.250 seconds with a 4096-cell configuration and passed six short private-cache checks. A full 98K/131K input and FP16/NVFP4 model quality are not qualified. Read the [test results and limits](docs/HAKUA_RELEASE.md).
 
 This release targets Windows x64 CUDA sm_120. Local checks used an RTX 5060 Ti with 16 GB VRAM and 32 GB RAM. Read the [release checks and remaining limits](docs/HAKUA_RELEASE.md) before installing.
 
-Product version: **0.5.0**. The release contains the setup EXE
+Product version: **0.5.1**. The release contains the setup EXE
 and its checksums. It uses manual updates and has no Windows code signature.
 
-1. Get the [Windows installer](https://github.com/zapabob/Strata/releases/download/v0.5.0/Strata-0.5.0-windows-x64-setup.exe)
-   and compare it with [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.5.0/SHA256SUMS.txt).
+1. Get the [Windows installer](https://github.com/zapabob/Strata/releases/download/v0.5.1/Strata-0.5.1-windows-x64-setup.exe)
+   and compare it with [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.5.1/SHA256SUMS.txt).
 2. Quit an existing Strata instance, including the tray app, then run the installer.
    Keep models and personal data outside the application folder.
-3. Install the signed CUDA component from the preparation screen, using the latest feed or the included `strata-engine-0.5.0-windows-x86_64-cuda-cuda13.tar.gz`. Node and Python are included; no system interpreter, pip or compiler is needed.
+3. Install the signed CUDA component from the preparation screen, using the latest feed or the included `strata-engine-0.5.1-windows-x86_64-cuda-cuda13.tar.gz`. Node and Python are included; no system interpreter, pip or compiler is needed.
 4. Choose a model that fits the computer, or select **Use a local GGUF** for
    files already on disk.
 
 See [installation](docs/HAKUA_INSTALL.md), [release checks and limits](docs/HAKUA_RELEASE.md)
-and the [release page](https://github.com/zapabob/Strata/releases/tag/v0.5.0).
+and the [release page](https://github.com/zapabob/Strata/releases/tag/v0.5.1).
 The fork uses its own installer and component feed.
 
-Versions follow [SemVer 2.0.0](https://semver.org/): app `0.5.0`, native engine `0.5.0`, Control `0.5.0`; unchanged PrismML/TurboQuant runtimes stay `0.4.0`. The default app location is `%LOCALAPPDATA%\Programs\Strata` on C:, independently of the model folder. Existing installs may remember another drive.
+Versions follow [SemVer 2.0.0](https://semver.org/): app `0.5.1`, native engine `0.5.1`, Control `0.5.1`; unchanged PrismML/TurboQuant runtimes stay `0.4.0`. The default app location is `%LOCALAPPDATA%\Programs\Strata` on C:, independently of the model folder. Existing installs may remember another drive.
 
-The NSIS installer is also included in the [tar.7z bundle](https://github.com/zapabob/Strata/releases/download/v0.5.0/Strata-0.5.0-windows-x64.tar.7z), together with the signed CUDA component, Control, checksums and installation instructions. Model weights and personal data are excluded. The release uses `v0.5.0`, the `latest` tag alias and GitHub Latest.
+The NSIS installer is also included in the [tar.7z bundle](https://github.com/zapabob/Strata/releases/download/v0.5.1/Strata-0.5.1-windows-x64.tar.7z), together with the signed CUDA component, Control, checksums and installation instructions. Model weights and personal data are excluded. The release uses `v0.5.1`, the `latest` tag alias and GitHub Latest.
 
 ## Use the files you already have
 
@@ -68,15 +68,15 @@ engine clears the loading indicator. See [local backends](docs/LOCAL_LLAMA_BACKE
 
 | Component | Version / distribution |
 | --- | --- |
-| Desktop GUI / Host | `0.5.0`, this app release |
-| Native engine | `0.5.0` |
-| Control | `0.5.0` |
+| Desktop GUI / Host | `0.5.1`, this app release |
+| Native engine | `0.5.1` |
+| Control | `0.5.1` |
 | Private runtimes | Node `24.22.2`, CPython `3.12.15` |
 | Hakua-memory | `0.3.5` |
 | CUDA / PrismML / TurboQuant component candidate | [release status](docs/HAKUA_RELEASE.md) |
 | Upstream source reference | `5d37280d`, upstream `0.2.11` |
 
-Version 0.5.0 integrates upstream 0.2.11 and main fixes through `5d37280d`: per-chat files, active-turn reattachment, IME input fixes, renderer recovery, updated model sets, stream ownership fixes and Pillow 13. Hakua memory, local GGUF reuse and Qwen3.6 private caches remain available. The new CUDA build needs its own qualification; historical 0.4.1 results do not qualify its new defaults. Native full-window generation remains unqualified. See [release checks and publication status](docs/HAKUA_RELEASE.md).
+Version 0.5.1 integrates upstream 0.2.11 and main fixes through `5d37280d`: per-chat files, active-turn reattachment, IME input fixes, renderer recovery, updated model sets, stream ownership fixes and Pillow 13. Hakua memory, local GGUF reuse and Qwen3.6 private caches remain available. The new CUDA build needs its own qualification; historical 0.4.1 results do not qualify its new defaults. Native full-window generation remains unqualified. See [release checks and publication status](docs/HAKUA_RELEASE.md).
 
 After loading a supported model, open **Hakua memory** in the sidebar. Reading
 and saving memory have separate consent controls for each turn. Opening memory
