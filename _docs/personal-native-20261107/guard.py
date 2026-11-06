@@ -26,7 +26,7 @@ def environment() -> dict[str, str]:
            if not k.upper().startswith(("STRATA_", "DSH_", "PYTHON", "CUDA_", "CMAKE_"))}
     env.update(TMP=str(OUT / "temp"), TEMP=str(OUT / "temp"),
                PYTHONDONTWRITEBYTECODE="1", PYTEST_DISABLE_PLUGIN_AUTOLOAD="1",
-               CUDA_PATH=str(CUDA), CMAKE_BUILD_PARALLEL_LEVEL="1",
+               CUDA_PATH=str(CUDA), CUDA_PATH_V13_3=str(CUDA), CMAKE_BUILD_PARALLEL_LEVEL="1",
                CTEST_PARALLEL_LEVEL="1", MSBUILDDISABLENODEREUSE="1")
     env["PATH"] = ";".join([str(CUDA / "bin/x64"), str(CUDA / "bin"),
                             str(PYTHON.parent), "C:/Program Files/CMake/bin", env["PATH"]])
