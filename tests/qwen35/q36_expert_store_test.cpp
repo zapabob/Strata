@@ -1,5 +1,6 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include "strata/qwen35/expert_store.hpp"
+#include "strata/qwen35/bounded_experts.hpp"
 
 #include <cstdint>
 #include <atomic>
@@ -264,6 +265,15 @@ int main() {
     auto staged_pack = open_or_build_expert_pack(staged_req, err);
     CHECK(staged_pack != nullptr);
     if (staged_pack) {
+#if defined(_WIN32)
+        CHECK(staged_pack->enable_bounded_reads(err));
+        CHECK(staged_pack->bounded_read_scratch_bytes() == (1u << 20));
+        // No payload read is allowed to fall back to memcpy/mmap, even on an
+        // unaligned range or while several callers share the bounce buffer.
+        DWORD old_protect = 0;
+        CHECK(VirtualProtect(const_cast<uint8_t*>(staged_pack->layer_data(0)),
+                             (SIZE_T) staged_pack->layer_bytes(0), PAGE_NOACCESS, &old_protect));
+#endif
         const auto expected = expected_layer(wide);
         check_stored_crc(staged_pack->path(), 0, expected);
         check_stored_crc(staged_pack->path(), 1, expected);
@@ -291,6 +301,28 @@ int main() {
         const size_t boundary = (size_t) wide.layout.stride - 3;
         CHECK(staged_pack->read_mapped(base + boundary, cross, sizeof(cross)));
         CHECK(std::memcmp(cross, expected.data() + boundary, sizeof(cross)) == 0);
+        uint8_t tail[19];
+        const auto last = staged_pack->layer_data(1) + staged_pack->layer_bytes(1);
+        CHECK(staged_pack->read_mapped(last - sizeof(tail), tail, sizeof(tail)));
+        for (auto value : tail) CHECK(value == 0);
+
+        // Exercise the production CPU staging helper against the protected
+        // mapping, rather than merely testing its copy seam in isolation.
+        struct BlobJob { const uint8_t* blob; size_t expert; };
+        std::vector<BlobJob> wave_jobs;
+        for (size_t i = 0; i < 19; ++i) wave_jobs.push_back({base + (i % n_expert) * wide.layout.stride, i % n_expert});
+        strata::qwen35::ExpertCpuStaging cpu_stage((size_t) wide.layout.stride);
+        size_t seen = 0;
+        CHECK(cpu_stage.run(wave_jobs.data(), wave_jobs.size(), (size_t) wide.layout.stride,
+            [&](const uint8_t* src, uint8_t* dst, size_t bytes) { return staged_pack->read_mapped(src, dst, bytes); },
+            [&](BlobJob* batch, size_t count) {
+                for (size_t i = 0; i < count; ++i) {
+                    CHECK(std::memcmp(batch[i].blob, expected.data() + batch[i].expert * wide.layout.stride,
+                                      (size_t) wide.layout.stride) == 0);
+                    ++seen;
+                }
+            }));
+        CHECK(seen == wave_jobs.size());
 
         // A path replacement cannot switch staging to a newly supplied file:
         // the read is bound to the same open object as the verified mapping.
@@ -317,6 +349,27 @@ int main() {
     CHECK(expert_pack_last_scratch_bytes() == 0);
     if (reused) CHECK(std::memcmp(reused->layer_data(0), expect.data(), expect.size()) == 0);
 
+#if defined(_WIN32)
+    {
+        PackBuildRequest bounded = again;
+        bounded.bounded_reads = true;
+        auto locked_pack = open_or_build_expert_pack(bounded, err);
+        CHECK(locked_pack != nullptr);
+        if (locked_pack) {
+            CHECK(locked_pack->bounded_read_scratch_bytes() == (1u << 20));
+            std::vector<uint8_t> bytes(expect.size());
+            CHECK(locked_pack->read_mapped(locked_pack->layer_data(0), bytes.data(), bytes.size()));
+            CHECK(bytes == expect);
+            for (const auto& path : {model, fs::path(locked_pack->path())}) {
+                HANDLE writer = CreateFileW(path.c_str(), GENERIC_WRITE,
+                    FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, 0, nullptr);
+                CHECK(writer == INVALID_HANDLE_VALUE);
+                if (writer != INVALID_HANDLE_VALUE) CloseHandle(writer);
+            }
+        }
+    }
+#endif
+
     if (pack) {
         std::fstream bad(pack->path(), std::ios::binary | std::ios::in | std::ios::out);
         const auto pack_time = fs::last_write_time(pack->path());
@@ -338,6 +391,17 @@ int main() {
     }
     pack.reset();
     reused.reset();
+    {
+        PackBuildRequest no_repair = req;
+        no_repair.bounded_reads = true;
+        const auto pack_path = req.model_path + ".q36epk";
+        const auto before = expert_pack_sha256_file(pack_path, err);
+        CHECK(open_or_build_expert_pack(no_repair, err) == nullptr);
+        CHECK(!err.empty());
+        CHECK(expert_pack_sha256_file(pack_path, err) == before);
+        CHECK(!fs::exists(pack_path + ".rejected"));
+        CHECK(!fs::exists(pack_path + ".partial"));
+    }
     err.clear();
     auto rebuilt = open_or_build_expert_pack(req, err);
     CHECK(rebuilt != nullptr);
@@ -379,6 +443,12 @@ int main() {
     CHECK(err.find("lock") != std::string::npos);
     CHECK(!fs::exists(fs::path(locked.string() + ".q36epk")));
     fs::remove(lock_path);
+
+    PackBuildRequest existing_only = held;
+    existing_only.bounded_reads = true;
+    CHECK(open_or_build_expert_pack(existing_only, err) == nullptr);
+    CHECK(!fs::exists(locked.string() + ".q36epk"));
+    CHECK(!fs::exists(locked.string() + ".q36epk.partial"));
 
     const fs::path partial_model = dir / "partial.gguf";
     write_bytes(partial_model, "partial-model", 13);

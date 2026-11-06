@@ -29,6 +29,7 @@
 #include "strata/qwen35/kv_layout.hpp"
 #include "strata/qwen35/sampling.hpp"
 #include "strata/qwen35/expert_store.hpp"
+#include "strata/qwen35/bounded_experts.hpp"
 #include "strata/qwen35/hotspot_trace.hpp"
 #include "strata/qwen35/startup_trace.hpp"
 #include "q36_kernels.cuh"
@@ -809,6 +810,7 @@ struct Model {
     strata::core::ModelGeometry g;
     std::shared_ptr<strata::GgufModel> file;   // kept mapped: the experts are placed after the engine's buffers
     bool hybrid = false;                       // not every expert fits in VRAM: slots + the CPU pool
+    bool bounded_experts = false;              // explicit Windows CUDA candidate; defaults untouched
     // Mapped only when --q36-expert-store mapped-pack is set. Legacy leaves this empty.
     std::unique_ptr<strata::qwen35::MappedExpertPack> expert_pack;
     // T05-B: 2xN MiB host staging for H2D from the mapped pack. Not the 1.10 GiB GPU stage pair.
@@ -912,7 +914,7 @@ float* upload_f32(const strata::TensorInfo& t, const uint8_t* src) {
     return d;
 }
 
-bool load(const std::string& path, Model& m, std::string& err, bool want_mtp) {
+bool load(const std::string& path, Model& m, std::string& err, bool want_mtp, int bounded_slots = 0) {
     const auto t0 = Clock::now();
     m.file = std::make_shared<strata::GgufModel>(strata::GgufModel::open(path));
     const strata::GgufModel& gm = *m.file;
@@ -924,6 +926,10 @@ bool load(const std::string& path, Model& m, std::string& err, bool want_mtp) {
     size_t checked = 0;
     if (!strata::core::check_gguf_layout(gm, m.g, err, &checked)) return false;
     const auto& g = m.g;
+    if (m.bounded_experts && (bounded_slots <= 0 || bounded_slots >= g.n_expert)) {
+        err = "bounded-experts-v1 requires 0 < expert-slots < model expert count";
+        return false;
+    }
     if (g.head_dim != 256 || g.ssm_state_size != 128 || g.ssm_d_conv != 4 || g.n_expert > 512 || m.top_k > 15) {
         err = "a geometry this driver's kernels do not take (head 256, state 128, conv 4, <= 512 experts, top-k <= 15)";
         return false;
@@ -1208,6 +1214,7 @@ struct Engine {
 #endif
     };
     std::vector<Hy> hy;
+    std::unique_ptr<strata::qwen35::ExpertCpuStaging> cpu_staging;
     int hybrid_t = 32;
     // Requested allocation sizes, recorded only after the allocation succeeds; not a total VRAM estimate.
     uint64_t startup_kv_bytes = 0, startup_recurrent_bytes = 0;
@@ -1320,10 +1327,20 @@ struct Engine {
                          (unsigned long long) startup_hybrid_host_bytes, (unsigned long long) startup_hybrid_device_bytes,
                          !m->pin_pool ? "none" : m->pin_cuda_host ? "pinned" : "pageable",
                          m->pin_pool && m->pin_cuda_host && std::getenv("STRATA_Q36_PIN_PIPELINE") ? "enabled" : "off",
-                         m->expert_pack && file_staging && std::strcmp(file_staging, "1") == 0 ? "enabled" : "off");
+                         m->expert_pack && (m->bounded_experts || (file_staging && std::strcmp(file_staging, "1") == 0)) ? "enabled" : "off");
         }
         std::fprintf(stderr, "\n");
         std::fflush(stderr);
+        if (placed && m->bounded_experts) {
+            std::fprintf(stderr, "Q36_MEMORY_EFFECTIVE schema=1 generation=%s mode=bounded-experts-v1 scope=expert-working-storage "
+                         "cpu_stage_bytes=%llu cpu_wave_jobs=%zu h2d_stage_bytes=%llu io_scratch_bytes=%llu "
+                         "reader=windows-unbuffered existing_pack=1 total_process_bound=0\n",
+                         q36_startup_generation(),
+                         (unsigned long long) (cpu_staging ? cpu_staging->committed_bytes() : 0),
+                         strata::qwen35::ExpertCpuStaging::kSlots,
+                         (unsigned long long) (m->pin_pool ? m->pin_pool->committed_bytes() : 0),
+                         (unsigned long long) (m->expert_pack ? m->expert_pack->bounded_read_scratch_bytes() : 0));
+        }
         if (q36_startup_detail_enabled()) {
             size_t free_bytes = 0, total_bytes = 0;
             const char* stage = placed ? "placement" : "buffers";
@@ -2321,9 +2338,14 @@ struct Engine {
             const char* value = std::getenv("STRATA_Q36_FILE_STAGING");
             return value && std::strcmp(value, "1") == 0;
         }();
-        const bool file_source = file_staging && m && m->expert_pack;
+        const bool file_source = m && m->expert_pack && (file_staging || m->bounded_experts);
         const auto fill = [&](uint8_t* target, size_t off, size_t bytes) {
             if (file_source) {
+                std::string err;
+                if (m->bounded_experts && !strata::qwen35::q36_require_host_headroom(0, err)) {
+                    std::fprintf(stderr, "strata-q36: %s\n", err.c_str());
+                    std::exit(1);
+                }
                 if (!m->expert_pack->read_mapped((const uint8_t*) src + off, target, bytes)) {
                     strata::qwen35::q36_startup_detail_error("file_staging_read_failed");
                     std::fprintf(stderr, "strata-q36: expert file staging read failed; no partial transfer submitted\n");
@@ -2541,7 +2563,24 @@ struct Engine {
         hy_cpu += n_miss;
         hy_gpu += n_ent - n_miss;
         if (n_miss == 0) return;
-        pool->run_split_multi_native(H.fmt, jobs.data(), (int) jobs.size());
+        if (m->bounded_experts) {
+            std::string err;
+            const bool ok = cpu_staging && m->expert_pack && cpu_staging->run(
+                jobs.data(), jobs.size(), L.stride,
+                [&](const uint8_t* src, uint8_t* dst, size_t bytes) {
+                    return strata::qwen35::q36_require_host_headroom(0, err) &&
+                           m->expert_pack->read_mapped(src, dst, bytes);
+                },
+                [&](C::ExpertJobMulti* wave, size_t count) {
+                    pool->run_split_multi_native(H.fmt, wave, (int) count);
+                });
+            if (!ok) {
+                std::fprintf(stderr, "strata-q36: bounded CPU expert staging failed; outputs not merged: %s\n", err.c_str());
+                std::exit(1);
+            }
+        } else {
+            pool->run_split_multi_native(H.fmt, jobs.data(), (int) jobs.size());
+        }
         hy_cpu_ms += ms_since(t0);
         CK(cudaMemcpyAsync(ecpu, cpu_out, (size_t) n_ent * N * 4, cudaMemcpyHostToDevice, st));
         CK(cudaMemcpyAsync(d_miss, h_miss, (size_t) n_ent * 4, cudaMemcpyHostToDevice, st));
@@ -3075,6 +3114,10 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, int hybrid
                      "hardware_counters=null until Nsight\n");
     const auto& g = m.g;
     const int64_t ne = g.n_expert;
+    if (m.bounded_experts && (slots <= 0 || slots >= ne)) {
+        err = "bounded-experts-v1 requires explicit hybrid placement: 0 < expert-slots < model expert count";
+        return false;
+    }
     std::vector<Layer*> all;
     for (Layer& L : m.layers) all.push_back(&L);
     if (m.has_mtp) all.push_back(&m.mtp);
@@ -3192,6 +3235,7 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, int hybrid
         const size_t left = budget2 > total_main ? budget2 - total_main : 0;
         S = (int) std::min<size_t>((size_t) ne, left / m.mtp.stride);
     }
+    size_t bounded_device_need = 0;
     {   // what the hybrid mode allocates next (the staging pair, the CPU part's outputs, the slots) against the VRAM the
         // sessions and the context left: said with the numbers instead of a cudaMalloc failure (8 slots on a 12 GB card)
         const size_t Tn = (size_t) E.tmax, Nn = (size_t) g.n_embd, Kn = (size_t) m.top_k;
@@ -3199,6 +3243,14 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, int hybrid
         for (Layer* L : all) {
             if (mtp_only && L != &m.mtp) need += L->stride * (size_t) ne + kMmqTail;
             else need += (S > 0 ? (size_t) S * L->stride + kMmqTail : 0);
+        }
+        if (m.bounded_experts) {
+            bounded_device_need = strata::qwen35::kv_checked_add(need, all.size() * (size_t) ne * sizeof(int32_t));
+            if (!strata::qwen35::q36_device_headroom(bounded_device_need, fr)) {
+                err = "bounded expert VRAM admission refused: additional=" + std::to_string(bounded_device_need) +
+                      " available=" + std::to_string(fr) + " bytes; requires 768 MiB remaining";
+                return false;
+            }
         }
         if (need > fr) {
             err = "not enough VRAM left for the hybrid experts' buffers and slots (" + std::to_string((need >> 20)) +
@@ -3222,8 +3274,34 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, int hybrid
         if (!mtp_only || L == &m.mtp) host += L->stride * (size_t) ne + kMmqTail;
     uint8_t* arena = nullptr;
     bool pinned = false;
+    if (m.bounded_experts) {
+        size_t max_blob = 0;
+        for (const Layer* L : all) max_blob = std::max(max_blob, L->stride);
+        try {
+            using namespace strata::qwen35;
+            const size_t cpu_bytes = ExpertCpuStaging::planned_bytes(max_blob);
+            const size_t T = (size_t) E.tmax, N = (size_t) g.n_embd, Kp = (size_t) m.top_k;
+            const size_t entries = kv_checked_mul(T, Kp);
+            size_t host_buffers = kv_checked_add(kv_checked_mul(kv_checked_mul(T, N), 4),
+                                                 kv_checked_mul(kv_checked_mul(entries, N), 4));
+            host_buffers = kv_checked_add(host_buffers, kv_checked_mul(entries, 8));
+            host_buffers = kv_checked_add(host_buffers, kv_checked_mul(kv_checked_mul(all.size(), (size_t) ne), 4));
+            host_buffers = kv_checked_add(host_buffers, kv_checked_add(kv_checked_mul(T, C::kNativeActBytes), 64));
+            const size_t transfer_bytes = ExpertPinPool::kDefaultSlots * ExpertPinPool::kDefaultSlotBytes +
+                                          MappedExpertPack::kBoundedReadScratchBytes;
+            const size_t planned = kv_checked_add(host_buffers, kv_checked_add(cpu_bytes, transfer_bytes));
+            if (!q36_require_host_headroom(planned, err)) return false;
+            E.cpu_staging = std::make_unique<ExpertCpuStaging>(max_blob);
+            std::fprintf(stderr, "Q36_MEMORY_ADMISSION schema=1 stage=expert-placement host_planned_bytes=%llu "
+                         "scope=cpu-stage+h2d-stage+io+hybrid-buffers total_process_bound=0\n", (unsigned long long) planned);
+        } catch (const std::exception& failure) {
+            err = failure.what();
+            return false;
+        }
+    }
     if (mapped) {
         strata::qwen35::PackBuildRequest pack_req;
+        pack_req.bounded_reads = m.bounded_experts;
         pack_req.model_path = model_path;
         pack_req.tail = kMmqTail;
         pack_req.layers.reserve(all.size());
@@ -3255,6 +3333,7 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, int hybrid
             return false;
         }
         m.expert_pack = std::move(opened);
+        if (m.bounded_experts && !strata::qwen35::q36_require_host_headroom(64u << 20, err)) return false;
         // Bounded host pin pool for mapped-pack H2D (default 2 x 32 MiB). Not the full arena.
         {
             strata::qwen35::Q36StartupDetail pin_alloc("pin_pool_alloc");
@@ -3309,6 +3388,10 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, int hybrid
             pin_alloc.total(m.pin_pool ? m.pin_pool->committed_bytes() : 0);
             pin_alloc.end();
         }
+        if (m.bounded_experts && !m.pin_pool) {
+            err = "bounded-experts-v1 requires the bounded H2D pool; mapped payload fallback refused";
+            return false;
+        }
         strata::qwen35::q36_startup("expert_host_alloc", "end", (long long) ms_since(t0), (long long) ms_since(t0), nullptr);
     } else {
         pinned = cudaHostAlloc((void**) &arena, host, cudaHostAllocDefault) == cudaSuccess;
@@ -3323,6 +3406,16 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, int hybrid
             }
         }
         E.startup_expert_host_bytes = host;
+    }
+    if (m.bounded_experts) {
+        // Verification can take minutes; do not allocate against the sample
+        // taken before it while another application may have acquired VRAM.
+        CK(cudaMemGetInfo(&fr, &tot));
+        if (!strata::qwen35::q36_device_headroom(bounded_device_need, fr)) {
+            err = "bounded expert VRAM admission changed after verification: additional=" + std::to_string(bounded_device_need) +
+                  " available=" + std::to_string(fr) + " bytes; requires 768 MiB remaining";
+            return false;
+        }
     }
     uint64_t upload_bytes = 0, uploaded = 0;
     for (Layer* L : all) upload_bytes += mtp_only && L != &m.mtp ? L->L.bytes * (uint64_t) ne : L->stride * (uint64_t) S;
@@ -3395,6 +3488,11 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, int hybrid
     const size_t T = (size_t) E.tmax, N = (size_t) g.n_embd, Kp = (size_t) m.top_k;
     {
     strata::qwen35::Q36StartupDetail buffers("hybrid_buffers");
+    if (m.bounded_experts) {
+        const uint64_t host_buffers = T * N * 4 + T * Kp * N * 4 + 2 * T * Kp * 4 +
+                                      all.size() * (size_t) ne * 4 + T * C::kNativeActBytes + 64;
+        if (!strata::qwen35::q36_require_host_headroom(host_buffers, err)) return false;
+    }
     CK(cudaHostAlloc((void**) &E.h_h, T * N * 4, cudaHostAllocDefault));
     CK(cudaHostAlloc((void**) &E.cpu_out, T * Kp * N * 4, cudaHostAllocDefault));
     CK(cudaHostAlloc((void**) &E.h_ids, T * Kp * 4, cudaHostAllocDefault));
@@ -3403,6 +3501,7 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, int hybrid
     CK(cudaMalloc(&E.ecpu, T * Kp * N * 4));
     CK(cudaMalloc(&E.d_miss, T * Kp * 4));
     E.acts = (uint8_t*) std::malloc(T * C::kNativeActBytes + 64);
+    if (m.bounded_experts && !E.acts) { err = "bounded expert activation allocation failed"; return false; }
     CK(cudaEventCreateWithFlags(&E.ev_route, cudaEventDisableTiming));
     if (staging) {
         CK(cudaStreamCreateWithFlags(&E.cst, cudaStreamNonBlocking));
@@ -4202,10 +4301,23 @@ int serve(Engine& E) {
 
 }  // namespace
 
+const char* strata::qwen35::memory_capabilities() {
+#if defined(_WIN32) && defined(STRATA_Q36_CPU_POOL) && !defined(STRATA_USE_HIP)
+    return "Q36_MEMORY_CAPABILITIES {\"schema\":1,\"family\":\"qwen35moe\",\"modes\":[\"bounded-experts-v1\"],"
+           "\"flag\":\"--q36-memory\",\"requiresExpertStore\":\"mapped-pack\",\"requiresExplicitSlots\":true,"
+           "\"scope\":\"expert-working-storage\",\"totalProcessBound\":false,\"qualification\":\"experimental-unqualified\"}";
+#else
+    return "Q36_MEMORY_CAPABILITIES {\"schema\":1,\"family\":\"qwen35moe\",\"modes\":[],"
+           "\"flag\":\"--q36-memory\",\"requiresExpertStore\":\"mapped-pack\",\"requiresExplicitSlots\":true,"
+           "\"scope\":\"expert-working-storage\",\"totalProcessBound\":false,\"qualification\":\"experimental-unqualified\"}";
+#endif
+}
+
 int strata::qwen35::run(int argc, char** argv) {
     if (argc == 2 && std::strcmp(argv[1], "--help") == 0) {
         std::puts("strata-q36: --cache-type-k f32|f16 --cache-type-v f32|f16 (default f32)");
         std::puts(strata::qwen35::q36_kv_capabilities);
+        std::puts(memory_capabilities());
         return 0;
     }
     q36_startup_physical_memory("process_start");
@@ -4219,6 +4331,8 @@ int strata::qwen35::run(int argc, char** argv) {
     bool private_prompt = false, private_conversation = false;
     bool scoped_cache = false;
     std::string expert_store = "legacy";
+    std::string memory_mode = "legacy";
+    std::string expert_slots_arg;
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
         auto next = [&]() -> std::string {
@@ -4266,9 +4380,10 @@ int strata::qwen35::run(int argc, char** argv) {
         else if (a == "--batch-mtp") batch_mtp = true;                                  // ... each verifying an MTP proposal
         else if (a == "--expert-vram") expert_vram = std::atof(next().c_str());   // GiB for the routed experts
         else if (a == "--cpu-threads") cpu_threads = std::atoi(next().c_str());
-        else if (a == "--expert-slots") expert_slots = std::atoi(next().c_str());
+        else if (a == "--expert-slots") expert_slots_arg = next();
         else if (a == "--hybrid-rows") hybrid_rows = std::atoi(next().c_str());
         else if (a == "--q36-expert-store") expert_store = next();
+        else if (a == "--q36-memory") memory_mode = next();
         else if (a == "--cache-type-k" || a == "--cache-type-v") {
             std::string& type = a == "--cache-type-k" ? cache_type_k : cache_type_v;
             type = next();
@@ -4297,6 +4412,7 @@ int strata::qwen35::run(int argc, char** argv) {
             std::fprintf(stderr,
                          "usage: strata-q36 --model GGUF [--max-context 32768] [--chunk 512] [--no-graph]\n"
                          "       [--q36-expert-store legacy|mapped-pack] [--mtp N] [--prefill auto|N]\n"
+                         "       [--q36-memory legacy|bounded-experts-v1] (candidate requires mapped-pack and explicit slots)\n"
                          "       [--cache-type-k f32|f16] [--cache-type-v f32|f16] (storage only; default f32)\n"
                          "       [--prompt-cache 0 --conversation-cache-mib 0] (private, one request at a time)\n"
                          "       [--private-conversation-cache] (private flags required; server-scoped reuse)\n"
@@ -4309,6 +4425,20 @@ int strata::qwen35::run(int argc, char** argv) {
         std::fprintf(stderr, "strata-q36: --q36-expert-store takes legacy or mapped-pack\n");
         return 2;
     }
+    if (memory_mode == "bounded-experts-v1") {
+        try { expert_slots = q36_explicit_slots(expert_slots_arg); }
+        catch (const std::exception& failure) { std::fprintf(stderr, "strata-q36: %s\n", failure.what()); return 2; }
+    } else {
+        // Keep legacy parsing, but never pass a bounded-mode count through
+        // atoi before its checked decimal parser (including overflow rejection).
+        expert_slots = std::atoi(expert_slots_arg.c_str());
+    }
+    const std::string mode_error = q36_memory_mode_error(memory_mode, expert_store, expert_slots);
+    if (!mode_error.empty()) { std::fprintf(stderr, "strata-q36: %s\n", mode_error.c_str()); return 2; }
+    const bool bounded_experts = memory_mode == "bounded-experts-v1";
+#if !defined(_WIN32) || !defined(STRATA_Q36_CPU_POOL) || defined(STRATA_USE_HIP)
+    if (bounded_experts) { std::fprintf(stderr, "strata-q36: bounded-experts-v1 requires Windows CUDA and the CPU expert pool\n"); return 2; }
+#endif
     if (private_prompt != private_conversation || (scoped_cache && !private_prompt) || (private_prompt && (batch > 1 || batch_mtp))) {
         std::fprintf(stderr, "strata-q36: private cache requires both --prompt-cache 0 and --conversation-cache-mib 0, with at most one request slot\n");
         return 2;
@@ -4326,9 +4456,11 @@ int strata::qwen35::run(int argc, char** argv) {
     if (mtp_d < 0 || mtp_d > 7) { std::fprintf(stderr, "strata-q36: --mtp takes 0 .. 7 drafts\n"); return 2; }
     if (chunk < 0 || chunk > 4096 || ctx < 256) { std::fprintf(stderr, "strata-q36: bad --chunk / --max-context\n"); return 2; }
     Model m;
+    m.bounded_experts = bounded_experts;
     std::string err;
+    if (bounded_experts && !q36_require_host_headroom(0, err)) { std::fprintf(stderr, "strata-q36: %s\n", err.c_str()); return 1; }
     try {
-        if (!load(model, m, err, mtp_d > 0)) { std::fprintf(stderr, "strata-q36: %s\n", err.c_str()); return 1; }
+        if (!load(model, m, err, mtp_d > 0, bounded_experts ? expert_slots : 0)) { std::fprintf(stderr, "strata-q36: %s\n", err.c_str()); return 1; }
     } catch (const std::exception& e) {
         std::fprintf(stderr, "strata-q36: %s\n", e.what());
         return 1;

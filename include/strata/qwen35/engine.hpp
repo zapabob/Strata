@@ -11,4 +11,7 @@ namespace strata::qwen35 {
 /// Returns the process exit code.
 int run(int argc, char** argv);
 
+/// Separate from the strict KV marker; callable before opening a model/GPU.
+const char* memory_capabilities();
+
 }  // namespace strata::qwen35
