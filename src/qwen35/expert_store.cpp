@@ -32,6 +32,31 @@
 #endif
 
 namespace strata::qwen35 {
+void q36_startup_physical_memory(const char* stage) {
+    if (!q36_startup_detail_enabled()) return;
+    uint64_t free_bytes = 0, total_bytes = 0;
+#if defined(_WIN32)
+    MEMORYSTATUSEX status{};
+    status.dwLength = sizeof(status);
+    if (!GlobalMemoryStatusEx(&status)) return;
+    free_bytes = status.ullAvailPhys; total_bytes = status.ullTotalPhys;
+#elif defined(__linux__)
+    std::FILE* file = std::fopen("/proc/meminfo", "r");
+    if (!file) return;
+    char line[256];
+    unsigned long long kib = 0;
+    while (std::fgets(line, sizeof(line), file)) {
+        if (std::sscanf(line, "MemTotal: %llu kB", &kib) == 1) total_bytes = kib * 1024;
+        if (std::sscanf(line, "MemAvailable: %llu kB", &kib) == 1) free_bytes = kib * 1024;
+    }
+    std::fclose(file);
+    if (!total_bytes) return;
+#else
+    return;
+#endif
+    std::fprintf(stderr, "Q36_EFFECTIVE schema=1 generation=%s memory_stage=%s ram_free_bytes=%llu ram_total_bytes=%llu\n",
+                 q36_startup_generation(), stage, (unsigned long long) free_bytes, (unsigned long long) total_bytes);
+}
 namespace {
 
 uint64_t g_scratch_bytes = 0;
@@ -605,18 +630,22 @@ private:
 };
 #endif
 
-bool hash_file(const std::string& path, uint8_t out[32], std::string& err, bool report_progress = false) {
+bool hash_file(const std::string& path, uint8_t out[32], std::string& err, bool report_progress = false,
+               const char* detail_stage = "model_hash") {
+    Q36StartupDetail detail(detail_stage);
     MappedView view;
-    if (!view.open(path, err, true)) return false;
+    if (!view.open(path, err, true)) { detail.error("file_open_failed"); return false; }
+    detail.total(view.size);
     Sha256 sha;
     std::vector<uint8_t> buffer(1u << 20);
     const auto start = std::chrono::steady_clock::now();
     auto last = start;
     for (uint64_t at = 0; at < view.size;) {
         const size_t take = (size_t) std::min<uint64_t>(buffer.size(), view.size - at);
-        if (!view.read(at, buffer.data(), take)) { err = "model hash read failed"; return false; }
+        if (!view.read(at, buffer.data(), take)) { detail.error("hash_read_failed"); err = "model hash read failed"; return false; }
         sha.update(buffer.data(), take);
         at += take;
+        detail.progress(at);
         if (report_progress) {
             const auto now = std::chrono::steady_clock::now();
             if (now - last >= std::chrono::seconds(2)) {
@@ -627,6 +656,7 @@ bool hash_file(const std::string& path, uint8_t out[32], std::string& err, bool 
         }
     }
     if (!sha.final(out)) { err = "expert pack SHA-256 failed"; return false; }
+    detail.end();
     return true;
 }
 
@@ -935,7 +965,7 @@ bool pack_expert_blob(const ExpertBlobLayout& layout, const ExpertSource& src, u
 
 std::string expert_pack_sha256_file(const std::string& path, std::string& err) {
     uint8_t dig[32];
-    if (!hash_file(path, dig, err)) return {};
+    if (!hash_file(path, dig, err, false, nullptr)) return {};
     return to_hex(dig, 32);
 }
 
@@ -975,6 +1005,8 @@ std::string expert_pack_verify(const std::string& pack_path, const std::string& 
     if (payload_offset < header || (payload_offset & (kExpertPackAlign - 1)) != 0) return "expert pack payload is not aligned";
     Sha256 payload_hash;
     VerificationProgress payload_progress("expert_pack_verify");
+    // A reused receipt did not read the payload in this process. Do not report invented read bytes.
+    Q36StartupDetail payload_detail("pack_payload_verify", cached ? 0 : payload_bytes);
     std::vector<uint8_t> verify_buffer(1u << 20);
     bool checksum_mismatch = false;
     if (expected && expected->size() != n_layers) return "expert pack layer count does not match this model";
@@ -1008,6 +1040,7 @@ std::string expert_pack_verify(const std::string& pack_path, const std::string& 
             actual_crc = crc32_update(actual_crc, verify_buffer.data(), take);
             at += take;
             payload_progress.tick();
+            payload_detail.progress(cursor - payload_offset + at, (int) i);
         }
         checksum_mismatch = checksum_mismatch || (!cached && actual_crc != crc);
         if (expected) {
@@ -1028,6 +1061,7 @@ std::string expert_pack_verify(const std::string& pack_path, const std::string& 
     if (!cached && std::memcmp(view.data + 80, payload_sha, 32) != 0) return "expert pack payload hash does not match";
     if (checksum_mismatch) return "expert pack layer checksum does not match";
     payload_progress.end();
+    payload_detail.end();
     if (cached) std::fprintf(stderr, "strata-q36: reusing full expert-pack verification (unchanged read-locked NTFS files and USNs)\n");
     else cache.publish();
     g_verification_cached = cached;

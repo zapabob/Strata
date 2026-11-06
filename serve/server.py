@@ -1104,6 +1104,18 @@ class _RequestOwned:
         self._store(obj)[self.name] = value
 
 
+def q36_startup_child_env(env):
+    """Bind diagnostics to this Popen attempt, including restarts of the same server."""
+    child = dict(os.environ if env is None else env)
+    launch = child.get("STRATA_Q36_LAUNCH_GENERATION", "")
+    if not re.fullmatch(r"[a-zA-Z0-9-]{1,80}", launch):
+        child.pop("STRATA_Q36_STARTUP_GENERATION", None)
+        return child, None
+    generation = uuid.uuid4().hex
+    child["STRATA_Q36_STARTUP_GENERATION"] = generation
+    return child, generation
+
+
 class StrataEngine:
     """The resident engine: `strata --serve` reads `GEN <max_new> <ids>` lines and streams `T <id>` lines, then
     `DONE ...`.  Requests are serialized by the service's FIFO, so one pipe is enough.
@@ -1180,6 +1192,9 @@ class StrataEngine:
             self.info["version"] = None
         if lazy:
             return
+        q36_cap = None
+        if (env or {}).get("STRATA_REQUIRE_Q36_KV") == "1":
+            q36_cap = q36_verify_kv_args(exe, args, (env or {}).get("STRATA_Q36_KV_HOST_SHA256"))
         self.unloaded = False            # `ended` stays True until READY (below): not alive while starting (#344)
         self.log = open(log, "a", encoding="utf-8") if log else subprocess.DEVNULL
         loading = threading.Event()                     # set once READY: the narrator below stops
@@ -1211,16 +1226,29 @@ class StrataEngine:
                   "STRATA_ENGINE_NICE=0 turns it off)", flush=True)
         end_leftover_engines(exe)                        # one an earlier run lost still holds the GPU and the memory
         spawned_at = time.monotonic()
+        child_env, startup_generation = q36_startup_child_env(env)
+        def startup_child_receipt(state, pid="null"):
+            if log and startup_generation:
+                try:
+                    self.log.write(f"Q36_CHILD schema=1 launch_generation={child_env['STRATA_Q36_LAUNCH_GENERATION']} "
+                                   f"generation={startup_generation} state={state} process_id={pid}\n")
+                    self.log.flush()
+                except OSError:
+                    pass  # Missing diagnostic evidence stays unobserved; it must not change engine startup.
+        startup_child_receipt("begin")
         try:
+            if q36_cap and q36_binary_sha256(exe) != q36_cap["binarySha256"]:
+                raise OSError("Qwen3.6 engine binary changed after KV capability negotiation")
             self.proc = popen("the Strata engine", [exe, "--serve", *args], cwd=cwd, stdin=subprocess.PIPE,
                               stdout=subprocess.PIPE, stderr=self.log, text=True, encoding="utf-8", errors="replace",
-                              bufsize=1, env=env, **pin)    # (#5044: a byte that is not UTF-8 killed the reader thread)
+                              bufsize=1, env=child_env, **pin)    # (#5044: a byte that is not UTF-8 killed the reader thread)
         except OSError:                                  # nothing started: the narrator stops, the log handle goes back
             loading.set()
             if log:
                 self.log.close()
             raise
         proc = self.proc                                 # THIS start's process: a close() from another thread may set self.proc to None meanwhile (#4792)
+        startup_child_receipt("spawned", proc.pid)
         # the READY read has a timeout (#1317): the lines come from a thread, up to READY, so the rest of the stream
         # stays for _pump (one reader at a time)
         ready_q: queue.Queue = queue.Queue()
@@ -1326,6 +1354,14 @@ class StrataEngine:
             if log:
                 self.log.close()
             raise EngineDied("Qwen3.6 did not confirm the required private conversation cache capability; the engine was stopped")
+        if q36_cap and not q36_kv_receipt_matches(self.info, args):
+            self.proc.kill()
+            self.proc.wait(timeout=5)
+            self.proc.stdin.close()
+            self.proc.stdout.close()
+            if log:
+                self.log.close()
+            raise EngineDied("Qwen3.6 did not confirm requested KV layout and allocation; the engine was stopped")
         self.known_ctx = self.max_context   # survives a failed restart: requests keep their limit and restart it
         # (from PR #41, midhatn) a locally built engine can sit next to another release's BUILD.json: engines that
         # report their own version (INFO engine=, 0.1.8+) win, the manifest stays the fallback for older ones
@@ -3864,7 +3900,7 @@ def engine_args(cfg: dict, exe: str | None = None, *, announce: bool = True) -> 
             args += ["--vram-segment-mib", str(seg)]
     args += parallel_args(cfg, args)
     args += pool_cores_args(cfg, args)
-    args += native_cache_args(cfg, args)
+    args += native_cache_args(cfg, args, exe)
     return learned_profile_args(cfg, args)
 
 
@@ -3941,10 +3977,164 @@ def _flag_value(args: list[str], *flags: str) -> str | None:
     return None
 
 
-def native_cache_args(cfg: dict, args: list[str]) -> list[str]:
+def q36_config(cfg: dict) -> bool:
+    """Identify only the Q36 family; other families retain their own codec rules."""
+    return (cfg.get("arch") == "qwen35moe" or "strata-q36" in str(cfg.get("exe", ""))
+            or bool(re.search(r"qwen3\.6|qwen36|35b-a3b", str(cfg.get("model_name", "")), re.I)))
+
+
+def q36_binary_sha256(exe: str) -> str | None:
+    try:
+        with open(exe, "rb") as stream:
+            return hashlib.file_digest(stream, "sha256").hexdigest()
+    except OSError:
+        return None
+
+
+def q36_parse_kv_capabilities(text: str) -> dict | None:
+    """Only a strict, implemented layout marker establishes support."""
+    if len(text.encode("utf-8")) > 65536:
+        return None
+    lines = [line for line in text.splitlines() if line.startswith("Q36_KV_CAPABILITIES")]
+    if len(lines) != 1 or not lines[0].startswith("Q36_KV_CAPABILITIES "):
+        return None
+    try:
+        cap = json.loads(lines[0][len("Q36_KV_CAPABILITIES "):])
+        if (not isinstance(cap, dict) or set(cap) != {"schema", "family", "layoutVersion", "scaleSchema", "cacheTypesK", "cacheTypesV", "flags", "quality"}
+                or type(cap["schema"]) is not int or cap["schema"] != 1 or cap["family"] != "qwen35moe"
+                or type(cap["layoutVersion"]) is not int or cap["layoutVersion"] != 1 or cap["scaleSchema"] != "none"
+                or cap["quality"] != "experimental-unqualified" or cap["flags"] != ["--cache-type-k", "--cache-type-v"]):
+            return None
+        for types in (cap["cacheTypesK"], cap["cacheTypesV"]):
+            if (not isinstance(types, list) or not types or any(t not in ("f32", "f16") for t in types)
+                    or len(set(types)) != len(types) or "f32" not in types):
+                return None
+        return cap
+    except (ValueError, TypeError):
+        return None
+
+
+def q36_probe_kv_capabilities(exe: str) -> dict | None:
+    """Bounded no-model help query. Legacy help has no marker and remains unknown."""
+    before = q36_binary_sha256(exe)
+    if not before:
+        return None
+    env = {k: v for k, v in os.environ.items() if k.upper() in
+           ("PATH", "SYSTEMROOT", "WINDIR", "LD_LIBRARY_PATH", "CUDA_PATH")}
+    chunks: list[bytes] = []
+    try:
+        with subprocess.Popen([exe, "--help"], cwd=str(Path(exe).resolve().parent), env=env,
+                              stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                              creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0) as proc:
+            def read_bounded() -> None:
+                data = proc.stdout.read(65537)
+                chunks.append(data)
+                if len(data) > 65536:
+                    proc.kill()
+            reader = threading.Thread(target=read_bounded, daemon=True)
+            reader.start()
+            try:
+                code = proc.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait(timeout=3)
+                reader.join(timeout=1)
+                return None
+            reader.join(timeout=1)
+            if reader.is_alive() or code != 0 or not chunks:
+                return None
+        cap = q36_parse_kv_capabilities(chunks[0].decode("utf-8", errors="replace"))
+        return {**cap, "binarySha256": before} if cap and q36_binary_sha256(exe) == before else None
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def q36_verify_kv_args(exe: str | None, args: list[str], expected_sha: str | None = None) -> dict | None:
+    """Verify actual child support. Remove explicit default flags for legacy binaries."""
+    requested = {}
+    for side in ("k", "v"):
+        flag = f"--cache-type-{side}"
+        if any(a == f"-ct{side}" or a.startswith(flag + "=") for a in args) or args.count(flag) > 1:
+            raise ValueError(f"{flag}: malformed or repeated Q36 cache request")
+        if flag in args:
+            at = args.index(flag)
+            if at + 1 >= len(args) or args[at + 1] not in ("f32", "f16"):
+                raise ValueError(f"{flag}: Q36 supports only f32 or f16; not applied")
+            requested[side] = args[at + 1]
+    # Host can bind a capable binary without adding flags for the default F32
+    # path. That expectation still requires an actual-child probe and receipt.
+    if not requested and not expected_sha:
+        return None
+    cap = q36_probe_kv_capabilities(exe) if exe else None
+    if expected_sha and (not cap or cap["binarySha256"] != expected_sha):
+        raise ValueError("Q36 binary differs from the Host-negotiated binary")
+    for side, value in requested.items():
+        if not cap or value not in cap[f"cacheTypes{side.upper()}"]:
+            if value != "f32" or cap:
+                raise ValueError(f"--cache-type-{side} {value}: binary capability is unknown; not applied")
+            at = args.index(f"--cache-type-{side}")
+            del args[at:at + 2]
+    return cap
+
+
+def q36_cache_args(cfg: dict, args: list[str], exe: str | None) -> list[str]:
+    """Merge Q36 top-level settings without overriding independent K/V argv."""
+    if any(cfg.get(key) is not None for key in ("spin8_mode", "spin8_native_config", "spin8_native_sha256")) or any(a.startswith("--spin8") for a in args):
+        raise ValueError("Spin8 is not a Q36 KV capability")
+    combined = list(args)
+    for side in ("k", "v"):
+        value, flag = cfg.get(f"cache_type_{side}"), f"--cache-type-{side}"
+        if value is None:
+            continue
+        if value not in ("f32", "f16"):
+            raise ValueError(f"{flag} {value}: not applied by Q36")
+        if flag in combined:
+            at = combined.index(flag)
+            if at + 1 >= len(combined) or combined[at + 1] != value:
+                raise ValueError(f"{flag}: conflicting Q36 cache request")
+        else:
+            combined += [flag, value]
+    run = cfg.get("q36_run") or {}
+    backend = run.get("backend") or {}
+    expected = backend.get("binarySha256") if backend.get("kvCapability") else None
+    # The CLI validates before resolving the component path. The real child checks again.
+    if exe is not None:
+        q36_verify_kv_args(exe, combined, expected)
+    args[:] = combined
+    return []
+
+
+def q36_kv_receipt_matches(info: dict, args: list[str]) -> bool:
+    """Require the child's actual layout and exact persistent allocation before READY."""
+    try:
+        if info.get("kv_layout_version") != 1 or info.get("kv_scale_schema") != "none":
+            return False
+        widths = []
+        for side in ("k", "v"):
+            wanted = _flag_value(args, f"--cache-type-{side}") or "f32"
+            if wanted not in ("f32", "f16") or info.get(f"kv_cache_{side}") != wanted:
+                return False
+            widths.append(4 if wanted == "f32" else 2)
+        geometry = [info.get(key) for key in ("kv_context", "kv_sessions", "kv_heads", "kv_head_dim", "kv_attention_states")]
+        if any(type(n) is not int or n <= 0 for n in geometry):
+            return False
+        cells, sessions, heads, dim, states = geometry
+        for flag, actual in (("--max-context", cells), ("--ctx", cells), ("--batch", sessions), ("--slots", sessions)):
+            value = _flag_value(args, flag)
+            if value is not None and int(value) != actual:
+                return False
+        allocation = cells * sessions * heads * dim * states * sum(widths)
+        return allocation < 2**64 and type(info.get("kv_allocation_bytes")) is int and info["kv_allocation_bytes"] == allocation
+    except (ValueError, TypeError):
+        return False
+
+
+def native_cache_args(cfg: dict, args: list[str], exe: str | None = None) -> list[str]:
     """Opt-in native KV cache quantization (`cache_type_k`, `cache_type_v`) and Spin(8) KV rotation
     (`spin8_mode`, `spin8_native_config`, `spin8_native_sha256`). Validates values and capsule+SHA-256 pairing
     before engine spawn; when unset, returns [] so the default launch argv stays byte-identical."""
+    if q36_config(cfg):
+        return q36_cache_args(cfg, args, exe)
     out: list[str] = []
     for key, flag, short_flag in (("cache_type_k", "--cache-type-k", "-ctk"),
                                   ("cache_type_v", "--cache-type-v", "-ctv")):
@@ -4432,8 +4622,19 @@ def child_env(cfg: dict, *, offline: bool = False) -> dict:
         env["CUDA_VISIBLE_DEVICES"] = ",".join(str(i) for i in ordered_gpus(cfg))
     for k, v in (cfg.get("env") or {}).items():      # engine settings the config carries (AMD: the GEMM tuning table)
         env[str(k)] = str(v)
+    # The owning Host start supplies this token; ambient/saved env cannot reuse an old child generation.
+    env.pop("STRATA_Q36_STARTUP_GENERATION", None)
+    env.pop("STRATA_Q36_LAUNCH_GENERATION", None)
+    run = cfg.get("q36_run")
+    generation = run.get("generation") if isinstance(run, dict) else None
+    if isinstance(generation, str) and re.fullmatch(r"[a-zA-Z0-9-]{1,80}", generation):
+        env["STRATA_Q36_LAUNCH_GENERATION"] = generation
     # A config or inherited environment cannot turn off capability confirmation.
     env["STRATA_REQUIRE_Q36_PRIVATE_CACHE"] = str(private_cache.required_capability(cfg))
+    env["STRATA_REQUIRE_Q36_KV"] = "1" if q36_config(cfg) else "0"
+    env.pop("STRATA_Q36_KV_HOST_SHA256", None)
+    if isinstance(run, dict) and run.get("backend", {}).get("kvCapability"):
+        env["STRATA_Q36_KV_HOST_SHA256"] = str(run["backend"].get("binarySha256", ""))
     if (cfg.get("arch") or "") == "deepseek41":      # (only this engine reads these; Qwen's environment is untouched)
         deepseek_slot_env(env, cfg)
     parallel_stack_env(env, cfg)

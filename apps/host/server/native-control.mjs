@@ -16,7 +16,8 @@ import { resolvePython, venvPython } from './python-resolver.mjs';
 import os from 'node:os';
 import { markPictures, runtimeVision } from './native-vision.mjs';
 import { dsEngineArgs, dsUserArgs, dsArgsNote, withoutVisionFlag } from './native-ds-args.mjs';
-import { admitQ36LegacyPhysical, isQwen36Config, prepareQ36Launch, q36FileSha256 } from './q36-run-contract.mjs';
+import { admitQ36LegacyPhysical, isQwen36Config, prepareQ36Launch, q36FileSha256, observeQ36Runtime } from './q36-run-contract.mjs';
+import { probeQ36KvCapabilities, q36KvFields } from './q36-kv-capabilities.mjs';
 import { parseQ36StartupLine, q36StartupSentence, reduceQ36Startup, pushEngineLogChunk, q36EngineLogPath } from './q36-startup-events.mjs';
 import { componentsDirectory, installerEnvironment, controlEnvironment, sourceServerEnvironment } from './control-runtime.mjs';
 import { createEngineStep } from './engine-step.mjs';
@@ -113,10 +114,12 @@ function watchQ36EngineLog(logPath, onChunk, pollMs) {
   };
   const timer = setInterval(tick, pollMs);
   timer.unref?.();
-  return () => { stopped = true; clearInterval(timer); };
+  const stop = () => { stopped = true; clearInterval(timer); };
+  stop.flush = tick;
+  return stop;
 }
 
-export function createNativeControl({directory,requests=()=>[],changed=()=>{},spawnProcess=spawn,fetcher=fetch,modelsDirectory,nativeDataDirectory=value=>value,beforeLoad=async()=>{},hardwareProbe=()=>[],control=null,ready=null,appUpdater=null,appDirectory=dirname(ROOT),defaultRepo=process.env.STRATA_NATIVE_REPO??resolve(ROOT,'../../Strata'),engineLogPollMs=200}={}){
+export function createNativeControl({directory,requests=()=>[],changed=()=>{},spawnProcess=spawn,fetcher=fetch,modelsDirectory,nativeDataDirectory=value=>value,beforeLoad=async()=>{},hardwareProbe=()=>[],control=null,ready=null,appUpdater=null,appDirectory=dirname(ROOT),defaultRepo=process.env.STRATA_NATIVE_REPO??resolve(ROOT,'../../Strata'),engineLogPollMs=200,q36CapabilityProbe=probeQ36KvCapabilities}={}){
  mkdirSync(directory,{recursive:true});
  const settingsPath=join(directory,'native-host.json');
  let preferences=readJson(settingsPath,{repo:defaultRepo});
@@ -139,6 +142,7 @@ export function createNativeControl({directory,requests=()=>[],changed=()=>{},sp
  const packaged=!!control;
  const logPollMs=Number.isFinite(engineLogPollMs)&&engineLogPollMs>=20?engineLogPollMs:200;
  const q36Pending=new Map();
+ const q36Watches=new Map();
  /* The auto-tuner and the saved tunings are Strata Control's (`strata tune auto`, `strata presets`): the app runs them and follows their status file. */
  const autotuner=createAutoTune({spawnProcess,workDir:join(directory,'native-tune'),launcher:()=>{if(packaged)return {command:control.control.python,prefix:[control.control.cli],cwd:control.control.dir,env:controlEnvironment(control.control)};const py=python();return {command:py.command,prefix:[...py.args,join(repo(),'strata.py')],cwd:repo(),env:{...process.env,PYTHONUNBUFFERED:'1',PYTHONUTF8:'1',PYTHONIOENCODING:'utf-8'}};}});
  /* In the packaged app the model catalog, the GPU probe and the install job are Control's bundled tools/strata_mcp.py and
@@ -156,12 +160,25 @@ export function createNativeControl({directory,requests=()=>[],changed=()=>{},sp
  const emit=()=>{const value=state();writeFileSync(join(directory,'native-jobs.json'),JSON.stringify(value.jobs),{mode:0o600});changed(value);};
  const append=(instanceId,line)=>{logs.push({at:new Date().toISOString(),instanceId,line:String(line).slice(0,2000)});if(logs.length>400)logs.shift();};
  function notePackagedStartup(instance,job,chunk){
-  const applied=pushEngineLogChunk({pending:q36Pending.get(instance.id)??'',startup:instance.q36Startup??null,phase:instance.phase??null,sentence:null},chunk);
-  q36Pending.set(instance.id,applied.pending);
+  const previous=q36Pending.get(instance.id)??{startup:instance.q36Startup??null,phase:instance.phase??null};
+  const applied=pushEngineLogChunk(previous,chunk);
+  q36Pending.set(instance.id,applied);
   instance.q36Startup=applied.startup;
+  instance.q36Detail=applied.detail;
+  instance.q36LastCompletedDetail=applied.lastCompletedDetail;
+  if(instance.q36Run){
+   if(previous.child?.generation!==applied.child?.generation){
+    instance.q36Run={...instance.q36Run,effective:{...instance.q36Run.planned},observed:{status:'unobserved'}};
+    instance.context=instance.q36Run.planned.context??null;
+    instance.parallel=instance.q36Run.planned.parallel??null;
+   }
+   instance.q36Run=observeQ36Runtime(instance.q36Run,applied);
+   if(instance.q36Run.observed?.context!=null)instance.context=instance.q36Run.observed.context;
+   if(instance.q36Run.observed?.parallel!=null)instance.parallel=instance.q36Run.observed.parallel;
+  }
   if(!applied.moved)return;
-  if(applied.phase)instance.phase=applied.phase;
-  if(applied.sentence)job.summary=applied.sentence;
+  if(applied.phase&&instance.status==='loading')instance.phase=applied.phase;
+  if(applied.sentence&&job.state==='running')job.summary=applied.sentence;
   emit();
  }
  function diskSpace(path){try{const s=statfsSync(path);return {free:Number(s.bavail)*Number(s.bsize),total:Number(s.blocks)*Number(s.bsize)};}catch{return null;}}
@@ -259,7 +276,16 @@ export function createNativeControl({directory,requests=()=>[],changed=()=>{},sp
  /* Fork: parse+validate run-config (spin8 / known keys). Upstream: assertSettingsFile exists for the same gate; we keep the parsed config. */
  function checkedSettingsConfig(text){const check=checkAndParseRunConfig(text);if(!check.ok)throw new Error(`The settings file for this model has a mistake, so the model was not started. ${describeIssues(check.issues,'error').join(' ')}`);return check.config;}
  function assertSettingsFile(path){checkedSettingsConfig(readFileSync(path,'utf8'));}
- function settings(model){const {entry,config}=record(model);const values=Object.fromEntries(NATIVE_FIELDS.map(f=>[f.id,config[f.id]??(f.id in NATIVE_FLAG_FIELDS?(flagValue(config[USER_KEY],NATIVE_FLAG_FIELDS[f.id])??flagValue(config.args,NATIVE_FLAG_FIELDS[f.id])):null)]));if(typeof values.aliases==='string')values.aliases=values.aliases.split(',').map(v=>v.trim()).filter(Boolean);values.sampling=config.sampling??{};values.args=config.args??[];values.env=publicNativeEnv(config.env??{});return {model,values,mcp:publicMcpServers(config.mcp_servers??config.mcpServers??{}),restartNeeded:true,capabilities:{dsExperts:ownEngine(config)&&dsExpertsSupported(config)},speedSwitches:speedSwitchRows(config.env??{},{deepseek:ownEngine(config),arch:config.arch??null,backend:config.backend??entry?.backend??snapshot.installed?.engine?.backend??null,gpus:snapshot.hardware?.gpus??[]})};}
+ function settings(model){const {entry,config}=record(model);const values=Object.fromEntries(NATIVE_FIELDS.map(f=>[f.id,config[f.id]??(f.id in NATIVE_FLAG_FIELDS?(flagValue(config[USER_KEY],NATIVE_FLAG_FIELDS[f.id])??flagValue(config.args,NATIVE_FLAG_FIELDS[f.id])):null)]));if(typeof values.aliases==='string')values.aliases=values.aliases.split(',').map(v=>v.trim()).filter(Boolean);values.sampling=config.sampling??{};values.args=config.args??[];values.env=publicNativeEnv(config.env??{});return {model,values,mcp:publicMcpServers(config.mcp_servers??config.mcpServers??{}),restartNeeded:true,capabilities:{dsExperts:ownEngine(config)&&dsExpertsSupported(config),...(isQwen36Config(config)?{q36Kv:{status:'unknown',defaultK:'f32',defaultV:'f32',quality:'experimental-unqualified'}}:{})},speedSwitches:speedSwitchRows(config.env??{},{deepseek:ownEngine(config),arch:config.arch??null,backend:config.backend??entry?.backend??snapshot.installed?.engine?.backend??null,gpus:snapshot.hardware?.gpus??[]})};}
+ async function settingsKv(model){
+  const {config}=record(model);
+  if(!isQwen36Config(config))return {};
+  let exe=null;
+  if(packaged){const engine=await control.engine();if(engine.usable)exe=engine.engine?.exe??null;}
+  else if(typeof config.exe==='string')exe=resolve(config.cwd??repo(),config.exe);
+  const capability=await q36CapabilityProbe(exe);
+  return {fields:q36KvFields(nativeFields(),capability),q36KvCapability:capability??{status:'unknown',quality:'experimental-unqualified'}};
+ }
  function save(model,{values,mcp}){if([...jobs.values()].some(j=>j.state==='running'))throw new Error('Finish the current operation before saving native settings.');const {path,config}=record(model);if(busy(requests().filter(r=>instances.get(r.instanceId)?.model===model)))throw new Error('Finish this model’s requests before saving its settings.');const patch=validateNativeSettings(values??{}),next={...config};if(patch.ds_experts!=null&&!dsExpertsSupported(config))throw new Error('The Speed choice needs the newer DeepSeek engine. Update the engine in Settings, then choose it.');for(const field of nativeFields())if(field.supported===false&&patch[field.id]!=null&&JSON.stringify(patch[field.id])!==JSON.stringify(config[field.id]))throw new Error(`${field.label} needs a newer native Strata installation. Update it in Settings → About.`);for(const [key,value] of Object.entries(patch)){if(key==='env')next.env=restoreNativeEnv(value,config.env??{});else if(value===null){delete next[key];if(key in NATIVE_FLAG_FIELDS){const flag=NATIVE_FLAG_FIELDS[key];if(Array.isArray(next[USER_KEY])){const u=setUserFlag(next[USER_KEY],flag,null);if(u.length)next[USER_KEY]=u;else delete next[USER_KEY];}if(Array.isArray(next.args))next.args=setUserFlag(next.args,flag,null);if(Array.isArray(next.args_written))next.args_written=setUserFlag(next.args_written,flag,null);}}else next[key]=value;}validateNativeSettings({spin8_mode:next.spin8_mode??null,spin8_native_config:next.spin8_native_config??null,spin8_native_sha256:next.spin8_native_sha256??null});if('vram_reserve_mib' in patch){const base=captureUserArgs(next);const mine=setUserFlag(base,'--vram-reserve-mib',patch.vram_reserve_mib);if(mine.length)next[USER_KEY]=mine;else delete next[USER_KEY];next.args=mine.length&&patch.vram_reserve_mib!==null?mergeUserArgs(next.args??[],mine):setUserFlag(next.args??[],'--vram-reserve-mib',null);delete next.ui_reserve_applied;if(Array.isArray(next.args_written))next.args_written=[...next.args];}if(mcp!==undefined){next.mcp_servers=validateMcpServers(mcp,config.mcp_servers??config.mcpServers??{});delete next.mcpServers;}copyFileSync(path,path+'.bak');chmodSync(path+'.bak',0o600);const temp=path+'.ui-tmp';writeFileSync(temp,JSON.stringify(next,null,2)+'\n',{mode:0o600});renameSync(temp,path);return settings(model);}
  function previousEngine(){if(packaged)return !!snapshot.engine?.previous;try{const data=snapshot.installed?.data_dir??snapshot.installed?.data_folder;return [join(preferences.repo,'engine/.previous'),data&&join(data,'engine/.previous')].filter(Boolean).some(existsSync)&&readFileSync(join(preferences.repo,'setup.py'),'utf8').includes('--rollback-engine');}catch{return false;}}
  async function plan(args){await refresh();if(!snapshot.available)throw new Error(snapshot.error);const result=await tool('strata_install',installArgs(args,false));
@@ -322,7 +348,7 @@ export function createNativeControl({directory,requests=()=>[],changed=()=>{},sp
  }
  function terminate(proc,signal='SIGTERM'){if(!proc)return;if(process.platform!=='win32'&&proc.pid){try{process.kill(-proc.pid,signal);return;}catch{}}proc.kill(signal);}
  async function stopProcess(proc){if(!proc||proc.exitCode!=null)return;await new Promise(resolve=>{const timeout=setTimeout(()=>{terminate(proc,'SIGKILL');resolve();},8000);proc.once('exit',()=>{clearTimeout(timeout);resolve();});terminate(proc);});}
- async function unload(id,force=false){const instance=instances.get(id);if(!instance)throw new Error('This model is no longer loaded.');if(!force&&[...jobs.values()].some(j=>j.kind==='benchmark'&&j.state==='running'&&j.instanceId===id))throw new Error('Stop the benchmark before unloading this model.');if(!force&&busy(requests().filter(r=>r.instanceId===id)))throw new Error('Finish or cancel this model’s requests first.');instance.status='unloading';if(instance.profile){try{await control.stop(instance.profile);}catch(error){if(!force){instance.status='error';instance.error=error.message;emit();throw error;}}}else await stopProcess(processes.get(id));processes.delete(id);instances.delete(id);desktopMemoryAccess.delete(id);try{unlinkSync(instance.configPath);}catch{}if(defaultId===id)defaultId=instances.keys().next().value??null;emit();return state();}
+ async function unload(id,force=false){const instance=instances.get(id);if(!instance)throw new Error('This model is no longer loaded.');if(!force&&[...jobs.values()].some(j=>j.kind==='benchmark'&&j.state==='running'&&j.instanceId===id))throw new Error('Stop the benchmark before unloading this model.');if(!force&&busy(requests().filter(r=>r.instanceId===id)))throw new Error('Finish or cancel this model’s requests first.');instance.status='unloading';if(instance.profile){try{await control.stop(instance.profile);}catch(error){if(!force){instance.status='error';instance.error=error.message;emit();throw error;}}}else await stopProcess(processes.get(id));processes.delete(id);q36Watches.get(id)?.();q36Watches.delete(id);q36Pending.delete(id);instances.delete(id);desktopMemoryAccess.delete(id);try{unlinkSync(instance.configPath);}catch{}if(defaultId===id)defaultId=instances.keys().next().value??null;emit();return state();}
  /* Delete a downloaded model: stop it first, then the installer removes the model's own files and its run config and keeps
     whatever another installed model still uses (shared MTP draft, shared PLE shard). */
  async function removeModel(job,args){if(!safeId(args.model))throw new Error('Choose an installed model.');
@@ -426,7 +452,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   else delete cfg.ds_experts;
   const privacyRequired=packaged&&hakuaChatbotEnabled()&&!ownEngine(cfg)&&cfg.hakua_harness===undefined;
   if(isQwen36Config(cfg)){
-   const prepared=prepareQ36Launch({args:cfg.args??[],userArgs:cfg[USER_KEY]??[],privacyRequired,binarySha256:typeof trusted.binarySha256==='string'?trusted.binarySha256:null,requested:{context:cfg.max_context??undefined,mtp:cfg.mtp===false?0:undefined,parallel:cfg.parallel??undefined}});
+   const prepared=prepareQ36Launch({args:cfg.args??[],userArgs:cfg[USER_KEY]??[],privacyRequired,binarySha256:typeof trusted.binarySha256==='string'?trusted.binarySha256:null,kvCapability:trusted.kvCapability??null,requested:{cacheTypeK:cfg.cache_type_k,cacheTypeV:cfg.cache_type_v,spin8Mode:cfg.spin8_mode,context:cfg.max_context??undefined,mtp:cfg.mtp===false?0:undefined,parallel:cfg.parallel??undefined}});
    if(!prepared.ok)throw Object.assign(new Error(prepared.error.message),{code:prepared.error.code});
    cfg.args=prepared.argv;q36Note=prepared.note;cfg.q36_run=prepared.contract;
   }else if(privacyRequired)privateMemoryArgs(cfg);
@@ -538,7 +564,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   return {summary:'The picture files are ready.'};
  }
  async function loadEngine(job,args){
-  await refresh(true);if(job.state!=='running')return;const {entry,path:configFile}=recordFile(args.model);let config=checkedSettingsConfig(readFileSync(configFile,'utf8'));let trustedEngineSha=null;if(packaged){const engine=await control.engine();if(!engine.usable)throw new Error(ENGINE_NOT_RECOGNISED+(engine.notice?` ${engine.notice}`:''));if(engine.engine?.exe)trustedEngineSha=q36FileSha256(engine.engine.exe);}if(!entry.ready){const error=missingFilesError(args.model,entry.missing);append(args.model,error.details[0]);throw error;}
+  await refresh(true);if(job.state!=='running')return;const {entry,path:configFile}=recordFile(args.model);let config=checkedSettingsConfig(readFileSync(configFile,'utf8'));let trustedEngineSha=null,trustedEngineExe=null;if(packaged){const engine=await control.engine();if(!engine.usable)throw new Error(ENGINE_NOT_RECOGNISED+(engine.notice?` ${engine.notice}`:''));if(engine.engine?.exe){trustedEngineExe=engine.engine.exe;trustedEngineSha=q36FileSha256(trustedEngineExe);}}if(!entry.ready){const error=missingFilesError(args.model,entry.missing);append(args.model,error.details[0]);throw error;}
   if(externalRunning().length)throw new Error('A Strata server is already running outside this UI. Stop it before loading here, or connect its API in Settings → Models.');
   if(args.multiple&&instances.size>=8)throw new Error('Unload an instance before adding another. Up to eight native instances can run here.');
   /* Read pictures is on and the picture files are not here: the Load fetches those files (about 0.9 GB, once) and nothing else of the model, then goes on. No internet: the model loads without pictures and the page says so. */
@@ -548,7 +574,10 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   if(drafts?.mtp_needed===true&&(args.values?.drafting!==undefined||drafts.split===true&&(config.drafting==null||String(config.drafting).toLowerCase()==='auto'))){/* the Models screen's own Load carries the choice; a plain Auto load fetches the layer too when Control says the all-cards split engine will take the start (it runs the MTP and nothing else): the same as the Terminal */await installMtpLayer(job,args,config);if(job.state!=='running')return;await refresh(true);config=checkedSettingsConfig(readFileSync(recordFile(args.model).path,'utf8'));drafts=await draftPlan(args,configFile);
    /* The draft layer for the split could not be had (no internet, disk): the load goes on as the 0.2.10 app did, the normal layer split with the plan DFlash2's again (the Models screen's own Load fetches that drafter below). One plain line says so. */
    if(drafts?.split===true&&drafts.mtp_needed===true){noSplit=true;job.drafterNote=job.drafterNote??'The MTP drafter could not be downloaded.';job.summary='Loading the model…';emit();drafts=await draftPlan(args,configFile,{noSplit:true});}}
-  const {cfg,resources,visionPreferences,parallelChoice,parallelNote:chosenNote,dsNote,q36Note}=buildConfig(args,config,drafts?.choice==='dflash2'&&drafts.needed===true&&args.values?.drafting===undefined?'mtp':drafts?.choice??null,{binarySha256:trustedEngineSha});/* (a drafter that is not here and will not be fetched by this load: the MTP runs, and the request slots stay) */
+  if(!packaged&&typeof config.exe==='string')trustedEngineExe=resolve(config.cwd??repo(),config.exe);
+  const kvCapability=isQwen36Config(config)?await q36CapabilityProbe(trustedEngineExe):null;
+  if(kvCapability)trustedEngineSha=kvCapability.binarySha256;
+  const {cfg,resources,visionPreferences,parallelChoice,parallelNote:chosenNote,dsNote,q36Note}=buildConfig(args,config,drafts?.choice==='dflash2'&&drafts.needed===true&&args.values?.drafting===undefined?'mtp':drafts?.choice??null,{binarySha256:trustedEngineSha,kvCapability});/* (a drafter that is not here and will not be fetched by this load: the MTP runs, and the request slots stay) */
   let parallelNote=chosenNote;
   await prepareDrafter(job,args,cfg,configFile,drafts,{noSplit});if(job.state!=='running')return;
  /* The server negotiates private-cache support with the running engine. */
@@ -572,6 +601,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
     const gate=admitQ36LegacyPhysical({modelName:`${cfg.model_name??''} ${entry.model_name??''} ${args.model??''}`,availablePhysicalBytes:os.freemem(),ramBytes:os.totalmem()});
     if(gate.decision==='rejected')throw Object.assign(new Error(gate.message),{code:gate.reason});
   }
+  if(isQwen36Config(cfg)&&!cfg.log)cfg.log=join(work,`${id}.engine.log`);
   writeFileSync(configPath,JSON.stringify(cfg,null,2),{mode:0o600});
   if(memoryAccess)desktopMemoryAccess.set(id,memoryAccess);
   const instance={id,apiModelId,fingerprint,context:entry.context??0,aliases:cfg.aliases??[],vision:!!cfg.vision,resourceProfile:cfg.ui_resource_profile??null,model:args.model,label:friendlyModelName(snapshot.catalog,args.model)??entry.model_name??args.model,port:cfg.port,gpus:Array.isArray(cfg.gpu)?cfg.gpu:cfg.gpu===undefined?[]:[cfg.gpu],status:'loading',phase:'loading',parallel:cfg.parallel??1,mcpServers:cfg.mcp_servers??cfg.mcpServers??{},key,configPath,ownerJob:job.id,loadedAt:new Date().toISOString(),metrics:null,error:null,...(picturesNote?{picturesNote}:{})};
@@ -579,6 +609,17 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   const sharedWith=instance.gpus.length?[...instances.values()].find(i=>i.id!==id&&i.status!=='error'&&i.model!==args.model&&i.gpus.some(g=>instance.gpus.includes(g))):null;
   const sharedSentence=sharedWith?`GPU ${instance.gpus.find(g=>sharedWith.gpus.includes(g))+1} is already used by ${sharedWith.label}, so this model did not fit there. Load it on another GPU, or unload ${sharedWith.label} first.`:null;
   let proc=null,started=null,retried=null,startWait=null,adopted=false,stopWatch=()=>{};
+  const beginQ36Attempt=run=>{
+   if(isQwen36Config(run)&&run.q36_run){
+    const generation=randomUUID();
+    run.q36_run={...run.q36_run,runId:id,generation,planned:{...cfg.q36_run.planned},observed:{status:'unobserved',generation:null,processId:null,prefill:null}};
+    instance.q36Run=structuredClone(run.q36_run);
+    q36Pending.set(id,{launchGeneration:generation});
+   }else q36Pending.set(id,{});
+   instance.q36Startup=null;instance.q36Detail=null;instance.q36LastCompletedDetail=null;
+   stopWatch();stopWatch=watchQ36EngineLog(q36EngineLogPath(run),chunk=>{notePackagedStartup(instance,job,chunk);},logPollMs);
+   q36Watches.set(id,stopWatch);
+  };
   try{
   if(packaged){
    /* How long this start waits, and the server's own engine wait kept above it. The server ends the engine when its engine wait runs
@@ -595,7 +636,6 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
    if(dsNote)append(id,dsNote);
    if(q36Note)append(id,q36Note);
    /* Q36_STARTUP is the engine's stderr. `_paths` names `{profile}.host.log` (the owner) and the server writes `{profile}.server.log`. Tail the run config's log, which serve opens as the engine stderr. */
-   stopWatch=watchQ36EngineLog(q36EngineLogPath(cfg),chunk=>{notePackagedStartup(instance,job,chunk);},logPollMs);
    /* The all-cards split engine: where the plan says it takes this start, Control turns the run config into the split engine's (the step `strata launch` does itself: the rule, the engine package and the draft layer are checked on this computer) and says so in one line. Any "no" leaves the layer split config as it is. The second try after a failed start is never split. */
    const splitStart=async value=>{
     if(noSplit||drafts?.split!==true||typeof control.splitEngine!=='function')return value;
@@ -609,7 +649,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
     finally{for(const f of [input,output]){try{rmSync(f,{force:true});}catch{/* best effort */}}}
     return value;
    };
-   const startWith=async(value,split=true)=>{q36Pending.set(id,'');instance.q36Startup=null;instance.phase='loading';const run=split?await splitStart(value):value;writeFileSync(configPath,JSON.stringify(run,null,2),{mode:0o600});return control.stop(instance.profile).catch(()=>{}).then(()=>control.saveProfile(instance.profile,configPath)).then(()=>control.start(instance.profile,{waitSeconds:startWait}));};
+   const startWith=async(value,split=true)=>{instance.q36Startup=null;instance.phase='loading';const run=split?await splitStart(value):value;beginQ36Attempt(run);writeFileSync(configPath,JSON.stringify(run,null,2),{mode:0o600});return control.stop(instance.profile).catch(()=>{}).then(()=>control.saveProfile(instance.profile,configPath)).then(()=>control.start(instance.profile,{waitSeconds:startWait}));};
    /* A Control whose wait ran out has NOT stopped the engine: `runtime start` answers "startup_wait_expired" (exit 8), or "runtime operation wait expired" when the owner was too busy to answer in time, while the engine is still loading (#5177 #4293). That is not a failure: Control is asked, and a start it still reports as starting (or ready) is kept and watched below instead of being stopped and marked failed. */
    const stillLoading=async e=>{if(!/startup_wait_expired|runtime operation wait expired/i.test(String(e?.message??'')+JSON.stringify(e?.output??'')))return false;if(!instance.profile||typeof control.status!=='function'||job.state!=='running')return false;try{const st=await control.status(instance.profile);return st?.state==='starting'||st?.state==='ready';}catch{return false;}};
    started=startWith(cfg);
@@ -641,6 +681,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
     try{await startWith(retryConfig,false);append(id,'Strata Control reports the engine is ready (second try).');}
     catch(second){if(job.state!=='running'){await stopCancelledLoad(job,instance,id);return;}if(await stillLoading(second))adopted=true;else{const said2=humanStartError(second);instance.status='error';instance.error=said2;/* the first stop and the second try stay in job.details; the pop-up shows the last stop once */emit();throw new Error(instance.error);}}}}
   } else {
+  if(isQwen36Config(cfg)){beginQ36Attempt(cfg);writeFileSync(configPath,JSON.stringify(cfg,null,2),{mode:0o600});}
   proc=spawnProcess(py,[join(repo(),'serve/server.py'),'--engine','strata','--config',configPath,'--port',String(cfg.port),'--host','127.0.0.1'],{cwd:repo(),detached:process.platform!=='win32',stdio:['ignore','pipe','pipe'],env:sourceServerEnvironment()});
   instances.set(id,instance);processes.set(id,proc);if(!defaultId||!args.multiple||wasDefault)defaultId=id;
   if(q36Note)append(id,q36Note);
@@ -659,7 +700,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   if(job.state!=='running'){await stopCancelledLoad(job,instance,id);return;}
   if(instances.get(id)?.ownerJob===job.id){if(instance.profile)await control.stop(instance.profile).catch(()=>{});else await stopProcess(proc);instance.status='error';instance.error='Loading took more than five minutes. Check the engine log and free memory.';throw new Error(instance.error);}
   return;
-  }finally{stopWatch();q36Pending.delete(id);}
+  }finally{stopWatch.flush?.();if(instance.status!=='ready'||!isQwen36Config(cfg)){stopWatch();q36Watches.delete(id);q36Pending.delete(id);}}
  }
  async function freePort(requested){for(let port=Number(requested??18500);port<=Number(requested??18500)+20;port++){if(!Number.isInteger(port)||port<1024||port>65535)throw new Error('Choose a port from 1024 to 65535.');if([...instances.values()].some(i=>i.port===port)){if(requested)throw new Error('This private engine port is already in use.');continue;}const available=await new Promise(resolve=>{const probe=createServer();probe.once('error',()=>resolve(false));probe.listen(port,'127.0.0.1',()=>probe.close(()=>resolve(true)));});if(available)return port;if(requested)throw new Error('This private engine port is already in use.');}throw new Error('No free private engine port was found.');}
  let pollCount=0;
@@ -787,7 +828,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   return {...loaded,...measured,summary:'Your model is tuned and ready.',profile:args.profile};
  }
  /* What the tuner measures is what a load would start: the saved model config with the user's choices and the resource profile. */
- async function tuneConfig(args){const {config,entry}=record(args.model);if(!entry.ready)throw new Error('Prepare the model before tuning it.');let binarySha256=null;if(packaged&&isQwen36Config(config)){const engine=await control.engine();if(engine.usable&&engine.engine?.exe)binarySha256=q36FileSha256(engine.engine.exe);}const {cfg}=buildConfig({model:args.model,vision:args.vision,resourceProfile:args.resourceProfile,gpus:args.gpus,values:args.values},config,null,{binarySha256});return {path:writeTuneConfig(directory,args.model,cfg),entry};}
+ async function tuneConfig(args){const {config,entry}=record(args.model);if(!entry.ready)throw new Error('Prepare the model before tuning it.');let binarySha256=null,exe=null;if(packaged&&isQwen36Config(config)){const engine=await control.engine();if(engine.usable&&engine.engine?.exe){exe=engine.engine.exe;binarySha256=q36FileSha256(exe);}}if(!packaged&&typeof config.exe==='string')exe=resolve(config.cwd??repo(),config.exe);const kvCapability=isQwen36Config(config)?await q36CapabilityProbe(exe):null;if(kvCapability)binarySha256=kvCapability.binarySha256;const {cfg}=buildConfig({model:args.model,vision:args.vision,resourceProfile:args.resourceProfile,gpus:args.gpus,values:args.values},config,null,{binarySha256,kvCapability});return {path:writeTuneConfig(directory,args.model,cfg),entry};}
  async function tuneReadConfig(args){try{return await tuneConfig(args);}catch(error){if(error.code!=='q36_private_cache_parallel')throw error;return {unavailable:{available:false,reason:error.message,code:error.code}};}}
  async function tuneStatus(args){await refresh();const {path,unavailable}=await tuneReadConfig(args);return unavailable?{...unavailable,ok:true,active:null,state:null,reasons:[unavailable.reason],presets:[],can_undo:false}:autotuner.status(path);}
  async function tuneEffective(args){await refresh();const {path,unavailable}=await tuneReadConfig(args);return unavailable?{...unavailable,applied:false,preset:null,args:[],env:{},changed:[],why_not:unavailable.reason}:autotuner.effective(path);}
@@ -915,7 +956,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   const opened=opener(`http://127.0.0.1:${port}/`);
   return {...opened,...(desktopMemoryAccess.get(instance.id)??{})};
  }
- return {state:publicState,tuneStatus,tuneEffective,tuneOff,tunePresets:{list:()=>autotuner.list(),action:(kind,id,extra)=>autotuner.action(kind,id,extra),undoFor:async args=>autotuner.undoFor((await tuneConfig(args)).path)},refresh,localPreview,openHakuaChat,configure,setDownloadDirectory,planModelsFolder,startModelsFolder,interruptedMove,finishInterruptedMove,leaveInterruptedMove,plan,settings,save,settingsFile,openSettingsFile,operation,dismissRestart,cancel,unload,resolveInstance,poll,logs:()=>logs.slice(),benchmarkReport:()=>readJson(join(directory,'native-benchmark.json'),null),setDefault(id){defaultId=resolveInstance(id).id;emit();return publicState();},hasLive:()=>[...instances.values()].some(i=>i.status==='ready'),readyInstances:()=>[...instances.values()].filter(i=>i.status==='ready'),defaultInstanceId:()=>defaultId,close};
+ return {state:publicState,tuneStatus,tuneEffective,tuneOff,tunePresets:{list:()=>autotuner.list(),action:(kind,id,extra)=>autotuner.action(kind,id,extra),undoFor:async args=>autotuner.undoFor((await tuneConfig(args)).path)},refresh,localPreview,openHakuaChat,configure,setDownloadDirectory,planModelsFolder,startModelsFolder,interruptedMove,finishInterruptedMove,leaveInterruptedMove,plan,settings,settingsKv,save,settingsFile,openSettingsFile,operation,dismissRestart,cancel,unload,resolveInstance,poll,logs:()=>logs.slice(),benchmarkReport:()=>readJson(join(directory,'native-benchmark.json'),null),setDefault(id){defaultId=resolveInstance(id).id;emit();return publicState();},hasLive:()=>[...instances.values()].some(i=>i.status==='ready'),readyInstances:()=>[...instances.values()].filter(i=>i.status==='ready'),defaultInstanceId:()=>defaultId,close};
 }
 /* A DeepSeek config on AMD written by setup 0.2.8 or earlier names ONE card and marks it "asked", though setup picked it itself (strata_control/gpu_pick.py): it must not stop the app's recommended cards from applying. A card setup named for itself is the first of the usable cards, largest memory first; another card number was the person's. Roles and a "gpus_by" marker are always honoured. */
 export function setupPickedOneCard(config,hardware){

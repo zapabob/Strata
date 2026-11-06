@@ -14,15 +14,15 @@ test('the capability table matches the flags strata-q36 actually reads', () => {
   const run = source.slice(start, source.indexOf('if (model.empty())', start));
   const found = [...run.matchAll(/a == "(--[^"]+)"/g)].map(match => match[1]);
   assert.ok(found.length > 10);
-  for (const flag of found) assert.equal(Q36_SUPPORTED_FLAGS.has(flag), true, flag);
+  for (const flag of found.filter(f => f !== '--help')) assert.equal(Q36_SUPPORTED_FLAGS.has(flag), true, flag);
   assert.equal(Q36_SUPPORTED_FLAGS.has('--resident-budget-gib'), false);
   assert.equal(Q36_SUPPORTED_FLAGS.has('--vram-reserve-mib'), false);
-  assert.equal(Q36_SUPPORTED_FLAGS.has('--cache-type-k'), false);
+  assert.equal(Q36_SUPPORTED_FLAGS.has('--cache-type-k'), true);
   assert.equal(Q36_SUPPORTED_FLAGS.has('--q36-expert-store'), true);
   assert.equal(Q36_SUPPORTED_FLAGS.has('--prompt-cache'), true);
   assert.equal(Q36_SUPPORTED_FLAGS.has('--conversation-cache-mib'), true);
   assert.equal(Q36_SUPPORTED_FLAGS.has('--private-conversation-cache'), true);
-  assert.equal(Q36_CAPABILITY_REVISION, 'q36-argv-private-cache-1');
+  assert.equal(Q36_CAPABILITY_REVISION, 'q36-typed-kv-1');
 });
 
 test('Qwen3.6 does not get a resident-budget or shorter-context retry; another family still does', () => {

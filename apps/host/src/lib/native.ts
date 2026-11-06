@@ -6,7 +6,9 @@ export interface GpuChoice {options:GpuChoiceOption[];recommended:string|null;ig
 export interface NativeSize {/** The first engine that reads this size's files (the catalog), and whether the installed engine is older: the screen then says "needs a newer engine" and offers the update. */engine_min?:string|null;needsNewerEngine?:boolean;id:string;model:string;about:string;download_gb:number;ram_needed_gb:number;experts_gb:number;on_this_pc:string|null;installed:boolean;/** DeepSeek: the engine gives 5 experts here on RDNA4 cards (one card, or several holding half of the experts). */rdna4_faster?:boolean|null;gpu_options?:GpuChoice|null;images?:boolean;imagesCapable?:boolean;/** DeepSeek-V4.1-Flash and the like: several big files and an engine of their own. */multi_file?:boolean;/** DeepSeek: the free disk the set needs (its download plus the pack and room to work), from the set itself. */disk_gb?:number}
 export interface NativeFamily {family:string;title:string;about:string;experimental:boolean;images:boolean;sizes:NativeSize[]}
 export interface NativeField {id:string;label:string;group:string;/** Not shown for a model whose id contains this (DeepSeek has no MTP). */notForModel?:string;type:'number'|'boolean'|'string'|'enum'|'array';min?:number;max?:number;choices?:string[];hint?:string;supported?:boolean;forModel?:string}
-export interface NativeJob {id:string;kind:string;guided?:boolean;model?:string;family?:string;state:'running'|'done'|'error'|'cancelled';startedAt:string;summary:string;error:string|null;details?:string;result:Record<string,any>|null;progress?:Record<string,any>|null;/** An engine update beside a loaded model: which step it is on and the models it concerns (the app words these itself). */step?:'getting-ready'|'stopping'|'stopped';models?:string[]}
+export interface NativeJob {id:string;kind:string;guided?:boolean;model?:string;family?:string;state:'running'|'cancelling'|'done'|'error'|'cancelled';startedAt:string;summary:string;error:string|null;details?:string;result:Record<string,any>|null;progress?:Record<string,any>|null;/** An engine update beside a loaded model: which step it is on and the models it concerns (the app words these itself). */step?:'getting-ready'|'stopping'|'stopped';models?:string[]}
+/** Cancellation owns the engine operation until teardown reports a terminal state. */
+export const isNativeJobBusy = (job: Pick<NativeJob, 'state'>): boolean => job.state === 'running' || job.state === 'cancelling';
 export interface NativeInstance {id:string;apiModelId:string;model:string;label:string;aliases?:string[];vision?:boolean;resourceProfile?:'work'|'performance'|null;context?:number;port:number;gpus:number[];status:'loading'|'ready'|'unloading'|'error';phase:string;loadedAt:string;error:string|null;/** One short line when the model was loaded without picture reading although it was on (no internet for the picture files, no room on the disk). */picturesNote?:string;metrics:Record<string,any>|null}
 export interface NativeState {
   /** The host has not had an answer from Control yet (it is still starting): not "nothing installed". */
@@ -45,7 +47,7 @@ const POLL_MS=2500,RUNNING_POLL_MS=1000;
 let users=0,timeout:ReturnType<typeof setTimeout>|null=null,watching=false;
 const hidden=()=>typeof document!=='undefined'&&document.visibilityState==='hidden';
 /** How long until the next poll: quicker while a download or load is running, none while the window is hidden (it reads again the moment it is shown). */
-export const nativePollDelay=(value:NativeState|null,isHidden=false):number|null=>isHidden?null:value?.jobs?.some(j=>j.state==='running')?RUNNING_POLL_MS:POLL_MS;
+export const nativePollDelay=(value:NativeState|null,isHidden=false):number|null=>isHidden?null:value?.jobs?.some(isNativeJobBusy)?RUNNING_POLL_MS:POLL_MS;
 function schedule(){
  if(timeout){clearTimeout(timeout);timeout=null;}
  if(!users)return;
@@ -62,7 +64,7 @@ export function useNative(){
   return()=>{users--;if(!users){if(timeout){clearTimeout(timeout);timeout=null;}if(watching&&typeof document!=='undefined'){watching=false;document.removeEventListener('visibilitychange',shown);window.removeEventListener('focus',shown);}}};
  },[]);
  // a new job (or its end) changes how fast the next poll should come
- const running=value?.jobs?.some(j=>j.state==='running')??false;
+ const running=value?.jobs?.some(isNativeJobBusy)??false;
  useEffect(()=>{schedule();},[running]);
  return value;
 }

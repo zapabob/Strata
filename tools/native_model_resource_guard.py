@@ -20,7 +20,11 @@ import subprocess
 import sys
 import time
 
-from run_native_validation_step import digest
+
+def digest(path: Path) -> str:
+    """Keep the CLI/library digest API without importing model tooling for RAM checks."""
+    with path.open("rb") as source:
+        return hashlib.file_digest(source, "sha256").hexdigest()
 
 
 def available_memory() -> dict[str, int]:
@@ -45,6 +49,7 @@ def available_memory() -> dict[str, int]:
     if not ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(memory)):
         raise OSError("GlobalMemoryStatusEx failed")
     return {
+        "total_physical_bytes": memory.physical,
         "available_physical_bytes": memory.free_physical,
         "available_commit_bytes": memory.free_commit,
     }

@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "purpose": "CUDA compiler comparison inputs; no performance qualification",
+  "status": "BUILD_BASELINE_ONLY",
+  "comparison": {
+    "source_policy": "same committed HEAD and clean tracked diff in both arms",
+    "dependency_policy": "same ggml SHA and clean tracked diff",
+    "ggml_sha": "3cf03257f219afbe7334045ff7c6a06ac68c627d",
+    "driver_policy": "same installed driver; no driver change authorised",
+    "driver_change_arms": ["old-driver-cuda13.3", "new-driver-cuda13.3", "new-driver-cuda13.5"],
+    "toolkits": ["13.3.73", "13.5.37"],
+    "generator": "Visual Studio 17 2022",
+    "configuration": "Release",
+    "architecture": "120",
+    "compile_jobs": 1,
+    "build_targets": ["strata", "strata-q36", "strata-dsv41"],
+    "cpu_test_targets": ["q36_expert_store_test", "q36_transfer_lifetime_test"],
+    "baseline_deltas": {
+      "STRATA_BUILD_DSV41": "ON in both arms; existing release cache was OFF",
+      "GGML_BMI2": "CMake forces OFF with DSV41; same in both arms"
+    }
+  },
+  "runtime": {
+    "status": "NOT_RUN",
+    "reason": "GPU ownership and controller clearance required before any CUDA probe or model load",
+    "families": {
+      "qwen36": {
+        "router_top_k": 8,
+        "router_policy": "preserve Qwen3.6 top-8; verify the selected model metadata agrees before comparison",
+        "kv_baseline": "FP32",
+        "kv_layout": "separate attention K/V arrays",
+        "candidate_kv_formats": ["FP16", "Q8_0", "NVFP4"],
+        "candidate_status": "PROPOSED",
+        "candidate_requirements": "check each opt-in format's engine capability, rounding, scales and layout before use; retain the Qwen3.6 FP32 rollback path"
+      },
+      "qwen38": {
+        "router_top_k": null,
+        "router_reason": "derive from the selected model metadata and preserve its actual expert selection count; P0-A does not bind a selected model",
+        "kv_baseline": null,
+        "kv_layout": null,
+        "kv_reason": "freeze the selected model's actual effective precision and layout from metadata and existing engine settings before comparison",
+        "existing_precision_contract": "preserve generic Qwen FP16 QSA pools, grouped-64 INT8, rotated Q4_0 and K8V4 paths as applicable; grouped-64 INT8 is not GGUF Q8_0",
+        "candidate_kv_formats": null,
+        "candidate_reason": "no additional formats selected; any proposal needs family-specific capability, rounding, scale and layout checks"
+      },
+      "deepseek41": {
+        "router_top_k": null,
+        "router_reason": "derive from the selected model metadata and preserve its actual expert selection count; P0-A does not bind a selected model",
+        "kv_baseline": null,
+        "kv_layout": null,
+        "kv_reason": "freeze the selected model's actual effective precision and layout from metadata and existing engine settings before comparison",
+        "existing_precision_contract": "preserve the FP8 window ring, compressed E2M1/E4M3 KV, separate E2M1/UE8M0 index keys and BF16 working rows; compressed latent rows and index keys retain their distinct rounding, scale and layout contracts",
+        "candidate_kv_formats": null,
+        "candidate_reason": "no additional formats selected; any proposal needs DeepSeek-specific capability, rounding, scale and compressed-latent/index-key layout checks"
+      }
+    },
+    "context_tokens": [98304, 131072],
+    "sessions": 1,
+    "gpus": 1,
+    "model_sha256": null,
+    "pack_sha256": null,
+    "pack_identity": null,
+    "layer_crc": null,
+    "expert_quantisation": null,
+    "mtp": null,
+    "unset_reason": "must freeze actual model/pack identity, effective quantisation, MTP and family-specific settings before runtime comparison; no model metadata collected in P0-A"
+  },
+  "resource_gates": {
+    "available_physical_ram_floor_bytes": 3221225472,
+    "commit_headroom_floor_bytes": 4294967296,
+    "count_shared_gpu_memory_as_dedicated_vram": false,
+    "count_pagefile_or_mapped_file_as_available_ram": false
+  }
+}
