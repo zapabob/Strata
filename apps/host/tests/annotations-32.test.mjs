@@ -34,7 +34,7 @@ test('128K recommendation reaches saved config and launch arguments while explic
 });
 
 test('all integer K context sizes reach the engine without a 32K fallback',()=>{
- for(const k of [1,2,4,5,31,32,33,127,128,129,511,1024]) {
+ for(const k of [1,2,3,4,5,31,32,33,127,128,129,511,1024]) {
   assert.equal(CONTEXT_TOKENS[`${k}k`],k*1024);
   const args=buildArgs({modelPath:'/test.gguf',config:{beginner:{contextLength:`${k}k`},expert:[]}});
   assert.equal(args[args.indexOf('-c')+1],String(k*1024));
