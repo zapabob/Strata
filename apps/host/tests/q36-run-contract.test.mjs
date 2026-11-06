@@ -345,10 +345,18 @@ test('loading Qwen3.6 drops ignored memory flags and refuses an explicit cache f
     config.user_args = ['--cache-type-k', 'q8_0'];
     config.args = ['--max-context', '65536', '--cache-type-k', 'q8_0'];
     writeFileSync(path, JSON.stringify(config));
-    const denied = await finishJob(f.control, f.control.operation('load', { model: 'iq3_s' }).id);
-    assert.equal(denied.state, 'error');
-    assert.match(denied.error, /--cache-type-k q8_0/);
-    assert.match(denied.error, /not applied/);
+    const jobs = f.control.state().jobs.length, calls = f.calls.length, effects = f.effects.length;
+    const journal = readFileSync(join(f.directory, 'native-jobs.json'), 'utf8');
+    assert.throws(() => f.control.operation('load', { model: 'iq3_s' }), error => {
+      assert.equal(error.code, 'unsupported_serving_setting');
+      assert.match(error.message, /cache_type_k.*not verified/);
+      return true;
+    });
+    assert.equal(f.control.state().jobs.length, jobs);
+    assert.equal(f.calls.length, calls);
+    assert.equal(f.effects.length, effects);
+    assert.equal(readFileSync(join(f.directory, 'native-jobs.json'), 'utf8'), journal);
+    assert.deepEqual(JSON.parse(readFileSync(path, 'utf8')), config);
   } finally {
     await f.cleanup();
   }

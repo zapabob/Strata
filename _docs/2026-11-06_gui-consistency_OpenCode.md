@@ -2,7 +2,8 @@
 
 Owner: OpenCode. Worktree `H:/Strata/worktrees/gui-consistency-20261106`, branch
 `fix/gui-consistency-20261106`, base `ca3ab40a`. Installed app source is
-`04fe91d0` / `0.5.2-local.1`. Status: SOURCE_READY_FOR_INDEPENDENT_REVIEW.
+`04fe91d0` / `0.5.2-local.1`. Status: SOURCE_READY_FOR_SPEC_RE_REVIEW
+(F1/F2 follow-up to `14a07fd5`; see the final section).
 
 ## Requirements and plan
 
@@ -245,3 +246,109 @@ Next: parent reviews this exact source commit, performs its merge, then runs the
 isolated real-Host acceptance from the inherited E3/E4 audits. Any live maintenance
 window and engine pause/restore belongs to the parent. Preserve the prior failed
 fallback-bound profile as evidence; it is not automatically rehabilitated here.
+
+## SPEC review F1/F2 follow-up — 2026-11-07
+
+Scope: the two P2 findings on `14a07fd5a7ec44abe241aa455d91f045decb8096`.
+Continued the existing worktree/WIP after interruptions. Same instructions, SOPs,
+systematic-debugging/TDD and self-review baseline apply. No delegation or parent
+checkout edits. The objective is a narrow source correction for SPEC re-review.
+
+### Reproduction before the fix
+
+Modified the actual production-boundary tests first. Final RED command was
+`node _docs/hybrid-intake-tests.mjs native-settings-file.test.mjs
+native-serving-policy.test.mjs`, using the same read-only Node 24.22.2 executable.
+Scratch `.../strata-hybrid-KP7gpU`: **19 passed, 10 failed**, 3.891 s.
+
+F1 reproduced synchronous journal writes and a new job for malformed JSON,
+non-object JSON, invalid known values, incomplete Spin8 pairs and Spin8 off with
+a capsule. The non-object case also reached a configuration repair write. Tests
+instrument `writeFileSync` and the existing stop/start/profile/before-load spies,
+with an already-ready isolated fixture model. They require zero additional jobs,
+writes, control effects or process calls. Captured-file race tests additionally
+prove that changing the file after the first read cannot change the admission
+decision. Existing tests that expected a failed job were updated to the requested
+synchronous-refusal contract while preserving valid captured-config coverage.
+
+F2 reproduced both catalog-derived Q36 (no arch, neutral model/executable names)
+and `arch:qwen36`: settings negotiated and saved f16, but Load returned a false
+unverified-format error without probing. The negative Q38 architecture case with
+Q36-looking names was incorrectly routed into the Q36 private-cache contract.
+The valid Q36 fixtures explicitly request one concurrent slot, preserving the
+existing private-cache limit rather than changing parallel defaults.
+
+The first RED run (`dQLuEC`, also 19/29 passed) produced post-test ENOENT noise
+because incorrectly admitted jobs outlived fixture deletion. The fixture cleanup
+now drains any such jobs before deleting task-only files. The second RED retained
+all ten behavioural failures without that cleanup noise.
+
+### Corrections
+
+`server/native-control.mjs` now calls the throwing captured-config validator
+before serving admission and `begin`. Invalid syntax/known values/Spin8 combinations
+cannot create or persist a job. A valid load still carries its original captured
+text into the builder; it does not reread a different future configuration.
+
+Every Q36 decision in this Host's settings/load/build/tuning/lifecycle paths now
+uses the shared actual serving policy. This includes capability probing, argv
+preparation, physical admission, startup-log ownership and the no-safer-retry
+rule. DeepSeek classification in the same Host paths also uses that policy.
+There is no executable/model-name family fallback in `native-control.mjs`.
+A selected Q36 run carries canonical `arch:qwen35moe` into the downstream server;
+the user's saved architecture/name/executable are not rewritten.
+
+`server/native-settings.mjs` aligns file syntax with the existing PATCH syntax
+for f32. The syntax registry recognises f32 without a filename heuristic; actual
+per-adapter policy remains the admission authority. Q38 f32/per-side settings
+still fail before save/job creation, and Q36 unknown-capability views remain
+FP32-only. This additional legacy test initially failed twice after the first
+F1/F2 repair (`HEB389`: 29/31 passed), then passed with the syntax alignment.
+No engine capability union or new executable capability is introduced.
+
+Changed files in this follow-up: `server/native-control.mjs`,
+`server/native-settings.mjs`, `tests/native-settings-file.test.mjs`,
+`tests/native-serving-policy.test.mjs`, `tests/q36-run-contract.test.mjs`, and this
+log (all Host-relative paths except the log). The Q36 contract test only replaces
+its obsolete failed-job expectation with synchronous refusal plus unchanged
+journal/config/callback assertions. Engine/native contract implementation is
+unchanged.
+
+### Verification and failures
+
+The first expanded focused run (`jXFOuL`) passed **129/130**. Its one failure was
+the inherited Q36 test expecting a failed job for an explicit q8_0 cache flag;
+the production path already refused synchronously. The updated test strengthens
+its boundary assertion rather than weakening admission.
+
+Final command from the workspace root:
+
+```text
+node _docs/hybrid-intake-tests.mjs native-settings-file.test.mjs native-serving-policy.test.mjs native-settings.test.mjs run-config-check.test.mjs native-control.test.mjs native-installed-kv.test.mjs native-config-persistence.test.mjs native-load-cancel.test.mjs native-ds-parallel.test.mjs native-ds-args.test.mjs q36-kv-layout.test.mjs q36-load-lifecycle.test.mjs q36-run-contract.test.mjs q36-capabilities.test.mjs q36-private-cache.test.mjs q36-progress.test.mjs native-run-observation.test.mjs
+```
+
+PASS **130/130**, zero failed/skipped/cancelled, **24.104 s**. Scratch:
+`C:/Users/downl/AppData/Local/Temp/opencode/strata-hybrid-TuVzjc`.
+Coverage includes the new positive/negative family cases, explicit legacy FP32,
+captured-config ownership, cancellation, private caches, startup observations,
+no parallel-drop Q36 retry, DeepSeek and inherited U1 metadata.
+
+`node node_modules/typescript/bin/tsc --noEmit` in `apps/host`: **PASS** after the
+final source edits. Both test and typecheck commands enforce the handoff's
+3 GiB available-RAM precondition. `git diff --check`: **PASS**, apart from Git's
+informational CRLF conversion notices. Test/build commands use the installed
+Node binary read-only; all model/process/network boundaries are controlled.
+
+Self-review-event: `rework_returned`, `qa_defect`, `ticket_completed`; review-only.
+The prior coverage did not distinguish synchronous rejection from a failed job,
+and its Q36 launch fixtures already carried recognisable identity. Added direct
+journal/write-effect assertions and neutral-name catalog/alias fixtures. Rejected:
+accepting the late error as an early refusal, suppressing a Q36 capability error,
+borrowing identity from filenames, changing private-cache parallel limits, or
+loosening negative-family tests. No governance update.
+
+Ready for independent SPEC re-review. Real HTTP/Host E2E, engine/model/GPU runs,
+installed-app changes, broad suites and releases remain NOT_RUN in this follow-up.
+The earlier controlled UI/E4 results are historical evidence, not rerun here;
+those source files are unchanged by F1/F2. Parent-owned telemetry/chat/locales
+remain outside this lane. No app stop or maintenance operation occurred.

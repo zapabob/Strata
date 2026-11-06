@@ -30,7 +30,7 @@ for (const kv of ['int8', 'q4_0', 'k8v4', 'fp16']) test(`Q38 explicit ${kv} reac
 });
 
 for (const values of [
-  { cache_type_k: 'q8_0' }, { cache_type_v: 'q4_0' }, { spin8_mode: 'off' },
+  { cache_type_k: 'q8_0' }, { cache_type_v: 'q4_0' }, { cache_type_k: 'f32' }, { spin8_mode: 'off' },
   { spin8_mode: 'vector', spin8_native_config: 'capsule.json', spin8_native_sha256: 'a'.repeat(64) },
   { args: ['--cache-type-k', 'q8_0'] }, { args: ['-ctv', 'q4_0'] },
 ]) test(`Q38 rejects ${JSON.stringify(values)} before save/job/replacement`, async () => {
@@ -146,4 +146,68 @@ test('preparation plan rejects incompatible saved/requested settings before inst
     assert.equal(f.control.settings('iq2_xs').values.cache_type_v,null);
     assert.equal(JSON.parse(readFileSync(path)).args.includes('-ctv'),false);
   }finally{await f.cleanup();}
+});
+
+for (const identity of ['catalog', 'arch-alias']) test(`Q36 ${identity} identity negotiates saved FP16 through the actual load builder`, async () => {
+  const probes=[]; const f=nativeFixture({packaged:true,q36CapabilityProbe:async exe=>{probes.push(exe);return cap;}});
+  try {
+    const path=join(f.repo,'strata-iq2_xs.json');
+    f.catalog.families[0].family='qwen36';
+    writeFileSync(path,JSON.stringify({model_name:'Neutral model',exe:'neutral-runtime.exe',parallel:1,args:['--max-context','4096'],...(identity==='arch-alias'?{arch:'qwen36'}:{})}));
+    await f.control.refresh(true);
+    const view=await f.control.settingsKv('iq2_xs');
+    assert.equal(view.servingPolicy.id,'q36');assert.deepEqual(view.fields.find(f=>f.id==='cache_type_k').choices,['f32','f16']);
+    await f.control.saveChecked('iq2_xs',{values:{cache_type_k:'f16'}});
+    const before=probes.length;
+    const done=await finishJob(f.control,f.control.operation('load',{model:'iq2_xs'}).id);
+    assert.equal(done.state,'done',done.error);
+    assert.equal(probes.length,before+1,'load must independently negotiate the selected Q36 adapter');
+    const cfg=JSON.parse(readFileSync(f.launchConfigs.at(-1)));
+    assert.equal(cfg.arch,'qwen35moe','downstream server receives the canonical adapter, without name heuristics');
+    assert.equal(cfg.args[cfg.args.indexOf('--cache-type-k')+1],'f16');
+    assert.equal(cfg.q36_run.backend.family,'qwen36');assert.equal(cfg.q36_run.effective.kv_k,'f16');
+    assert.equal(JSON.parse(readFileSync(path)).arch,identity==='arch-alias'?'qwen36':undefined,'runtime binding does not rewrite saved model identity');
+  } finally { await f.cleanup(); }
+});
+
+test('a Q38 saved architecture cannot be overridden by Q36-looking model or executable names',async()=>{
+  let probes=0; const f=nativeFixture({packaged:true,q36CapabilityProbe:async()=>{probes++;return cap;}});
+  try {
+    const path=join(f.repo,'strata-iq2_xs.json');
+    writeFileSync(path,JSON.stringify({arch:'qwen4exp',model_name:'Qwen3.6-35B-A3B',exe:'strata-q36.exe',args:['--kv','int8']}));
+    await f.control.refresh(true);assert.equal((await f.control.settingsKv('iq2_xs')).servingPolicy.id,'q38');
+    const done=await finishJob(f.control,f.control.operation('load',{model:'iq2_xs'}).id);assert.equal(done.state,'done',done.error);
+    assert.equal(probes,0,'ordinary Q38 must never probe or execute the Q36 contract');
+    const cfg=JSON.parse(readFileSync(f.launchConfigs.at(-1)));assert.equal(cfg.q36_run,undefined);assert.equal(cfg.args[cfg.args.indexOf('--kv')+1],'int8');
+  } finally { await f.cleanup(); }
+});
+
+for (const identity of ['catalog','arch-alias']) test(`Q36 ${identity} retains explicit legacy FP32 without a capability marker`,async()=>{
+  const f=nativeFixture({packaged:true,q36CapabilityProbe:async()=>null});
+  try {
+    f.catalog.families[0].family='qwen36';
+    const path=join(f.repo,'strata-iq2_xs.json');
+    writeFileSync(path,JSON.stringify({model_name:'Neutral model',exe:'neutral-runtime.exe',parallel:1,args:['--max-context','4096'],...(identity==='arch-alias'?{arch:'qwen36'}:{})}));
+    await f.control.refresh(true);
+    await f.control.saveChecked('iq2_xs',{values:{cache_type_k:'f32',cache_type_v:'f32'}});
+    const done=await finishJob(f.control,f.control.operation('load',{model:'iq2_xs'}).id);assert.equal(done.state,'done',done.error);
+    const cfg=JSON.parse(readFileSync(f.launchConfigs.at(-1)));
+    assert.equal(cfg.arch,'qwen35moe');assert.equal(cfg.q36_run.effective.kv_k,'f32');assert.equal(cfg.q36_run.effective.kv_v,'f32');
+    assert.equal(cfg.args.includes('--cache-type-k'),false);assert.equal(cfg.args.includes('--cache-type-v'),false);
+    await assert.rejects(f.control.saveChecked('iq2_xs',{values:{cache_type_k:'f16'}}),/not verified/);
+  } finally { await f.cleanup(); }
+});
+
+test('a non-Q36 architecture wins over the Q36 catalog and cannot borrow its capability',async()=>{
+  let probes=0;const f=nativeFixture({q36CapabilityProbe:async()=>{probes++;return cap;}});
+  try {
+    f.catalog.families[0].family='qwen36';
+    const path=join(f.repo,'strata-iq2_xs.json');
+    writeFileSync(path,JSON.stringify({arch:'deepseek41',model_name:'Qwen3.6',exe:'strata-q36.exe',cache_type_k:'f16',args:[]}));
+    await f.control.refresh(true);
+    const view=await f.control.settingsKv('iq2_xs');assert.equal(view.servingPolicy.id,'deepseek41');assert.equal(view.fields.find(f=>f.id==='cache_type_k').supported,false);
+    await assert.rejects(f.control.saveChecked('iq2_xs',{values:{cache_type_k:'f16'}}),/serving adapter/);
+    assert.throws(()=>f.control.operation('load',{model:'iq2_xs'}),/serving adapter/);
+    assert.equal(probes,0);assert.equal(f.control.state().jobs.length,0);assert.deepEqual(f.effects,[]);
+  } finally { await f.cleanup(); }
 });
