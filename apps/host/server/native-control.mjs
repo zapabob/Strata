@@ -327,9 +327,13 @@ export function createNativeControl({directory,requests=()=>[],changed=()=>{},sp
   const policy=policyFor(args.model,config,kvCapability);
   const next=applyOrdinaryKv(applyServingPatch(config,validateNativeSettings(args.values??{})),args.kv,policy);
   assertServingSettings(next,policy,{negotiating});
-  // Bind the selected adapter in the run config too: downstream serving must not
-  // rediscover a catalog-derived Q36 from an executable or model filename.
-  return policy.id==='q36'?{...next,arch:'qwen35moe'}:next;
+  // Carry every resolved adapter across the process boundary. A known non-Q36
+  // family must not fall back to legacy filename hints in the Python consumer.
+  if(!policy.runtimeArch)return next;
+  // Keep runtime-only identity in a stable position in the load fingerprint as
+  // load-owned settings are appended to the saved config between starts.
+  const {arch:_savedArch,...rest}=next;
+  return {arch:policy.runtimeArch,...rest};
  }
  const q36Config=(config,model)=>policyFor(model,config).id==='q36';
  function settings(model){const {entry,config}=record(model);const values=Object.fromEntries(NATIVE_FIELDS.map(f=>[f.id,servingValue(config,f.id)]));if(typeof values.aliases==='string')values.aliases=values.aliases.split(',').map(v=>v.trim()).filter(Boolean);values.sampling=config.sampling??{};values.args=config.args??[];values.env=publicNativeEnv(config.env??{});return {model,values,mcp:publicMcpServers(config.mcp_servers??config.mcpServers??{}),restartNeeded:true,capabilities:{dsExperts:ownEngine(config,model)&&dsExpertsSupported(config),...(q36Config(config,model)?{q36Kv:{status:'unknown',defaultK:'f32',defaultV:'f32',quality:'experimental-unqualified'}}:{})},speedSwitches:speedSwitchRows(config.env??{},{deepseek:ownEngine(config,model),arch:config.arch??null,backend:config.backend??entry?.backend??snapshot.installed?.engine?.backend??null,gpus:snapshot.hardware?.gpus??[]})};}

@@ -2,8 +2,8 @@
 
 Owner: OpenCode. Worktree `H:/Strata/worktrees/gui-consistency-20261106`, branch
 `fix/gui-consistency-20261106`, base `ca3ab40a`. Installed app source is
-`04fe91d0` / `0.5.2-local.1`. Status: SOURCE_READY_FOR_SPEC_THEN_QUALITY
-(adapter/contract invariant follow-up to `e8a9370d`; see the final section).
+`04fe91d0` / `0.5.2-local.1`. Status: SOURCE_READY_FOR_QUALITY_RECHECK
+(known-adapter runtime binding follow-up to `8ee83ebb`; see the final section).
 
 ## Requirements and plan
 
@@ -611,3 +611,65 @@ GUI production source were not changed in this round. Full suites, live HTTP/UI
 E2E, native/model/GPU work, installs, release/push and maintenance operations remain
 NOT_RUN. No installed app or live engine was stopped. Earlier F1/E4 results remain
 historical/parent-reviewed evidence, not an all-GUI or 32 GB / 16 GB qualification.
+
+## QUALITY: carry every known adapter to Python — 2026-11-07
+
+Parent reports SPEC passed at `8ee83ebb8ad0d09403fea6aad5ec030d99ff7aeb`, with one
+remaining QUALITY P2: catalog Q38 without saved arch could still reach Python's
+legacy Q36 name fallback. Continued this lane only; parent owns main checkpoint,
+push, handoff and cleanup after re-review.
+
+Reproduced before changing production. The actual Host fixture now includes both
+explicit-arch Q38 and catalog-only Q38, with the same misleading Q36 executable
+path/model label. Its generated catalog-only config reached the real Python
+consumer and failed private-cache acknowledgement at READY. RED
+`strata-gui-python-GYwYUt`: **1 failed, 18 passed**, 28.69 s. The six new Host cases
+for qwen/swift/coder/unsloth/gyro/deepseek41 all lacked runtime arch: RED
+`strata-hybrid-osOzMt`, **6 failed, 24 passed**, 1.706 s.
+
+Minimal production fix: `native-serving-policy.mjs` owns the single canonical
+runtime mapping (`q38 → qwen4exp`, `q36 → qwen35moe`, `deepseek41 → deepseek41`).
+`servingConfig` carries that resolved identity for every known adapter. Unknown
+identity remains unbound; no standalone Python legacy rule was changed. Source
+family classification, explicit-arch precedence and capability restrictions are
+unchanged. Inspected downstream arch consumers in server, drafting/vram-fit and
+speed settings; explicit qwen4exp is already the supported canonical Q38 identity.
+
+One additional regression caught runtime-key ordering in the existing JSON
+fingerprint: appending the runtime-only arch after saved keys caused an otherwise
+unchanged second load to restart after vision preferences were persisted.
+`strata-hybrid-ZA07rc`: **91/92 passed**. Putting runtime arch in a stable first
+position corrected this without changing the existing onboarding assertion or
+rewriting saved identity. The six Host cases assert saved arch/exe/model_name
+remain unchanged even while load-owned settings persist.
+
+Final focused commands (Node 24.22.2 read-only, isolated drivers, 3 GiB RAM floor):
+
+```text
+node _docs/hybrid-intake-tests.mjs native-serving-policy.test.mjs native-control.test.mjs native-config-persistence.test.mjs native-installed-kv.test.mjs native-ds-args.test.mjs native-ds-parallel.test.mjs q36-kv-layout.test.mjs q36-load-lifecycle.test.mjs native-onboarding.test.mjs
+node _docs/gui-consistency-python-tests.mjs serve/test_native_family.py serve/test_q36_kv_contract.py
+```
+
+PASS **92/92 Host tests**, 9.520 s (`strata-hybrid-OV6Wlb`), and **29/29 Python /
+cross-language tests**, 35.96 s (`strata-gui-python-Zn1XRc`), zero failures/skips.
+Scratch directories are under `C:/Users/downl/AppData/Local/Temp/opencode`.
+The catalog-only Q38 config now reaches bare READY with no Q36 requirements or
+probe; explicit Q38, standalone legacy cases and genuine Q36 proof still pass.
+
+`tsc --noEmit`: PASS. Black check and flake8 (88-character limit) on the amended
+Python test: PASS through the existing uv/Python 3.12.10 driver. `git diff --check`:
+PASS, aside from informational CRLF notices. Pre-existing uv dangling-dist-info
+warnings remain. No dependencies, packages or interpreter changes.
+
+Changed files: two production Host modules, their focused policy test, the existing
+Host-to-Python fixture bridge, `serve/test_native_family.py`, and this log. No
+production Python, UI, telemetry/chat/locales or installed files changed.
+
+Self-review-event: `rework_returned`, `qa_defect`, `ticket_completed`; review-only.
+The missing case was known catalog identity with absent saved arch, rather than
+explicit arch. The shared runtime mapping and producer-to-consumer regression
+cover that distinction. Rejected: disabling Python legacy checks, renaming model
+paths, writing canonical identity back to saved configs, or weakening repeat-load
+ownership tests. Ready for QUALITY recheck; no merge, push, cleanup, GPU/model
+operation, installed-app action, live maintenance or private-data action occurred.
+Live native reliability and full E2E remain outside this source unit.

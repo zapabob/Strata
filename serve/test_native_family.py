@@ -149,6 +149,27 @@ class HostPythonFamilyConsumerTests(unittest.TestCase):
         namespace["q36_probe_kv_capabilities"].assert_not_called()
         proc.kill.assert_not_called()
 
+    def test_catalog_q38_runtime_keeps_resolved_identity(self) -> None:
+        cfg = copy.deepcopy(self.configs["qwen-catalog"])
+        self.assertIn("strata-q36", cfg["exe"])
+        args = list(cfg["args"])
+        with mock.patch.object(server, "q36_probe_kv_capabilities") as probe:
+            args += server.native_cache_args(cfg, args, cfg["exe"])
+            probe.assert_not_called()
+        namespace, proc, env, obj = ready_consumer(cfg, "")
+        error = None
+        try:
+            namespace["ReadyPrefix"].__init__(obj, cfg["exe"], args, env=env)
+        except server.EngineDied as exc:
+            error = str(exc)
+        self.assertIsNone(error, "catalog Q38 must reach READY without Q36 receipts")
+        self.assertEqual(cfg["arch"], "qwen4exp")
+        self.assertEqual(env["STRATA_REQUIRE_Q36_PRIVATE_CACHE"], "0")
+        self.assertEqual(env["STRATA_REQUIRE_Q36_KV"], "0")
+        self.assertEqual(obj.known_ctx, 256)
+        namespace["q36_probe_kv_capabilities"].assert_not_called()
+        proc.kill.assert_not_called()
+
     def test_catalog_q36_checks_binary_and_both_ready_receipts(self) -> None:
         cfg = copy.deepcopy(self.configs["qwen36"])
         self.assertEqual(cfg["arch"], "qwen35moe")

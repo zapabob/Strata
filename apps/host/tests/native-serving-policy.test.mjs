@@ -69,6 +69,8 @@ test('family policy uses saved adapter identity, no filename/GPU inference or ca
   assert.equal(nativeServingPolicy({arch:'deepseek41',exe:'strata-q36.exe',model_name:'Qwen3.8'},'qwen').id,'deepseek41');
   assert.equal(nativeServingPolicy({arch:'future',exe:'strata-q36.exe',model_name:'Qwen3.6'},'qwen').id,'unknown');
   assert.equal(nativeServingPolicy({exe:'strata-q36.exe',model_name:'Qwen3.6'},null).id,'unknown');
+  assert.equal(nativeServingPolicy({arch:'future'},'qwen').runtimeArch,null);
+  assert.equal(nativeServingPolicy({exe:'strata-q36.exe',model_name:'Qwen3.6'}).runtimeArch,null);
   const unknown=nativeServingPolicy({arch:'qwen35moe'}),verified=nativeServingPolicy({arch:'qwen35moe'},null,cap);
   assert.doesNotThrow(()=>assertServingSettings({cache_type_k:'f32'},unknown));
   assert.throws(()=>assertServingSettings({cache_type_k:'f16'},unknown),/not verified/);
@@ -210,4 +212,22 @@ test('a non-Q36 architecture wins over the Q36 catalog and cannot borrow its cap
     assert.throws(()=>f.control.operation('load',{model:'iq2_xs'}),/serving adapter/);
     assert.equal(probes,0);assert.equal(f.control.state().jobs.length,0);assert.deepEqual(f.effects,[]);
   } finally { await f.cleanup(); }
+});
+
+for(const family of ['qwen','swift','coder','unsloth','gyro','deepseek41'])test(`catalog ${family} binds its actual runtime adapter without rewriting saved identity`,async()=>{
+  const f=nativeFixture({packaged:true,q36CapabilityProbe:async()=>{throw Error('Non-Q36 must not probe Q36');}});
+  try{
+    f.catalog.families[0].family=family;
+    const path=join(f.repo,'strata-iq2_xs.json');
+    const original={exe:'strata-q36.exe',model_name:'Qwen3.6-looking label',parallel:1,args:['--max-context','256']};
+    writeFileSync(path,JSON.stringify(original));await f.control.refresh(true);
+    const done=await finishJob(f.control,f.control.operation('load',{model:'iq2_xs',resourceProfile:'work',contextChosen:true}).id);
+    assert.equal(done.state,'done',done.error);
+    const run=JSON.parse(readFileSync(f.launchConfigs.at(-1)));
+    assert.equal(run.arch,family==='deepseek41'?'deepseek41':'qwen4exp');
+    assert.equal(run.q36_run,undefined);
+    const saved=JSON.parse(readFileSync(path));
+    for(const key of ['arch','exe','model_name'])assert.equal(saved[key],original[key]);
+    assert.equal(saved.ui_context_chosen,true,'identity remains unchanged even when load-owned settings persist');
+  }finally{await f.cleanup();}
 });

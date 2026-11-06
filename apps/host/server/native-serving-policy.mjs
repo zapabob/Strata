@@ -3,6 +3,7 @@ import { capture, merge, setFlag, USER_KEY } from './native-user-args.mjs';
 import { q36KvFields, parseQ36KvCapabilities } from './q36-kv-capabilities.mjs';
 
 const Q38_FAMILIES = new Set(['qwen', 'swift', 'coder', 'unsloth', 'gyro']);
+const RUNTIME_ARCH = {q38:'qwen4exp',q36:'qwen35moe',deepseek41:'deepseek41'};
 export const ORDINARY_KV = ['fp16', 'int8', 'q4_0', 'k8v4'];
 export const SERVING_FLAGS = {
   cache_type_k: ['--cache-type-k', '-ctk'], cache_type_v: ['--cache-type-v', '-ctv'],
@@ -21,7 +22,7 @@ export function nativeServingPolicy(config = {}, family = null, capability = nul
     : id === 'q36' ? 'Qwen3.6 uses negotiated FP32/FP16 storage. Unknown engines retain the legacy FP32 path. Spin(8) serving is unavailable.'
     : id === 'deepseek41' ? 'DeepSeek uses its own packed FP8 window and FP4 latent/index cache, not generic Qwen KV or Spin(8) controls.'
     : 'The serving adapter is unknown. Generic KV and Spin(8) choices are unavailable.';
-  return { id, ordinaryKv: id === 'q38' ? [...ORDINARY_KV] : [], note, kvCapability };
+  return { id, runtimeArch: RUNTIME_ARCH[id] ?? null, ordinaryKv: id === 'q38' ? [...ORDINARY_KV] : [], note, kvCapability };
 }
 
 const effectiveArgs = config => merge(config.args ?? [], capture(config));
