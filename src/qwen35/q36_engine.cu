@@ -1231,6 +1231,7 @@ struct Engine {
     // event, including copies on the other stream, has completed.
     struct PinTransfers {
         cudaEvent_t done[2] = {};
+        uint64_t startup_bytes[2] = {};  // only bytes associated with the optional startup observer
         std::deque<int> busy;
         ~PinTransfers() {
             for (auto event : done) if (event) {
@@ -2287,7 +2288,11 @@ struct Engine {
     /// A streamed forward over the state indices `seq`: the first two layers' experts start copying now.
     // Mapped-pack H2D through the bounded host pin pool (T05-B). Legacy keeps a direct copy.
     // Chunks when the transfer is larger than one slot. Synchronizes before releasing a slot.
-    void h2d_from_host(void* dst, const void* src, size_t n, cudaStream_t stream) {
+    void h2d_from_host(void* dst, const void* src, size_t n, cudaStream_t stream,
+                       strata::qwen35::Q36StartupDetail* startup = nullptr, uint64_t* completed = nullptr, int layer = -1) {
+        const auto complete = [&](uint64_t bytes) {
+            if (startup && completed) { *completed += bytes; startup->progress(*completed, layer); }
+        };
         strata::qwen35::ExpertPinPool* pool = m && m->expert_pack ? m->pin_pool.get() : nullptr;
         static const bool file_staging = [] {
             const char* value = std::getenv("STRATA_Q36_FILE_STAGING");
@@ -2297,6 +2302,7 @@ struct Engine {
         const auto fill = [&](uint8_t* target, size_t off, size_t bytes) {
             if (file_source) {
                 if (!m->expert_pack->read_mapped((const uint8_t*) src + off, target, bytes)) {
+                    strata::qwen35::q36_startup_detail_error("file_staging_read_failed");
                     std::fprintf(stderr, "strata-q36: expert file staging read failed; no partial transfer submitted\n");
                     std::exit(1);
                 }
@@ -2321,6 +2327,8 @@ struct Engine {
                 if (slot < 0 && !pin_transfers.busy.empty()) {
                     const int oldest = pin_transfers.busy.front();
                     CK(cudaEventSynchronize(pin_transfers.done[oldest]));
+                    complete(pin_transfers.startup_bytes[oldest]);
+                    pin_transfers.startup_bytes[oldest] = 0;
                     pool->release(oldest);
                     pin_transfers.busy.pop_front();
                     slot = pool->begin_fill();
@@ -2337,6 +2345,7 @@ struct Engine {
                 }
                 CK(cudaMemcpyAsync((uint8_t*) dst + off, pool->data(slot), chunk, cudaMemcpyHostToDevice, stream));
                 CK(cudaEventRecord(pin_transfers.done[slot], stream));
+                pin_transfers.startup_bytes[slot] = startup ? chunk : 0;
                 pin_transfers.busy.push_back(slot);
                 off += chunk;
             }
@@ -2372,6 +2381,7 @@ struct Engine {
             }
             CK(cudaMemcpyAsync((uint8_t*) dst + off, pool->data(s), chunk, cudaMemcpyHostToDevice, stream));
             CK(cudaStreamSynchronize(stream));
+            complete(chunk);
             pool->release(s);
             off += chunk;
         }
@@ -3293,7 +3303,7 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, int hybrid
         }
         E.startup_expert_host_bytes = host;
     }
-    uint64_t upload_bytes = 0;
+    uint64_t upload_bytes = 0, uploaded = 0;
     for (Layer* L : all) upload_bytes += mtp_only && L != &m.mtp ? L->L.bytes * (uint64_t) ne : L->stride * (uint64_t) S;
     strata::qwen35::Q36StartupDetail upload("initial_slot_h2d", upload_bytes);
     size_t off = 0;
@@ -3308,6 +3318,8 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, int hybrid
             for (int64_t e = 0; e < ne; ++e) {
                 expert_blob(L, e, blob.data());
                 CK(cudaMemcpy(L.blobs + (size_t) e * L.stride, blob.data(), L.L.bytes, cudaMemcpyHostToDevice));
+                uploaded += L.L.bytes;
+                upload.progress(uploaded, (int) li);
             }
             L.n_slots = (int) ne;
             continue;
@@ -3332,13 +3344,17 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, int hybrid
             CK(cudaMalloc(&L.blobs, L.stride * (size_t) S + kMmqTail));
             E.startup_expert_device_bytes += L.stride * (size_t) S + kMmqTail;
             CK(cudaMemset(L.blobs, 0, L.stride * (size_t) S + kMmqTail));
-            if (mapped && m.pin_pool)
-                E.h2d_from_host(L.blobs, L.hblobs, L.stride * (size_t) S, E.st);
-            else
+            if (mapped && m.pin_pool) {
+                E.h2d_from_host(L.blobs, L.hblobs, L.stride * (size_t) S, E.st,
+                               strata::qwen35::q36_startup_detail_enabled() ? &upload : nullptr, &uploaded, (int) li);
+            } else {
                 CK(cudaMemcpy(L.blobs, L.hblobs, L.stride * (size_t) S, cudaMemcpyHostToDevice));
+                uploaded += L.stride * (size_t) S;
+            }
         }
-        // Some mapped copies can still be in flight. Completion is reported only after the existing sync below.
-        upload.progress(0, (int) li);
+        // Count only synchronous copies and chunks confirmed by the transfer path's existing waits.
+        // Pending asynchronous copies remain uncounted until the existing device sync below.
+        upload.progress(uploaded, (int) li);
         Engine::Hy& H = E.hy[li];
         H.slot_of.assign((size_t) ne, -1);
         H.exp_in_slot.assign((size_t) S, 0);

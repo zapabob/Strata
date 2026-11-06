@@ -31,6 +31,42 @@ def _placement(seconds: str, generation: str) -> str:
 
 
 class StartupLogAnalysisTest(unittest.TestCase):
+    def test_native_legacy_record_source_is_byte_exact_with_trace_disabled(self) -> None:
+        # A source-format fixture while native compilation is explicitly pending.
+        # This checks the real fprintf literal and its independence from tracing;
+        # it does not claim execution of the native binary.
+        root = Path(__file__).resolve().parents[2]
+        header = (root / "include/strata/qwen35/startup_trace.hpp").read_text(encoding="utf-8")
+        body = header[header.index("inline void q36_startup("):]
+        body = body[:body.index("\n}") + 2]
+        format_literal = re.search(r'"(Q36_STARTUP schema=1[^"\n]*)"', body).group(1)
+        native_format = bytes(format_literal, "ascii").decode("unicode_escape")
+        expected = "Q36_STARTUP schema=1 stage=expert_repack state=end elapsed_ms=27 stage_elapsed_ms=3 error_code=null\n"
+        self.assertEqual(native_format.replace("%lld", "%d") % ("expert_repack", "end", 27, 3, "null"), expected)
+        self.assertNotIn("generation", body)
+        self.assertNotIn("getenv", body)
+        self.assertNotIn("q36_startup_detail_enabled", body)
+
+    def test_native_upload_source_counts_only_confirmed_transfer_bytes(self) -> None:
+        # Source/call-order evidence only; GPU transfer completion is NOT_RUN.
+        root = Path(__file__).resolve().parents[2]
+        native = (root / "src/qwen35/q36_engine.cu").read_text(encoding="utf-8")
+        transfer = native[native.index("    void h2d_from_host("):native.index("    void stream_begin(")]
+        self.assertRegex(transfer, r"\*completed \+= bytes; startup->progress\(\*completed, layer\)")
+        self.assertRegex(transfer, r"CK\(cudaEventSynchronize\(pin_transfers.done\[oldest\]\)\);\s+complete\(pin_transfers.startup_bytes\[oldest\]\);\s+pin_transfers.startup_bytes\[oldest\] = 0;")
+        self.assertRegex(transfer, r"CK\(cudaEventRecord\(pin_transfers.done\[slot\], stream\)\);\s+pin_transfers.startup_bytes\[slot\] = startup \? chunk : 0;")
+        self.assertRegex(transfer, r"CK\(cudaStreamSynchronize\(stream\)\);\s+complete\(chunk\);")
+        # Scheduling a fallback async copy alone must never count its bytes as complete.
+        fallback = transfer[transfer.index("        if (!pool || n == 0)"):transfer.index("        static const bool pipeline")]
+        self.assertIn("cudaMemcpyAsync", fallback)
+        self.assertNotIn("complete(", fallback)
+        placement = native[native.index("    uint64_t upload_bytes = 0, uploaded = 0;", native.index("bool place_experts")):]
+        main = placement[:placement.index("        if (mapped)")]
+        self.assertRegex(main, r"CK\(cudaMemcpy\([^;]+;\s+uploaded \+= L.L.bytes;\s+upload.progress\(uploaded, \(int\) li\);")
+        self.assertRegex(placement, r"CK\(cudaMemcpy\(L.blobs, L.hblobs,[^;]+;\s+uploaded \+= L.stride \* \(size_t\) S;")
+        self.assertNotIn("upload.progress(0,", placement)
+        self.assertRegex(placement, r"CK\(cudaDeviceSynchronize\(\)\);\s+upload.end\(\);")
+
     def test_real_child_spawn_prefix_owns_a_fresh_generation_on_each_attempt(self) -> None:
         # Execute the real constructor up to its spawn receipt with a mocked Popen.
         # No engine, model, server listener, narrator thread or CUDA call is started.

@@ -166,7 +166,11 @@ export function createNativeControl({directory,requests=()=>[],changed=()=>{},sp
   instance.q36Detail=applied.detail;
   instance.q36LastCompletedDetail=applied.lastCompletedDetail;
   if(instance.q36Run){
-   if(previous.child?.generation!==applied.child?.generation)instance.q36Run={...instance.q36Run,effective:{...instance.q36Run.planned},observed:{status:'unobserved'}};
+   if(previous.child?.generation!==applied.child?.generation){
+    instance.q36Run={...instance.q36Run,effective:{...instance.q36Run.planned},observed:{status:'unobserved'}};
+    instance.context=instance.q36Run.planned.context??null;
+    instance.parallel=instance.q36Run.planned.parallel??null;
+   }
    instance.q36Run=observeQ36Runtime(instance.q36Run,applied);
    if(instance.q36Run.observed?.context!=null)instance.context=instance.q36Run.observed.context;
    if(instance.q36Run.observed?.parallel!=null)instance.parallel=instance.q36Run.observed.parallel;

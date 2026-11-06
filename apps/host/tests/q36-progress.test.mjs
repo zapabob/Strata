@@ -80,6 +80,24 @@ test('child receipts scope split detail and exact byte observations to the ownin
   assert.equal(state.effective.processId, 1235);
 });
 
+test('legacy rows remain untagged while the separate child channel scopes failed upload progress', () => {
+  const legacy = 'Q36_STARTUP schema=1 stage=expert_repack state=end elapsed_ms=27 stage_elapsed_ms=3 error_code=null\n';
+  assert.equal(parseQ36StartupLine(legacy).generation, null);
+  let state = pushEngineLogChunk({ launchGeneration: 'launch' }, 'Q36_CHILD schema=1 launch_generation=launch generation=child state=begin process_id=null\nQ36_CHILD schema=1 launch_generation=launch generation=child state=spawned process_id=123\n' + legacy);
+  assert.equal(state.startup.stage, 'expert_repack');
+  assert.equal(state.child.generation, 'child');
+  const row = (status, completed, error = 'null') => `Q36_STARTUP_DETAIL schema=1 generation=child stage=initial_slot_h2d state=${status} process_elapsed_ms=2100 stage_elapsed_ms=1100 completed_bytes=${completed} total_bytes=1024 layer_index=3 error_code=${error}\n`;
+  state = pushEngineLogChunk(state, row('progress', '384'));
+  assert.equal(state.detail.completed_bytes, '384');
+  assert.match(state.sentence, /Copying initial expert slots/);
+  state = pushEngineLogChunk(state, row('error', '384', 'cuda_error') + row('progress', '512'));
+  assert.equal(state.detail.completed_bytes, '384');
+  assert.equal(state.detail.total_bytes, '1024');
+  assert.equal(state.detail.layer_index, 3);
+  assert.equal(state.phase, 'error');
+  assert.equal(state.detail.error_code, 'cuda_error');
+});
+
 test('UD-Q4_K_XL legacy placement is refused when free RAM cannot hold the measured arena', () => {
   const low = admitQ36LegacyPhysical({
     modelName: 'Qwen3.6-35B-A3B-UD-Q4_K_XL',

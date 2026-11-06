@@ -119,14 +119,26 @@ test('the real Host launch consumer owns the generation and resolves only its ac
     appendFileSync(run.log, receipt(generation, 'child-two', 'begin') + receipt(generation, 'child-two', 'spawned', '8766'));
     await until(() => instance().q36Run.observed.status === 'unobserved');
     assert.equal(instance().q36Run.effective.prefill, null);
-    appendFileSync(run.log, 'Q36_EFFECTIVE schema=1 generation=child-one prefill=4096\nQ36_EFFECTIVE schema=1 generation=child-two context=32768 prefill=512 parallel=1 mtp=0 kv_k=f32 kv_v=f32\n');
+    assert.equal(instance().context, run.q36_run.planned.context);
+    assert.equal(instance().parallel, run.q36_run.planned.parallel);
+    appendFileSync(run.log, 'Q36_EFFECTIVE schema=1 generation=child-one prefill=4096\nQ36_EFFECTIVE schema=1 generation=child-two context=32768 prefill=512 parallel=2 mtp=0 kv_k=f32 kv_v=f32\n');
     await until(() => instance().q36Run.observed.status === 'mismatch');
     assert.equal(instance().q36Run.effective.prefill, 512);
     assert.equal(instance().q36Run.observed.processId, 8766);
+    assert.equal(instance().context, 32768);
+    assert.equal(instance().parallel, 2);
+    // This child fails before emitting any effective values. Public metadata must not retain child-two's values.
+    appendFileSync(run.log, receipt(generation, 'child-three', 'begin') + receipt(generation, 'child-three', 'spawned', '8767') +
+      'Q36_STARTUP_DETAIL schema=1 generation=child-three stage=initial_slot_h2d state=error process_elapsed_ms=1000 stage_elapsed_ms=800 completed_bytes=384 total_bytes=1024 layer_index=3 error_code=cuda_error\n');
+    await until(() => instance().q36Run.observed.status === 'unobserved' && instance().q36Detail?.state === 'error');
+    assert.equal(instance().context, run.q36_run.planned.context);
+    assert.equal(instance().parallel, run.q36_run.planned.parallel);
+    assert.equal(instance().q36Run.effective.prefill, null);
+    assert.equal(instance().q36Detail.completed_bytes, '384');
     f.releaseHealth();
     const loaded = await finishJob(f.control, job.id);
     assert.equal(loaded.state, 'done', loaded.error);
-    assert.equal(instance().q36Run.observed.status, 'mismatch');
+    assert.equal(instance().q36Run.observed.status, 'unobserved');
   } finally { f.releaseHealth(); await f.cleanup(); }
 });
 

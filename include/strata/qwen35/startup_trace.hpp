@@ -77,8 +77,8 @@ void q36_startup_physical_memory(const char* stage);
 inline void q36_startup(const char* stage, const char* state, long long elapsed_ms, long long stage_elapsed_ms,
                         const char* error_code) {
     std::fprintf(stderr,
-                 "Q36_STARTUP schema=1 stage=%s state=%s elapsed_ms=%lld stage_elapsed_ms=%lld error_code=%s generation=%s\n",
+                 "Q36_STARTUP schema=1 stage=%s state=%s elapsed_ms=%lld stage_elapsed_ms=%lld error_code=%s\n",
                  stage ? stage : "unknown", state ? state : "unknown", elapsed_ms, stage_elapsed_ms,
-                 error_code && error_code[0] ? error_code : "null", q36_startup_generation());
+                 error_code && error_code[0] ? error_code : "null");
 }
 }  // namespace strata::qwen35
