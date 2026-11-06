@@ -180,7 +180,7 @@ const native=createNativeControl({control,ready:bundledEngine,appUpdater,hardwar
    state and the chat falls back to the direct path with a notice, never silently to another model. */
 // What the person chose in Settings -> Tools (tool groups, web search service and key, the browser, their own tools).
 const llmProxy = createLlmProxy({ targetOf: key => agent.llmTarget(key), samplingNow: () => samplingFromExpert(store.get().expert) });
-const agentTools = createAgentTools({ read: () => store.get().agentTools, write: value => store.update({ agentTools: value }), dataDir: store.DATA_DIR, browser: () => ({ ...findBrowser(), cli: findPlaywrightMcp(agent.harnessDir()) }) });
+const agentTools = createAgentTools({ read: () => store.get().agentTools, write: value => store.update({ agentTools: value }, { durable: true }), dataDir: store.DATA_DIR, browser: () => ({ ...findBrowser(), cli: findPlaywrightMcp(agent.harnessDir()) }) });
 const chatWebSearch = createChatWebSearch({ settings: () => agentTools.view() });
 agentTools.ensureFile();
 const visionProbe = createVisionProbe();
@@ -1794,15 +1794,18 @@ async function api(req, res, path, method, url) {
       if(instructions.length>40000)throw new Error('Skill instructions must contain 1–40000 characters.');
       // The form's own choices are kept: a skill created with "Skill enabled" off stays off (QA F04), and its trigger phrases are saved with it.
       const triggers = body.triggers === undefined ? [] : skillEdit({ triggers: body.triggers }).triggers;
-      const id = writeCreatedSkill(CREATED_SKILLS, { name, description: String(body.description ?? '').trim().slice(0, 400), body: instructions });
-      const newId = `my-${id}`, off = body.enabled === false;
-      if (off || triggers.length || body.onlyIn) {
-        const saved = store.get();
-        store.update({
-          skillPreferences: { ...saved.skillPreferences, [newId]: { enabled: !off, onlyIn: body.onlyIn??null } },
-          ...(triggers.length ? { skillEdits: { ...saved.skillEdits, [newId]: { ...saved.skillEdits?.[newId], triggers } } } : {}),
-        });
-      }
+      const off = body.enabled === false, saved = store.get();
+      const id = writeCreatedSkill(CREATED_SKILLS, { name, description: String(body.description ?? '').trim().slice(0, 400), body: instructions }, {
+        beforePublish: id => {
+          const newId = `my-${id}`;
+          store.update({
+            skillPreferences: { ...saved.skillPreferences, [newId]: { enabled: !off, onlyIn: body.onlyIn??null } },
+            skillEdits: { ...saved.skillEdits, [newId]: { ...saved.skillEdits?.[newId], triggers } },
+          }, { durable: true });
+        },
+        rollback: () => store.update({ skillPreferences: saved.skillPreferences, skillEdits: saved.skillEdits }, { durable: true }),
+      });
+      const newId = `my-${id}`;
       const before = new Map(skillState.map(s => [s.id, s]));
       skillState = skills().map(s => before.has(s.id) ? { ...s, enabled: before.get(s.id).enabled, onlyIn: before.get(s.id).onlyIn ?? null, useCount: before.get(s.id).useCount, lastUsedAt: before.get(s.id).lastUsedAt } : { ...s, enabled: s.id === newId && off ? false : s.enabled, onlyIn: s.id===newId?body.onlyIn??null:null, useCount: 0, lastUsedAt: null });
       syncAgentSkills();

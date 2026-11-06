@@ -37,13 +37,14 @@ export function nativeFixture({modelsDirectory,tuneHandler,engineStatus,q36Capab
   if(url.endsWith('/health'))return Response.json({status:'fixture'},{status:healthStatus});
   return Response.json({status:'ok'});
  };
+ const packagedStarts=[];
  const packagedControl=packagedStartError||packaged?{
   control:{dir:repo,python:join(repo,venvPython),cli:join(repo,'strata.py')},version:'0.4.0',
   async installedModels(){return {install_dir:repo,models:installed.models.map(m=>({id:m.model,name:m.model,source_config:join(repo,m.config),component_status:'present',context_tokens:32768,backend:'cuda'}))};},
   async engine(){return {usable:true,backend:'cuda',components_dir:join(root,'components'),engine:{version:'0.4.0',platform:'windows-x86_64',backend:'cuda',root:repo,exe:join(repo,'strata.exe')}};},
-  async stop(){if(stopError)throw stopError;return {};},async status(){return runtimeStatus;},async saveProfile(){return {};},async start(){if(packagedStartError)throw packagedStartError;return {ok:true,state:'ready'};},
+  async stop(){if(stopError)throw stopError;return {};},async status(){return typeof runtimeStatus==='function'?runtimeStatus():runtimeStatus;},async saveProfile(){return {};},async start(){packagedStarts.push(true);const error=typeof packagedStartError==='function'?packagedStartError(packagedStarts.length):packagedStartError;if(error)throw error;return {ok:true,state:'ready'};},
  }:null;
  const control=createNativeControl({directory,defaultRepo:repo,spawnProcess,fetcher,modelsDirectory,observationProbe,requests:()=>requests,control:packagedControl,q36CapabilityProbe});
- return {control,repo,directory,catalog,installed,requests,calls,rpcCalls,children,setMetricsStatus:value=>metricsStatus=value,setRuntimeStatus:value=>runtimeStatus=value,setStopError:value=>stopError=value,setExternal:value=>external=value,setHardware:value=>hardware=value,setBenchmarkWait:value=>benchmarkWait=value,setProgramWait:value=>programWait=value,setHealthStatus:value=>healthStatus=value,setHealthWait:value=>healthWait=value,hasPendingHealth:()=>!!releaseHealth,releaseHealth:()=>{healthWait=false;releaseHealth?.();releaseHealth=null;},cleanup:async()=>{await control.close();rmSync(root,{recursive:true,force:true});}};
+ return {control,repo,directory,catalog,installed,requests,calls,rpcCalls,children,packagedStarts,setMetricsStatus:value=>metricsStatus=value,setRuntimeStatus:value=>runtimeStatus=value,setStopError:value=>stopError=value,setExternal:value=>external=value,setHardware:value=>hardware=value,setBenchmarkWait:value=>benchmarkWait=value,setProgramWait:value=>programWait=value,setHealthStatus:value=>healthStatus=value,setHealthWait:value=>healthWait=value,hasPendingHealth:()=>!!releaseHealth,releaseHealth:()=>{healthWait=false;releaseHealth?.();releaseHealth=null;},cleanup:async()=>{await control.close();rmSync(root,{recursive:true,force:true});}};
 }
 export async function finishJob(control,id){for(let n=0;n<400;n++){const job=control.state().jobs.find(j=>j.id===id);if(job.state!=='running')return job;await new Promise(r=>setTimeout(r,10));}throw new Error('Fixture operation timed out');}

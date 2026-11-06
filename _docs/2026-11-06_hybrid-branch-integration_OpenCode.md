@@ -248,3 +248,123 @@ ownership, reference/plain versus supervised-agent research routing, import
 preview ownership, and the unresolved first Edge-launch case. Rollback is a
 local revert of the integration commit; user models, imported skill files and
 saved diagnostic results must not be deleted during rollback.
+
+## SPEC review corrections after a2a209c6
+
+Parent SPEC review identified two blockers: High, skill import and Tools key
+save accepted the store's best-effort memory-only update as persistence success;
+Medium, native display-error wrappers dropped the terminal numeric engine exit
+code. Work remains confined to this dedicated integration worktree, with the
+same applicable standards and review-only self-review policy. Existing intake
+changes and source branches are preserved.
+
+### Persistence contract and import publication
+
+`store.update(patch, {durable:true})` now writes and flushes a unique 0600
+same-directory temporary file, atomically replaces `state.json`, and only then
+publishes the new in-memory state. Write/rename failures throw and retain the
+old in-memory state and committed file. The existing `update(patch)` and
+`save()` remain nonthrowing/best-effort for their callers. They also use atomic
+file replacement, so a later partial best-effort write cannot truncate saved
+skill restrictions or credentials. The model-folder preference's existing
+persist-before-publish contract uses the same writer.
+
+The Host Tools persistence callback opts into durable updates. Thus Tools PUT
+cannot return success or present a new memory-only key after a state write or
+rename failure. The existing custom-tools projection remains separate; this
+change does not claim a multi-file transaction across all tool runtime files.
+
+Created/imported instruction files are staged in a unique `.skill-*` sibling
+of the discovery root, not inside `<data>/skills`. Before publishing the skill
+directory, the Host durably saves the enable, workspace and trigger choices.
+Only then is the directory renamed into discovery and the live list updated.
+A publication failure rolls preferences back with the durable contract. A
+rollback failure is explicitly reported; even if cleanup also fails, only an
+undiscovered staging directory and inert preference entry can remain. Neither
+the app scan nor the agent's live skill directory activates them after restart.
+No rollback deletes an existing user's skill directory.
+
+### Native structured failures
+
+`startFailure` preserves the original cause and forwards only the numeric
+`output.engine_exit_code` alongside the existing display message. It is used
+by normal, access/shared-GPU, retry, adopted-status and restart wrappers. The
+actual packaged-native observation regressions assert error/exitCode **23**
+on normal, two-attempt retry, and adopted startup paths; the retry begins with
+code 7 and must retain the terminal code 23. Raw Control output/log tails are
+not copied into observations.
+
+### Behavioral RED and GREEN
+
+The tests were added before the production fix. They exercise the actual
+store and Host routes; persistence callbacks are not replaced with mocks.
+One test induces a real OS file-vs-directory write/replace failure. An opt-in
+test-process preload injects EACCES/ENOSPC at real filesystem call boundaries
+under the guarded scratch HOME. Host processes are stopped and restarted to
+test rediscovery and key persistence.
+
+From the worktree root, the RED and first GREEN command was:
+
+```powershell
+node _docs/hybrid-intake-tests.mjs store-durability.test.mjs durable-settings-routes.test.mjs native-run-observation.test.mjs
+```
+
+RED: **14 tests, 7 passed, 7 failed, 0 skipped**, 42.239 seconds.
+Scratch: `strata-hybrid-IREUyq` under the approved temp root. Disabled/scoped
+imports returned 201 instead of 400 under EACCES, key PUT returned 200 instead
+of 400, the durable store call failed to throw on actual EISDIR, and all three
+native paths returned null instead of 23. No test assertion was lowered.
+
+First GREEN: **14 tests, 14 passed, 0 failed, 0 skipped**, 74.317 seconds.
+Scratch: `strata-hybrid-QqggpA`. The legacy best-effort negative test intentionally
+prints its filesystem error; it is not suppressed or treated as a failed gate.
+
+Additional publication/rollback/partial-write tests and the affected suites:
+
+```powershell
+node _docs/hybrid-intake-tests.mjs store-durability.test.mjs durable-settings-routes.test.mjs persistence-publication.test.mjs model-directory.test.mjs model-storage.test.mjs skill-import.test.mjs skill-import-routes.test.mjs ux-skill-import.test.mjs ux-key-save.test.mjs agent-skills.test.mjs skills-used.test.mjs agent-tools-settings.test.mjs agent-tools.test.mjs native-run-observation.test.mjs lifecycle-observation.test.mjs native-control.test.mjs native-load-cancel.test.mjs native-config-persistence.test.mjs native-job-diagnostics.test.mjs q36-load-lifecycle.test.mjs native-fb5.test.mjs manual-model-start.test.mjs supervisor-startup.test.mjs
+```
+
+Final affected run: **118 tests, 104 passed, 0 failed, 14 skipped**,
+161.070 seconds. Scratch: `strata-hybrid-8LeQYs`. The skips are 12 real-Harness
+checks (no built Harness in the scratch profile), one explicitly opt-in real
+browser check, and one Windows symlink-privilege check. Manual startup,
+model-folder/store callers, skill/tool behavior, native cancellation/settings,
+Q36 lifecycle and observation tests passed. From `apps/host`,
+`npm run typecheck` passed. These results supersede no earlier failed evidence;
+the initial intake's Edge startup limit remains recorded above.
+
+### Review scope, limits and handoff
+
+Production changes are limited to `server/store.mjs`, `skill-files.mjs`,
+`index.mjs` and `native-control.mjs`. Tests add `store-durability.test.mjs`,
+`durable-settings-routes.test.mjs`, `persistence-publication.test.mjs` and
+`fixtures/state-persistence-fault.mjs`; native-run-observation and its existing
+fixture are extended. The reference-host helper adds opt-in preloads and an
+idempotent stop for restart tests. No dependency/configuration change, push,
+publication or installed-app operation was performed.
+
+No real GPU/Control executable, full GUI E2E, installer/release, or sudden
+power-loss durability test ran in this correction. Atomic replacement and
+file flush do not claim directory-fsync or physical-storage power-loss
+qualification. Staging/temporary remnants can remain when filesystem cleanup
+is denied; they are outside discovery and are not automatically retried or
+activated. Parent re-review should check the durable opt-in contract, staged
+publication order and rollback-failure containment, and the three real wrapper
+paths carrying exitCode 23. The expanded tests directly cover the missed gates.
+
+Self-review-event: type=qa_defect scope=hybrid-intake/durable-save category=qa-coverage evidence=SPEC-review-and-red-14
+
+Self-review-event: type=qa_defect scope=hybrid-intake/native-exit-code category=correctness evidence=SPEC-review-and-red-14
+
+Self-review-event: type=ticket_completed scope=hybrid-intake/spec-corrections category=correctness evidence=green-14-and-affected-118
+
+Decision: retain the review findings and failures, add real persistence/restart
+and packaged-native terminal regressions, and make the smallest scoped
+production corrections. No AGENTS, Skill, SOP or automation rewrite is justified.
+Final static checks: `git diff --check` and `git diff --cached --check` passed;
+`node --check` passed for all **11** changed/new MJS files. Status/diff and
+`git log --oneline -10` were reviewed; exactly 12 intended files are staged.
+`git diff a2a209c6 --exit-code -- apps/host/src apps/host/server/lifecycle-observation.mjs apps/host/server/model-memory.mjs apps/host/server/model-memory-geometry.mjs apps/host/server/run-observation.mjs bench/strata-16gb apps/host/package.json apps/host/package-lock.json`
+returned no diff. The scoped follow-up commit is titled
+`[GUI] require durable settings saves and retain native exit codes`.

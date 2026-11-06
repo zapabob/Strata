@@ -199,6 +199,9 @@ export function createNativeControl({directory,requests=()=>[],changed=()=>{},sp
     keeps this text under "Details" (src/lib/plain-errors.ts). */
  function exitCodeText(code){const n=Number(code);if(!Number.isFinite(n)||n===0)return '';const u=n<0?n+2**32:n;return u>=0x80000000?`exit code 0x${u.toString(16).toUpperCase().padStart(8,'0')}`:`exit code ${u}`;}
  function humanStartError(error){const text=String(error?.message??error),tail=error?.output?.log_tail,code=exitCodeText(error?.output?.engine_exit_code);const head=code&&!text.includes(code)?`${text} (${code})`:text;return tail&&!head.includes(tail)?`${head}: ${tail}`:head;}
+ /* Display wording may change at each wrapper; terminal diagnostics still need
+    the numeric receipt. Do not copy log tails or other Control output fields. */
+ function startFailure(error,message=humanStartError(error)){const failure=new Error(message,{cause:error}),code=error?.output?.engine_exit_code;if(Number.isInteger(code))failure.output={engine_exit_code:code};return failure;}
  /* A run config the app's install job wrote names files inside the app's own Control folder (`cwd`, `--expert-profile`). When the
     app is reinstalled to another folder, or an update moves Control, those absolute paths point at nothing and every installed
     model breaks. At every read of the installed models, a path that ends up inside a folder called `control` that no longer
@@ -683,9 +686,9 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
     if(isAccess(error)&&typeof control.repairAccess==='function'&&job.state==='running'){await control.repairAccess();append(id,'Strata repaired access to its own files; starting again.');try{await startWith(cfg);started=Promise.resolve();error=null;}catch(again){error=again;}}
     if(job.state!=='running'){await stopCancelledLoad(job,instance,id);return;}
     if(error&&await stillLoading(error)){adopted=true;error=null;}
-    if(error&&sharedSentence&&!isAccess(error)){instance.status='error';instance.error=sharedSentence;emit();throw new Error(sharedSentence);}
+    if(error&&sharedSentence&&!isAccess(error)){instance.status='error';instance.error=sharedSentence;emit();throw startFailure(error,sharedSentence);}
     if(error){const said=humanStartError(error);
-    if(isAccess(error)){instance.status='error';instance.error=said;emit();throw new Error(said);}   // access errors are not memory stops: no safer retry
+    if(isAccess(error)){instance.status='error';instance.error=said;emit();throw startFailure(error,said);}   // access errors are not memory stops: no safer retry
     /* ONE automatic second try in all, never saved, never repeated (args.retrySafer false turns it off): with a safer memory setting when the
        failure looks like a memory stop, and without several-requests-at-once when that was the app's own default (not a number the user chose).
        Both changes ride on the same single try, with the plain sentence of the memory change when there is one.
@@ -694,14 +697,14 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
     const allowed=args.retrySafer!==false&&job.state==='running'&&!ownEngine(config)&&!isQwen36Config(cfg);
     const safer=allowed?saferStart(cfg,snapshot.hardware,modelArena(args.model),said):null;
     const dropParallel=allowed&&cfg.parallel>1&&!parallelChoice?.explicit;
-    if(!safer&&!dropParallel){instance.status='error';instance.error=said;emit();throw new Error(said);}
+    if(!safer&&!dropParallel){instance.status='error';instance.error=said;emit();throw startFailure(error,said);}
     let retryConfig=safer?safer.config:cfg;if(dropParallel)retryConfig=withoutParallel(retryConfig);
     const words=safer?safer.words:FALLBACK_NOTE,detail=[safer?.detail,dropParallel?'one request at a time':null].filter(Boolean).join('; ');
     retried={words,detail};if(dropParallel){instance.parallel=1;if(!safer)parallelNote=FALLBACK_NOTE;}
     append(id,`The first start stopped (${said}). Starting once more: ${detail}`);job.summary=words;job.details=[said,`Second try: ${detail}`];instance.notice=words;emit();
     delete instance.splitNote;
     try{await startWith(retryConfig,false);append(id,'Strata Control reports the engine is ready (second try).');}
-    catch(second){if(job.state!=='running'){await stopCancelledLoad(job,instance,id);return;}if(await stillLoading(second))adopted=true;else{const said2=humanStartError(second);instance.status='error';instance.error=said2;/* the first stop and the second try stay in job.details; the pop-up shows the last stop once */emit();throw new Error(instance.error);}}}}
+    catch(second){if(job.state!=='running'){await stopCancelledLoad(job,instance,id);return;}if(await stillLoading(second))adopted=true;else{const said2=humanStartError(second);instance.status='error';instance.error=said2;/* the first stop and the second try stay in job.details; the pop-up shows the last stop once */emit();throw startFailure(second,instance.error);}}}}
   } else {
   if(isQwen36Config(cfg)){beginQ36Attempt(cfg);writeFileSync(configPath,JSON.stringify(cfg,null,2),{mode:0o600});}
   proc=spawnProcess(py,[join(repo(),'serve/server.py'),'--engine','strata','--config',configPath,'--port',String(cfg.port),'--host','127.0.0.1'],{cwd:repo(),detached:process.platform!=='win32',stdio:['ignore','pipe','pipe'],env:sourceServerEnvironment()});
@@ -715,7 +718,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   /* A start Control stopped waiting for is watched for as long as the start asked for (the server ends the engine itself when its own wait runs out, a minute after this one), and Control is asked now and then whether the engine is still there. */
   const deadline=Date.now()+(adopted?Math.max(300,startWait??300)*1000:300000);let lastAsked=0;while(Date.now()<deadline&&job.state==='running'){
    if(instance.status==='error')throw new Error(instance.error);
-   if(adopted&&instance.profile&&Date.now()-lastAsked>10000){lastAsked=Date.now();const st=await control.status(instance.profile).catch(()=>null);if(st&&['failed','stopped','stale'].includes(st.state)){instance.status='error';instance.error=humanStartError({message:st.error||'server_exited',output:st});emit();throw new Error(instance.error);}}
+   if(adopted&&instance.profile&&Date.now()-lastAsked>10000){lastAsked=Date.now();const st=await control.status(instance.profile).catch(()=>null);if(st&&['failed','stopped','stale'].includes(st.state)){const error={message:st.error||'server_exited',output:st};instance.status='error';instance.error=humanStartError(error);emit();throw startFailure(error,instance.error);}}
    try{const response=await fetcher(`http://127.0.0.1:${instance.port}/health`,{headers:{authorization:`Bearer ${key}`},signal:AbortSignal.timeout(2000)});if(job.state!=='running'){await stopCancelledLoad(job,instance,id);return;}if(response.ok){instance.status='ready';instance.phase='idle';await noteDrafting(job,instance,key);/* Persist only load-owned keys onto the *current* file. Never rewrite from the start-of-load snapshot (that erased mid-load edits: F05). A save failure must not block READY or look like a five-minute timeout (F04). */if(resources||args.vision!==undefined||args.contextChosen===true||JSON.stringify(cfg[USER_KEY]??null)!==JSON.stringify(config[USER_KEY]??null)){try{const path=record(args.model).path;const current=readJson(path);writeModelConfig(path,{...current,...(resources?{...resources,ui_resource_profile:args.resourceProfile}:{}),...visionPreferences,...(args.contextChosen===true?{ui_context_chosen:true}:{}),...(cfg[USER_KEY]?{[USER_KEY]:cfg[USER_KEY]}:{})});instance.configSave={status:'saved'};}catch(error){instance.configSave={status:'failed',code:error.code??'save_failed',message:error.message,retryable:true};append(id,`Settings were not saved after load: ${error.message}`);}}else instance.configSave={status:'not_requested'};emit();ensurePoll();instance.parallelNote=parallelNote;return {summary:retried?`${instance.label} is ready, after a second try: ${retried.words}`:`${instance.label} is ready.${parallelNote?' '+parallelNote:''}${picturesNote?' '+picturesNote:''}`,instanceId:id};}}catch{}
    await new Promise(resolve=>setTimeout(resolve,1200));
   }
@@ -815,7 +818,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
     instance.status='ready';instance.phase='idle';ensurePoll();emit();labels.push(instance.label);
    }catch(error){
     await control.stop(instance.profile).catch(()=>{});
-    instance.status='error';instance.error=humanStartError(error);emit();throw new Error(`${instance.label} did not start again. ${instance.error}`);
+    instance.status='error';instance.error=humanStartError(error);emit();throw startFailure(error,`${instance.label} did not start again. ${instance.error}`);
    }
   }
   return {summary:`${labels.join(' and ')} ${labels.length>1?'are':'is'} running again with the same settings.`};

@@ -2,6 +2,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {nativeFixture, finishJob} from './helpers/native-fixture.mjs';
 const observationProbe=async()=>Object.fromEntries(['dedicated','shared_gpu_memory','processes'].map(k=>[k,{value:null,source:null,at:null,status:'unavailable',reason:'fixture'}]));
+for(const path of ['normal','retry','adopted'])test(`packaged ${path} terminal failure preserves engine exit code 23 in the actual observation`,async t=>{
+ const failure=code=>Object.assign(new Error('Fixture startup failed'),{output:{engine_exit_code:code,log_tail:'private fixture path'}});
+ const f=nativeFixture({observationProbe,packagedStartError:attempt=>path==='adopted'?new Error('startup_wait_expired'):failure(path==='retry'&&attempt===1?7:23)});
+ t.after(()=>f.cleanup());await f.control.configure({repository:f.repo});
+ let checks=0;if(path==='adopted')f.setRuntimeStatus(()=>++checks===1?{state:'starting'}:{state:'failed',engine_exit_code:23,error:'server_exited',log_tail:'private fixture path'});
+ const job=f.control.operation('load',{model:'iq2_xs',runObservation:true,...(path==='retry'?{}:{retrySafer:false})});
+ assert.equal((await finishJob(f.control,job.id)).state,'error');
+ assert.equal(f.packagedStarts.length,path==='retry'?2:1,'exercise the intended launch path');
+ const observation=f.control.runObservations()[0];assert.equal(observation.outcome,'error');assert.equal(observation.exitCode,23);
+ assert.ok(!JSON.stringify(observation).includes('private'));
+});
 
 test('ordinary native load performs no observation or GPU probe',async t=>{
  let probes=0;const f=nativeFixture({observationProbe:async()=>{probes++;return observationProbe();}});t.after(()=>f.cleanup());
