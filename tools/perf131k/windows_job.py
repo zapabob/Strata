@@ -176,7 +176,8 @@ def record_memory(aggregate, reader, handle, resources):
     aggregate["status"] = "AVAILABLE" if failures == 0 else "UNKNOWN" if failures == aggregate["samples"] else "PARTIAL"
 
 
-def run_owned(command, root, env, raw, budget, sample, *, stdin_path=None, memory_diagnostics=False):
+def run_owned(command, root, env, raw, budget, sample, *, stdin_path=None, memory_diagnostics=False,
+              on_output=None, on_tick=None):
     """Create contained and suspended, verify membership, then resume; drain job on every exit."""
     if type(memory_diagnostics) is not bool:
         raise ValueError("memory diagnostics requires an explicit bool")
@@ -208,6 +209,8 @@ def run_owned(command, root, env, raw, budget, sample, *, stdin_path=None, memor
     process = Process()
     read_fd, write_fd = None, None
     result["configured_job_commit_bytes"] = budget.job_commit_bytes
+    if budget.job_commit_bytes is None:
+        result["job_commit_limit_reason"] = "no diagnostic process cap configured"
     if memory_diagnostics:
         result["memory_diagnostics"] = {
             "scope": "owned_root_process_sampled_not_job_peak", "status": "UNKNOWN",
@@ -229,22 +232,29 @@ def run_owned(command, root, env, raw, budget, sample, *, stdin_path=None, memor
         output.write(block[:room])
         result["written_bytes"] += min(room, len(block))
         result["observed_dropped_bytes"] += max(0, len(block) - room)
+        if on_output is not None:
+            on_output(block[:room])
         return True
 
     try:
         job = kernel.CreateJobObjectW(None, None)
         require(bool(job), "create private job")
         limits = Limits()
-        limits.basic.flags = 0x2000 | 0x200 | 0x8  # KILL_ON_CLOSE | JOB_MEMORY | ACTIVE_PROCESS.
+        flags = 0x2000 | 0x8  # KILL_ON_CLOSE | ACTIVE_PROCESS always apply.
+        if budget.job_commit_bytes is not None:
+            if type(budget.job_commit_bytes) is not int or budget.job_commit_bytes <= 0:
+                raise ValueError("positive diagnostic job cap or None required")
+            flags |= 0x200  # JOB_MEMORY is diagnostic containment, not model capacity.
+        limits.basic.flags = flags
         limits.basic.active = budget.max_processes
-        limits.job_memory = budget.job_commit_bytes
+        limits.job_memory = budget.job_commit_bytes or 0
         require(kernel.SetInformationJobObject(job, 9, C.byref(limits), C.sizeof(limits)), "set job limits")
         configured = Limits()
         require(kernel.QueryInformationJobObject(job, 9, C.byref(configured), C.sizeof(configured), None),
                 "verify installed job limits")
-        require(configured.basic.flags & (0x2000 | 0x200 | 0x8) == (0x2000 | 0x200 | 0x8)
+        require(configured.basic.flags & (0x2000 | 0x200 | 0x8) == flags
                 and not configured.basic.flags & (0x800 | 0x1000)
-                and configured.job_memory == budget.job_commit_bytes
+                and configured.job_memory == (budget.job_commit_bytes or 0)
                 and configured.basic.active == budget.max_processes, "job limit readback mismatch")
         size = C.c_size_t()
         kernel.InitializeProcThreadAttributeList(None, 2, 0, C.byref(size))
@@ -323,6 +333,11 @@ def run_owned(command, root, env, raw, budget, sample, *, stdin_path=None, memor
                         or resources["H_free"] < budget.min_H_free):
                     result.update(status="RESOURCE_PRESSURE", exit_code=125)
                     break
+                if on_tick is not None:
+                    reason = on_tick()
+                    if reason:
+                        result.update(status="OBSERVER_ABORT", exit_code=125, observer_reason=reason)
+                        break
                 wait = kernel.WaitForSingleObject(process.process, 20)
                 require(wait != 0xFFFFFFFF, "wait owned child")
                 if wait == 0:
@@ -367,7 +382,8 @@ def run_owned(command, root, env, raw, budget, sample, *, stdin_path=None, memor
                 require(kernel.QueryInformationJobObject(job, 9, C.byref(measured), C.sizeof(measured), None),
                         "query job peak commit")
                 result["peak_job_commit_bytes"] = measured.peak_job
-                result["commit_budget_exceeded"] = measured.peak_job > budget.job_commit_bytes
+                result["commit_budget_exceeded"] = (budget.job_commit_bytes is not None
+                                                    and measured.peak_job > budget.job_commit_bytes)
                 if result["commit_budget_exceeded"] and result["termination_confirmed"]:
                     # Preserve the measured counter, even when the OS denied the
                     # attempted allocation. Never convert an over-budget peak to PASS.
