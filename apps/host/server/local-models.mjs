@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { basename, dirname, extname, isAbsolute, join } from 'node:path';
 import { homedir } from 'node:os';
 import { readGGUF } from './gguf.mjs';
-import { extractHybridGeometry, hybridKvKbPerToken, estimateModelMemory } from './model-memory.mjs';
+import { extractHybridGeometry, estimateModelMemory, modelMemoryFromMetadata } from './model-memory.mjs';
 // Reject known auxiliary/embedding architectures. The installed llama-server checks text-model support at load time.
 const NON_GENERATIVE=new Set(`clip bert modern-bert nomic-bert nomic-bert-moe neo-bert jina-bert-v2 jina-bert-v3 eurobert
  t5encoder gemma-embedding llama-embed wavtokenizer-dec pangu-embedded eagle3 dflash paddleocr qwen3tts pockettts talkie`.trim().split(/\s+/));
@@ -40,16 +40,17 @@ export function inspectLocalModel(input){
  const optionalInteger=(key,min,max)=>m[key]===undefined?null:integer(key,min,max);
  const estimateInteger=(key,max)=>Number.isInteger(m[key])&&m[key]>=1&&m[key]<=max?m[key]:null;
  const declaredContext=optionalInteger(`${arch}.context_length`,1024,100_000_000),context=declaredContext??4096;
-  const layers=optionalInteger(`${arch}.block_count`,1,4096),embedding=optionalInteger(`${arch}.embedding_length`,1,1_000_000),heads=estimateInteger(`${arch}.attention.head_count`,8192);
-  const kvHeads=m[`${arch}.attention.head_count_kv`]===undefined?heads:estimateInteger(`${arch}.attention.head_count_kv`,8192);
-  const keyLength=m[`${arch}.attention.key_length`]===undefined?(embedding&&heads&&embedding%heads===0?embedding/heads:null):estimateInteger(`${arch}.attention.key_length`,1_000_000);
-  const valueLength=m[`${arch}.attention.value_length`]===undefined?keyLength:estimateInteger(`${arch}.attention.value_length`,1_000_000);
-  const experts=optionalInteger(`${arch}.expert_count`,0,100_000)??0;
-  // Hybrid models (Qwen3.5 / Hikari): only Full-Attention layers grow KV with context.
-  const hybrid=extractHybridGeometry(m);
-  const kvKbPerToken=hybridKvKbPerToken(hybrid)
-    ?? (layers&&heads&&kvHeads&&keyLength&&valueLength?layers*kvHeads*(keyLength+valueLength)/1024:null);
-  const quantizedKvSupported=keyLength!==null&&valueLength!==null&&keyLength%32===0&&valueLength%32===0;
+ const layers=optionalInteger(`${arch}.block_count`,1,4096),embedding=optionalInteger(`${arch}.embedding_length`,1,1_000_000),heads=estimateInteger(`${arch}.attention.head_count`,8192);
+ const kvHeads=m[`${arch}.attention.head_count_kv`]===undefined?heads:estimateInteger(`${arch}.attention.head_count_kv`,8192);
+ const keyLength=m[`${arch}.attention.key_length`]===undefined?(embedding&&heads&&embedding%heads===0?embedding/heads:null):estimateInteger(`${arch}.attention.key_length`,1_000_000);
+ const valueLength=m[`${arch}.attention.value_length`]===undefined?keyLength:estimateInteger(`${arch}.attention.value_length`,1_000_000);
+ const experts=optionalInteger(`${arch}.expert_count`,0,100_000)??0;
+ const memoryGeometry=modelMemoryFromMetadata(m);
+ // Legacy display baseline is KiB/token at one byte per K/V element, before
+ // codec scale bytes. Hybrid imports count full-attention trunk layers only.
+ const attentionLayers=memoryGeometry.kind==='hybrid'?memoryGeometry.fullAttentionLayers:['qwen35','qwen35moe'].includes(arch)?null:layers;
+ const kvKbPerToken=attentionLayers!==null&&heads&&kvHeads&&keyLength&&valueLength?attentionLayers*kvHeads*(keyLength+valueLength)/1024:null;
+ const quantizedKvSupported=keyLength!==null&&valueLength!==null&&keyLength%32===0&&valueLength%32===0;
  const count=m['split.count']??1;if(!Number.isInteger(count)||count<1||count>256)throw new Error('This split model has an unsupported number of shards.');
  const files=[],names=[];let totalTensors=0,parameters=0;
  for(let i=0;i<count;i++){
@@ -62,14 +63,16 @@ export function inspectLocalModel(input){
  if(totalTensors<1||count>1&&totalTensors!==m['split.tensors.count'])throw new Error('This model is missing tensors or model shards.');
  const bytes=files.reduce((sum,f)=>sum+f.bytes,0),name=genericName(m['general.name'])?clean(fileName(file)):clean(m['general.name']),quant=QUANTS[m['general.file_type']]??'GGUF';
  const id=`local-${createHash('sha256').update(file).digest('hex').slice(0,24)}`,gb=bytes/1024**3;
+  const modelMemory={...memoryGeometry,diskBytes:bytes};
+  const hybrid=extractHybridGeometry(m);
   const memoryPlan=estimateModelMemory({metadata:m,diskBytes:bytes,context:Math.min(context,131072),sequences:1,kType:'q8_0',vType:'q8_0'});
-  const local={path:file,files,architecture:arch,hasChatTemplate:!!m['tokenizer.chat_template'],contextLength:context,keyLength,valueLength,shards:count,metadataSignature:hybrid.metadataSignature||createHash('sha256').update(JSON.stringify(m)).digest('hex'),
+  const local={path:file,files,architecture:arch,hasChatTemplate:!!m['tokenizer.chat_template'],contextLength:context,keyLength,valueLength,shards:count,modelMemory,metadataSignature:hybrid.metadataSignature,
     nFullAttention:hybrid.nFullAttention,nRecurrent:hybrid.nRecurrent,fullAttentionInterval:hybrid.fullAttentionInterval,memoryConfidence:hybrid.confidence};
-  const variant={id,name,family:'Local models',quant,label:`${name} · ${quant}`,params:parameters>=1e9?`${(parameters/1e9).toFixed(1)}B`:`${Math.round(parameters/1e6)}M`,blurb:'Local model. Engine compatibility is checked when loading.',role:'option',tier:'local',ramClass:{minGb:gb+2,maxGb:gb+6,label:'From GGUF metadata'},diskGb:gb,downloadGb:0,contextMax:Math.min(context,1048576),layerCount:layers,experts,kvKbPerToken,hasDraft:false,kvModes:quantizedKvSupported?['INT8','FP16']:['FP16'],tags:['local'],source:{repo:'local',file:basename(file),bytes},local,memoryPlan:{attentionKvGiB:memoryPlan.attentionKvGiB,nFullAttention:memoryPlan.nFullAttention,nRecurrent:memoryPlan.nRecurrent,confidence:memoryPlan.confidence,fits:null}};
+  const variant={id,name,family:'Local models',quant,label:`${name} · ${quant}`,params:parameters>=1e9?`${(parameters/1e9).toFixed(1)}B`:`${Math.round(parameters/1e6)}M`,blurb:'Local model. Engine compatibility is checked when loading.',role:'option',tier:'local',ramClass:{minGb:gb+2,maxGb:gb+6,label:'From GGUF metadata'},diskGb:gb,downloadGb:0,contextMax:Math.min(context,1048576),layerCount:layers,experts,kvKbPerToken,modelMemory,hasDraft:false,kvModes:quantizedKvSupported?['INT8','FP16']:['FP16'],tags:['local'],source:{repo:'local',file:basename(file),bytes},local,memoryPlan:{attentionKvGiB:memoryPlan.attentionKvGiB,nFullAttention:memoryPlan.nFullAttention,nRecurrent:memoryPlan.nRecurrent,confidence:memoryPlan.confidence,fits:null}};
   const hybridNote=hybrid.nFullAttention!==null&&hybrid.nRecurrent>0
     ?[`Hybrid Attention: ${hybrid.nFullAttention} full-attention / ${hybrid.nRecurrent} recurrent layers (KV grows only on attention layers).`]
     :[];
-  return {variant,files:names,warnings:[...(local.hasChatTemplate?[]:['No chat template was declared. Response formatting depends on the engine.']),...(declaredContext===null?['Context length is not declared. Start at 4K tokens; the engine checks the actual limit when loading.']:[]),...(kvKbPerToken===null?['KV memory metadata is incomplete. A conservative estimate is used; the engine checks actual allocation when loading.']:[]),...(!quantizedKvSupported?['This GGUF cannot use a quantized K/V cache with its declared attention width. Choose FP16 for KV mode and leave K/V cache precision at Inherit or FP16.']:[]),...hybridNote,'Memory is estimated from metadata; engine support and actual allocation are checked when loading. Attention KV theory is not a full GPU fit claim.']};
+  return {variant,files:names,warnings:[...(local.hasChatTemplate?[]:['No chat template was declared. Response formatting depends on the engine.']),...(declaredContext===null?['Context length is not declared. Start at 4K tokens; the engine checks the actual limit when loading.']:[]),...(kvKbPerToken===null?['KV memory metadata is incomplete. Actual allocation is unknown; the engine checks it when loading.']:[]),...(!quantizedKvSupported?['This GGUF cannot use a quantized K/V cache with its declared attention width. Choose FP16 for KV mode and leave K/V cache precision at Inherit or FP16.']:[]),...hybridNote,'Memory is estimated from metadata; engine support and actual allocation are checked when loading. Attention KV theory is not a full GPU fit claim.']};
 }
 export function createLocalModels(dataDir){
  mkdirSync(dataDir,{recursive:true});const file=join(dataDir,'local-models.json');let records=[];

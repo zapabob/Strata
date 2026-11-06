@@ -1,0 +1,491 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:strata:run-observation:1",
+  "title": "RunObservation version 1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "runId",
+    "startedAt",
+    "backend",
+    "requested",
+    "effective",
+    "identity",
+    "allocations",
+    "gpu",
+    "outcome",
+    "exitCode",
+    "comparison",
+    "requestedSource"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "runId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "startedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "backend": {
+      "enum": [
+        "llama.cpp",
+        "PrismML",
+        "TurboQuant",
+        "native",
+        "unknown"
+      ]
+    },
+    "requested": {
+      "$ref": "#/$defs/requested"
+    },
+    "effective": {
+      "$ref": "#/$defs/effective"
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "executable",
+        "model",
+        "binding"
+      ],
+      "properties": {
+        "executable": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sha256",
+            "version"
+          ],
+          "properties": {
+            "sha256": {
+              "$ref": "#/$defs/measurement"
+            },
+            "version": {
+              "$ref": "#/$defs/measurement"
+            }
+          }
+        },
+        "model": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "metadataSignature",
+            "sizeBytes"
+          ],
+          "properties": {
+            "metadataSignature": {
+              "$ref": "#/$defs/measurement"
+            },
+            "sizeBytes": {
+              "$ref": "#/$defs/measurement"
+            }
+          }
+        },
+        "binding": {
+          "$ref": "#/$defs/measurement"
+        }
+      }
+    },
+    "allocations": {
+      "type": "array",
+      "maxItems": 128,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "device",
+          "value",
+          "unit",
+          "bytes",
+          "source",
+          "at",
+          "status"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "weights",
+              "kv",
+              "recurrent",
+              "compute"
+            ]
+          },
+          "device": {
+            "type": "string",
+            "pattern": "^(CPU|CPU_Mapped|CUDA[0-9]+|CUDA_Host|Vulkan[0-9]+|SYCL[0-9]+|Metal|unknown)$"
+          },
+          "value": {
+            "type": "number",
+            "minimum": 0
+          },
+          "unit": {
+            "enum": [
+              "MiB",
+              "GiB"
+            ]
+          },
+          "bytes": {
+            "type": "number",
+            "minimum": 0
+          },
+          "source": {
+            "enum": [
+              "startup.allocation",
+              "startup.native_weights"
+            ]
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "const": "observed"
+          }
+        }
+      }
+    },
+    "gpu": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dedicated",
+        "shared_gpu_memory",
+        "processes"
+      ],
+      "properties": {
+        "dedicated": {
+          "$ref": "#/$defs/measurement"
+        },
+        "shared_gpu_memory": {
+          "$ref": "#/$defs/measurement"
+        },
+        "processes": {
+          "$ref": "#/$defs/measurement"
+        }
+      }
+    },
+    "outcome": {
+      "enum": [
+        "starting",
+        "ready",
+        "completed",
+        "stopped",
+        "cancelled",
+        "startup_exit",
+        "error",
+        "oom"
+      ]
+    },
+    "exitCode": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "comparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "reason",
+        "scope"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "unconfirmed",
+            "comparable",
+            "failed"
+          ]
+        },
+        "reason": {
+          "enum": [
+            null,
+            "effective_context_below_requested",
+            "effective_context_unobserved",
+            "requested_context_unavailable"
+          ]
+        },
+        "scope": {
+          "const": "context_capacity_only"
+        }
+      }
+    },
+    "requestedSource": {
+      "enum": [
+        "launch_arguments",
+        "native_config",
+        "benchmark_declaration"
+      ]
+    }
+  },
+  "$defs": {
+    "measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "source",
+        "at",
+        "status",
+        "reason"
+      ],
+      "properties": {
+        "value": {
+          "type": [
+            "null",
+            "number",
+            "boolean",
+            "string",
+            "array"
+          ]
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[A-Za-z0-9_.-]{1,100}$"
+        },
+        "at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "status": {
+          "enum": [
+            "unavailable",
+            "observed"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-z0-9_]{1,100}$"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "unavailable"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "observed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "not": {
+                  "type": "null"
+                }
+              },
+              "source": {
+                "type": "string"
+              },
+              "at": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "requested": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contextCapacity",
+        "kCodec",
+        "vCodec",
+        "ngl",
+        "offloadLayers",
+        "batch",
+        "ubatch",
+        "parallel",
+        "flashAttention",
+        "nativeExperts",
+        "nativePrefill",
+        "memoryPolicyRevision",
+        "cachePolicyRevision"
+      ],
+      "properties": {
+        "contextCapacity": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "kCodec": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "vCodec": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ngl": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "offloadLayers": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "batch": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "ubatch": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "parallel": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "flashAttention": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "nativeExperts": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "nativePrefill": {
+          "type": [
+            "number",
+            "string",
+            "null"
+          ]
+        },
+        "memoryPolicyRevision": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cachePolicyRevision": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "effective": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contextCapacity",
+        "kCodec",
+        "vCodec",
+        "ngl",
+        "offloadLayers",
+        "batch",
+        "ubatch",
+        "parallel",
+        "flashAttention",
+        "nativeExperts",
+        "nativePrefill",
+        "memoryPolicyRevision",
+        "cachePolicyRevision"
+      ],
+      "properties": {
+        "contextCapacity": {
+          "$ref": "#/$defs/measurement"
+        },
+        "kCodec": {
+          "$ref": "#/$defs/measurement"
+        },
+        "vCodec": {
+          "$ref": "#/$defs/measurement"
+        },
+        "ngl": {
+          "$ref": "#/$defs/measurement"
+        },
+        "offloadLayers": {
+          "$ref": "#/$defs/measurement"
+        },
+        "batch": {
+          "$ref": "#/$defs/measurement"
+        },
+        "ubatch": {
+          "$ref": "#/$defs/measurement"
+        },
+        "parallel": {
+          "$ref": "#/$defs/measurement"
+        },
+        "flashAttention": {
+          "$ref": "#/$defs/measurement"
+        },
+        "nativeExperts": {
+          "$ref": "#/$defs/measurement"
+        },
+        "nativePrefill": {
+          "$ref": "#/$defs/measurement"
+        },
+        "memoryPolicyRevision": {
+          "$ref": "#/$defs/measurement"
+        },
+        "cachePolicyRevision": {
+          "$ref": "#/$defs/measurement"
+        }
+      }
+    }
+  }
+}

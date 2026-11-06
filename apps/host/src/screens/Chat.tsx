@@ -1,3 +1,4 @@
+import { WebSearchDialog } from '../components/WebSearchDialog';
 import {localeTag} from '../lib/i18n';
 import { tr } from '../lib/i18n';
 import { UsageDashboard } from '../components/UsageDashboard';
@@ -45,11 +46,11 @@ import { Markdown } from '../components/Markdown';
 import { Btn, Icon, IconBtn, ErrorNotice, type IconName } from '../components/ui';
 import { composerCap, scrollBehavior } from '../lib/responsive';
 import { relTime, cx, duration, tokens, tps } from '../lib/format';
-import { addQuote, clearQuotes, removeQuote, createSubagentExample, parkMessage, takeParked, pushToast, setPreviewTabClosed, branchFrom, continueLast, markRead, retryLast, selectSession, rewindTo, sendMessage, stopStreaming, useStore, } from '../lib/store';
+import { newSession, addQuote, clearQuotes, removeQuote, createSubagentExample, parkMessage, takeParked, pushToast, setPreviewTabClosed, branchFrom, continueLast, markRead, retryLast, selectSession, rewindTo, sendMessage, stopStreaming, useStore, } from '../lib/store';
 import { CopyBtn, CopyMenuItem, MenuCloseContext } from '../components/CopyBtn';
 import { KEYS_UP, PILL_DISTANCE, distanceFromBottom, followAfterScroll, wheelLeavesBottom } from '../lib/follow-scroll';
 import { getSlashCommands } from '../lib/commands';
-import { useLocation } from '../lib/router';
+import { navigate, useLocation } from '../lib/router';
 import { composerSends } from '../lib/shortcut-bindings';
 import type { ChatMessage, Session, ToolCall } from '../lib/types';
 export function ChatScreen() {
@@ -104,6 +105,12 @@ export function ChatScreen() {
             void sendMessage(next);
     }, [streaming, parked?.length, session?.id]);
     const [draft, setDraft] = useState('');
+    const [searchChat,setSearchChat]=useState<string|null>(null);
+    const [webSearch,setWebSearch]=useState<(import('../lib/types').WebSearchResult & {sessionId:string})|null>(null);
+    useEffect(()=>{if(webSearch&&webSearch.sessionId!==session?.id)setWebSearch(null);if(searchChat&&session?.id&&searchChat!==session.id)setSearchChat(null);},[session?.id]);
+    function openSearch(){const id=session?.id??newSession().id;setSearchChat(id);}
+    const searchDialog=<WebSearchDialog open={!!searchChat} sessionId={searchChat} onClose={()=>setSearchChat(null)} onUse={result=>{if(searchChat)setWebSearch({...result,sessionId:searchChat});}}/>;
+    const searchControls=<div className="row chat-reference-controls"><Btn size="sm" icon="search" disabled={streaming} onClick={openSearch}>{tr('Search web')}</Btn><Btn size="sm" icon="skills" onClick={()=>navigate('skills')}>{tr('Skills')}</Btn>{webSearch?<><span className="xs muted">{tr('Search references ready · tools off for this answer')}</span><Btn size="sm" onClick={()=>setWebSearch(null)}>{tr('Remove references')}</Btn></>:null}</div>;
     const draftKey = `strata.chat-draft.${session?.id ?? 'new'}`;
     useEffect(() => {
         setDraft(sessionStorage.getItem(draftKey) ?? '');
@@ -432,6 +439,8 @@ export function ChatScreen() {
         return () => window.removeEventListener('keydown', onKey);
     }, [focusMode]);
     const chatNative = useNative(), queuedPhotos = useChatPhotos(session?.id);
+    const supervised = useStore(s => s.library?.mode === 'real' && !!s.library.loaded && s.engine?.engine.running === true);
+    const autonomous = session?.preferences?.agent !== false && (supervised || !!chatNative?.instances.some(i => i.status === 'ready') || !!(session?.preferences?.remoteModel ?? remote));
     const readyForChat = !!loaded || !!chatNative?.instances.some(i => i.status === 'ready');
     useEffect(() => {
         if (setupVisible || !readyForChat || messageCount)
@@ -440,7 +449,7 @@ export function ChatScreen() {
             textarea.current?.focus({ preventScroll: true });
     }, [setupVisible, readyForChat, session?.id, messageCount]);
     function submit() {
-        const text = draft.trim();
+        let text = draft.trim();
         if (!text && !queuedPhotos.length)
             return;
         if (streaming) {
@@ -461,6 +470,12 @@ export function ChatScreen() {
             void queueMessage(session.id, out).then(ok => { if (ok) { clearQuotes(session.id); return; } if (!ok) { if (plan === 'goal') { clearQuotes(session.id); parkMessage(session.id, out); return; } updateDraft(text); pushToast('info', tr('The assistant is still answering'), tr('Send your message when it has finished.')); } }, e => { updateDraft(text); pushToast('error', tr('The message was not queued'), plainFailureText(e instanceof Error ? e.message : String(e)).message); });
             return;
         }
+        if(/^\/research(?:\s|$)/.test(text)&&!autonomous){
+            text=text.replace(/^\/research(?:\s+|$)/,'').trim();
+            updateDraft(text);
+            if(!webSearch||webSearch.sessionId!==session?.id){openSearch();return;}
+            if(!text&&!queuedPhotos.length)return;
+        }
         const timeSkip = timeSkipPrompt(text);
         if (timeSkip === '') {
             pushToast('info', 'Add a prompt after /time-skip');
@@ -473,11 +488,13 @@ export function ChatScreen() {
         }
         updateDraft('');
         if (session) clearQuotes(session.id);
-        void sendMessage(session ? quotedMessage(quotes, text) : text);
+        void sendMessage(session ? quotedMessage(quotes, text) : text,webSearch&&webSearch.sessionId===session?.id?{webSearch}:{});
+        setWebSearch(null);
     }
     function onComposerKey(_e: React.KeyboardEvent) { }
     if (!session) {
         return (<>
+        {searchDialog}
         <ChatToolbar previewWidth={paneWidth} extraTabs={extraTabs} session={session} items={previews} onCloseTab={closeTab} selected={setupVisible ? null : selectedPreview} onSelect={selectPreview} onClose={() => { setSelectedPreview(null); setExpanded(false); }} inline={inlinePreview} expanded={expanded} onExpand={() => setExpanded(v => !v)}/>
         <div className="chatsplit" style={splitStyle} data-timeskip={!!selectedRun || undefined} ref={splitRef} data-preview={!!selectedPreview && inlinePreview || undefined} data-expanded={expanded && !!selectedPreview && inlinePreview || undefined}>
          <DropZone className="chatcol">
@@ -488,7 +505,7 @@ export function ChatScreen() {
               <UsageDashboard loaded={!!loaded}/>
             </div>
           </div>
-          <Composer draft={draft} setDraft={updateDraft} loaded={!!loaded} streaming={streaming} onSubmit={submit} onKey={onComposerKey} session={session} onPreview={openPreview} textareaRef={textarea}/>
+          <Composer onSearch={openSearch} searchControls={searchControls} draft={draft} setDraft={updateDraft} loaded={!!loaded} streaming={streaming} onSubmit={submit} onKey={onComposerKey} session={session} onPreview={openPreview} textareaRef={textarea}/>
          </DropZone>
         <ArtifactPanel items={previews} onCloseTab={closeTab} selected={setupVisible ? null : selectedPreview} onSelect={selectPreview} onClose={() => setSelectedPreview(null)} inline={inlinePreview}/>
          {tr(resizeHandle)}
@@ -496,6 +513,7 @@ export function ChatScreen() {
       </>);
     }
     return (<>
+      {searchDialog}
       {tr(selection && session ? <button type="button" className="quote-selection" style={{ left: selection.x, top: selection.y }} onMouseDown={e => e.preventDefault()} onClick={() => { addQuote(session.id, selection.text, selection.messageId, selection.role); window.getSelection()?.removeAllRanges(); setSelection(null); }}>{tr("Quote")}</button> : null)}
       <ChatToolbar previewWidth={paneWidth} extraTabs={extraTabs} session={session} items={previews} onCloseTab={closeTab} selected={setupVisible ? null : selectedPreview} onSelect={selectPreview} onClose={() => { setSelectedPreview(null); setExpanded(false); }} inline={inlinePreview} expanded={expanded} onExpand={() => setExpanded(v => !v)}/>
 
@@ -533,7 +551,7 @@ export function ChatScreen() {
           </div>
           <div className="jumplatest-row">{tr(awayFromBottom ? (<button type="button" className="jumplatest" data-finished={justFinished || undefined} aria-label={tr("Scroll to the latest message")} title={tr("Scroll to the latest message")} onClick={() => scrollToLatest()}>
                 <Icon name="chevron" size={18}/></button>) : null)}</div>
-          <Composer draft={draft} setDraft={updateDraft} loaded={!!loaded} streaming={streaming} onSubmit={submit} onKey={onComposerKey} session={session} onPreview={openPreview} textareaRef={textarea}/>
+          <Composer onSearch={openSearch} searchControls={searchControls} draft={draft} setDraft={updateDraft} loaded={!!loaded} streaming={streaming} onSubmit={submit} onKey={onComposerKey} session={session} onPreview={openPreview} textareaRef={textarea}/>
         </DropZone>
         {tr(!setupVisible && selectedRun && session ? <TimeSkipPanel key={selectedRun.id} run={selectedRun} sessionId={session.id} inline={inlinePreview} expanded={expanded} onCompare={setExpanded} onPreview={openPreview} onClose={() => { setSelectedPreview(null); setExpanded(false); }}/> : null)}
         {tr(!setupVisible && planShown ? <PlanPanel chatId={session?.id}/> : null)}
@@ -549,13 +567,13 @@ interface SlashCommand {
     icon: IconName;
     run: () => void;
 }
-function useSlashCommands(clear: () => void, setDraft: (value: string) => void): SlashCommand[] {
+function useSlashCommands(clear: () => void, setDraft: (value: string) => void, onSearch:()=>void, autonomous:boolean): SlashCommand[] {
     const demo = useStore(s => s.library?.mode === 'simulated');
     return [
         { id: 'time-skip', label: '/time-skip', hint: 'Try a change on a copy, check it, and keep it only if it is better', icon: 'branch', run: () => setDraft('/time-skip ') },
         { id: 'goal', label: '/goal', hint: 'Set a goal and let the assistant keep working until it is done', icon: 'bolt', run: () => setDraft('/goal ') },
         { id: 'plan', label: '/plan', hint: 'Have the assistant write a plan first; nothing runs until you approve it', icon: 'check', run: () => setDraft('/plan ') },
-        { id: 'research', label: '/research', hint: 'Search the web, read the pages and answer with sources', icon: 'search', run: () => setDraft('/research ') },
+        { id: 'research', label: '/research', hint: autonomous?'Search the web, read the pages and answer with sources':'Open Search web to choose a query and attach snippets', icon: 'search', run: () => autonomous?setDraft('/research '):onSearch() },
         { id: 'loop', label: '/loop', hint: 'Repeat a message every few minutes while this chat is open', icon: 'refresh', run: () => setDraft('/loop 10m ') },
         { id: 'website', label: '/website', hint: 'Open a website in the preview sidebar', icon: 'link', run: () => { clear(); window.dispatchEvent(new Event('strata:open-website')); } },
         { id: 'preview', label: '/preview', hint: 'Open a local file in the preview sidebar', icon: 'file', run: () => { clear(); window.dispatchEvent(new Event('strata:open-preview')); } },
@@ -596,7 +614,9 @@ const NO_QUOTES: Quote[] = [];
 function quotedMessage(quotes: readonly Quote[], text: string): string {
     return quotes.length && !text.startsWith('/') ? composeQuoted(quotes.map(q => q.text), text) : text;
 }
-function Composer({ draft, setDraft, loaded, streaming, onSubmit, onKey, session, onPreview, textareaRef, }: {
+function Composer({ onSearch, searchControls, draft, setDraft, loaded, streaming, onSubmit, onKey, session, onPreview, textareaRef, }: {
+    onSearch:()=>void;
+    searchControls: React.ReactNode;
     draft: string;
     setDraft: (v: string) => void;
     loaded: boolean;
@@ -612,7 +632,9 @@ function Composer({ draft, setDraft, loaded, streaming, onSubmit, onKey, session
     const canChat = loaded || native?.instances.some(i => i.status === 'ready');
     const whileBusy = useStore(s => s.whileBusy), parkedList = useStore(s => (session ? s.parked[session.id] : undefined)) ?? NO_PARKED;
     const quoteList = useStore(s => (session ? s.quotes[session.id] : undefined)) ?? NO_QUOTES;
-    const commands = useSlashCommands(clearDraft, setDraft);
+    const remote=useStore(s=>s.remoteModel);
+    const supervised=useStore(s=>s.library?.mode==='real'&&!!s.library.loaded&&s.engine?.engine.running===true);
+    const commands = useSlashCommands(clearDraft, setDraft, onSearch, session?.preferences?.agent!==false&&(supervised||!!native?.instances.some(i=>i.status==='ready')||!!(session?.preferences?.remoteModel??remote)));
     const [cursor, setCursor] = useState(0);
     const [fileError, setFileError] = useState('');
     const [slashOpen, setSlashOpen] = useState(false);
@@ -642,6 +664,7 @@ function Composer({ draft, setDraft, loaded, streaming, onSubmit, onKey, session
         <div className="composer__inner">
           <ApprovalDock sessionId={session?.id}/>
           {tr(fileError ? <ErrorNotice message={fileError} action={tr("Dismiss")} onRetry={() => setFileError('')}/> : null)}
+          {searchControls}
           <FolderChip chatId={session?.id} disabled={streaming}/>
           <GoalBar chatId={session?.id}/>
           {tr(quoteList.length ? <div className="quotes">{tr(quoteList.map(q => <div className="quote" key={q.id}><button type="button" className="quote__body" title={tr("Go to the quoted message")} onClick={() => document.querySelector(`[data-message-id="${CSS.escape(q.messageId)}"]`)?.scrollIntoView({ block: 'center', behavior: scrollBehavior() })}><span className="xs muted">{tr(q.role === 'user' ? "Quoting you" : "Quoting the assistant")}</span><span className="quote__text">{q.text}</span></button><IconBtn name="x" size={14} title={tr("Remove this quote")} onClick={() => removeQuote(session!.id, q.id)}/></div>))}</div> : null)}
@@ -737,10 +760,12 @@ function MessageView({ message: m, isLast, onEditPrompt, onPreview, onClosePrevi
     // A reply with activity lines is drawn piece by piece in the order it came; one without is the plain text it always was.
     const grouped = !!m.blocks?.some(b => b.kind === 'group');
     const [sentTime, setSentTime] = useState(() => relTime(m.at));
+    const sourceLinks=m.webSources?.length?<div className="stack web-reference-sources"><p className="xs muted">{tr('Search references · snippets only')}</p>{m.webSources.map(source=><a key={source.url} href={source.url} target="_blank" rel="noopener noreferrer">{source.title} · {source.url}</a>)}</div>:null;
     const sentQuote = m.role === 'user' ? parseQuoted(m.content) : null;
     if (m.role === 'user') {
         return (<div className="st-msg st-msg--user" data-message-id={m.id} onMouseEnter={() => setSentTime(relTime(m.at))} onFocus={() => setSentTime(relTime(m.at))}>
         <div className="st-bubble">{tr(m.photos?.length ? <ChatPhotos photos={m.photos}/> : null)}{sentQuote ? <><SentQuotes quotes={sentQuote.quotes}/><span className="st-bubble__text">{sentQuote.reply}</span></> : m.markdown ? <Markdown text={m.content} onOpenLink={onOpenLink} imageSession={activeSession}/> : <span className="st-bubble__text">{m.content}</span>}</div>
+        {sourceLinks}
         <div className="st-msg__meta">
           <time dateTime={m.at} title={tr(new Date(m.at).toLocaleString(localeTag()))}>{tr(sentTime)}</time>
           <span className="st-msg__actions">
@@ -778,6 +803,7 @@ function MessageView({ message: m, isLast, onEditPrompt, onPreview, onClosePrevi
         {tr(m.streaming && m.content && !m.drafts?.length && (!grouped || m.blocks!.at(-1)?.kind === 'text') ? <span className="caret" aria-hidden="true"/> : null)}
       </div> : null)}
       {tr(m.skills?.length && !m.streaming ? <SkillsUsed skills={m.skills}/> : null)}
+      {sourceLinks}
       {tr(m.deliverables?.length && !m.streaming ? <div className="deliverables">{m.deliverables.length >= COMPACT_FILES_FROM ? <FilesSummary files={m.deliverables} answer={m.content} sessionId={activeSession ?? ''} onPreview={onPreview}/> : <>{m.deliverables.map(f => <FileCard key={f.path} file={f} sessionId={activeSession ?? ''} onPreview={onPreview}/>)}<EditedFiles files={m.deliverables} sessionId={activeSession ?? ''} onPreview={onPreview}/></>}</div> : null)}
       {tr(m.streaming && isLast && !m.timeSkipId ? <StatusLine sessionId={activeSession} startedAt={Date.parse(m.at) || Date.now()} tokens={m.tokens}/> : null)}
 

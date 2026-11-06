@@ -22,6 +22,7 @@ import { which } from './util.mjs';
 import { buildSpin8Args, probeBackendCapabilities } from './spin8-backend.mjs';
 import { resolveKvSettings, explicitKvEnvironment } from './kv-settings.mjs';
 import {localBackendChoice,findLocalBackend,verifyLocalBackend,requireRuntimeKv} from './local-backends.mjs';
+import {createRunObservation,requestedFromArgs,observationEnabled} from './lifecycle-observation.mjs';
 
 const LOG_LIMIT = 400;
 const emptyMetrics = () => ({source:'none',promptTokens:0,predictedTokens:0,promptTps:0,outputTps:0,
@@ -46,6 +47,8 @@ const state = {
 };
 
 let child = null;
+let observation = null;
+export function runObservation(){return observation?.snapshot()??null;}
 let lastStart = null, privateKey = '', memoryMode = false;
 const stopListeners=new Set();
 export function onBeforeStop(listener){stopListeners.add(listener);return()=>stopListeners.delete(listener);}
@@ -287,7 +290,7 @@ export async function preflight({config,modelPath}) {
   return {binary,backend,runtime};
 }
 
-export async function start({ modelId, modelPath, port = 8080, config, hardware, timeoutMs = 120_000, privateMemory = false, beforeStart }) {
+export async function start({ modelId, modelPath, port = 8080, config, hardware, timeoutMs = 120_000, privateMemory = false, beforeStart, runObservation: captureRun = observationEnabled(), observationProbe }) {
   const ordinaryArgs = buildArgs({ modelPath, config, hardware, port });
   const args = privateMemory ? privateLlamaArgs(ordinaryArgs) : ordinaryArgs;
   const {binary,backend,runtime}=await preflight({config,modelPath});
@@ -297,6 +300,9 @@ export async function start({ modelId, modelPath, port = 8080, config, hardware,
   if(privateMemory && !['PrismML','TurboQuant'].includes(backend))throw new Error('A verified local memory runtime is required.');
   await beforeStart?.();
   if (child) await stop();
+  const capture=captureRun?createRunObservation({backend:backend==='Automatic'?'unknown':backend,requested:requestedFromArgs(args),gpuProbe:observationProbe}):null;
+  observation=capture;
+  if(capture){void capture.identify({executable:binary.path,version:runtime?.version,modelPath});void capture.sampleGpu();}
   lastStart={modelId,modelPath,port,config:structuredClone(config),hardware:structuredClone(hardware),timeoutMs};
   memoryMode=privateMemory;
   privateKey=privateMemory?randomBytes(32).toString('hex'):'';
@@ -333,6 +339,7 @@ export async function start({ modelId, modelPath, port = 8080, config, hardware,
   state.startedAt = new Date().toISOString();
 
   const onData = (stream) => (chunk) => {
+    capture?.consume(stream,chunk);
     for (const line of chunk.toString().split('\n')) {
       if (line.trim()) log(stream, line.replace(/\s+$/, ''));
     }
@@ -341,6 +348,8 @@ export async function start({ modelId, modelPath, port = 8080, config, hardware,
   child.stderr.on('data', onData('err'));
 
   child.on('exit', (code, signal) => {
+    capture?.finish(state.status==='stopping'?'stopped':state.status==='starting'?'startup_exit':code===0?'stopped':'error',code);
+    if(capture)void capture.sampleGpu();
     if(child!==launched)return; // A late exit from the previous process cannot stop its replacement.
     log('supervisor', `engine exited (${signal ?? code})`);
     child = null;
@@ -358,6 +367,7 @@ export async function start({ modelId, modelPath, port = 8080, config, hardware,
   try {
     await waitForHealth(port, timeoutMs, launched, () => spawnError, privateKey || config.serving?.apiKey || '');
   } catch (err) {
+    capture?.finish(launched.exitCode!==null?'startup_exit':'error',launched.exitCode);
     await stop();
     state.status = 'error';
     state.error = err.message;
@@ -366,6 +376,8 @@ export async function start({ modelId, modelPath, port = 8080, config, hardware,
   }
 
   state.status = 'running';
+  capture?.ready();
+  if(capture)void capture.sampleGpu({ownedPids:[launched.pid]});
   state.startedAt = new Date().toISOString();
   startPolling();
   hubRef?.send('engine-status', status());
@@ -374,6 +386,7 @@ export async function start({ modelId, modelPath, port = 8080, config, hardware,
 }
 
 export async function stop() {
+  if(state.status==='starting'&&observation?.snapshot().outcome==='starting')observation.finish('cancelled');
   for(const listener of stopListeners)listener();
   state.metrics=emptyMetrics();
   if (!child) {

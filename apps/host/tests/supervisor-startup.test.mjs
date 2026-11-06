@@ -21,7 +21,16 @@ test('a backend that exits before health reports its error promptly', async t =>
     rmSync(home,{recursive:true,force:true});
   });
   const started=Date.now(), secret='private-startup-key-fixture';
-  await assert.rejects(supervisor.start({modelId:'fixture',modelPath:model,port,config:{beginner:{contextLength:'2k'},expert:[],serving:{apiKey:secret}},hardware:{cpu:{cores:4}},timeoutMs:10_000}),/Engine exited early with code \d+.*bad option: -m/);
+  const options={modelId:'fixture',modelPath:model,port,config:{beginner:{contextLength:'2k'},expert:[],serving:{apiKey:secret}},hardware:{cpu:{cores:4}},timeoutMs:10_000};
+  assert.equal(supervisor.runObservation(),null);
+  const ordinary=supervisor.buildArgs(options);
+  await assert.rejects(supervisor.start({...options,runObservation:true,observationProbe:async()=>({dedicated:null,shared_gpu_memory:null,processes:null})}),/Engine exited early with code \d+.*bad option: -m/);
+  const observation=supervisor.runObservation();
+  assert.equal(observation.outcome,'startup_exit');assert.equal(observation.requested.contextCapacity,2048);
+  assert.equal(observation.effective.contextCapacity.value,null);
+  assert.ok(!JSON.stringify(observation).includes(secret));
+  assert.deepEqual(supervisor.buildArgs(options),ordinary,'diagnostics do not alter launch arguments');
+  assert.ok(!('observation' in supervisor.status()),'existing snapshot contract stays unchanged');
   assert.ok(Date.now()-started<5_000,'did not wait for the health timeout');
   assert.equal(supervisor.status().status,'error','cleanup must preserve the startup error');
   assert.match(supervisor.status().error,/Engine exited early/);

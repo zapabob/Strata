@@ -27,7 +27,7 @@ export function parseSkillFile(text) {
   const m = /^---\n([\s\S]*?)\n---\n?/.exec(raw);
   if (!m) return { name: null, title: null, description: null, body: raw.trim() };
   const field = key => {
-    const line = new RegExp(`^${key}:\\s*(.*)$`, 'mi').exec(m[1])?.[1]?.trim();
+    const line = new RegExp(`^${key}:[ \t]*(.*)$`, 'mi').exec(m[1])?.[1]?.trim();
     if (line === undefined) return null;
     try { if (/^["']/.test(line)) return typeof JSON.parse(line.replace(/^'(.*)'$/, '"$1"')) === 'string' ? JSON.parse(line.replace(/^'(.*)'$/, '"$1"')) : line; } catch { /* plain scalar */ }
     return line;

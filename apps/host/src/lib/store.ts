@@ -1993,6 +1993,7 @@ export async function approvePlan(sessionId: string, planId: string) {
 export async function startPlanGoal(planId: string) { await sendMessage('', { planId }); }
 
 type SendMessageOptions = {
+  webSearch?: import('./types').WebSearchResult;
   fromLoop?: boolean;
   goalAction?: 'resume';
   planId?: string;
@@ -2087,7 +2088,7 @@ export async function sendMessage(text: string, options: SendMessageOptions = {}
   const body=text.trim()||(pictures.length?'Describe this picture.':'');
   if(!body&&!resume&&!planStart&&!reattach)return;
 
-  const userMsg: ChatMessage = { id: uid('m'), role: 'user', content: options.shown ?? body, at: new Date().toISOString(),...(pictures.length?{photos:pictures}:{}),...(options.markdown?{markdown:true}:{}) };
+  const userMsg: ChatMessage = { ...(options.webSearch?{webSources:options.webSearch.sources.map(({url,title})=>({url,title}))}:{}), id: uid('m'), role: 'user', content: options.shown ?? body, at: new Date().toISOString(),...(pictures.length?{photos:pictures}:{}),...(options.markdown?{markdown:true}:{}) };
   // A taken-over turn goes on in the reply the page already has (the last one, if it is the assistant's).
   const lastReply = reattach ? [...(state.sessions.find(s => s.id === sessionId)?.messages ?? [])].reverse()[0] : undefined;
   const resumedReply = lastReply?.role === 'assistant' ? lastReply : undefined;
@@ -2171,6 +2172,7 @@ export async function sendMessage(text: string, options: SendMessageOptions = {}
       reattach ? '/api/chat/attach' : planStart ? '/api/plan/start-goal' : '/api/chat/stream',
       reattach ? { sessionId, ...(options.requestId ? { requestId: options.requestId } : {}) } : {
         sessionId,
+        ...(options.webSearch ? {webResultId:options.webSearch.resultId} : {}),
         ...(planStart ? { planId: planStart } : {}),
         ...(resume ? { goalAction: 'resume' } : planStart ? {} : { message: options.shown ? body : body }),
         history,

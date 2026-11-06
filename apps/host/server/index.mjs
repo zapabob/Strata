@@ -62,6 +62,8 @@ import { createNativeDrops } from './native-drop.mjs';
 import { createVisionProbe, effectiveVision, readsPicturesByDefault } from './vision-probe.mjs';
 import { RequestQueue } from './request-queue.mjs';
 import { selectSkills, skillInstructions } from './skill-selection.mjs';
+import { previewSkillMarkdown } from './skill-import.mjs';
+import { createChatWebSearch, referenceHistory } from './chat-web-search.mjs';
 import { createModelProviders } from './model-providers.mjs';
 import { createForkTimeskip } from './timeskip-fork.mjs';
 import { prepareOversized } from './oversize.mjs';
@@ -179,6 +181,7 @@ const native=createNativeControl({control,ready:bundledEngine,appUpdater,hardwar
 // What the person chose in Settings -> Tools (tool groups, web search service and key, the browser, their own tools).
 const llmProxy = createLlmProxy({ targetOf: key => agent.llmTarget(key), samplingNow: () => samplingFromExpert(store.get().expert) });
 const agentTools = createAgentTools({ read: () => store.get().agentTools, write: value => store.update({ agentTools: value }), dataDir: store.DATA_DIR, browser: () => ({ ...findBrowser(), cli: findPlaywrightMcp(agent.harnessDir()) }) });
+const chatWebSearch = createChatWebSearch({ settings: () => agentTools.view() });
 agentTools.ensureFile();
 const visionProbe = createVisionProbe();
 /** The model APIs as the chat picker sees them: each model says whether it reads pictures (what the person ticked, else what the server answered). Unanswered models are asked in the background. */
@@ -605,7 +608,7 @@ function clientName(req) {
   return 'Local client';
 }
 
-async function runRemoteTurn({ selection, message, history, images = [], thinking, onFrame, signal, workspaceId }) {
+async function runRemoteTurn({ selection, message, history, images = [], thinking, onFrame, signal, workspaceId, webReferences = null }) {
   const controller = new AbortController();
   const requestSignal = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
   let entry;
@@ -616,7 +619,7 @@ async function runRemoteTurn({ selection, message, history, images = [], thinkin
     const appliedSkills = selectSkills(skillState, message, workspaceId);
     entry = serving.open({ client: 'Strata chat', endpoint: connection.protocol === 'anthropic' ? '/messages' : connection.protocol === 'openai-responses' ? '/responses' : '/chat/completions', model: `${connection.name} · ${model.name}`, cancel: () => controller.abort(new DOMException('Cancelled by the user', 'AbortError')) });
     serving.mark(entry.id, { state: 'generating' });
-    const result = await modelProviders.stream({ selection, message, history, images, thinking, signal: requestSignal, systemPrompt: ['You are Strata, a helpful assistant. Answer clearly. Do not claim to have read files or performed actions unless their results are included in the conversation.', skillInstructions(appliedSkills)].filter(Boolean).join('\n\n'), onFrame: frame => {
+    const result = await modelProviders.stream({ selection, message, history: referenceHistory(history, webReferences), images, thinking, signal: requestSignal, systemPrompt: ['You are Strata, a helpful assistant. Answer clearly. Do not claim to have read files or performed actions unless their results are included in the conversation.', skillInstructions(appliedSkills)].filter(Boolean).join('\n\n'), onFrame: frame => {
       if (frame.type === 'start') noteSkillUse(appliedSkills);
       if (frame.type === 'done') serving.mark(entry.id, { tokensIn: frame.tokensIn, tokensOut: frame.tokensOut, usageSource: frame.usageSource });
       onFrame({ ...frame, requestId: entry.id, model: model.name, contextMax: model.contextMax, remoteModel: true, ...(frame.type === 'start' ? { skills: appliedSkills.map(s => s.name) } : {}) });
@@ -682,12 +685,12 @@ async function runAgentTurn({ res, controller, chatId, body, message, workspaceI
   }
 }
 
-async function runTurn({ message, history = [], onFrame, signal, client, workspaceId = null, sessionId = null, remoteModel = null, runtimeModelId = undefined, nativeModelId, images=[], useTools=false, thinking='medium', thinkingBudget=0 }) {
-  if (remoteModel) return runRemoteTurn({ selection: remoteModel, message, history, images, thinking, onFrame, signal, workspaceId });
+async function runTurn({ message, history = [], onFrame, signal, client, workspaceId = null, sessionId = null, remoteModel = null, runtimeModelId = undefined, nativeModelId, images=[], useTools=false, thinking='medium', thinkingBudget=0, webReferences=null }) {
+  if (remoteModel) return runRemoteTurn({ selection: remoteModel, message, history, images, thinking, onFrame, signal, workspaceId, webReferences });
   if(native.hasLive()||nativeModelId){
     let instance;try{instance=native.resolveInstance(nativeModelId??native.state().defaultId);}catch(e){const message=plainNoModel(e.message);onFrame({type:'error',message});return {error:message};}const started=Date.now(),cancel=new AbortController();
     const entry=serving.open({client:client??'Strata chat',endpoint:'/chat/completions',model:instance.apiModelId,instanceId:instance.id,gpuIds:instance.gpus.map(String),cancel:()=>cancel.abort()});
-    try{serving.mark(entry.id,{state:'generating'});const applied=selectSkills(skillState,message,workspaceId);const result=await proxyCompletion({baseUrl:`http://127.0.0.1:${instance.port}/v1`,modelId:instance.apiModelId,authorization:instance.key,message,history,images,extra:{...(sessionId?{strata_cache_session:createHash('sha256').update(String(sessionId)).digest('hex')}:{}),strata_mcp:useTools===true,...(thinkingBudget>0&&String(thinking).toLowerCase()!=='off'?{reasoning_budget_tokens:thinkingBudget}:{}),reasoning_effort:({off:'none',max:'high'}[String(thinking).toLowerCase()]??String(thinking).toLowerCase())},systemPrompt:getEffectiveSystemPrompt(applied),signal:signal?AbortSignal.any([signal,cancel.signal]):cancel.signal,onFrame:frame=>onFrame({...frame,requestId:entry.id,model:instance.label,contextMax:instance.metrics?.engine?.max_context??instance.context,skills:applied.map(s=>s.name)})});serving.mark(entry.id,{...result,usageSource:result.usageSource});serving.finish(entry.id,{tokensOut:result.tokensOut,durationMs:Date.now()-started});return result;}catch(e){serving.finish(entry.id,{durationMs:Date.now()-started,error:e.message});onFrame({type:'error',message:e.message,requestId:entry.id});return {error:e.message};}
+    try{serving.mark(entry.id,{state:'generating'});const applied=selectSkills(skillState,message,workspaceId);const result=await proxyCompletion({baseUrl:`http://127.0.0.1:${instance.port}/v1`,modelId:instance.apiModelId,authorization:instance.key,message,history:referenceHistory(history,webReferences),images,extra:{...(sessionId?{strata_cache_session:createHash('sha256').update(String(sessionId)).digest('hex')}:{}),strata_mcp:!webReferences&&useTools===true,...(thinkingBudget>0&&String(thinking).toLowerCase()!=='off'?{reasoning_budget_tokens:thinkingBudget}:{}),reasoning_effort:({off:'none',max:'high'}[String(thinking).toLowerCase()]??String(thinking).toLowerCase())},systemPrompt:getEffectiveSystemPrompt(applied),signal:signal?AbortSignal.any([signal,cancel.signal]):cancel.signal,onFrame:frame=>onFrame({...frame,requestId:entry.id,model:instance.label,contextMax:instance.metrics?.engine?.max_context??instance.context,skills:applied.map(s=>s.name)})});serving.mark(entry.id,{...result,usageSource:result.usageSource});serving.finish(entry.id,{tokensOut:result.tokensOut,durationMs:Date.now()-started});return result;}catch(e){serving.finish(entry.id,{durationMs:Date.now()-started,error:e.message});onFrame({type:'error',message:e.message,requestId:entry.id});return {error:e.message};}
   }
   runtimeState();
   let instance;
@@ -730,7 +733,8 @@ async function runTurn({ message, history = [], onFrame, signal, client, workspa
       try {
         result = await streamChat({
           message,
-          history,
+          history: referenceHistory(history,webReferences),
+          disableTools:!!webReferences,
           systemPrompt,
           modelLabel: v.label,
           candidates: readableCandidates(),
@@ -1027,6 +1031,10 @@ const server = http.createServer(async (req, res) => {
     error(res, 500, err.message ?? 'Internal error');
   }
 });
+
+function localReferenceControl(req) {
+  return sameMemoryOrigin(req) && ['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
+}
 
 async function api(req, res, path, method, url) {
   if(path==='/api/fonts'&&method==='GET')return json(res,200,await systemFonts());
@@ -1679,6 +1687,7 @@ async function api(req, res, path, method, url) {
     return json(res, 200, await engine.validate(body ?? {}));
   }
   if (path === '/api/engine/status' && method === 'GET') return json(res, 200, supervisor.status());
+  if (path === '/api/engine/observation' && method === 'GET') return json(res,200,{supervisor:supervisor.runObservation(),native:native.runObservations()});
   if (path === '/api/engine/logs' && method === 'GET') {
     return json(res, 200, {
       logs: supervisor.logs(Number(url.searchParams.get('limit') ?? 200)),
@@ -1730,6 +1739,17 @@ async function api(req, res, path, method, url) {
   // --- monitor ------------------------------------------------------------
   if (path === '/api/monitor') { monitor.watch(); if (url.searchParams.get('drives') === '1') monitor.watchDrives(); return json(res, 200, monitor.snapshot()); }
 
+  // Explicit references use local controls, never the broader ordinary chat API.
+  if (path === '/api/chat/web-search' && ['GET','POST'].includes(method)) {
+    res.removeHeader('access-control-allow-origin');
+    if (!localReferenceControl(req)) return error(res,403,'Open web search in the local Strata app.');
+    if (method === 'GET') return json(res,200,chatWebSearch.status());
+    const controller=new AbortController();
+    res.on('close',()=>{if(!res.writableEnded)controller.abort();});
+    try {const body=await readBody(req,4096);return json(res,200,await chatWebSearch.search(body,controller.signal));}
+    catch(e){if(!res.destroyed)return error(res,400,e.message);return;}
+  }
+
   // --- skills / workspace -------------------------------------------------
   if (path === '/api/skills' && method === 'GET') {
     /* Re-scan rather than returning the array built at startup.
@@ -1748,27 +1768,43 @@ async function api(req, res, path, method, url) {
     syncAgentSkills();
     return json(res, 200, skillState);
   }
+  if (path === '/api/skills/preview' && method === 'POST') {
+    res.removeHeader('access-control-allow-origin');
+    if(!localReferenceControl(req))return error(res,403,'Open skill import in the local Strata app.');
+    try{const body=await readBody(req,512*1024);return json(res,200,previewSkillMarkdown(body.markdown,skillState));}
+    catch(e){return error(res,400,e.message);}
+  }
   // A skill written in the app: a name, what it is for, and the instructions. Saved as a folder the agent can read; no restart.
   if (path === '/api/skills' && method === 'POST') {
-    const body = await readBody(req);
+    let body = await readBody(req);
     try {
+      if(body.markdown!==undefined){
+        res.removeHeader('access-control-allow-origin');
+        if(!localReferenceControl(req))return error(res,403,'Open skill import in the local Strata app.');
+        if(body.importConfirmed!==true)throw new Error('Preview the skill and confirm Import first.');
+        const preview=previewSkillMarkdown(body.markdown,skillState);
+        if(body.triggers!==undefined&&!skillEdit({triggers:body.triggers}).triggers.length)throw new Error('Add at least one trigger phrase before importing.');
+        body={...body,...preview,triggers:body.triggers??preview.triggers,enabled:body.enabled===true,onlyIn:body.onlyIn??null};
+      }
+      if(body.onlyIn!=null&&!workspaces.some(w=>w.id===body.onlyIn))throw new Error('Choose an available workspace.');
       const name = String(body.name ?? '').trim().slice(0, 80);
       const instructions = String(body.body ?? '').trim();
       if (!name) throw new Error('Give the skill a name.');
       if (!instructions) throw new Error('Write the instructions the assistant should follow.');
+      if(instructions.length>40000)throw new Error('Skill instructions must contain 1–40000 characters.');
       // The form's own choices are kept: a skill created with "Skill enabled" off stays off (QA F04), and its trigger phrases are saved with it.
       const triggers = body.triggers === undefined ? [] : skillEdit({ triggers: body.triggers }).triggers;
-      const id = writeCreatedSkill(CREATED_SKILLS, { name, description: String(body.description ?? '').trim().slice(0, 400), body: instructions.slice(0, 40000) });
+      const id = writeCreatedSkill(CREATED_SKILLS, { name, description: String(body.description ?? '').trim().slice(0, 400), body: instructions });
       const newId = `my-${id}`, off = body.enabled === false;
-      if (off || triggers.length) {
+      if (off || triggers.length || body.onlyIn) {
         const saved = store.get();
         store.update({
-          ...(off ? { skillPreferences: { ...saved.skillPreferences, [newId]: { enabled: false, onlyIn: null } } } : {}),
+          skillPreferences: { ...saved.skillPreferences, [newId]: { enabled: !off, onlyIn: body.onlyIn??null } },
           ...(triggers.length ? { skillEdits: { ...saved.skillEdits, [newId]: { ...saved.skillEdits?.[newId], triggers } } } : {}),
         });
       }
       const before = new Map(skillState.map(s => [s.id, s]));
-      skillState = skills().map(s => before.has(s.id) ? { ...s, enabled: before.get(s.id).enabled, onlyIn: before.get(s.id).onlyIn ?? null, useCount: before.get(s.id).useCount, lastUsedAt: before.get(s.id).lastUsedAt } : { ...s, enabled: s.id === newId && off ? false : s.enabled, onlyIn: null, useCount: 0, lastUsedAt: null });
+      skillState = skills().map(s => before.has(s.id) ? { ...s, enabled: before.get(s.id).enabled, onlyIn: before.get(s.id).onlyIn ?? null, useCount: before.get(s.id).useCount, lastUsedAt: before.get(s.id).lastUsedAt } : { ...s, enabled: s.id === newId && off ? false : s.enabled, onlyIn: s.id===newId?body.onlyIn??null:null, useCount: 0, lastUsedAt: null });
       syncAgentSkills();
       hub.send('skills', skillState);
       return json(res, 201, { id: newId, skills: skillState });
@@ -2138,6 +2174,14 @@ async function api(req, res, path, method, url) {
   // --- chat ---------------------------------------------------------------
   if ((path === '/api/chat/stream' || path === '/api/plan/start-goal') && method === 'POST') {
     const body = await readBody(req,12*1024*1024);
+    let webReferences=null;
+    if (body.webResultId !== undefined) {
+      res.removeHeader('access-control-allow-origin');
+      if (!localReferenceControl(req)) return error(res,403,'Open web search in the local Strata app.');
+      if (path !== '/api/chat/stream' || body.goalAction) return error(res,400,'Search references need an ordinary question.');
+      try {webReferences=chatWebSearch.resolve(body.webResultId,body.sessionId);}
+      catch(e){return error(res,400,e.message);}
+    }
     if (path === '/api/plan/start-goal') { body.message = '/plan start'; if (typeof body.planId !== 'string') return error(res, 400, 'planId is required'); }
     let images;try{const named=Array.isArray(body.imageIds)&&body.imageIds.length?uploads.dataUrls(typeof body.sessionId==='string'?body.sessionId:'',body.imageIds):[];images=validateChatImages([...(Array.isArray(body.images)?body.images:[]),...named]);}catch(e){return error(res,400,e.message);}
     if(images.length&&body.remoteModel){const own=modelProviders.withSecrets().find(c=>c.id===body.remoteModel.connectionId);const row=own?.models.find(m=>m.id===body.remoteModel.modelId);const refused=await pictureRefusal(own,row);if(refused)return error(res,409,refused);}
@@ -2149,6 +2193,7 @@ async function api(req, res, path, method, url) {
        does not fire in another. */
     const workspaceId = typeof body.workspaceId === 'string' ? body.workspaceId : null;
 
+    if (!webReferences && /^\/research(?:\s|$)/.test(message) && (body.agent === false || body.tools === false || process.env.STRATA_AGENT === 'off' || !(body.remoteModel || native.hasLive() || supervisorIsReady(supervisor.status())))) return error(res,409,'Autonomous research needs an agent model. Use Search web to attach references with this model.');
     res.writeHead(200, {
       'content-type': 'application/x-ndjson; charset=utf-8',
       'cache-control': 'no-cache, no-transform',
@@ -2161,7 +2206,7 @@ async function api(req, res, path, method, url) {
     /* Agent turn, when the component is there and this request can use it. A client that disappears
        detaches from the turn (it keeps running in the Harness); Stop is its own request. */
     const chatId = typeof body.sessionId === 'string' && body.sessionId ? body.sessionId : null;
-    const agentSkip = agentSkipReason({
+    const agentSkip = webReferences ? 'Search references use a plain answer with tools off.' : agentSkipReason({
       agentOff: process.env.STRATA_AGENT === 'off',
       plainChat: body.agent === false || body.tools === false,
       chatId,
@@ -2197,7 +2242,8 @@ async function api(req, res, path, method, url) {
       sessionId: typeof body.sessionId === 'string' ? body.sessionId : null,
       remoteModel: body.remoteModel ?? null,
       nativeModelId:body.nativeModelId,
-      images,useTools:body.useTools===true,thinking:body.thinking??'high',thinkingBudget:Number.isInteger(body.thinkingBudget)&&body.thinkingBudget>0?Math.min(body.thinkingBudget,262144):0,
+      webReferences,
+      images,useTools:!webReferences&&body.useTools===true,thinking:body.thinking??'high',thinkingBudget:Number.isInteger(body.thinkingBudget)&&body.thinkingBudget>0?Math.min(body.thinkingBudget,262144):0,
     });
     res.end();
     return undefined;
