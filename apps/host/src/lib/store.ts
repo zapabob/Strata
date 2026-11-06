@@ -988,10 +988,18 @@ function modelFits(id: string) {
   return true;
 }
 
+let imageSelectionRequest = 0;
+/** Publish selection intent immediately; a preceding model's late reply has no ownership. */
 export async function selectImageModel(selected: ImageModelChoice) {
-  set(s => ({ busy: { ...s.busy, 'image:select': true } }));
-  try { set({ imageModels: await api.patch<ImageModelLibrary>('/api/image-models', { selected }) }); }
-  finally { set(s => ({ busy: { ...s.busy, 'image:select': false } })); }
+  const request = ++imageSelectionRequest;
+  set(s => ({ imageModels: s.imageModels ? { ...s.imageModels, selected } : null, busy: { ...s.busy, 'image:select': true } }));
+  try {
+    const imageModels = await api.patch<ImageModelLibrary>('/api/image-models', { selected });
+    if (request === imageSelectionRequest) set({ imageModels });
+  }
+  finally {
+    if (request === imageSelectionRequest) set(s => ({ busy: { ...s.busy, 'image:select': false } }));
+  }
 }
 export async function installImageModel(id: Exclude<ImageModelChoice, 'off'>) {
   set({ imageModels: await api.post<ImageModelLibrary>(`/api/image-models/${id}/install`) });

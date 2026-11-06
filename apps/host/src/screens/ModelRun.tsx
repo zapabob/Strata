@@ -81,10 +81,6 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
     const [runRoles, setRunRoles] = useState<Roles | null>(null);
     const placementInitialized = useRef('');
     const imageModels = useStore(s => s.imageModels), imagePending = useStore(s => !!s.busy['image:select']);
-    const imageChoice = imageModels?.selected ?? 'off';
-    const imageVersion = imageModels?.variants.find(v => v.id === imageChoice);
-    const imageNeedsDownload = imageChoice !== 'off' && imageVersion?.state !== 'installed';
-    const imageUnavailable = imageChoice !== 'off' && !imageModels?.generationAvailable;
     const rawDraft = useStore(s => s.configDraft), connected = useStore(s => s.connection === 'live');
     const lifecycle = useLifecycle();
     const initialDraftOwner = useRef<string | null>(null);
@@ -99,6 +95,13 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
         catch { /* Use the explicit route when session storage is blocked. */ }
         return requestedVariant ?? '';
     });
+    const intendedImages = useRef(new Map<string, ImageModelChoice>());
+    const imageRequest = useRef(0);
+    const selectionOwner = useRef(selected);
+    const imageChoice = intendedImages.current.get(selected) ?? imageModels?.selected ?? 'off';
+    const imageVersion = imageModels?.variants.find(v => v.id === imageChoice);
+    const imageNeedsDownload = imageChoice !== 'off' && imageVersion?.state !== 'installed';
+    const imageUnavailable = imageChoice !== 'off' && !imageModels?.generationAvailable;
     const [expert, setExpert] = useState(false);
     const [allowMultiple, setAllowMultiple] = useState(false);
     const executionMode = expert && allowMultiple ? 'multiple' : 'single';
@@ -145,8 +148,9 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
     const config = parsed.config;
     const running = library?.variants.find(v => v.id === library.loaded);
     const model = library?.variants.find(v => v.id === selected) ?? running ?? library?.variants.find(v => v.state === 'installed') ?? library?.variants[0];
+    selectionOwner.current = model?.id ?? selected;
     const missingVariant = selectionMissing || !!library && requestedVariant !== undefined && !library.variants.some(v => v.id === requestedVariant);
-    const selectionPending = requestedVariant !== undefined && requestedVariant !== model?.id;
+    const selectionPending = !profilesReady || requestedVariant !== undefined && requestedVariant !== model?.id;
     const computer = hardware ? computerIdentity(hardware) : '';
     const localProfiles = profiles.profiles.filter(p => p.variantId === model?.id && p.hardware === computer);
     const selectedProfile = localProfiles.find(p => p.id === activeProfile);
@@ -172,30 +176,28 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
         if (!hardware || !model || !engine || initialized.current || missingVariant)
             return;
         initialized.current = true;
+        let stored = emptyProfiles();
         try {
-            const stored = readProfiles(localStorage.getItem(RUN_PROFILES_KEY));
-            setProfiles(stored);
-            const id = stored.defaults[defaultProfileKey(computer, model.id)];
-            const profile = stored.profiles.find(p => p.id === id && p.variantId === model.id && p.hardware === computer);
-            if (rawDraft !== null && initialDraftOwner.current && initialDraftOwner.current !== model.id) {
-                modelDrafts.current.set(initialDraftOwner.current, { draft: rawDraft, profile: 'current', image: imageChoice });
-                const restored = runModelSettings(model, engine, hardware, stored, computer);
-                setActiveProfile(restored.profile);
-                setConfigDraft(restored.draft);
-                void chooseImage(restored.image);
-            }
-            else if (profile && (rawDraft === null || parsed.config && configIdentity(parsed.config) === configIdentity(profile.config))) {
-                setActiveProfile(profile.id);
-                if (rawDraft === null)
-                    setConfigDraft(JSON.stringify(pinStrataEngineBackend(profile.config, model), null, 2));
-                // Retain an image selection that has not yet been applied.
-                if (imageModels?.selected === imageModels?.applied && (profile.imageModel ?? 'off') !== imageChoice)
-                    void chooseImage(profile.imageModel ?? 'off');
-            }
+            stored = readProfiles(localStorage.getItem(RUN_PROFILES_KEY));
         }
         catch (error) {
             setProfileError(error instanceof Error ? error.message : 'Run profiles could not be loaded.');
         }
+        setProfiles(stored);
+        const profileId = stored.defaults[defaultProfileKey(computer, model.id)];
+        const profile = stored.profiles.find(p => p.id === profileId && p.variantId === model.id && p.hardware === computer);
+        const matchesProfile = profile && parsed.config && configIdentity(parsed.config) === configIdentity(profile.config);
+        const ownedDraft = rawDraft !== null && initialDraftOwner.current === model.id ? {
+            draft: rawDraft, profile: matchesProfile ? profile.id : 'current',
+            image: imageModels?.selected !== imageModels?.applied ? imageChoice : profile?.imageModel ?? imageChoice,
+        } : undefined;
+        if (rawDraft !== null && initialDraftOwner.current && initialDraftOwner.current !== model.id)
+            modelDrafts.current.set(initialDraftOwner.current, { draft: rawDraft, profile: 'current', image: imageChoice });
+        // Identity equality does not establish ownership of the global engine settings.
+        const restored = runModelSettings(model, engine, hardware, stored, computer, ownedDraft);
+        setActiveProfile(restored.profile);
+        setConfigDraft(restored.draft);
+        void chooseImage(restored.image, model.id);
         setProfilesReady(true);
     }, [hardware, model?.id, engine, computer, rawDraft, missingVariant]);
     useEffect(() => {
@@ -275,13 +277,19 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
         return patch;
     }
     function update(next: ConfigDocument) { setIssues([]); setStage('idle'); setConfigDraft(JSON.stringify(next, null, 2)); }
-    async function chooseImage(choice: ImageModelChoice) {
+    async function chooseImage(choice: ImageModelChoice, owner = model?.id) {
+        if (!owner)
+            return;
+        const request = ++imageRequest.current;
+        // A route can change before PATCH completes; snapshots must use this intent.
+        intendedImages.current.set(owner, choice);
         setStage('idle');
         try {
             await selectImageModel(choice);
         }
         catch (error) {
-            setProfileError(error instanceof Error ? error.message : String(error));
+            if (request === imageRequest.current && owner === selectionOwner.current)
+                setProfileError(error instanceof Error ? error.message : String(error));
         }
     }
     function setContext(k: number) {
@@ -325,14 +333,15 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
             return;
         }
         if (model)
-            modelDrafts.current.set(model.id, { draft: rawDraft, profile: activeProfile, image: imageChoice });
+            modelDrafts.current.set(model.id, { draft: rawDraft, profile: activeProfile, image: intendedImages.current.get(model.id) ?? imageChoice });
         const restored = runModelSettings(next, engine, hardware, profiles, computer, modelDrafts.current.get(id), hint);
+        selectionOwner.current = id;
         setSelected(id);
         setStage('idle');
         setIssues([]);
         setActiveProfile(restored.profile);
         setConfigDraft(restored.draft);
-        void chooseImage(restored.image);
+        void chooseImage(restored.image, id);
     }
     function chooseFamily(family: string) {
         if (!library || family === model?.family)
@@ -471,7 +480,7 @@ function LegacyModelRunScreen({ importFirst = false, importPath, preferredBacken
           <section className="run-card run-model-choice">
             <div className="run-version-choice"><span>{tr("Version")}</span><Select ariaLabel={tr("Model version")} value={model.id} disabled={pending} menuClassName="run-version-menu" options={[...versions.map(v => ({ value: v.id, label: `${v.name} · ${v.quant} · ${sizeGb(v.diskGb)}${v.local ? ' · Local' : ''}` })), { value: 'use-local-model', label: 'Use a local model…' }]} onChange={id => id === 'use-local-model' ? setLocalModelOpen(true) : chooseModel(id)}/></div>
             {tr(model.local ? <div className="run-local-model-note"><Icon name="model-file" size={15}/><span>{tr("Local model \u00B7 ")}{tr(model.local.architecture)}{tr(" \u00B7 Compatibility checked on load.")}</span><button className="text-btn" onClick={() => setLocalModelOpen(true)}>{tr("Change file")}</button></div> : null)}
-            {IMAGE_GENERATION_VISIBLE ? <RunImageModel library={imageModels} disabled={pending || imagePending || !connected} onChange={() => setStage('idle')}/> : null}
+            {IMAGE_GENERATION_VISIBLE ? <RunImageModel library={imageModels ? { ...imageModels, selected: imageChoice } : null} disabled={pending || imagePending || !connected} onChange={() => setStage('idle')} onSelect={choice => chooseImage(choice)}/> : null}
           </section>
           <section className="run-card run-context"><div className="run-card__head"><span><Icon name="chat" size={19}/><h2>{tr("Conversation context")}</h2></span><strong>{tr(ctx / 1024)}{tr("K ")}<small>{tr("tokens")}</small></strong></div><p>{tr("How much your model can keep in mind.")}</p>
             <div className="run-context-presets" role="group" aria-label={tr("Context presets")}>{tr([32, 64, 96, 128, 256].map(k => <button key={k} disabled={k > contextMax} aria-pressed={ctx === k * 1024} onClick={() => setContext(k)}><span>{tr(k)}{tr("K")}</span></button>))}</div>

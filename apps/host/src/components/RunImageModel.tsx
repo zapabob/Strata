@@ -3,10 +3,11 @@ import { useState } from 'react';
 import { Btn, ErrorNotice, Icon, Select } from './ui';
 import type { ImageModelChoice, ImageModelLibrary } from '../lib/types';
 import { cancelImageModel, installImageModel, selectImageModel } from '../lib/store';
-export function RunImageModel({ library, disabled, onChange }: {
+export function RunImageModel({ library, disabled, onChange, onSelect = selectImageModel }: {
     library: ImageModelLibrary | null;
     disabled: boolean;
     onChange: () => void;
+    onSelect?: (choice: ImageModelChoice) => Promise<void>;
 }) {
     const [pending, setPending] = useState(false);
     const [error, setError] = useState('');
@@ -28,7 +29,7 @@ export function RunImageModel({ library, disabled, onChange }: {
     return <div className="run-image-model">
     <div className="run-image-model__choice">
       <div className="run-image-model__label"><Icon name="image" size={18}/><span><strong>{tr("Image model ")}<small>{tr("Optional")}</small></strong><a href={library?.sourceUrl ?? 'https://huggingface.co/unsloth/Qwen-Image-2.1-Turbo-GGUF'} target="_blank" rel="noreferrer">{tr(library?.family ?? 'Qwen-Image-2.1-Turbo')}</a></span></div>
-      <Select<ImageModelChoice> ariaLabel={tr("Image model version")} value={library?.selected ?? 'off'} disabled={disabled || pending || !!downloading || !library} menuWidth={240} menuSize="comfortable" options={[{ value: 'off', label: 'Off' }, ...(library?.variants.map(v => ({ value: v.id, label: `${v.label} · ${v.downloadGb.toFixed(1)} GB`, title: `${v.quant}${v.state === 'installed' ? ' · Downloaded' : ''}` })) ?? [])]} onChange={choice => { onChange(); void perform(() => selectImageModel(choice)); }}/>
+      <Select<ImageModelChoice> ariaLabel={tr("Image model version")} value={library?.selected ?? 'off'} disabled={disabled || pending || !!downloading || !library} menuWidth={240} menuSize="comfortable" options={[{ value: 'off', label: 'Off' }, ...(library?.variants.map(v => ({ value: v.id, label: `${v.label} · ${v.downloadGb.toFixed(1)} GB`, title: `${v.quant}${v.state === 'installed' ? ' · Downloaded' : ''}` })) ?? [])]} onChange={choice => { onChange(); void perform(() => onSelect(choice)); }}/>
     </div>
     {tr(downloading ? <div className="run-image-download" role="status" aria-live="polite"><div><span>{tr(downloading.progress?.stage ?? 'Downloading')} {tr(downloading.label)} <b>{tr(Math.floor(downloading.progress?.pct ?? 0))}%</b></span><Btn size="sm" disabled={pending} onClick={() => void perform(() => cancelImageModel(downloading.id))}>{tr("Cancel")}</Btn></div><progress aria-label={tr("Image model download progress")} max={100} value={downloading.progress?.pct ?? 0}/></div> : version ? <div className="run-image-model__action">
       <span className="run-image-model__status">{tr(version.state === 'installed' ? <><Icon name="check" size={15}/>{tr(library?.generationAvailable ? 'Downloaded' : 'Downloaded · Image engine required')}</> : 'Download this version to use it.')}</span>
