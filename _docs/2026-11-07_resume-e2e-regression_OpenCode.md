@@ -99,3 +99,24 @@ observed both original servers absent, and C: free space below the unchanged 5 G
 floor. No executable maintenance authorization or frozen candidate was fabricated.
 The private snapshots remain outside Git; only reusable helpers and sanitized
 documentation are checkpoint inputs.
+
+## Personal-build-first steering and integrated regressions
+
+The user requested the personal build/overwrite before the pending push/handoff
+and used-worktree cleanup. GUI source is integrated after final independent
+SPEC/QUALITY approval (branch tip 7a4eda5d). Fresh integrated checks: 102 Host
+regressions and 29 Python admission tests pass. The `uv` name disappeared from
+PATH during the session; one Python check used the existing absolute driver as
+the documented missing-runner exception. `C:/Users/downl/.local/bin/uv.exe` was
+then located for subsequent commands. No dependency was changed.
+
+C: free space subsequently recovered externally to about 13.4 GiB; this session
+performed no cleanup to cause that change. No matching GUI/model/compiler process
+was running at that observation. Recheck all resource and process conditions
+before actual native tests rather than replaying an obsolete maintenance snapshot.
+
+The native merge exposed an integration-fixture failure: the extracted CPU parser
+did not include the newly used production bounded-memory helper declarations.
+All 24 cases failed to compile at that shared setup. The fixture now includes
+the real header and imports its two helper names, preserving production parsing
+and assertions. This is not a native CUDA compile failure. Rerun pending.

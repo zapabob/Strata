@@ -50,6 +50,9 @@ struct PackBuildRequest {
     std::string model_path;
     std::vector<PackLayer> layers;
     uint64_t tail = kQ36ExpertTail;
+    // Opt-in Windows runtime reader. Requires an existing verified pack; never
+    // creates/replaces/repackages model data on this path.
+    bool bounded_reads = false;
 };
 
 // One expert: gate at 0, up at up_off, down at down_off, everything else in the
@@ -59,6 +62,7 @@ bool pack_expert_blob(const ExpertBlobLayout& layout, const ExpertSource& src, u
 
 class MappedExpertPack {
 public:
+    static constexpr std::size_t kBoundedReadScratchBytes = 1u << 20;
     MappedExpertPack();
     ~MappedExpertPack();
     MappedExpertPack(MappedExpertPack&&) noexcept;
@@ -78,6 +82,12 @@ public:
     // Invalid ranges are rejected before writing. An I/O error may leave a
     // partial result, which the caller must not submit to the GPU.
     bool read_mapped(const uint8_t* src, uint8_t* dst, std::size_t bytes) const;
+
+    // Enable before concurrent reads. Reopens the SAME file object with no
+    // buffering, owns a serialized 1 MiB aligned bounce buffer, fails closed.
+    // Existing mapped ranges become opaque addresses; payload is not touched.
+    bool enable_bounded_reads(std::string& err);
+    uint64_t bounded_read_scratch_bytes() const;
 
 private:
     struct Impl;

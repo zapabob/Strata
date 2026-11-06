@@ -30,6 +30,9 @@ def parser_exe(tmp_path_factory: pytest.TempPathFactory) -> Path:
     cpp.write_text(
         "#include <string>\n#include <cstdio>\n#include <cstdlib>\n"
         "#include <cerrno>\n#include <cctype>\n#include <limits>\n"
+        '#include "strata/qwen35/bounded_experts.hpp"\n'
+        "using strata::qwen35::q36_explicit_slots;\n"
+        "using strata::qwen35::q36_memory_mode_error;\n"
         "int main(int argc, char** argv) {\n" + parser +
         'std::printf("CPU_PARSER k=%s v=%s expert_vram=%.1f\\n", '
         "cache_type_k.c_str(), cache_type_v.c_str(), expert_vram);\nreturn 0;\n}\n",
@@ -48,10 +51,10 @@ def parser_exe(tmp_path_factory: pytest.TempPathFactory) -> Path:
         pytest.skip("CPU C++ compiler is not configured")
     exe = folder / ("parser.exe" if os.name == "nt" else "parser")
     if Path(compiler).name.lower() in ("cl", "cl.exe"):
-        command = [compiler, "/nologo", "/std:c++17", "/EHsc", "/W4", str(cpp),
+        command = [compiler, "/nologo", "/std:c++17", "/EHsc", "/W4", "/I" + str(ROOT / "include"), str(cpp),
                    "/Fe:" + str(exe), "/Fo:" + str(folder / "parser.obj"), "/link", "/INCREMENTAL:NO"]
     else:
-        command = [compiler, "-std=c++17", "-Wall", "-Wextra", str(cpp), "-o", str(exe)]
+        command = [compiler, "-std=c++17", "-Wall", "-Wextra", "-I" + str(ROOT / "include"), str(cpp), "-o", str(exe)]
     (folder / "command.json").write_text(json.dumps({
         "command": command, "scope": "CPU verbatim parser only; no native engine/model/GPU",
         "parser_sha256": hashlib.sha256(parser.encode()).hexdigest(),

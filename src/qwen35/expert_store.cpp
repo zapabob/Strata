@@ -1,4 +1,5 @@
 ﻿#include "strata/qwen35/expert_store.hpp"
+#include "strata/qwen35/bounded_experts.hpp"
 
 #include "strata/qwen35/startup_trace.hpp"
 #include <algorithm>
@@ -10,6 +11,7 @@
 #include <cstring>
 #include <limits>
 #include <memory>
+#include <mutex>
 #include <vector>
 
 #if defined(_WIN32)
@@ -32,6 +34,26 @@
 #endif
 
 namespace strata::qwen35 {
+bool q36_require_host_headroom(uint64_t additional, std::string& err) {
+#if defined(_WIN32)
+    MEMORYSTATUSEX status{};
+    status.dwLength = sizeof(status);
+    if (!GlobalMemoryStatusEx(&status)) {
+        err = "Q36 bounded expert memory observation failed";
+        return false;
+    }
+    if (q36_host_headroom(additional, status.ullAvailPhys, status.ullAvailPageFile)) return true;
+    err = "Q36 bounded expert admission refused: additional=" + std::to_string(additional) +
+          " ram_available=" + std::to_string(status.ullAvailPhys) +
+          " commit_available=" + std::to_string(status.ullAvailPageFile) +
+          " bytes; requires 3 GiB RAM and 4 GiB commit remaining";
+#else
+    (void) additional;
+    err = "Q36 bounded expert admission is Windows-only";
+#endif
+    return false;
+}
+
 void q36_startup_physical_memory(const char* stage) {
     if (!q36_startup_detail_enabled()) return;
     uint64_t free_bytes = 0, total_bytes = 0;
@@ -369,6 +391,8 @@ struct MappedView {
     HANDLE direct_file = INVALID_HANDLE_VALUE;
     uint8_t* direct_buffer = nullptr;
     DWORD sector_bytes = 0;
+    bool bounded_io = false;
+    std::mutex read_mutex;
 #else
     int fd = -1;
 #endif
@@ -385,6 +409,7 @@ struct MappedView {
         direct_file = INVALID_HANDLE_VALUE;
         direct_buffer = nullptr;
         sector_bytes = 0;
+        bounded_io = false;
         data = nullptr;
         mapping = nullptr;
         file = INVALID_HANDLE_VALUE;
@@ -494,6 +519,25 @@ struct MappedView {
     bool read(uint64_t offset, uint8_t* dst, size_t n) {
         if (offset > size || n > size - offset || (n && !dst)) return false;
 #if defined(_WIN32)
+        if (bounded_io) {
+            // Both callers (CPU waves and H2D fills) may share this reader. The
+            // bounce bytes cannot be reused until copied into caller storage.
+            std::lock_guard<std::mutex> lock(read_mutex);
+            while (n) {
+                const uint64_t aligned = offset - offset % sector_bytes;
+                const size_t skip = (size_t) (offset - aligned);
+                const size_t take = std::min(n, MappedExpertPack::kBoundedReadScratchBytes - skip);
+                const DWORD request = (DWORD) ((skip + take + sector_bytes - 1) / sector_bytes * sector_bytes);
+                OVERLAPPED at{};
+                at.Offset = (DWORD) aligned;
+                at.OffsetHigh = (DWORD) (aligned >> 32);
+                DWORD got = 0;
+                if (!ReadFile(direct_file, direct_buffer, request, &got, &at) || got < skip + take) return false;
+                std::memcpy(dst, direct_buffer + skip, take);
+                dst += take; n -= take; offset += take;
+            }
+            return true;
+        }
         while (n) {
             DWORD take = (DWORD) std::min<size_t>(n, 1u << 20);
             // Unaligned records and short tails use the buffered handle. No
@@ -910,6 +954,9 @@ bool plan_layers(const PackBuildRequest& req, std::vector<LayerPlan>& out, uint6
 }  // namespace
 
 struct MappedExpertPack::Impl {
+    // In bounded mode retain read locks across verification, mapping and use.
+    // The ordinary mapped-pack path keeps its existing lifecycle.
+    std::unique_ptr<VerificationCache> lifetime_lock;
     MappedView view;
     std::string path;
     struct Span {
@@ -939,6 +986,57 @@ uint32_t MappedExpertPack::layer_count() const { return impl_ ? (uint32_t) impl_
 const std::string& MappedExpertPack::path() const {
     static const std::string empty;
     return impl_ ? impl_->path : empty;
+}
+
+bool MappedExpertPack::enable_bounded_reads(std::string& err) {
+#if defined(_WIN32)
+    if (!impl_ || impl_->view.file == INVALID_HANDLE_VALUE) {
+        err = "Q36 bounded reader has no open pack";
+        return false;
+    }
+    auto& view = impl_->view;
+    if (view.bounded_io) return true;
+    FILE_STORAGE_INFO storage{};
+    if (!GetFileInformationByHandleEx(view.file, FileStorageInfo, &storage, sizeof(storage))) {
+        err = "Q36 bounded reader cannot observe sector alignment";
+        return false;
+    }
+    const DWORD alignment = std::max(storage.LogicalBytesPerSector, storage.PhysicalBytesPerSectorForAtomicity);
+    if (!alignment || alignment > 65536 || (alignment & (alignment - 1)) != 0) {
+        err = "Q36 bounded reader unsupported sector alignment";
+        return false;
+    }
+    if (!q36_require_host_headroom(kBoundedReadScratchBytes, err)) return false;
+    HANDLE file = ReOpenFile(view.file, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                             FILE_FLAG_NO_BUFFERING);
+    if (file == INVALID_HANDLE_VALUE) {
+        err = "Q36 bounded reader cannot reopen pack for unbuffered I/O";
+        return false;
+    }
+    auto* buffer = static_cast<uint8_t*>(VirtualAlloc(nullptr, kBoundedReadScratchBytes, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE));
+    if (!buffer || reinterpret_cast<uintptr_t>(buffer) % alignment != 0) {
+        if (buffer) VirtualFree(buffer, 0, MEM_RELEASE);
+        CloseHandle(file);
+        err = "Q36 bounded reader aligned buffer allocation failed";
+        return false;
+    }
+    view.direct_file = file;
+    view.direct_buffer = buffer;
+    view.sector_bytes = alignment;
+    view.bounded_io = true;
+    return true;
+#else
+    err = "Q36 bounded reader is Windows-only";
+    return false;
+#endif
+}
+
+uint64_t MappedExpertPack::bounded_read_scratch_bytes() const {
+#if defined(_WIN32)
+    return impl_ && impl_->view.bounded_io ? kBoundedReadScratchBytes : 0;
+#else
+    return 0;
+#endif
 }
 
 bool MappedExpertPack::read_mapped(const uint8_t* src, uint8_t* dst, size_t bytes) const {
@@ -1075,18 +1173,37 @@ std::unique_ptr<MappedExpertPack> open_or_build_expert_pack(const PackBuildReque
     uint64_t payload_bytes = 0, payload_offset = 0;
     if (!plan_layers(req, plans, payload_bytes, payload_offset, err)) return nullptr;
     const std::string final_path = pack_path_for(req.model_path);
+    std::unique_ptr<VerificationCache> lifetime_lock;
+    if (req.bounded_reads) {
+#if defined(_WIN32)
+        lifetime_lock = std::make_unique<VerificationCache>(req.model_path, final_path, true);
+        if (lifetime_lock->model == INVALID_HANDLE_VALUE || lifetime_lock->pack == INVALID_HANDLE_VALUE) {
+            err = "Q36 bounded mode requires an existing read-lockable model and expert pack; no pack was built";
+            return nullptr;
+        }
+#else
+        err = "Q36 bounded reader is Windows-only";
+        return nullptr;
+#endif
+    }
     const std::string reason = expert_pack_verify(final_path, req.model_path, &req.layers, req.tail, true);
     if (reason.empty()) {
         auto pack = std::unique_ptr<MappedExpertPack>(new MappedExpertPack());
         pack->impl_.reset(new MappedExpertPack::Impl());
+        pack->impl_->lifetime_lock = std::move(lifetime_lock);
         pack->impl_->path = final_path;
         if (!pack->impl_->view.open(final_path, err)) return nullptr;
+        if (req.bounded_reads && !pack->enable_bounded_reads(err)) return nullptr;
         pack->impl_->layers.resize(plans.size());
         for (size_t i = 0; i < plans.size(); ++i) {
             pack->impl_->layers[i].data = pack->impl_->view.data + plans[i].file_offset;
             pack->impl_->layers[i].bytes = plans[i].layer_bytes;
         }
         return pack;
+    }
+    if (req.bounded_reads) {
+        err = "Q36 bounded mode requires a valid existing expert pack; no pack was built: " + reason;
+        return nullptr;
     }
     for (const LayerPlan& plan : plans) {
         if (!plan.layer.source.gate || !plan.layer.source.up || !plan.layer.source.down) {
