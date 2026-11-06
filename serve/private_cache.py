@@ -9,7 +9,7 @@ import json
 import re
 import secrets
 
-from serve.native_family import is_q36_config
+from serve.native_family import native_admission
 
 _SECRET = secrets.token_bytes(32)
 
@@ -38,13 +38,7 @@ def conversation_scope(api_key, session_id):
 
 def required_capability(cfg: dict) -> int:
     """Choose the required acknowledgement, not evidence that the engine has it."""
-    args = cfg.get("args") or []
-    if is_q36_config(cfg) and any(
-        flag in args
-        for flag in ("--prompt-cache", "--conversation-cache-mib", "--private-conversation-cache")
-    ):
-        return 2 if "--private-conversation-cache" in args else 1
-    return 0
+    return native_admission(cfg).private_cache
 
 
 def capability_confirmed(info, required):

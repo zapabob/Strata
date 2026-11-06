@@ -2,8 +2,8 @@
 
 Owner: OpenCode. Worktree `H:/Strata/worktrees/gui-consistency-20261106`, branch
 `fix/gui-consistency-20261106`, base `ca3ab40a`. Installed app source is
-`04fe91d0` / `0.5.2-local.1`. Status: SOURCE_READY_FOR_SPEC_CLOSURE_REVIEW
-(downstream F2 follow-up to `a968e82a`; see the final section).
+`04fe91d0` / `0.5.2-local.1`. Status: SOURCE_READY_FOR_SPEC_THEN_QUALITY
+(adapter/contract invariant follow-up to `e8a9370d`; see the final section).
 
 ## Requirements and plan
 
@@ -483,3 +483,131 @@ work, full suites, package builds, browser E2E, and live maintenance remain NOT_
 The constructor's real admission code runs with controlled child IO; no native
 process, model load, GPU probe or installed-app stop occurred. Prior GUI/E4 and
 F1 results are historical/parent-reviewed evidence, not a new all-GUI qualification.
+
+## Adapter / retained-contract invariant — 2026-11-07
+
+Scope: the confirmed P2 contradiction after `e8a9370d8ca3e3864dfd6d066b8c09e045ccd08a`:
+explicit Q38 architecture plus a retained Q36 run contract could disable both
+requirements while retaining the expected Q36 binary digest. This round changes
+only Python family/consumers/tests and this log. The same supplied instructions,
+canonical context, SOPs, systematic-debugging/TDD and self-review requirements
+apply. No delegation. Python 3.12.10 was freshly rechecked through the existing uv
+path; Node 24.22.2 and the isolated CPU driver remain unchanged.
+
+### Boundary review and decision
+
+Re-read all reads of `q36_run`, both environment requirements, the expected binary
+digest, native cache argument preparation, child-env construction, and the native
+constructor/restart path. The earlier family predicate did not validate the
+relationship between architecture and retained execution metadata. It also left
+the constructor reading mutable inputs at different stages of admission.
+
+The invariant is now represented by one frozen `NativeAdmission` value:
+
+- Non-Q36 admission cannot retain a Q36 digest, generation or private-cache
+  requirement. Contradictory explicit architecture and a Q36 contract are errors.
+- A retained contract must have the consumed schema/identity structure: schema 1,
+  Q36 backend family, well-formed optional digest/generation, and consistent
+  family/digest identity for a declared typed-KV expectation. Metadata is an
+  expectation to verify, never an engine capability grant.
+- Unknown or malformed explicit architecture with a retained Q36 contract is
+  rejected. With no explicit architecture, a structurally valid retained Q36
+  contract keeps Q36 verification armed; it cannot become an unverified generic
+  start. Contract-free legacy name hints retain their prior behaviour.
+- Both config argument layers contribute their requested private-cache requirement.
+  At constructor entry the projected requirement cannot be lower than the actual
+  argv's requirement. Older private-only environments retain their acknowledgement
+  check without manufacturing typed-KV capability.
+- One captured argv/environment snapshot supplies binary verification, Popen and
+  READY admission. Missing/mismatched actual receipts remain failures.
+
+This validates the consumed identity/requirement fields, not the authenticity of
+arbitrary run metadata. Actual help-marker validation, binary digest comparison
+and recheck, KV geometry/allocation receipts and private-cache marker comparison
+remain the authority for engine support.
+
+### Reproduction evidence
+
+Extended the existing CPU cross-language test. It combines the actual Host
+builder's Q38 configuration with its actual Q36 contract, then traverses the real
+Python argument/environment/constructor code with controlled child IO.
+
+RED `strata-gui-python-ity0mW`: **7 failed, 7 passed**, 13.91 s. The exact reported
+contradiction produced **one Popen and accepted READY**, with no Q36 capability
+probe. Further failures proved that config consumers ignored the conflict,
+malformed/unknown identities could fall back, malformed retained contracts reached
+spawn, corrupted environment projections were not rejected early, contract-only
+legacy identity disabled proof, and changing the original environment after
+verification could suppress the private-cache receipt check.
+
+The first invariant repair closed those cases. Boundary inspection then found
+that `engine_args` merges `user_args`, while the old private requirement looked
+only at `args`. Added real-consumer tests before fixing it. RED
+`strata-gui-python-lXk6FR`: **2 failed, 14 passed**, 28.78 s: private requirements
+were lost from the user layer / actual argv projection. Both now fail closed or
+retain the requested acknowledgement as appropriate.
+
+The same snapshot review exposed caller-owned argv mutation after binary proof.
+A controlled Popen callback could change F16 to F32 and make an F32 receipt pass.
+RED `strata-gui-python-S6hNec`: **1 failed, 17 passed**, 29.75 s. Copying argv at
+constructor entry closes that mismatch alongside the environment snapshot.
+These are controlled reproductions, not claims about a naturally observed race
+or live engine execution.
+
+### Implementation
+
+`serve/native_family.py`: shared immutable requirements and config/environment
+validation. `is_q36_config` and `private_cache.required_capability` consume the
+same validator. `serve/server.py`: native KV preparation takes its expected digest
+from that value; `child_env` validates before device/environment work and projects
+all Q36 fields together; the constructor captures argv/env and validates before
+binary probing, orphan cleanup or Popen, then uses the same requirement at READY.
+`serve/private_cache.py` delegates requirement calculation to the shared value.
+
+`serve/test_native_family.py`: relationship matrix across all config consumers,
+actual generated-config-to-Python rejection, malformed/unknown identities and
+contracts, direct/inherited environment consistency, legacy private-only env,
+contract-only legacy identity with actual binary proof, user-argument propagation,
+and argv/env snapshot ownership. Every conflict case asserts no native Popen or
+accepted READY; applicable cases also assert no probe or orphan-cleanup callback.
+Valid Q38 lookalike paths and genuine Q36 receipts remain covered.
+
+### Final checks
+
+```text
+node _docs/gui-consistency-python-tests.mjs serve/test_native_family.py serve/test_q36_kv_contract.py
+```
+
+PASS **28/28**, **32.17 s**, no skips. Scratch:
+`C:/Users/downl/AppData/Local/Temp/opencode/strata-gui-python-opdZxJ`.
+This is 18 consumer tests and 10 existing actual-binary/KV tests, with additional
+identity/receipt subcases. Actual model/engine processes are replaced at their IO
+boundary; the producer fixture executes the real Host builder with controlled
+Control. Test runs checked the 3 GiB available-RAM floor first.
+
+Fresh validation through the fixed uv/Python path:
+
+```text
+python -B -m black --check --diff serve/native_family.py serve/test_native_family.py
+python -B -m flake8 --isolated --max-line-length=88 serve/native_family.py serve/test_native_family.py
+python -B -m flake8 --isolated --select=E9,F63,F7,F82 serve/server.py serve/private_cache.py
+```
+
+All PASS. Black initially reported formatting differences; edits were applied
+with apply_patch and the check passed before the final test run. The pre-existing
+uv dangling-dist-info warnings remain informational. `git diff --check`: PASS,
+with only Git's CRLF conversion notices. No dependency, driver or runtime update.
+
+Self-review-event: `rework_returned`, `qa_defect`, `local_fix`, `ticket_completed`;
+review-only. Three cross-layer review gaps justify the relational invariant and
+producer-to-consumer tests, rather than another independent flag special case.
+Rejected: silently deleting retained metadata, converting unknown architecture
+into generic mode, trusting claimed capability, skipping the actual binary probe,
+or mutating user settings to reconcile a conflict. No governance files changed.
+
+Ready for parent SPEC, then QUALITY. Python native admission is proven before
+native Popen/probe/orphan-cleanup for these invalid cases; Host job lifecycle and
+GUI production source were not changed in this round. Full suites, live HTTP/UI
+E2E, native/model/GPU work, installs, release/push and maintenance operations remain
+NOT_RUN. No installed app or live engine was stopped. Earlier F1/E4 results remain
+historical/parent-reviewed evidence, not an all-GUI or 32 GB / 16 GB qualification.

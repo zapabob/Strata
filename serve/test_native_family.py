@@ -200,6 +200,246 @@ class HostPythonFamilyConsumerTests(unittest.TestCase):
                     )
                 namespace["popen"].assert_not_called()
 
+    def assert_config_refused_before_spawn(self, cfg: dict) -> None:
+        namespace = kv_tests.Q36KvContract._constructor_namespace()
+        proc = mock.Mock(
+            pid=1, stdin=io.StringIO(), stdout=io.StringIO("READY 256 stop\n")
+        )
+        namespace["popen"] = mock.Mock(return_value=proc)
+        obj = namespace["ReadyPrefix"].__new__(namespace["ReadyPrefix"])
+        error = None
+        with mock.patch.dict(os.environ, {}, clear=True), mock.patch.object(
+            server, "q36_probe_kv_capabilities", return_value=kv_tests.VERIFIED
+        ) as prepare_probe:
+            try:
+                args = list(cfg["args"])
+                args += server.native_cache_args(cfg, args, cfg["exe"])
+                env = server.child_env(cfg)
+                namespace["ReadyPrefix"].__init__(obj, cfg["exe"], args, env=env)
+            except (ValueError, TypeError, AttributeError, server.EngineDied) as exc:
+                error = exc
+        self.assertEqual(
+            (namespace["popen"].call_count, hasattr(obj, "known_ctx")),
+            (0, False),
+            "a contradictory contract must never reach Popen or accepted READY",
+        )
+        self.assertIsInstance(error, ValueError)
+        self.assertRegex(str(error), "q36_run|adapter|Q36")
+        prepare_probe.assert_not_called()
+        namespace["q36_probe_kv_capabilities"].assert_not_called()
+        namespace["end_leftover_engines"].assert_not_called()
+
+    def test_q38_with_retained_q36_contract_never_reaches_ready(self) -> None:
+        cfg = copy.deepcopy(self.configs["qwen"])
+        cfg["q36_run"] = copy.deepcopy(self.configs["qwen36"]["q36_run"])
+        self.assert_config_refused_before_spawn(cfg)
+
+    def test_conflict_is_rejected_by_every_config_consumer(self) -> None:
+        cfg = copy.deepcopy(self.configs["qwen"])
+        cfg["q36_run"] = copy.deepcopy(self.configs["qwen36"]["q36_run"])
+        consumers = (
+            server.q36_config,
+            private_cache.required_capability,
+            server.child_env,
+            lambda c: server.native_cache_args(c, list(c["args"]), c["exe"]),
+        )
+        for consumer in consumers:
+            with self.subTest(consumer=consumer.__name__):
+                with self.assertRaisesRegex(ValueError, "arch.*q36_run"):
+                    consumer(cfg)
+
+    def test_unknown_or_malformed_arch_cannot_downgrade_retained_contract(self) -> None:
+        for arch in ("deepseek41", "future-architecture", 7, {}, [], False):
+            with self.subTest(arch=arch):
+                cfg = copy.deepcopy(self.configs["qwen"])
+                cfg["arch"] = arch
+                cfg["q36_run"] = copy.deepcopy(self.configs["qwen36"]["q36_run"])
+                self.assert_config_refused_before_spawn(cfg)
+
+    def test_retained_contract_structure_and_digest_binding_fail_closed(self) -> None:
+        base = self.configs["qwen36"]["q36_run"]
+        invalid = [
+            False,
+            [],
+            {},
+            {**base, "backend": None},
+            {**base, "schemaVersion": True},
+            {**base, "schemaVersion": 2},
+        ]
+        for changes in (
+            {"family": "qwen4exp"},
+            {"binarySha256": ""},
+            {"binarySha256": "cd" * 32},
+            {"kvCapability": {}},
+            {"kvCapability": False},
+        ):
+            invalid.append({**base, "backend": {**base["backend"], **changes}})
+        for contract in invalid:
+            with self.subTest(contract=contract):
+                cfg = copy.deepcopy(self.configs["qwen36"])
+                cfg["q36_run"] = contract
+                self.assert_config_refused_before_spawn(cfg)
+
+    def test_contract_only_legacy_identity_still_requires_binary_proof(self) -> None:
+        for arch in (None, ""):
+            cfg = copy.deepcopy(self.configs["qwen36"])
+            cfg["arch"] = arch
+            for capability in (None, kv_tests.VERIFIED):
+                with self.subTest(arch=arch, capability=capability is not None):
+                    namespace, proc, env, obj = ready_consumer(
+                        cfg, "INFO q36_private_cache=2\n" + KV_RECEIPT
+                    )
+                    namespace["q36_probe_kv_capabilities"].return_value = capability
+                    self.assertEqual(env["STRATA_REQUIRE_Q36_KV"], "1")
+                    self.assertEqual(env["STRATA_REQUIRE_Q36_PRIVATE_CACHE"], "2")
+                    if capability is None:
+                        with self.assertRaisesRegex(
+                            ValueError, "Host-negotiated binary"
+                        ):
+                            namespace["ReadyPrefix"].__init__(
+                                obj, cfg["exe"], list(cfg["args"]), env=env
+                            )
+                        namespace["popen"].assert_not_called()
+                        self.assertFalse(hasattr(obj, "known_ctx"))
+                    else:
+                        namespace["ReadyPrefix"].__init__(
+                            obj, cfg["exe"], list(cfg["args"]), env=env
+                        )
+                        self.assertEqual(obj.known_ctx, 256)
+                        proc.kill.assert_not_called()
+                    namespace["q36_probe_kv_capabilities"].assert_called_once()
+
+    def test_constructor_rejects_incoherent_environment_before_any_effect(self) -> None:
+        invalid = (
+            {"STRATA_REQUIRE_Q36_KV": "0", "STRATA_Q36_KV_HOST_SHA256": kv_tests.SHA},
+            {"STRATA_REQUIRE_Q36_KV": "0", "STRATA_REQUIRE_Q36_PRIVATE_CACHE": "2"},
+            {"STRATA_REQUIRE_Q36_KV": "0", "STRATA_Q36_LAUNCH_GENERATION": "run-1"},
+            {"STRATA_REQUIRE_Q36_KV": "bad"},
+            {"STRATA_REQUIRE_Q36_KV": "1", "STRATA_REQUIRE_Q36_PRIVATE_CACHE": "bad"},
+            {"STRATA_REQUIRE_Q36_KV": "1", "STRATA_Q36_KV_HOST_SHA256": ""},
+        )
+        for env in invalid:
+            with self.subTest(env=env):
+                namespace, proc, _, obj = ready_consumer(
+                    {"arch": "qwen4exp", "args": []}, ""
+                )
+                error = None
+                try:
+                    namespace["ReadyPrefix"].__init__(obj, "neutral.exe", [], env=env)
+                except (ValueError, server.EngineDied) as exc:
+                    error = exc
+                self.assertEqual(namespace["popen"].call_count, 0)
+                self.assertFalse(hasattr(obj, "known_ctx"))
+                self.assertIsInstance(error, ValueError)
+                namespace["q36_probe_kv_capabilities"].assert_not_called()
+                namespace["end_leftover_engines"].assert_not_called()
+
+    def test_constructor_captures_one_environment_for_proof_and_ready(self) -> None:
+        cfg = copy.deepcopy(self.configs["qwen36"])
+        namespace, proc, env, obj = ready_consumer(cfg, KV_RECEIPT)
+
+        def mutate_original_environment(*args, **kwargs):
+            env["STRATA_REQUIRE_Q36_KV"] = "0"
+            env["STRATA_REQUIRE_Q36_PRIVATE_CACHE"] = "0"
+            return proc
+
+        namespace["popen"].side_effect = mutate_original_environment
+        with self.assertRaisesRegex(server.EngineDied, "private conversation cache"):
+            namespace["ReadyPrefix"].__init__(
+                obj, cfg["exe"], list(cfg["args"]), env=env
+            )
+        proc.kill.assert_called_once()
+        self.assertFalse(hasattr(obj, "known_ctx"))
+
+    def test_constructor_validates_inherited_environment_when_unsupplied(self) -> None:
+        bad = {
+            "STRATA_REQUIRE_Q36_KV": "0",
+            "STRATA_Q36_KV_HOST_SHA256": kv_tests.SHA,
+        }
+        for env, accepted in (({}, True), (bad, False)):
+            with self.subTest(accepted=accepted):
+                namespace, proc, _, obj = ready_consumer(
+                    {"arch": "qwen4exp", "args": []}, ""
+                )
+                with mock.patch.dict(os.environ, env, clear=True):
+                    if accepted:
+                        namespace["ReadyPrefix"].__init__(obj, "neutral.exe", [])
+                        self.assertEqual(obj.known_ctx, 256)
+                    else:
+                        with self.assertRaisesRegex(ValueError, "Q36"):
+                            namespace["ReadyPrefix"].__init__(obj, "neutral.exe", [])
+                        namespace["popen"].assert_not_called()
+                        namespace["end_leftover_engines"].assert_not_called()
+                        self.assertFalse(hasattr(obj, "known_ctx"))
+
+    def test_constructor_captures_argv_for_binary_proof_and_receipt(self) -> None:
+        cfg = copy.deepcopy(self.configs["qwen36"])
+        wrong = KV_RECEIPT.replace("kv_cache_k=f16", "kv_cache_k=f32").replace(
+            "8650752", "11534336"
+        )
+        namespace, proc, env, obj = ready_consumer(
+            cfg, "INFO q36_private_cache=2\n" + wrong
+        )
+        args = list(cfg["args"])
+
+        def mutate_original_arguments(*unused, **kwargs):
+            args[args.index("--cache-type-k") + 1] = "f32"
+            return proc
+
+        namespace["popen"].side_effect = mutate_original_arguments
+        with self.assertRaisesRegex(server.EngineDied, "KV layout"):
+            namespace["ReadyPrefix"].__init__(obj, cfg["exe"], args, env=env)
+        proc.kill.assert_called_once()
+        self.assertFalse(hasattr(obj, "known_ctx"))
+
+    def test_legacy_private_only_environment_keeps_receipt_requirement(self) -> None:
+        for receipt, accepted in (("", False), ("INFO q36_private_cache=2\n", True)):
+            with self.subTest(accepted=accepted):
+                namespace, proc, _, obj = ready_consumer(
+                    {"arch": "qwen4exp", "args": []}, receipt
+                )
+                env = {"STRATA_REQUIRE_Q36_PRIVATE_CACHE": "2"}
+                if accepted:
+                    namespace["ReadyPrefix"].__init__(obj, "neutral.exe", [], env=env)
+                    self.assertEqual(obj.known_ctx, 256)
+                else:
+                    with self.assertRaisesRegex(
+                        server.EngineDied, "private conversation cache"
+                    ):
+                        namespace["ReadyPrefix"].__init__(
+                            obj, "neutral.exe", [], env=env
+                        )
+                    proc.kill.assert_called_once()
+                namespace["q36_probe_kv_capabilities"].assert_not_called()
+
+    def test_user_argument_layer_keeps_private_requirement_through_ready(self) -> None:
+        cfg = copy.deepcopy(self.configs["qwen36"])
+        cfg["user_args"], cfg["args"] = cfg["args"], []
+        args = server.user_args.merge(cfg["args"], cfg["user_args"])
+        with mock.patch.object(
+            server, "q36_probe_kv_capabilities", return_value=kv_tests.VERIFIED
+        ):
+            args += server.native_cache_args(cfg, args, cfg["exe"])
+        namespace, proc, env, obj = ready_consumer(cfg, KV_RECEIPT)
+        with self.assertRaisesRegex(server.EngineDied, "private conversation cache"):
+            namespace["ReadyPrefix"].__init__(obj, cfg["exe"], args, env=env)
+        self.assertEqual(env["STRATA_REQUIRE_Q36_PRIVATE_CACHE"], "2")
+        proc.kill.assert_called_once()
+        self.assertFalse(hasattr(obj, "known_ctx"))
+
+    def test_constructor_rejects_lost_private_requirement(self) -> None:
+        cfg = copy.deepcopy(self.configs["qwen36"])
+        namespace, proc, env, obj = ready_consumer(cfg, KV_RECEIPT)
+        env["STRATA_REQUIRE_Q36_PRIVATE_CACHE"] = "0"
+        with self.assertRaisesRegex(ValueError, "Q36.*private|private.*Q36"):
+            namespace["ReadyPrefix"].__init__(
+                obj, cfg["exe"], list(cfg["args"]), env=env
+            )
+        namespace["popen"].assert_not_called()
+        namespace["q36_probe_kv_capabilities"].assert_not_called()
+        namespace["end_leftover_engines"].assert_not_called()
+        self.assertFalse(hasattr(obj, "known_ctx"))
+
 
 if __name__ == "__main__":
     unittest.main()
