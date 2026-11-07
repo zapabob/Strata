@@ -1,6 +1,6 @@
 # Personal overwrite 2 — preparation only
 
-Date: 2026-11-07. Owner: OpenCode. Status: PREPARED_FOR_PARENT_REVIEW; execution blocked.
+Date: 2026-11-07. Owner: OpenCode. Status: EXECUTING authorized personal overwrite.
 
 ## Requirements and ownership
 
@@ -319,3 +319,124 @@ arbitrary runtime versions, generic dirty-source exceptions, signing before
 parent review, rewriting model metadata, mutating all matching profiles, or
 replacing the Automatic environment. The remaining actual GUI/sign/install
 gates are explicit and have not been reported as passed.
+
+## Execution authorization at 3425966c — measured system blockers
+
+The user/parent authorized actual personal signing/build/GUI qualification and
+overwrite from reviewed and pushed source
+`3425966c18295c394729c8bf1206b8355827f652`. Main HEAD and the local origin/main
+tracking state match it; tracked source was clean on entry. All parent-reported
+source review/test gates are accepted as supplied. This attempt is not waiting
+for another source review. No push/tag/public release was performed here.
+
+Fresh system preflight observed one installed Strata shell, no strata/strata-q36
+engine and no llama-server process. The owned shell → private Node Host endpoint
+was resolved from current process ancestry and its loopback listener, not a stale
+PID or fixed port. Host HTTP was healthy, chat active turns=0, serving running=0,
+queued=0, task activity=0 and native live instances=0. The Host nevertheless had
+one native **install** job still running. Its engine status was `error`, not a
+trusted indication that every tool was idle.
+
+Bounded read-only waiting collected **25 observations over 120 seconds**. The
+same native install job still reported running, with start timestamp
+`2026-11-07T04:54:56.709Z`, and no job error. No active user tool was cancelled or
+process stopped. No previously absent Hermes server was started. The current app
+was left open. Raw chat, task, goal and settings contents were not logged.
+
+The explicitly authorized legacy source-build output at
+`C:/Users/downl/Documents/ChatGPT/Strata/build` was inventoried read-only:
+**4,172 files, 815,508,912 bytes, zero links and zero referencing processes seen**.
+It includes the existing build inputs, `_deps`, CMake files and experiment reports;
+none were excluded from the size inventory. This is only 0.76 GiB and cannot by
+itself establish the required activation reserve.
+
+The later disk sample was C: **6,027,776,000 bytes**. Adding the entire legacy
+tree's logical bytes yields **6,843,284,912 bytes**, against the r4 payload plus
+5 GiB lower-bound requirement of **7,561,422,377 bytes**. The remaining shortfall
+is at least **718,137,465 bytes** (about 0.67 GiB), before the signed manifest,
+filesystem/update receipt overhead and independent background writes. These are
+logical-size projections, not a claimed measured reclamation. C: free space
+fluctuated during the observations. RAM, commit and H: reserve passed.
+
+The source build tree remains on C:, and
+`H:/Strata/private-backups/legacy-C-build-20261107` does not exist. No real C: build
+files were retired. A proposed exclusive-handle archive helper was exercised only
+against disposable H: fixtures; that fixture command timed out at 120 seconds
+before any successful test receipt. It is **not validated for real relocation**.
+A subsequent process inventory confirmed no remaining process referencing that
+test command or its unique fixture directory. The real C: archive operation was
+not executed, and no failure was relabelled as a successful archive.
+
+The inherited untracked `Microsoft/Windows` tree contains one 8,246-byte
+PowerShell `ModuleAnalysisCache`, with its expected PSMODULECACHE signature and
+SHA-256 `5946ffe8d7f05530932424afca5eb75a5964b5d09e6f2193bf8c6a17fcd2adb4`.
+It was not proved to be this unit's WebView cache, so it was not staged, deleted,
+moved or hidden through Git exclusions. The prepared source helper's untracked-
+file gate therefore also remains unresolved; no source guard was bypassed.
+
+Evidence and execution-only scripts are retained outside the frozen checkout at:
+`H:/Strata/releases/personal-052-local2-20261107/app/execution-20261107`.
+Important receipts: `preflight.json`, `legacy-build-metadata.json` and
+`activity-wait.json`. Commands used the explicit uv path and existing Python
+driver, plus read-only Git/CIM/disk checks. `wait-idle.py` stopped no process.
+
+Actual phase status for this execution attempt: signing NOT_RUN; fresh Control
+NOT_RUN; final NSIS build NOT_RUN; 13 package self-tests NOT_RUN; both new actual
+GUI suites NOT_RUN; fresh personal-data backup NOT_RUN; NSIS NOT_RUN (no exit code);
+native activation NOT_RUN. Existing app/Control/native installation was not
+changed. The earlier local.1 success and inherited native/Prism measurements must
+not be presented as results for this local.2 attempt.
+
+Next required conditions: let the active native install/tool complete or obtain
+explicit authorization for its separate cancellation; provide additional C:
+headroom beyond the authorized legacy tree (at least the measured 718 MB deficit
+plus overhead, preferably 1 GiB or more); resolve the nonpayload untracked cache
+without deleting unknown work. Preserve the 5/10/3/4 GiB disk/RAM/commit floors.
+Then resume the reviewed source with new single-use execution receipts. No
+application source changes, global environment/pagefile changes, model moves,
+weight edits or unrelated worktree changes were made.
+
+Self-review-event: qa_defect / blocked execution. Kept actual measured blockers,
+the archive-fixture timeout and all NOT_RUN gates. Rejected lowering disk floors,
+interrupting the running native install, treating zero model processes as proof
+that tools were idle, deleting unknown cache/source data, or claiming a local.2
+installer/installation that does not exist. The unit remains BLOCKED, not complete.
+
+## Resumed execution after explicit cancel/update and preservation authorization
+
+The latest user instruction explicitly authorizes normal cancellation of the
+current native preparation, preserving downloads, followed by the actual update.
+It also authorizes scoped helper/evidence commits and main pushes, preservation
+of specified inactive old C: staging/test trees if needed, and private preservation
+of the exact PowerShell module cache. No tags or public release are authorized.
+
+Fresh HEAD/origin tracking remains reviewed `3425966c`. Current resources recovered
+externally to C: 9,256,488,960 bytes (about 8.62 GiB), RAM 16.73 GiB available,
+commit headroom 42.44 GiB. No legacy C: build/control/test tree relocation is needed
+at this point; all those trees remain intact. The previously timed-out exclusive-
+handle archive prototype is not used.
+
+`cancel-install.py --execute` re-resolved the actual installed shell/Host and
+checked answers, requests, tasks and native operations three times. No active
+native job remained by this observation, so it sent **zero cancellation requests**
+rather than replaying the old job ID. All 13 observed GGUF/completed/partial weight
+references remained present without shrinkage; completed file size/mtime records
+matched. It stopped no unrelated process and started no absent Hermes server.
+Receipt: `app/cancel-install-r1.json`.
+
+The exact authorized `Microsoft/Windows/PowerShell/ModuleAnalysisCache` tree was
+preserved privately at `H:/Strata/private-backups/main-powershell-cache-20261107`.
+The synthetic H: test first proved refusal of an open writer and the standard
+copy/hash/unchanged-source/remove pattern. Actual result: one file, 8,246 bytes,
+SHA-256 `5946ffe8d7f05530932424afca5eb75a5964b5d09e6f2193bf8c6a17fcd2adb4`,
+exact source tree removed only after verification. Unknown entries would refuse
+the operation. Receipt: `app/main-cache-preserved.json`. Child build and normal
+app environments now set `PSModuleAnalysisCachePath` under owned H: temp to avoid
+recreating the cache inside the checkout. No global environment was written.
+
+Signing and build gates already depend only on reviewed source/resources, not
+on runtime job idleness. Quiescence remains required for actual GUI/model E2E,
+backup, overwrite and activation. Runtime-source/native guards and resource
+floors remain unchanged. The next scoped commit will contain only this execution
+log and the owned cancellation/cache environment helpers; application code stays
+identical to reviewed 3425966c. Its actual commit is the new build provenance.

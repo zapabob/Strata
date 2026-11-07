@@ -35,6 +35,7 @@ class PreparationGateTests(unittest.TestCase):
         self.assertEqual(env['CARGO_BUILD_JOBS'],'1')
         self.assertEqual(env['NODE_OPTIONS'],'--max-old-space-size=1024')
         self.assertTrue(env['TEMP'].startswith('H:'))
+        self.assertTrue(env['PSModuleAnalysisCachePath'].startswith('H:'))
 
     def test_quality_receipt_cannot_turn_resource_failure_into_release_pass(self):
         quality={'sourceCommit':common.NATIVE_COMMIT,'manifestSHA256':common.UNSIGNED_MANIFEST,'strataSHA256':common.ENGINE_SHA,

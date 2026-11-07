@@ -113,6 +113,7 @@ def build_env() -> dict:
     temp=OUT/'temp';temp.mkdir(exist_ok=True)
     env.update(PATH=str(NODE.parent)+';C:/Users/downl/.cargo/bin;'+env['PATH'],TEMP=str(temp),TMP=str(temp),
         PYTHONDONTWRITEBYTECODE='1',PYTHONNOUSERSITE='1',NODE_OPTIONS='--max-old-space-size=1024',
+        PSModuleAnalysisCachePath=str(temp/'PSModuleAnalysisCache'),
         STRATA_PUBLIC_PACKAGE='1',STRATA_PUBLIC_ASSETS=str(PUBLIC_ASSETS),STRATA_PUBLIC_ASSETS_RECEIPT=str(PUBLIC_RECEIPT),
         CARGO_TARGET_DIR=str(CARGO_TARGET),CARGO_BUILD_JOBS='1',RUSTC_WRAPPER='',RUSTC_WORKSPACE_WRAPPER='')
     return env
@@ -129,6 +130,7 @@ def normal_app_env() -> dict:
                 break
             except FileNotFoundError:pass
     if isinstance(automatic,str):env['STRATA_LLAMA_SERVER']=automatic
+    env['PSModuleAnalysisCachePath']=str(OUT/'temp/PSModuleAnalysisCache')
     return env
 
 def preserved_copy(source: Path, target: Path) -> dict:
