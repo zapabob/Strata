@@ -23,6 +23,9 @@ import { buildSpin8Args, probeBackendCapabilities } from './spin8-backend.mjs';
 import { resolveKvSettings, explicitKvEnvironment } from './kv-settings.mjs';
 import {localBackendChoice,findLocalBackend,verifyLocalBackend,requireRuntimeKv} from './local-backends.mjs';
 import {createRunObservation,requestedFromArgs,observationEnabled} from './lifecycle-observation.mjs';
+import {createStartupDiagnostics} from './startup-diagnostics.mjs';
+import {readGGUF,qwen35MissingMtp} from './gguf.mjs';
+export {createStartupDiagnostics} from './startup-diagnostics.mjs';
 
 const LOG_LIMIT = 400;
 const emptyMetrics = () => ({source:'none',promptTokens:0,predictedTokens:0,promptTps:0,outputTps:0,
@@ -247,20 +250,19 @@ export function logs(limit = 200) {
   return state.logs.slice(-limit);
 }
 
-function earlyExitError(proc, spawnError, secret) {
+function earlyExitError(proc, spawnError, diagnostics) {
   if (spawnError) return new Error(`Engine could not start: ${spawnError.message}`);
   if (proc.exitCode === null && proc.signalCode === null) return null;
   const reason = proc.signalCode ? `signal ${proc.signalCode}` : `code ${proc.exitCode}`;
-  const diagnostic = state.logs.filter(entry => entry.stream === 'err' && /error|failed|invalid|unsupported|cannot|bad option|block size/i.test(entry.line)).slice(-3)
-    .map(entry => { const line = entry.line.replace(/\x1b\[[0-9;]*m/g, '').replace(/[\x00-\x1f\x7f]/g, ' '); return (secret ? line.replaceAll(secret, '[redacted]') : line).trim().slice(0, 300); })
-    .filter(Boolean).join(' | ');
+  diagnostics.flush();
+  const diagnostic = diagnostics.summary();
   return new Error(`Engine exited early with ${reason}${diagnostic ? `: ${diagnostic}` : '. Check engine logs for the cause.'}`);
 }
 
-async function waitForHealth(port, timeoutMs = 90_000, proc, getSpawnError = () => null, secret = '') {
+async function waitForHealth(port, timeoutMs = 90_000, proc, getSpawnError = () => null, diagnostics) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    const stopped = earlyExitError(proc, getSpawnError(), secret);
+    const stopped = earlyExitError(proc, getSpawnError(), diagnostics);
     if (stopped) throw stopped;
     try {
       const res = await fetch(`http://127.0.0.1:${port}/health`, { signal: AbortSignal.timeout(1500) });
@@ -270,7 +272,7 @@ async function waitForHealth(port, timeoutMs = 90_000, proc, getSpawnError = () 
     } catch {
       /* not up yet */
     }
-    const stoppedAfterProbe = earlyExitError(proc, getSpawnError(), secret);
+    const stoppedAfterProbe = earlyExitError(proc, getSpawnError(), diagnostics);
     if (stoppedAfterProbe) throw stoppedAfterProbe;
     await new Promise((r) => setTimeout(r, 700));
   }
@@ -333,12 +335,14 @@ export async function start({ modelId, modelPath, port = 8080, config, hardware,
   });
   const launched = child;
   let spawnError = null;
+  const diagnostics=createStartupDiagnostics(privateKey || config.serving?.apiKey || '');
   launched.on('error', error => { spawnError = error; });
 
   state.pid = child.pid;
   state.startedAt = new Date().toISOString();
 
   const onData = (stream) => (chunk) => {
+    diagnostics.consume(stream,chunk);
     capture?.consume(stream,chunk);
     for (const line of chunk.toString().split('\n')) {
       if (line.trim()) log(stream, line.replace(/\s+$/, ''));
@@ -365,8 +369,16 @@ export async function start({ modelId, modelPath, port = 8080, config, hardware,
   });
 
   try {
-    await waitForHealth(port, timeoutMs, launched, () => spawnError, privateKey || config.serving?.apiKey || '');
+    await waitForHealth(port, timeoutMs, launched, () => spawnError, diagnostics);
   } catch (err) {
+    // Only offer the predictor diagnosis after proving every trunk tensor. A
+    // filename or one missing layer alone cannot distinguish a broken download.
+    if(/tensor 'blk\.32\.attn_norm\.weight' not found/.test(err.message)){
+      try{
+        const compatibility=qwen35MissingMtp(readGGUF(modelPath,{includeTensors:true}));
+        if(compatibility)err.message+=`. ${compatibility.message}`;
+      }catch{ /* Preserve the original loader error if structural proof is unavailable. */ }
+    }
     capture?.finish(launched.exitCode!==null?'startup_exit':'error',launched.exitCode);
     await stop();
     state.status = 'error';

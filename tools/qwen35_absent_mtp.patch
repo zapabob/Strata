@@ -1,0 +1,54 @@
+diff --git a/src/models/qwen35.cpp b/src/models/qwen35.cpp
+--- a/src/models/qwen35.cpp
++++ b/src/models/qwen35.cpp
+@@ -39,9 +39,24 @@
+ void llama_model_qwen35::load_arch_tensors(llama_model_loader & ml) {
+     LLAMA_LOAD_LOCALS;
+ 
+-    const bool mtp_only = (hparams.n_layer_nextn > 0) && (ml.get_weight("blk.0.attn_norm.weight") == nullptr);
++    bool has_trunk = false;
++    bool has_mtp = false;
++    for (const auto & weight : ml.weights_map) {
++        int layer = -1;
++        if (sscanf(weight.first.c_str(), "blk.%d.", &layer) == 1) {
++            has_trunk |= layer >= 0 && layer < n_layer;
++            has_mtp |= layer >= n_layer && layer < n_layer_all;
++        }
++    }
++    // A missing first norm does not make a partial trunk an MTP-only model.
++    const bool mtp_only = hparams.n_layer_nextn > 0 && ml.load_mtp && !has_trunk && has_mtp;
+     const int trunk_flags = mtp_only ? TENSOR_NOT_REQUIRED : 0;
+     int mtp_flags = !ml.load_mtp ? TENSOR_SKIP : 0;
++    if (hparams.n_layer_nextn > 0 && has_trunk && !has_mtp && !ml.load_mtp) {
++        // Keep the declared layer map. TENSOR_SKIP alone still requires absent tensors.
++        mtp_flags |= TENSOR_NOT_REQUIRED;
++        LLAMA_LOG_INFO("%s: Qwen3.5 trunk-only export: %d trunk layers, no MTP tensors; MTP not requested\n", __func__, n_layer);
++    }
+ 
+     tok_embd = create_tensor(tn(LLM_TENSOR_TOKEN_EMBD, "weight"), { n_embd, n_vocab }, 0);
+ 
+@@ -80,8 +95,8 @@
+         } else {
+             // Linear attention (gated delta net) specific tensors
+             // Create tensors with calculated dimensions
+-            layer.wqkv           = create_tensor(tn(LLM_TENSOR_ATTN_QKV,       "weight", il), { n_embd, key_dim * 2 + value_dim }, TENSOR_NOT_REQUIRED);
+-            layer.wqkv_gate      = create_tensor(tn(LLM_TENSOR_ATTN_GATE,      "weight", il), { n_embd, value_dim }, TENSOR_NOT_REQUIRED);
++            layer.wqkv           = create_tensor(tn(LLM_TENSOR_ATTN_QKV,       "weight", il), { n_embd, key_dim * 2 + value_dim }, flags);
++            layer.wqkv_gate      = create_tensor(tn(LLM_TENSOR_ATTN_GATE,      "weight", il), { n_embd, value_dim }, flags);
+             layer.ssm_conv1d     = create_tensor(tn(LLM_TENSOR_SSM_CONV1D,     "weight", il), { hparams.ssm_d_conv, conv_dim }, flags);
+             layer.ssm_dt         = create_tensor(tn(LLM_TENSOR_SSM_DT,         "bias",   il), { hparams.ssm_dt_rank }, flags);
+             layer.ssm_a          = create_tensor(tn(LLM_TENSOR_SSM_A_NOSCAN,             il), { hparams.ssm_dt_rank }, flags);
+@@ -103,6 +118,13 @@
+         layer.attn_norm      = create_tensor(tn(LLM_TENSOR_ATTN_NORM,      "weight", il), { n_embd }, mtp_flags);
+         layer.attn_post_norm = create_tensor(tn(LLM_TENSOR_ATTN_POST_NORM, "weight", il), { n_embd }, mtp_flags);
+ 
++        // The generic skip path permits missing Q/K/V. A present predictor must be complete.
++        if ((mtp_flags & TENSOR_SKIP) && has_mtp && !ml.get_weight(tn(LLM_TENSOR_ATTN_QKV, "weight", il).str().c_str())) {
++            ml.require_weight(tn(LLM_TENSOR_ATTN_Q, "weight", il).str().c_str());
++            ml.require_weight(tn(LLM_TENSOR_ATTN_K, "weight", il).str().c_str());
++            ml.require_weight(tn(LLM_TENSOR_ATTN_V, "weight", il).str().c_str());
++        }
++
+         create_tensor_qkv(layer, il, n_embd, n_embd_head_k * n_head * 2, n_embd_k_gqa, n_embd_v_gqa, mtp_flags);
+         layer.wo          = create_tensor(tn(LLM_TENSOR_ATTN_OUT,    "weight", il), { n_embd_head_k * n_head, n_embd }, mtp_flags);
+         layer.attn_q_norm = create_tensor(tn(LLM_TENSOR_ATTN_Q_NORM, "weight", il), { n_embd_head_k }, mtp_flags);
