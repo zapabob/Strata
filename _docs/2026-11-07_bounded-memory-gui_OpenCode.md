@@ -370,3 +370,109 @@ normalising a mismatched retained digest, validating only generated argv, weaken
 old consumer tests, and broad governance edits. Ready for independent SPEC/QUALITY
 re-review. All edits used apply_patch; no subdelegation, native edits, actual GPU or
 model process, install, global/private profile operation, push or tag occurred.
+
+## QUALITY: child-owned memory observations
+
+Continued on `c780cc84`; parent has pending policy/raw-token, allowlist, locale,
+version, generic supervisor/GGUF and installer work. Those files are excluded from
+this unit. Goal: memory INFO is pending until every pre-READY admission check has
+succeeded, belongs to the current child generation/PID, and is absent after stop,
+restart begin or failed admission even while the Python service remains available.
+Keep static engine info and all admission/digest/private-cache requirements.
+Same supplied standards and TDD/self-review apply. All new scratch/cache/profile
+paths are under `H:/Strata/validation`; existing parent Node runner uses
+STRATA_TEST_SCRATCH_ROOT. A task-local H: Python runner uses uv offline with H:
+TEMP/TMP/HOME/APPDATA/cache and no hardware probes. No subdelegation or native edits.
+
+### Implementation / semantic contract
+
+`serve/server.py` collects memory INFO into constructor-local pending data. It never
+puts those allocation fields into retained `engine.info`. Private-cache, typed-KV
+and memory receipt admission still run before READY acceptance, with the existing
+expected-mode and executable-digest checks intact. Only a completed admission can
+publish an observation. Other static engine info is retained as before.
+
+Each child attempt has a server-owned generation and process-object/PID binding.
+`StrataEngine.public_info()` adds the current child binding to the metrics snapshot:
+
+```text
+engine.native_child = {generation, process_id, admitted, alive}
+```
+
+Only a matching admitted live child contributes the six existing memory fields,
+plus `q36_memory_generation`, `q36_memory_process_id`, and
+`q36_memory_admitted:true`. `Service.metrics()` uses that snapshot; raw/static
+`engine.info` and restart's retained-info merge cannot resurrect old allocations.
+Unknown, incomplete, failed or retired receipts contribute no `q36_memory_*`
+fields. Legacy without memory INFO still has no new admission requirement; optional
+legacy observations may contain zero staging bytes. Bounded receipts still require
+positive actual bounds and expert-working-storage scope with total-process-bound 0.
+
+Stop/close, restart begin, EOF, fatal/stall and cancel-recovery termination invalidate
+the receipt. Publication and reads also check a private attempt-ownership token, so
+a late READY cannot republish a stopped attempt while its process is still exiting.
+PID reuse and a different process object cannot inherit the old receipt. Normal
+cancellation that keeps the admitted child resident does not invent a child change.
+
+`apps/host/src/components/NativeSettings.tsx` requires both active runtime state and
+a matching admitted/live generation+PID binding. Host service `status:ready` alone
+is insufficient. Unloaded/loading, missing binding, false admission/liveness or a
+generation/PID mismatch displays the existing unreported text. No new translation
+keys. Parent locale, version, policy/raw-token, allowlist and generic runtime work
+is untouched by this unit.
+
+Changed files: server.py, NativeSettings.tsx,
+apps/host/tests/native-ui-ownership.test.mjs,
+serve/test_q36_memory_observation.py, and this log. The H: runner is task-local
+evidence, outside the repository, not a production or packaging change.
+
+### Fresh RED / GREEN evidence
+
+Python RED `H:/Strata/validation/q36-memory-observation-w6DRJp`: **5 failed**.
+The actual constructor and authenticated HTTP `/metrics` leaked pending memory
+before READY, after POST `/unload`, after cancel recovery and after failed private
+admission. The sixth later case reproduced stop while READY was in flight:
+`q36-memory-observation-iLxFz4`, **5 passed / 1 failed**. An invalidated attempt could
+republish while close waited. The attempt token closes that race at publication
+and at snapshot read, without changing native stop semantics.
+
+Mounted DOM RED `H:/Strata/validation/strata-hybrid-iHh7bv`: **19 passed / 1 failed**.
+The Host remained ready while the Python runtime was unloaded, yet actual storage
+was still displayed. The new DOM matrix keeps service-ready throughout and checks
+runtime state, admission, liveness, generation, PID, absent binding and a newly
+admitted replacement. It does not rely on changing the Host to an error state.
+
+GREEN Python command (private Node 24.22.2, explicit uv/Python 3.12.10):
+
+```text
+node H:/Strata/validation/q36-memory-observation-runner.mjs serve/test_q36_memory_observation.py serve/test_q36_memory_contract.py serve/test_q36_kv_contract.py serve/test_native_family.py serve/test_control_cancel.py
+```
+
+PASS **50/50**, **66.12 s**, scratch `q36-memory-observation-zLPKoR`. This includes
+six real producer/lifecycle + HTTP metrics tests and the 44 existing admission,
+digest, KV, private-owner/cancel and cross-language tests. Final observation-only
+recheck after the read-side attempt guard and formatting: **6/6 PASS**, **5.03 s**,
+scratch `q36-memory-observation-gI32oS`. The fake pipes/process objects control IO;
+the production constructor, restart/close/recovery, Service and HTTP handler run.
+Hardware telemetry is disabled. No native binary/model/GPU process is launched.
+
+With `STRATA_TEST_SCRATCH_ROOT=H:/Strata/validation`, TEMP/TMP on H: and Node compile
+cache on H:, `node _docs/hybrid-intake-tests.mjs native-ui-ownership.test.mjs`:
+PASS **20/20**, **50.302 s**, scratch `strata-hybrid-oPaTB7`; zero uncaught page
+exceptions. Existing UI ownership and settings cases remain green. Final unique
+focused coverage: **70 passing tests** (50 Python + 20 DOM), plus the 6-test recheck.
+
+`tsc --noEmit`: PASS. Black check and Flake8 with 88-column limit on the new test:
+PASS after formatting with apply_patch. Critical Flake8 on server.py: PASS.
+All Python commands used explicit offline uv and H: TEMP/TMP/cache paths. The two
+pre-existing dangling-dist-info warnings remain informational. Scoped diff check:
+PASS. No dependencies, runtime installation or parent files changed.
+
+Self-review-event: `rework_returned`, `qa_defect`, `ticket_completed`; review-only.
+The missed boundary was child lifetime inside a still-running service, rather than
+Host instance error state. The repair separates allocation evidence from retained
+static info and tests the actual producer/HTTP consumer plus DOM binding. Rejected:
+UI-only phase filtering, clearing all static info, trusting selected settings,
+loosening pre-READY checks, or changing native code. Ready for QUALITY re-review.
+Actual model/desktop E2E, packaging, installation and publication remain parent
+gates; this unit makes no new model-fit or qualification claim.

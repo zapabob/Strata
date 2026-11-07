@@ -145,7 +145,8 @@ export function NativeSettings({ model }: {
     const rows = (modelFields ?? []).filter(f => (f.id !== 'ds_experts' || dsExperts || values[f.id] != null) && (f.id !== 'drafting' || draftingOffered || values[f.id] != null) && `${tr(f.label)} ${f.id} ${tr(f.group)}`.toLowerCase().includes(query.toLowerCase()));
     const switchRows = switches.filter(sw => `${tr(sw.label)} ${sw.id} ${tr('Speed')}`.toLowerCase().includes(query.toLowerCase()));
     const memoryOffered = modelFields?.some(f => f.id === 'q36_memory' && f.supported !== false) || values.q36_memory != null;
-    const memory = actualMemoryReceipt(native?.instances.find(i => i.model === model && i.status === 'ready')?.metrics?.engine);
+    const memory = actualMemoryReceipt(native?.instances.find(i => i.model === model && i.status === 'ready' &&
+        ['idle', 'reading', 'generating'].includes(i.phase) && ['idle', 'reading', 'generating'].includes(i.metrics?.live?.state))?.metrics?.engine);
     return <details className="native-settings" ref={details}><summary>{tr("Native engine settings")}</summary>{tr(tuned?.changed?.length ? <div className="native-tuned"><p className="small"><strong>{tr("Your tuning '{0}' sets", [tuned.preset?.name ?? ''])}</strong></p><ul>{tuned.changed.map(c => { const d = describeChange(c); return <li key={c.flag}><span>{d.name}</span><b>{d.now || tr('off')}</b>{d.was !== null ? <small className="muted">{tr("was {0}", [d.was])}</small> : null}</li>; })}</ul></div> : null)}<p className="small muted">{tr(!original ? 'Reading saved settings… ' : '')}{tr("Settings for this model. Blank values use Strata\u2019s defaults.")}</p><div className="editor-tabs" role="tablist" aria-label={tr("Native settings editor")}>{tr(['fields', 'json', 'tools'].map(t => <button key={t} role="tab" aria-selected={tab === t} onClick={() => chooseTab(t)}>{tr(t === 'fields' ? 'Parameters' : t === 'json' ? 'JSON' : 'MCP tools')}</button>))}</div>
   {settingsIssues.map(issue => <ErrorNotice key={issue.field} message={issue.message}/>)}
   {memoryOffered ? <p className="small muted" data-q36-memory-observed={memory?.mode}>{memory
@@ -179,10 +180,15 @@ function NativeFieldInput({ field, value, onChange, model }: {
         return <DecimalInput ariaLabel={tr(field.label)} placeholder={tr("Default")} value={value === null || value === undefined || value === '' || !Number.isFinite(Number(value)) ? null : Number(value)} onChange={onChange}/>;
     return <input className="st-input" aria-label={tr(field.label)} placeholder={tr("Default")} value={Array.isArray(value) ? value.join(', ') : value ?? ''} onChange={e => onChange(e.target.value === '' ? null : field.type === 'array' ? e.target.value.split(',').map(s => s.trim()).filter(Boolean) : field.type === 'number' ? Number(e.target.value) : e.target.value)}/>;
 }
-/** Server metrics carry the actual child's pre-READY INFO, never the editor's future choice. */
+/** The service may stay ready after its child exits. Require its current admitted child binding. */
 function actualMemoryReceipt(info: Record<string, unknown> | undefined): Q36MemoryReceipt | null {
     if (!info || !['legacy', 'bounded-experts-v1'].includes(String(info.q36_memory_mode)) ||
         info.q36_memory_scope !== 'expert-working-storage' || info.q36_memory_total_process_bound !== 0) return null;
+    const child = info.native_child as Record<string, unknown> | undefined;
+    if (!child || child.admitted !== true || child.alive !== true || info.q36_memory_admitted !== true ||
+        typeof child.generation !== 'string' || !/^[a-zA-Z0-9-]{1,80}$/.test(child.generation) ||
+        typeof child.process_id !== 'number' || !Number.isSafeInteger(child.process_id) || child.process_id <= 0 ||
+        info.q36_memory_generation !== child.generation || info.q36_memory_process_id !== child.process_id) return null;
     const bytes = [info.q36_memory_cpu_stage_bytes, info.q36_memory_h2d_stage_bytes, info.q36_memory_io_scratch_bytes];
     if (!bytes.every(n => typeof n === 'number' && Number.isSafeInteger(n) && n >= (info.q36_memory_mode === 'legacy' ? 0 : 1))) return null;
     return {mode: info.q36_memory_mode as Q36MemoryReceipt['mode'], cpuStageBytes: bytes[0] as number, h2dStageBytes: bytes[1] as number, ioScratchBytes: bytes[2] as number};

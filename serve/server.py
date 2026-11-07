@@ -1163,6 +1163,11 @@ class StrataEngine:
     def __init__(self, exe: str, args: list[str], cwd: str | None = None, log: str | None = None,
                  env: dict | None = None, lazy: bool = False, cpus: list[int] | None = None, _attempt: int = 0,
                  retry_args: list[str] | None = None, retry_vram_args: list[str] | None = None):
+        # Re-entered on restart: even a failed config/probe must retire the old receipt.
+        self._native_admitted_child = self._q36_memory_observation = None
+        child_attempt = object()
+        self._child_observation_attempt = child_attempt
+        self._child_generation = None
         # Proof and READY admission must describe the same captured start.
         args = list(args)
         env = dict(os.environ if env is None else env)
@@ -1183,6 +1188,7 @@ class StrataEngine:
         self.can_stop = False            # the engine honours a STOP line mid-request (READY <ctx> stop)
         self.last = {}
         self.info = {}                   # INFO key=value facts (engine 0.1.8+): kv, expert slots, ... (Monitor tab)
+        memory_info = {}                 # per-child pending receipt, never retained static engine info
         self.terminal_stages: list[dict] = []  # final layer ranges from this engine start's bounded stderr log
         self.terminal_batch_sample: dict | None = None
         self.terminal_stage_sample: dict | None = None
@@ -1240,6 +1246,8 @@ class StrataEngine:
         end_leftover_engines(exe)                        # one an earlier run lost still holds the GPU and the memory
         spawned_at = time.monotonic()
         child_env, startup_generation = q36_startup_child_env(env)
+        self._child_generation = startup_generation or uuid.uuid4().hex
+        child_generation = self._child_generation
         def startup_child_receipt(state, pid="null"):
             if log and startup_generation:
                 try:
@@ -1284,7 +1292,11 @@ class StrataEngine:
             if line.startswith("INFO "):
                 for kv in line.split()[1:]:
                     k, _, v = kv.partition("=")
-                    self.info[k] = int(v) if v.lstrip("-").isdigit() else v
+                    value = int(v) if v.lstrip("-").isdigit() else v
+                    if k.startswith("q36_memory_"):
+                        memory_info[k] = value
+                    elif k != "native_child":           # child ownership is supplied by this server, not INFO
+                        self.info[k] = value
             if line.startswith("READY"):
                 f = line.split()
                 self.max_context = int(f[1])
@@ -1376,7 +1388,7 @@ class StrataEngine:
             if log:
                 self.log.close()
             raise EngineDied("Qwen3.6 did not confirm requested KV layout and allocation; the engine was stopped")
-        if memory_cap and not q36_memory_receipt_matches(self.info, admission.memory_mode):
+        if memory_cap and not q36_memory_receipt_matches(memory_info, admission.memory_mode):
             self.proc.kill()
             self.proc.wait(timeout=5)
             self.proc.stdin.close()
@@ -1459,6 +1471,41 @@ class StrataEngine:
         self.wlock = threading.Lock()                   # stdin writes from several request threads
         self.pump = threading.Thread(target=self._pump, daemon=True)
         self.pump.start()
+        if self.proc is proc and self._child_generation == child_generation and self._child_observation_attempt is child_attempt:
+            self._native_admitted_child = (proc, child_generation, proc.pid, child_attempt)
+            if admission.q36 and q36_memory_receipt_matches(memory_info, admission.memory_mode):
+                self._q36_memory_observation = {
+                    **{key: memory_info[key] for key in Q36_MEMORY_RECEIPT_FIELDS},
+                    "q36_memory_generation": child_generation,
+                    "q36_memory_process_id": proc.pid,
+                    "q36_memory_admitted": True,
+                }
+
+    def _clear_child_observation(self) -> None:
+        """Retire allocation evidence, without clearing static model/engine facts."""
+        self._child_observation_attempt = None
+        self._native_admitted_child = self._q36_memory_observation = None
+
+    def public_info(self) -> dict:
+        """One current-child snapshot. Retained/static info never proves live allocations."""
+        info = {k: v for k, v in (getattr(self, "info", {}) or {}).items() if not k.startswith("q36_memory_") and k != "native_child"}
+        proc = getattr(self, "proc", None)
+        generation = getattr(self, "_child_generation", None)
+        pid = getattr(proc, "pid", None)
+        if type(pid) is not int or pid <= 0:
+            pid = None
+        live = proc is not None and not getattr(self, "ended", False) and not getattr(self, "unloaded", False) and proc.poll() is None
+        owner = getattr(self, "_native_admitted_child", None)
+        admitted = bool(live and owner and owner[0] is proc and owner[1:3] == (generation, pid)
+                        and owner[3] is getattr(self, "_child_observation_attempt", None))
+        observed = getattr(self, "_q36_memory_observation", None)
+        # A concurrent stop/restart must not combine an old receipt with a new child.
+        if proc is not getattr(self, "proc", None) or generation != getattr(self, "_child_generation", None) or owner is not getattr(self, "_native_admitted_child", None) or (owner and owner[3] is not getattr(self, "_child_observation_attempt", None)):
+            admitted = live = False
+        info["native_child"] = {"generation": generation, "process_id": pid, "admitted": admitted, "alive": live}
+        if admitted and observed and observed["q36_memory_generation"] == generation and observed["q36_memory_process_id"] == pid:
+            info.update(observed)
+        return info
 
     def _pump(self):
         proc, lines = self.proc, self.lines             # this process's: a restart replaces both (#344)
@@ -1474,6 +1521,7 @@ class StrataEngine:
                 # process stays alive and prints DONE afterwards.
                 if self.proc is proc:
                     self.silent_note = "Unrecoverable native verification failure: " + line[4:].strip()
+                    self._clear_child_observation()
                     self.ended = True
                 try:
                     proc.terminate()
@@ -1516,6 +1564,7 @@ class StrataEngine:
                     pass
             lines.put(line)
         if self.proc is proc:                           # a killed engine's pump must not mark its successor dead
+            self._clear_child_observation()
             self.ended = True                           # its output closed: it is gone, even before the OS says so
             if line and line.startswith("ERR"):         # #997 #890: why it exited, though no request may read it
                 self.last_err = line[4:].strip()        # (a failed batch window: every request reads its slot)
@@ -1605,7 +1654,8 @@ class StrataEngine:
         close() ends and waits for the old process first (EngineStuck when it cannot be ended).  A start that still
         exits before READY - a dead engine's VRAM can take a while to come back, notably on ROCm - is retried
         (PR #637)."""
-        info = dict(self.info)
+        self._clear_child_observation()
+        info = {k: v for k, v in self.info.items() if not k.startswith("q36_memory_")}
         self.starting = True                     # prepare() answers 503 "starting" meanwhile (#344)
         try:
             self.close()
@@ -2013,6 +2063,7 @@ class StrataEngine:
         if not text.startswith("fatal GPU error"):
             return
         self.last_err = text
+        self._clear_child_observation()
         self.ended = True
         raise EngineDied("the GPU reported a fatal error and the engine ended: " + text[len("fatal GPU error:"):].strip()[:200])
 
@@ -3042,6 +3093,7 @@ class StrataEngine:
         self.silent_note = ("The engine and the server lost step (issue #481; a very slow PC can raise "
                             "\"engine_silence_s\" in the config, 0 = wait forever). If it happens again, please add "
                             "the end of the engine log to github.com/Niko1221/Strata/issues/481.")
+        self._clear_child_observation()
         self.ended = True                               # not alive from now: the next request restarts it
         proc = self.proc
         try:
@@ -3054,6 +3106,7 @@ class StrataEngine:
     def end_for_restart(self) -> None:
         """End the engine now and mark it ended, so the next request starts it again (#3961: a run that stopped without its end event left the two sides
         out of step; the restart is what puts them back)."""
+        self._clear_child_observation()
         self.ended = True
         try:
             self.proc.kill()
@@ -3089,6 +3142,7 @@ class StrataEngine:
         want = "SAVED" if action == "save" else "RESTORED"
 
         def out_of_step(line: str) -> EngineDied:
+            self._clear_child_observation()
             self.ended = True                               # not alive from now: the next request restarts it
             try:
                 self.proc.kill()
@@ -3168,6 +3222,7 @@ class StrataEngine:
         """End the engine process: STOP + QUIT first (the engine frees its memory itself - unpinning tens of GB can take
         a while; ENGINE_QUIT_WAIT_S), then terminate (ENGINE_TERM_WAIT_S), then kill (ENGINE_KILL_WAIT_S).  Raises
         EngineStuck when it still runs after all three."""
+        self._clear_child_observation()
         if self.proc is None:
             return
         try:
@@ -4112,13 +4167,19 @@ def q36_verify_memory_args(exe: str | None, args: list[str], admission: NativeAd
     return capabilities
 
 
+Q36_MEMORY_RECEIPT_FIELDS = (
+    "q36_memory_mode", "q36_memory_scope", "q36_memory_total_process_bound",
+    "q36_memory_cpu_stage_bytes", "q36_memory_h2d_stage_bytes", "q36_memory_io_scratch_bytes",
+)
+
+
 def q36_memory_receipt_matches(info: dict, mode: str) -> bool:
     """Only pre-READY INFO from the actual child proves effective bounded storage."""
-    return (info.get("q36_memory_mode") == mode
+    return (mode in ("legacy", "bounded-experts-v1") and info.get("q36_memory_mode") == mode
             and info.get("q36_memory_scope") == "expert-working-storage"
             and type(info.get("q36_memory_total_process_bound")) is int
             and info["q36_memory_total_process_bound"] == 0
-            and all(type(info.get(key)) is int and 0 < info[key] < 2**64 for key in (
+            and all(type(info.get(key)) is int and (0 if mode == "legacy" else 1) <= info[key] < 2**64 for key in (
                 "q36_memory_cpu_stage_bytes", "q36_memory_h2d_stage_bytes", "q36_memory_io_scratch_bytes")))
 
 
@@ -6075,8 +6136,8 @@ class Service:
             live["replicas"] = self.engine.replica_view()
         if hasattr(self.engine, "split_view"):          # opt-in split serving: the hand-overs so far (serve/split.py)
             live["split_serve"] = self.engine.split_view()
-        engine = {"model": self.model, "max_context": self.reported_ctx(), "images": self.vision is not None,
-                  **dict(getattr(self.engine, "info", {}) or {})}
+        info = self.engine.public_info() if isinstance(self.engine, StrataEngine) else dict(getattr(self.engine, "info", {}) or {})
+        engine = {"model": self.model, "max_context": self.reported_ctx(), "images": self.vision is not None, **info}
         tel = self.telemetry.snapshot() if getattr(self, "telemetry", None) else {"now": {}, "history": {}, "static": {}}
         parked = self.conv_log.poll(getattr(self.engine, "log_path", None), getattr(self.engine, "log_start", None))
         return {"engine": engine, "live": live, "requests": hist[::-1][:None if all_requests else 12],
