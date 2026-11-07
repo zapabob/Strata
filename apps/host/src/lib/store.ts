@@ -903,15 +903,23 @@ export async function getWithRetry<T>(path: string): Promise<T> {
 }
 
 let closeEvents: (() => void) | null = null;
+let bootstrapGeneration = 0;
 export async function bootstrap() {
+  const generation = ++bootstrapGeneration;
+  const owns = () => generation === bootstrapGeneration;
+  closeEvents?.();
+  closeEvents = null;
+  set({ connection: 'connecting' });
   applyPrefs();
   try {
     let chatsTimer: ReturnType<typeof setTimeout> | undefined;
     await Promise.race([
-      loadChatsFromHost(),
+      loadChatsFromHost(owns),
       new Promise<never>((_, reject) => { chatsTimer = setTimeout(() => reject(new Error('The chats did not load in time')), bootstrapTiming.timeoutMs); }),
-    ]).catch(() => { sessionWriter.enable(); }).finally(() => clearTimeout(chatsTimer));
-    // Only what the first screen cannot do without holds up 'live'; the rest is read at the same time and fills in when it arrives.
+    ]).catch(() => { if (owns()) sessionWriter.enable(); }).finally(() => clearTimeout(chatsTimer));
+    if (!owns()) return;
+    // Essential reads unlock the screen. Only the current event stream can declare live.
+    const before = state;
     const soft = <T,>(path: string) => getWithRetry<T>(path).catch(() => null);
     const late = {
       hardware: soft<Hardware>('/api/hardware'),
@@ -928,6 +936,7 @@ export async function bootstrap() {
       getWithRetry<ServingState>('/api/serving'),
       getWithRetry<{ workspaces: Workspace[] }>('/api/workspaces'),
     ]);
+    if (!owns()) return;
     set({
       ready: true,
       setup,
@@ -937,18 +946,19 @@ export async function bootstrap() {
       workspacePath: workspaceState.workspaces[0]?.path ?? '',
       workspaces: workspaceState.workspaces,
       activeWorkspace: workspaceState.workspaces.some(w => w.id === state.activeWorkspace) ? state.activeWorkspace : workspaceIdForSession(workspaceState.workspaces, state.sessions.find(s => s.id === state.activeSession)) ?? workspaceState.workspaces[0]?.id ?? null,
-      connection: 'live',
     });
-    void late.hardware.then(hardware => { if (hardware) set({ hardware }); });
-    void late.monitor.then(monitor => { if (monitor) set({ monitor }); });
-    void late.skills.then(skills => { if (skills) set({ skills }); });
-    void late.providers.then(providers => { if (providers) applyProviders(providers); });
-    void late.imageModels.then(imageModels => { if (imageModels) set({ imageModels }); });
-    void late.runtime.then(runtime => { if (runtime) set({ runtime }); });
+    // An event or explicit refresh after these reads began owns its newer value.
+    const untouched = (key: keyof typeof late) => owns() && state[key] === before[key];
+    void late.hardware.then(hardware => { if (hardware && untouched('hardware')) set({ hardware }); });
+    void late.monitor.then(monitor => { if (monitor && untouched('monitor')) set({ monitor }); });
+    void late.skills.then(skills => { if (skills && untouched('skills')) set({ skills }); });
+    void late.providers.then(providers => { if (providers && untouched('providers')) applyProviders(providers); });
+    void late.imageModels.then(imageModels => { if (imageModels && untouched('imageModels')) set({ imageModels }); });
+    void late.runtime.then(runtime => { if (runtime && untouched('runtime')) set({ runtime }); });
     if (!shellAnnounced) { shellAnnounced = true; void announcePortNotice(); rememberShellLanguage(state.language); }
-    closeEvents?.();
     let reconnect = false;
-    closeEvents = onEvent(applyEvent, (status) => {
+    closeEvents = onEvent(event => { if (owns()) applyEvent(event); }, (status) => {
+      if (!owns()) return;
       if (status === 'offline') reconnect = true;
       if (status === 'live' && reconnect) {
         reconnect = false;
@@ -961,11 +971,12 @@ export async function bootstrap() {
     });
     if (!setup.complete && !setup.dismissed && !window.location.hash.includes('setup')) navigate('setup');
   } catch (err) {
+    if (!owns()) return;
     set({ ready: true, connection: 'offline' });
     pushToast(
       'error',
-      'Engine host unreachable',
-      err instanceof Error ? err.message : 'Start it with `npm run host` and reload.',
+      'App data could not be refreshed',
+      err instanceof Error ? err.message : 'Retry the app connection.',
     );
   }
 }
@@ -1330,12 +1341,13 @@ let chatsRead = false;
  * The first read of the chats at start, and again after the host came back: the host's files become the chats shown (the browser's
  * old chats are handed over first, once), then saving starts. A host that does not answer leaves the page as it is.
  */
-export async function loadChatsFromHost() {
-  if (chatsRead) { await syncChatsFromHost(); return; }
+export async function loadChatsFromHost(owns: () => boolean = () => true) {
+  if (chatsRead) { await syncChatsFromHost(owns); return; }
   const result = await hydrateChats({
     transport: chatTransport, browser: browserStorage, current: state.sessions,
     isLive: id => liveTurns.has(id),
   });
+  if (!owns()) return;
   if (result.offline) {
     // Show the browser's old copy so the person can still read; saves are retried until the host answers.
     if (!state.sessions.length) { try { set({ sessions: readBrowserSessions(browserStorage).sessions.map(fixSession) }); } catch { /* none */ } }
@@ -1354,7 +1366,8 @@ export async function loadChatsFromHost() {
 }
 
 /** One chat that another window saved or removed: taken over unless this window is working in it. */
-export async function applyChatChange(id: string, rev: number | null, deleted: boolean) {
+export async function applyChatChange(id: string, rev: number | null, deleted: boolean, owns: () => boolean = () => true) {
+  if (!owns()) return;
   const here = state.sessions.find(s => s.id === id);
   if (deleted) {
     if (here && !liveTurns.has(id) && !sessionWriter.dirty(here)) {
@@ -1366,7 +1379,7 @@ export async function applyChatChange(id: string, rev: number | null, deleted: b
   if (rev !== null && sessionWriter.rev(id) >= rev) return;
   if (here && (liveTurns.has(id) || sessionWriter.dirty(here))) return;   // this window's own work wins; its next save keeps the displaced version on the host
   const got = await chatTransport.get(id).catch(() => null);
-  if (!got) return;
+  if (!got || !owns()) return;
   const fresh = state.sessions.find(s => s.id === id);
   if (fresh && (liveTurns.has(id) || sessionWriter.dirty(fresh))) return;
   sessionWriter.adopt(got.session, got.rev);
@@ -1375,12 +1388,14 @@ export async function applyChatChange(id: string, rev: number | null, deleted: b
 }
 
 /** After the host was away: take over what other windows saved or removed meanwhile. */
-async function syncChatsFromHost() {
+async function syncChatsFromHost(owns: () => boolean) {
   const list = await chatTransport.list().catch(() => null);
-  if (!list) return;
+  if (!list || !owns()) return;
   const onHost = new Set(list.chats.map(c => c.id));
-  for (const entry of list.chats) await applyChatChange(entry.id, entry.rev, false);
-  for (const s of state.sessions) if (!onHost.has(s.id) && sessionWriter.rev(s.id) > 0) await applyChatChange(s.id, null, true);
+  for (const entry of list.chats) await applyChatChange(entry.id, entry.rev, false, owns);
+  if (!owns()) return;
+  for (const s of state.sessions) if (!onHost.has(s.id) && sessionWriter.rev(s.id) > 0) await applyChatChange(s.id, null, true, owns);
+  if (!owns()) return;
   sessionWriter.enable();
 }
 

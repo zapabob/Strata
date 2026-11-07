@@ -1,0 +1,164 @@
+{
+  "schema": 1,
+  "backend": "prism",
+  "version": "0.4.1",
+  "id": "prism-qwen35-mtp-0.4.1-1965755c-cuda133-sm120",
+  "privateCandidate": true,
+  "source": {
+    "repository": "https://github.com/PrismML-Eng/llama.cpp.git",
+    "baseCommit": "73bfe6cc485554822f80c473a3c0c4f25e80f41b",
+    "commit": "1965755ceee6738b9a04ceaf5d30e6305d6ccd00",
+    "tree": "ae33fd73e8811fd0def3f13488c6942848ac5138",
+    "dirty": false,
+    "byteVerification": {
+      "sourceCommit": "1965755ceee6738b9a04ceaf5d30e6305d6ccd00",
+      "sourceTree": "ae33fd73e8811fd0def3f13488c6942848ac5138",
+      "trackedFiles": 3590,
+      "exactRawOverrides": 4,
+      "verified": true
+    },
+    "gitStatusReportedDirty": true,
+    "patches": [
+      {
+        "path": "qwen35_absent_mtp.patch",
+        "sha256": "d40d21c784c411a316dd33ea01665bcbb56511a3641073088c128edba83ddbe9",
+        "id": "qwen35-absent-mtp-v1"
+      },
+      {
+        "path": "spin8_backend_sm120.patch",
+        "sha256": "a291a22cd8915edee441e39b08b1c948e5ecc18b41060529c120701bfcf26ddd",
+        "id": "prism-standard-sm120-v1"
+      }
+    ],
+    "sourcePatchSHA256": "f95abdc644fe6f4de7e3ea20ff5dea8aa2cfe998fb88cd0fac11ff8f95c66bf8"
+  },
+  "build": {
+    "device": "cuda",
+    "cudaArchitecture": "120",
+    "cudaCubins": [
+      "sm_120"
+    ],
+    "cudaToolkit": "13.3",
+    "jobs": 1,
+    "receiptSHA256": "974d906673938ab9f79fc0ca55bcb520b60ad5c25fcb29bf927fd59cdbbb9d0a",
+    "guardReceiptSHA256": "dcd67c2c46e9af442c622dbccda065e6777940bb7fb894d883e311e9bac65c21"
+  },
+  "cacheTypes": [
+    "f16",
+    "bf16",
+    "q8_0",
+    "q4_0"
+  ],
+  "cacheTypesK": [
+    "f16",
+    "bf16",
+    "q8_0",
+    "q4_0"
+  ],
+  "cacheTypesV": [
+    "f16",
+    "bf16",
+    "q8_0",
+    "q4_0"
+  ],
+  "cacheTypeEvidence": "Existing Prism policy and actual CLI help; model qualification is separate.",
+  "executableVersion": "version: 0.2.0-dev (build 2, commit 1965755)\nbuilt with MSVC 19.44.35229.0 for Windows AMD64",
+  "releaseQualified": false,
+  "files": [
+    {
+      "path": "cublas64_13.dll",
+      "bytes": 52697712,
+      "sha256": "8c6bac24474af29627ec96500025a5d410a1b7e8ffa00e1fe13b1781fc6b3ddc"
+    },
+    {
+      "path": "cublasLt64_13.dll",
+      "bytes": 463655536,
+      "sha256": "e323abd89e0f03c1db91a09d7aeb1928de08e1f86192cc713b335fefe3e368a9"
+    },
+    {
+      "path": "ggml-base.dll",
+      "bytes": 678400,
+      "sha256": "b42639701980587f4350e432fa5b327cc938fd6f2e7837df1e26b4335bb5fd15"
+    },
+    {
+      "path": "ggml-cpu.dll",
+      "bytes": 984576,
+      "sha256": "0b1bdb37e9c5a741bdad4fadf655fd66ecbfc50266716752de0c959f117a7ba5"
+    },
+    {
+      "path": "ggml-cuda.dll",
+      "bytes": 67631104,
+      "sha256": "9bc0f979b3619c1826a2f0a2294a27e95fa95457688640d80e96665cdb57c872"
+    },
+    {
+      "path": "ggml.dll",
+      "bytes": 67072,
+      "sha256": "d1e6672ef594ec3d10e5894d0ea9072585af39a0a11888a893f340ee3292b3a7"
+    },
+    {
+      "path": "LICENSE.txt",
+      "bytes": 1099,
+      "sha256": "bcd8ec749126d45cb06737d0690295d73df4b6e7e194205bcf91190368f27285"
+    },
+    {
+      "path": "llama-common.dll",
+      "bytes": 8481280,
+      "sha256": "8c741e9a1415186392e53666a40bf3ecb55f5ef931ae0dd12bcc52ed7d4a7626"
+    },
+    {
+      "path": "llama-server-impl.dll",
+      "bytes": 13689344,
+      "sha256": "eeaf683148739ff96464e65189d4d6fa41cf552d5048d6e2ba7e8c1ea7217d95"
+    },
+    {
+      "path": "llama-server.exe",
+      "bytes": 10752,
+      "sha256": "5ca5d8bfdfcb6fe46a96a06b71eaf45aedfbd1c6673bda2a10eb6412613be777"
+    },
+    {
+      "path": "llama.dll",
+      "bytes": 2612736,
+      "sha256": "40f7bd967ba3b822a872639801c4d0accc2ce40bdebf950350fb2452dc4206db"
+    },
+    {
+      "path": "MSVCP140.dll",
+      "bytes": 557728,
+      "sha256": "0f885b509a685d2bbfa652fed26b5fb31d88fbdab0a978c641d1c7b8aa460aa9"
+    },
+    {
+      "path": "mtmd.dll",
+      "bytes": 2379264,
+      "sha256": "e3831a28909cd1e2b09f37851f017cb8af6b8a243f50aa14c77a44c0ef8895b5"
+    },
+    {
+      "path": "qwen35_absent_mtp.patch",
+      "bytes": 3631,
+      "sha256": "d40d21c784c411a316dd33ea01665bcbb56511a3641073088c128edba83ddbe9"
+    },
+    {
+      "path": "source-patch.diff",
+      "bytes": 6792,
+      "sha256": "f95abdc644fe6f4de7e3ea20ff5dea8aa2cfe998fb88cd0fac11ff8f95c66bf8"
+    },
+    {
+      "path": "spin8_backend_sm120.patch",
+      "bytes": 2855,
+      "sha256": "a291a22cd8915edee441e39b08b1c948e5ecc18b41060529c120701bfcf26ddd"
+    },
+    {
+      "path": "VCOMP140.DLL",
+      "bytes": 193152,
+      "sha256": "55aba23cdcd6484fbb06f4155b8ca75adfce7a881f10afd0c49457165e677164"
+    },
+    {
+      "path": "VCRUNTIME140.dll",
+      "bytes": 124544,
+      "sha256": "d5e4d9a3e835fa679450145d6a7d94e36573a509317111904d9b3712c30d9066"
+    },
+    {
+      "path": "VCRUNTIME140_1.dll",
+      "bytes": 49792,
+      "sha256": "1f2d41c4aa5db0bc33ebf7b66d72943a817d7ce6cbe880502a9403823633093f"
+    }
+  ]
+}

@@ -1,10 +1,34 @@
-import type {NativeState} from './native';
+import type {NativeInstance,NativeState} from './native';
 import type {Hardware,MonitorState,MonitorSample,GpuReading,ServeRequest} from './types';
 import {gpuId,gpuCapacity,hasReading} from './monitor-hardware';
 const value=(n:unknown)=>hasReading(n)?n:null;
 const bytes=(n:unknown)=>hasReading(n)?n/1024**3:null;
 const reading=(n:unknown)=>value(n)??NaN;
 const total=(list:(number|null)[])=>list.length&&list.every(hasReading)?list.reduce((sum,n)=>sum+n,0):NaN;
+
+const modelStates = {
+ idle: {status:'Ready',detail:'Waiting for a request'},
+ unloaded: {status:'No model loaded',detail:'No model loaded'},
+ unavailable: {status:'Status unavailable',detail:'Status unavailable'},
+ error: {status:'Error',detail:'Error'},
+ loading: {status:'Loading',detail:'Loading model'},
+ unloading: {status:'Unloading…',detail:'Unloading…'},
+ reading: {status:'Reading prompt',detail:'Reading prompt'},
+ thinking: {status:'Thinking',detail:'Thinking'},
+ generating: {status:'Generating',detail:'Generating'},
+} as const;
+
+/** One presentation rule for service state versus model state; never mutates workflow state. */
+export function projectedModelState(instance:NativeInstance|null|undefined,monitor:Pick<MonitorState,'phase'|'phaseLabel'>|null=null,loaded=false){
+ let raw:string;
+ if(instance)raw=instance.status==='error'||instance.error?'error':instance.status&&instance.status!=='ready'?instance.status:instance.phase;
+ else raw=monitor?.phaseLabel==='Status unavailable'?'unavailable':monitor?.phaseLabel==='No model loaded'?'unloaded':monitor?.phase??'idle';
+ if(!instance&&!loaded&&raw==='idle')raw='unloaded';
+ const phase=Object.hasOwn(modelStates,raw)?raw as keyof typeof modelStates:'unavailable';
+ return {phase,...modelStates[phase],detail:phase==='error'?(instance?.error??monitor?.phaseLabel??modelStates.error.detail):modelStates[phase].detail,
+  loaded:['idle','reading','thinking','generating'].includes(phase),busy:['loading','unloading','reading','thinking','generating'].includes(phase),
+  monitorPhase:phase==='unloaded'||phase==='unavailable'?'idle' as const:phase==='unloading'?'loading' as const:phase};
+}
 
 /** Native engine facts projected onto the existing visual dashboard. No demo fallback. */
 export function nativeMonitorData(native:NativeState,inventory:Hardware|null,selection='all'):MonitorState{
@@ -21,7 +45,9 @@ export function nativeMonitorData(native:NativeState,inventory:Hardware|null,sel
  }
  const gpus:GpuReading[]=(inventory?.gpus??[]).map(gpu=>{const r=devices.get(gpu.index);return{id:gpuId(gpu),utilizationPct:value(r?.util),memoryUsedGb:bytes(r?.mem_used),temperatureC:value(r?.temp),powerW:value(r?.power),powerLimitW:value(r?.power_limit),pcieRxMbs:value(r?.pcie_rx_mb),pcieGen:value(r?.pcie_gen),pcieGenMax:value(r?.pcie_gen_max),pcieWidth:value(r?.pcie_width),source:r?'sensor':'unavailable',sampledAt:new Date((raw?.time??Date.now()/1000)*1000).toISOString()};});
  const requests:ServeRequest[]=scoped.flatMap(instance=>(instance.metrics?.requests??[]).map((r:Record<string,any>,index:number)=>({id:String(r.id??`${instance.id}:${r.time}:${index}`),instanceId:instance.id,at:new Date((r.time??0)*1000).toISOString(),client:'Native engine',endpoint:'/v1/chat/completions',state:r.error?'error' as const:'done' as const,tokensIn:value(r.prompt_tokens),tokensOut:value(r.output_tokens),cachedTokens:value(r.reused),durationMs:reading(r.duration_s)*1000,model:instance.label,tps:value(r.decode_tok_s),promptTps:hasReading(r.prompt_ms)&&r.prompt_ms>0&&hasReading(r.prompt_tokens)&&hasReading(r.reused)?(r.prompt_tokens-r.reused)/(r.prompt_ms/1000):null,usageSource:'reported' as const,finishReason:r.finish_reason}))).sort((a,b)=>Date.parse(b.at)-Date.parse(a.at));
- const last=requests[0],phase=selected?.phase??'idle',active=['reading','thinking','generating'].includes(phase);
+ const states=scoped.map(instance=>projectedModelState(instance));
+ const modelState=selected?projectedModelState(selected):states.find(s=>s.phase==='error')??states.find(s=>s.busy)??states.find(s=>s.loaded)??states.find(s=>s.phase==='unavailable')??projectedModelState(null);
+ const last=requests[0],phase=modelState.phase,active=['reading','thinking','generating'].includes(phase);
  const used=active?hasReading(live?.prompt_tokens)&&hasReading(live?.generated)?live.prompt_tokens+live.generated:NaN:last&&hasReading(last.tokensIn)&&hasReading(last.tokensOut)?last.tokensIn+last.tokensOut:NaN;
  const maxContext=reading(engine?.max_context??selected?.context);
  const historyRaw=raw?.history??{},count=Math.max(0,...Object.values(historyRaw).filter(Array.isArray).map(series=>series.length));
@@ -36,8 +62,9 @@ export function nativeMonitorData(native:NativeState,inventory:Hardware|null,sel
  }
  const totals=scoped.map(instance=>instance.metrics?.totals);
  const tokenTotal=(key:string)=>total(totals.map(item=>value(item?.[key])));
- return{phase:['idle','reading','thinking','generating','loading','error'].includes(phase)?phase as MonitorState['phase']:'error',phaseLabel:selected?.error??(phase==='idle'?'Waiting for a request':phase==='reading'?'Reading your message':phase==='generating'?'Generating a reply':phase==='loading'?'Loading model':'Model unavailable'),variantId:selected?.model??null,
-  telemetry:{throughput:raw?'engine':'unavailable',thermals:hardware?'sensor':'unavailable',memory:hardware?'sensor':'unavailable',context:selected&&hasReading(used)?'reported':'unavailable'},
+ const throughput=active&&[live?.tok_s,live?.prefill_tok_s_mean].some(hasReading)||requests.some(r=>[r.tps,r.promptTps].some(hasReading))||history.some(s=>[s.outputTps,s.promptTps].some(n=>hasReading(n)&&n>0));
+ return{phase:modelState.monitorPhase,phaseLabel:modelState.detail,variantId:selected?.model??null,
+  telemetry:{throughput:throughput?'engine':'unavailable',thermals:hardware?'sensor':'unavailable',memory:hardware?'sensor':'unavailable',context:selected&&hasReading(used)?'reported':'unavailable'},
   prompt:{done:reading(live?.prompt_read),total:reading(live?.prompt_total),pct:hasReading(live?.prompt_read)&&live.prompt_total>0?live.prompt_read/live.prompt_total*100:0},generation:{done:value(live?.generated),total:value(live?.max_tokens)},outputTps:reading(live?.tok_s),promptTps:reading(live?.prefill_tok_s_mean),
   queue:{running:total(scoped.map(instance=>instance.metrics?.live?value(instance.metrics.live.running)??(['reading','generating'].includes(instance.metrics.live.state)?1:0):null)),waiting:total(scoped.map(instance=>value(instance.metrics?.live?.queued)))},
   context:{usedTokens:used,maxTokens:maxContext,pct:hasReading(used)&&maxContext>0?used/maxContext*100:NaN},expertCache:{used:reading(engine?.expert_slots),total:reading(engine?.experts),memoryGb:hasReading(engine?.expert_cache_mib)?engine.expert_cache_mib/1024:null,source:engine&&hasReading(engine.expert_slots)?'engine':'unavailable'},

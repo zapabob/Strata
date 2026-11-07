@@ -1,6 +1,7 @@
 import {sessionTitle} from '../lib/session-title';
 import { tr } from '../lib/i18n';
 import { useNative } from '../lib/native';
+import { projectedModelState } from '../lib/native-monitor';
 import { modelFamilyIcon } from '../lib/model-icons';
 import { TaskTree } from './TaskTree';
 /** Quiet navigation, with the same destinations at every window size. */
@@ -74,12 +75,13 @@ export function Sidebar({ containerRef }: {
     const nativeSize = nativeCurrent ? native?.catalog?.families.flatMap(f => f.sizes).find(s => s.id === nativeCurrent.model) : undefined;
     const nativeSecond = nativeCurrent ? [nativeSize?.model ?? nativeCurrent.model.toUpperCase(), nativeCurrent.gpus.length ? nativeCurrent.gpus.map(g => `GPU ${g + 1}`).join(' + ') : ''].filter(Boolean).join(' · ') : null;
     const modelQuant = nativeSecond ?? current?.quant ?? tr('View model versions');
-    const phase = nativeCurrent ? (nativeCurrent.status === 'ready' ? nativeCurrent.phase : nativeCurrent.status) : monitor?.phase ?? 'idle';
-    const status = phase === 'unavailable' ? 'Status unavailable' : phase === 'error' ? 'Error' : phase === 'loading' ? 'Loading' : !current && !nativeCurrent ? 'No model loaded' : phase === 'reading' ? 'Reading prompt' : phase === 'thinking' ? 'Thinking' : phase === 'generating' ? 'Generating' : 'Ready';
+    const modelState = projectedModelState(nativeCurrent, monitor, !!current);
+    const status = modelState.status;
     // The model is busy with a chat that is not the one in front of the person: the chip says which one (a title, or how many).
     const awayChats = [...working].filter(id => !(location.route === 'chat' && id === activeSession));
     const awayTitle = awayChats.length === 1 ? sessions.find(s => s.id === awayChats[0]) : undefined;
     const workingLine = awayChats.length === 1 && awayTitle ? tr("Working · {0}", [sessionTitle(awayTitle)]) : awayChats.length > 1 ? tr("{0} chats working", [awayChats.length]) : null;
+    const modelLine = modelState.loaded ? workingLine ?? modelQuant : tr(status);
     const menuSession = sessions.find(s => s.id === menuId);
     const q = query.trim().toLowerCase();
     const matching = sessions.filter(s => (!s.archived || q || includeArchived) && (!q || `${sessionTitle(s)} ${s.messages.map(m => m.content).join(' ')}`.toLowerCase().includes(q))).sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || b.updatedAt.localeCompare(a.updatedAt));
@@ -117,7 +119,7 @@ export function Sidebar({ containerRef }: {
         </div> : null}
       </div>
       <div className="nav__foot">
-        <button className="enginechip" data-state={status === 'Ready' ? 'ready' : ['Reading prompt', 'Thinking', 'Generating', 'Loading'].includes(status) ? 'busy' : 'off'} onClick={() => go('models')} title={tr("{0} \u00B7 {1} \u00B7 {2}", [modelName, workingLine ?? modelQuant, tr(status)])} aria-label={tr("{0} \u00B7 {1}", [modelName, modelQuant])}><span className="enginechip__family"><Icon name={modelFamilyIcon(current?.family)} size={20}/><span className="enginechip__dot"/></span><span className="enginechip__text nav__rail-hide"><span className="enginechip__title">{modelName}</span><span className="enginechip__sub">{workingLine ?? modelQuant}</span></span></button>
+        <button className="enginechip" data-state={status === 'Ready' ? 'ready' : modelState.busy ? 'busy' : 'off'} onClick={() => go('models')} title={tr("{0} \u00B7 {1} \u00B7 {2}", [modelName, modelLine, tr(status)])} aria-label={tr("{0} \u00B7 {1}", [modelName, modelLine])}><span className="enginechip__family"><Icon name={modelFamilyIcon(current?.family)} size={20}/><span className="enginechip__dot"/></span><span className="enginechip__text nav__rail-hide"><span className="enginechip__title">{modelName}</span><span className="enginechip__sub">{modelLine}</span></span></button>
         {tr(native?.capabilities?.hakuaChatbot ? <button type="button" className="st-btn nav-hakua" disabled={hakuaOpening || (!current && nativeCurrent?.status !== 'ready')} aria-busy={hakuaOpening} title={tr(hakuaOpening ? 'Preparing memory chat…' : 'Open Hakua memory chat for the loaded model.')} aria-label={tr("Hakua memory chat")} onClick={() => { setHakuaOpening(true); const local=nativeCurrent?.status !== 'ready'; void api.post<{profileKey?: string; profileRoot?: string; runtimeId?: string}>(local?'/api/hakua/access':'/api/native/hakua-chat', { instanceId: nativeCurrent?.id }).then(access => { if(local && access.profileKey && access.runtimeId) setLlamaAccess({profileKey:access.profileKey,profileRoot:access.profileRoot,runtimeId:access.runtimeId}); else if(access.profileKey) setHakuaAccess({profileKey:access.profileKey,profileRoot:access.profileRoot}); else pushToast('info', 'Hakua memory chat', 'Opened the local memory page. Enter your own memory key there; the Host key is not used.'); }, error => pushToast('warn', 'Could not open Hakua chat', error instanceof Error ? error.message : String(error))).finally(()=>setHakuaOpening(false)); }}><Icon name="chat" size={18}/><span className="nav__rail-hide">{tr("Hakua memory")}</span></button> : null)}
         <NavLink route="skills" label={tr("Skills")} icon="skills" current={location.route}/>
         <NavLink route="monitor" label={tr("Monitor")} icon="activity" current={location.route}/>

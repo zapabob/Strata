@@ -46,23 +46,31 @@ export interface StreamEvent {
 
 /** Subscribe to the host event stream. Returns an unsubscribe function. */
 export function onEvent(handler: (e: StreamEvent) => void, onStatus?: (s: 'live' | 'offline') => void) {
-  let source: EventSource;
+  let source: EventSource | undefined;
+  let disposed = false;
   let seenAt = Date.now();
   const names = ['engine', 'monitor', 'models', 'native', 'image-models', 'runtime', 'providers', 'serving', 'download', 'log', 'setup', 'skills', 'task', 'goal', 'timeskip', 'plan', 'queue', 'chats'];
   const connect = () => {
-    source?.close();
+    if (disposed) return;
+    const previous = source;
+    source = undefined;
+    previous?.close();
     seenAt = Date.now();
-    source = new EventSource(`${BASE}/api/events`);
+    const current = source = new EventSource(`${BASE}/api/events`);
+    // close() cannot revoke a callback already queued by the browser.
+    const owns = () => !disposed && source === current;
     for (const name of names) {
-      source.addEventListener(name, ((ev: MessageEvent) => {
+      current.addEventListener(name, ((ev: MessageEvent) => {
+        if (!owns()) return;
         seenAt = Date.now();
         try { handler({ event: name, data: JSON.parse(ev.data) as Record<string, unknown> }); }
         catch { /* Ignore malformed frames without losing valid state. */ }
       }) as EventListener);
     }
-    source.addEventListener('open', () => { seenAt = Date.now(); onStatus?.('live'); });
-    source.addEventListener('error', () => onStatus?.('offline'));
-    source.addEventListener('message', ev => {
+    current.addEventListener('open', () => { if (!owns()) return; seenAt = Date.now(); onStatus?.('live'); });
+    current.addEventListener('error', () => { if (owns()) onStatus?.('offline'); });
+    current.addEventListener('message', ev => {
+      if (!owns()) return;
       seenAt = Date.now();
       try { handler({ event: 'message', data: JSON.parse((ev as MessageEvent).data) as Record<string, unknown> }); }
       catch { /* Ignore malformed frames. */ }
@@ -72,11 +80,11 @@ export function onEvent(handler: (e: StreamEvent) => void, onStatus?: (s: 'live'
   // The host sends monitor frames each second. Some proxies leave a dead SSE
   // socket open, so silence must also invalidate readings and retry the stream.
   const watchdog = setInterval(() => {
-    if (Date.now() - seenAt <= 10000) return;
+    if (disposed || Date.now() - seenAt <= 10000) return;
     onStatus?.('offline');
     connect();
   }, 5000);
-  return () => { clearInterval(watchdog); source.close(); };
+  return () => { disposed = true; clearInterval(watchdog); source?.close(); source = undefined; };
 }
 
 /** POST a JSON body and consume an NDJSON/SSE-ish stream of JSON frames. */

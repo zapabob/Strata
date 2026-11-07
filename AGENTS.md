@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Hakua product version 0.5.2-local.1, engine 0.5.1 (Metal source 0.5.0-metal); unpublished local app/Control candidate (Control 0.5.2), retaining the signed native 0.5.1 component. Public release status remains in docs/HAKUA_RELEASE.md. Integrated upstream Niko1221 0.2.11 plus main fixes at 5d37280d and documentation through 9f7d977d (upstream engine 0.1.57, taken as source; this fork's native engine/Control package is independently versioned). Upstream reference: the public model families are DeepSeekV4.1-Flash-1017,
+Hakua product version 0.5.2-local.2, engine 0.5.2 (Metal source 0.5.0-metal); unpublished personal app/Control candidate (Control 0.5.3). Native r3 is functionally checked but releaseQualified=false because the generic CUDA resource guard still fails. Public release status remains in docs/HAKUA_RELEASE.md. Integrated upstream Niko1221 0.2.11 plus main fixes at 5d37280d and documentation through 9f7d977d (upstream engine 0.1.57, taken as source; this fork's native engine/Control package is independently versioned). Upstream reference: the public model families are DeepSeekV4.1-Flash-1017,
 Qwen3.8-Flash-Next and Qwen3.6-35B-A3B. DeepSeek V4.1-Flash runs in the app and in the Terminal
 (`strata launch --family deepseek41 --model ist-das-2.00bpw`; sets in
 [docs/MODELS.md](docs/MODELS.md#deepseek-v41-flash)). Read **[docs/AI_REFERENCE.md](docs/AI_REFERENCE.md)** for model availability, APIs, hardware limits and

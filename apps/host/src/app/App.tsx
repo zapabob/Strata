@@ -1,6 +1,8 @@
 import { tr } from '../lib/i18n';
 /** App shell: routes, setup takeover, palette, toasts. */
 import { useNative } from '../lib/native';
+import { projectedModelState } from '../lib/native-monitor';
+import { hasReading } from '../lib/monitor-hardware';
 import { Component, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useSurfaceFocus } from '../lib/focus';
 import { closeSettings, useLocation } from '../lib/router';
@@ -77,14 +79,7 @@ function AppShell() {
       <Toasts />
     </div>);
 }
-/**
- * Says when the host is not answering.
- *
- * `connection` has been tracked since the beginning and never rendered, so a
- * dead host looked exactly like an idle one: every panel simply empty, with no
- * statement that anything was wrong. For someone who does not know what a host
- * process is, "nothing works and nothing says why" is the worst possible state.
- */
+/** App bootstrap/live-update connection; independent of the model's lifecycle. */
 function ConnectionBar() {
     const connection = useStore((s) => s.connection);
     const [retrying, setRetrying] = useState(false);
@@ -95,7 +90,7 @@ function ConnectionBar() {
       <span className="connbar__dot"/>
       <span className="connbar__text">
         {tr(offline ? (<>
-            <strong>{tr("Strata isn\u2019t connected to its engine.")}</strong>{tr(" Your conversation and drafts are kept while it reconnects.")}</>) : (<>{tr("Connecting to the local engine\u2026")}</>))}
+            <strong>{tr("Live app updates are interrupted.")}</strong>{tr(" Your conversation and drafts are kept while it reconnects.")}</>) : (<>{tr("Connecting to the app and live updates…")}</>))}
       </span>
       {tr(offline ? (<Btn variant="secondary" size="sm" icon="refresh" disabled={retrying} onClick={() => {
                 setRetrying(true);
@@ -103,7 +98,7 @@ function ConnectionBar() {
             }}>
           {tr(retrying ? 'Retrying…' : 'Retry')}
         </Btn>) : null)}
-      {tr(offline ? <details className="connection-details"><summary>{tr("Connection details")}</summary><p className="xs">{tr("App host: ")}{tr(window.location.origin)}{tr(". Retained readings may be stale. Start the configured engine host, then retry.")}</p></details> : null)}
+      {tr(offline ? <details className="connection-details"><summary>{tr("Connection details")}</summary><p className="xs">{tr("App host: ")}{tr(window.location.origin)}{tr(". Retained readings may be stale. This connection carries app data and live updates.")}</p></details> : null)}
     </div>);
 }
 /**
@@ -118,21 +113,16 @@ function FocusBar() {
     const library = useStore((s) => s.library);
     const monitor = useStore((s) => s.monitor);
     const model = library?.variants.find((v) => v.id === library.loaded) ?? null;
-    const phase = nativeCurrent ? (nativeCurrent.status === 'ready' ? nativeCurrent.phase : nativeCurrent.status) : monitor?.phase ?? 'idle';
-    const state = ['error', 'unavailable'].includes(phase) ? 'idle' : phase === 'generating' || phase === 'reading' || phase === 'thinking' ? 'busy' : model || nativeCurrent ? 'ready' : 'idle';
+    const modelState = projectedModelState(nativeCurrent, monitor, !!model);
+    const state = modelState.busy ? 'busy' : modelState.loaded ? 'ready' : 'idle';
+    const speed = nativeCurrent ? nativeCurrent.metrics?.live?.tok_s : monitor?.outputTps;
     return (<div className="focusbar" data-state={state}>
       <span className="focusbar__dot"/>
       <span className="strong" style={{ color: 'var(--st-ink)' }}>
         {tr(nativeCurrent?.label ?? model?.label ?? 'No model loaded')}
       </span>
-      <span>
-        {tr(phase === 'reading'
-            ? 'reading prompt'
-            : phase === 'generating'
-                ? `generating · ${(nativeCurrent ? nativeCurrent.metrics?.live?.tok_s ?? 0 : monitor?.outputTps ?? 0).toFixed(1)} tok/s`
-                : phase === 'thinking'
-                    ? 'thinking'
-                    : phase === 'error' ? 'engine error' : phase === 'unavailable' ? 'status unavailable' : phase === 'loading' ? 'loading' : model || nativeCurrent ? 'ready' : 'no model loaded')}
+      <span title={tr(modelState.detail)}>
+        {tr(modelState.status)}{modelState.phase === 'generating' && hasReading(speed) ? ` · ${speed.toFixed(1)} tok/s` : null}
       </span>
       <span className="spacer"/>
       {/* Grouped, so each hint reads as one instruction rather than a row of

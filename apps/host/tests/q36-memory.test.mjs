@@ -227,6 +227,22 @@ test('SPEC F2: an empty raw mode cannot hide behind a valid user override',async
   }finally{await f.cleanup();}
 });
 
+test('SPEC F2: args_written reconciliation cannot hide an empty raw memory token',async()=>{
+  const f=await fixture();try{
+    const ready=await readyOtherModel(f),path=join(f.repo,'strata-iq2_xs.json');
+    const cfg={arch:'qwen35moe',parallel:1,args:[...args],
+      args_written:[...args,'--q36-memory','legacy'],user_args:['--q36-memory','']};
+    writeFileSync(path,JSON.stringify(cfg));await f.control.settingsKv('iq2_xs');
+    const before=readFileSync(path,'utf8'),effects=[...f.effects],jobs=f.control.state().jobs.length;
+    await assert.rejects(f.control.saveChecked('iq2_xs',{values:{}}),/memory/);
+    assert.throws(()=>f.control.operation('load',{model:'iq2_xs'}),/memory/);
+    assert.equal(readFileSync(path,'utf8'),before);assert.deepEqual(f.effects,effects);
+    assert.equal(f.control.state().jobs.length,jobs);assert.equal(f.control.state().instances[0].id,ready);
+    await f.control.saveChecked('iq2_xs',{values:{q36_memory:null}});
+    assert.ok(!JSON.stringify(JSON.parse(readFileSync(path))).includes('--q36-memory'));
+  }finally{await f.cleanup();}
+});
+
 test('SPEC F1: cold source calibration checks memory support before launching its program',async()=>{
   const f=nativeFixture({q36CapabilityProbe:async()=>null});try{
     const path=join(f.repo,'strata-iq2_xs.json');

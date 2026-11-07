@@ -120,3 +120,27 @@ did not include the newly used production bounded-memory helper declarations.
 All 24 cases failed to compile at that shared setup. The fixture now includes
 the real header and imports its two helper names, preserving production parsing
 and assertions. This is not a native CUDA compile failure. Rerun pending.
+The corrected merged parser fixture passed all 24 cases on rerun.
+
+Inherited GUI consistency strings produced five English catalog gaps (FP16 hint,
+unavailable serving capabilities, Clear, Refresh hardware and cached topology).
+Added those five entries to each of the nine existing language catalogs. The
+earlier locale assertion failure is retained; fresh verification follows.
+Locale/render checks then passed 16/16. Bounded-memory source SPEC review found
+one final empty-raw-token path hidden by args_written reconciliation. The new
+actual Host regression failed at save admission (27 passed, one failed). Raw
+validation now precedes the no-effective-setting shortcut; explicit clearing
+still removes every representation. The measured personal r3 strata.exe digest
+13fc3b96 is added to mapped-pack admission; this is not full-window qualification.
+
+Final source-freeze regression: 130/130 selected Host/renderer/backend/ownership
+checks passed with all scratch on H:. The selected Python run passed47 and failed
+one fixture at missing STRATA_TEST_NODE_EXE; that same test passed on rerun with
+the private Node24.22.2 path supplied. TypeScript and product-version consistency
+passed. Scope/failures remain explicit in the main checkpoint handoff.
+
+The image's unloaded/working/connection contradictions now have controlled
+production-state regressions, and the user's Qwen3.5 file matches the publisher's
+full digest. The fixed Prism0.4.1 loader passed56 real-DLL fixtures and two actual
+short chat/restart requests at98304 capacity. Final installation is still pending
+the prepared personal build/qualification/upgrade phases.

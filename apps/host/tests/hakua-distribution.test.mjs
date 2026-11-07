@@ -26,7 +26,7 @@ test('installed engine components supply explicit backends and honor a component
   for(const [choice,definition] of Object.entries(LOCAL_BACKENDS)){
    const prefix='local-backends/'+definition.id,dir=join(component,prefix);mkdirSync(dir,{recursive:true});
    const payload=choice+' '+version;writeFileSync(join(dir,exe),payload);
-   const manifest={schema:1,version,backend:definition.id,source:{repository:definition.repository,commit:definition.commit,dirty:false,patches:[]},cacheTypes:['f16'],files:[{path:exe,sha256:hash(payload)}]};
+    const manifest={schema:1,version:'0.4.0',backend:definition.id,source:{repository:definition.repository,commit:definition.versions['0.4.0'].commit,dirty:false,patches:[]},cacheTypes:['f16'],files:[{path:exe,sha256:hash(payload)}]};
    const bytes=JSON.stringify(manifest);writeFileSync(join(dir,'runtime.json'),bytes);
    files.push({path:prefix+'/runtime.json',sha256:hash(bytes)},{path:prefix+'/'+exe,sha256:hash(payload)});
   }
@@ -41,7 +41,7 @@ test('installed engine components supply explicit backends and honor a component
  for(const choice of Object.keys(LOCAL_BACKENDS)){
   const selected=findLocalBackend(choice,options);assert.ok(selected,'The official engine component must supply '+choice);
   assert.equal(selected.path,join(root,'engine',folders[1],'local-backends',LOCAL_BACKENDS[choice].id,exe),'linked and staging payloads are excluded');
-  assert.equal(selected.version,'0.5.0');await verifyLocalBackend(selected,choice);
+   assert.equal(selected.version,'0.4.0');await verifyLocalBackend(selected,choice);
  }
  // Control uses a manifest-digest suffix when a same-version package is replaced.
  const previous=join(root,'engine',folders[1]);

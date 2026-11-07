@@ -54,7 +54,7 @@ const mockClient = {
           },
           post: none, put: none, patch: none, del: none, delete: none,
         };
-        export function onEvent() { return () => {}; }
+        export function onEvent(_handler, onStatus) { queueMicrotask(() => onStatus?.('live')); return () => {}; }
         export async function streamPost() {}`,
     }));
   },

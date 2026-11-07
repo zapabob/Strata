@@ -43,12 +43,14 @@ export function servingSettingsIssues(config, policy, { negotiating = false, mem
   const reject = (field, detail) => issues.push({ field, code: 'unsupported_serving_setting', message: `${field}: ${detail} Clear this setting before loading. ${policy.note}` });
   for (const [field, flags] of Object.entries(SERVING_FLAGS)) {
     const found = options(args, flags), value = config[field];
+    // Reconciliation may remove a deleted override, but cannot make a malformed
+    // raw memory token valid. Only explicit clearing removes all representations.
+    const memoryRequest = field === 'q36_memory' ? q36MemoryRequest(args, value, [config.args, config[USER_KEY]]) : null;
+    if (memoryRequest && !memoryRequest.ok) { reject(field, memoryRequest.error.message); continue; }
     if (!present(value) && !found.length) continue;
     if (policy.id !== 'q36' || field.startsWith('spin8_')) { reject(field, 'not supported by this serving adapter.'); continue; }
     if (field === 'q36_memory') {
-      const request = q36MemoryRequest(args, value, [config.args, config[USER_KEY]]);
-      if (!request.ok) reject(field, request.error.message);
-      else if (request.mode !== 'legacy' && (!negotiating || memoryKnown) && !policy.memoryCapability?.modes.includes(request.mode))
+      if (memoryRequest.mode !== 'legacy' && (!negotiating || memoryKnown) && !policy.memoryCapability?.modes.includes(memoryRequest.mode))
         reject(field, 'bounded-experts-v1 is not verified for this engine binary. Choose legacy or clear it.');
       continue;
     }

@@ -27,3 +27,23 @@ test('GPU histories retain their device scope and never spread one card reading 
  const across=nativeMonitorData({instances:[split],hardware:{gpus:[{index:0},{index:1}]}},two);
  assert.deepEqual(across.history[0].gpuIds,['gpu0','gpu1']);assert.equal(across.history[0].gpus,undefined);assert.deepEqual(across.hardware.gpus.map(gpu=>gpu.utilizationPct),[40,80]);
 });
+
+test('ready service with an unloaded model is idle, retains history and sensors',()=>{
+ const data=nativeMonitorData({instances:[{...instance,status:'ready',phase:'unloaded'}]},inventory);
+ assert.equal(data.phase,'idle');assert.equal(data.phaseLabel,'No model loaded');
+ assert.equal(data.requests.length,1);assert.equal(data.history.length,3);assert.equal(data.hardware.ramUsedGb,16);
+});
+test('sensor-only native metrics never mark absent throughput measured',()=>{
+ const data=nativeMonitorData({instances:[{...instance,status:'ready',phase:'unloaded',metrics:{hardware:instance.metrics.hardware,live:{tok_s:0},requests:[]}}]},inventory);
+ assert.equal(data.telemetry.throughput,'unavailable');assert.equal(data.hardware.cpuLoad,30);
+});
+test('unknown and unavailable phases stay unknown rather than fabricated engine errors',()=>{
+ for(const phase of ['unavailable','future-phase']){
+  const data=nativeMonitorData({instances:[{...instance,status:'ready',phase}]},inventory);
+  assert.equal(data.phase,'idle');assert.equal(data.phaseLabel,'Status unavailable');
+ }
+});
+test('actual instance failures survive projection even when its old phase was idle',()=>{
+ const data=nativeMonitorData({instances:[{...instance,status:'error',phase:'idle',error:'Fictional load failed'}]},inventory);
+ assert.equal(data.phase,'error');assert.equal(data.phaseLabel,'Fictional load failed');
+});
