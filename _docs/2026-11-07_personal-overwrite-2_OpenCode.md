@@ -1,6 +1,7 @@
 # Personal overwrite 2 — preparation only
 
-Date: 2026-11-07. Owner: OpenCode. Status: EXECUTING authorized personal overwrite.
+Date: 2026-11-07; completed in the 2026-11-08/09 execution window. Owner: OpenCode.
+Status: LOCAL_INSTALL_SUCCESS. Parent publication/remaining Spin8 goal is separate.
 
 ## Requirements and ownership
 
@@ -485,3 +486,218 @@ choice and asserts retained bounded mode and no generated reserve leakage.
 Focused Q36/admission/reference route checks: 44/44 PASS; TypeScript PASS.
 Previous GUI failures and both previous installers remain preserved; another
 fresh source-bound Control/app build and real GUI run are required.
+
+## Final actual installation — SUCCESS
+
+### Exact delivered identities
+
+The final application/Control compiled source is
+**`52048324c235e15ad34b95ec84a80dbad7e2c492`**, including the actual-GUI findings
+fixed in `4e63f338` and `52048324`. Native source and native executable remain the
+qualified r3 input from `4a171bde`; neither native source nor CUDA binaries were
+rebuilt by the application fixes. Exact independent source binding still passes.
+The initial reviewed `7cacaf59` installer and the intermediate `4e63f338` installer
+are preserved under `candidate-before-fp32-fix` and `candidate-before-chat-fix`.
+They are not the installed artifact. This final log/handoff is evidence-only and
+must not be described as the compiled source of those binaries.
+
+Final installer:
+`H:/Strata/releases/personal-052-local2-20261107/app/Strata-0.5.2-local.2-windows-x64-setup.exe`.
+Size: **112,090,046 bytes**. SHA-256:
+**`be423e6955943f5f5689160a20e9e9a897e1b22b5eff38e13fa7d01179dad9cd`**.
+Installed NSIS-patched shell SHA-256:
+`334d65b625ded3810a8d0da0d50f0bbb0f13f631cb57160145b2b52e2365acb4`.
+The original unbundled shell remains frozen outside the shared Cargo cache.
+
+Installed versions, verified both from normal Host/Control and the real files:
+app/shell/Host **0.5.2-local.2**, Control **0.5.3**, native **0.5.2**, PrismML
+**0.4.1**; Node 24.22.2, standalone Python 3.12.15 and Hakua-memory 0.3.5 are the
+same locked private runtimes. Generic TurboQuant remains 0.4.0.
+
+Signed native composite manifest SHA-256:
+`9ec246e323d956049be5de0d64df45a789cc057f0127280bc2ac8860c7e3e455`.
+Signature verified against built-in trusted key ID **1daf8588d50b1049**. Archive:
+`app/engine-archive-r4/strata-engine-0.5.2-windows-x86_64-cuda-cuda13.zip`;
+archive SHA-256 `4fa1e6f5731589cf3839de6172b4b262d6104e88bcbed745b847d99560fedd61`.
+All **141 installed component files** match the signed copy. The original signed
+0.5.1 fallback's **139 files** remain exactly equal to the pre-install snapshot,
+including its original Prism 0.4.0 rollback bytes. Nothing was published.
+
+Native executable SHA-256 remains
+`13fc3b96fe71afcb98990d828d2c743f85e8b59b16174a1f7da3eb4ef9b4f8e3`.
+Prism manifest SHA-256 remains
+`9c729c73eb050dc466203fe149a27acd5be48763a33ea2c5d2b89f78e4ddcbaa`;
+Prism executable is the exact reviewed 1965755c build. Signature/integrity does
+not turn the four known native resource findings into a release pass.
+
+### Fresh verification and measured gates
+
+| Requirement | Actual final result | Primary receipt under `app/` |
+| --- | --- | --- |
+| Source-bound fresh Control/app | PASS, compiled source 52048324 | `control-build.json`, `app-build.json` |
+| Exact installer/source/resources | PASS, **29,476 files** | `app-qualification.json`, `qualified-payload.json` |
+| Real production self-tests | **13/13 PASS** | `selftest-profile/selftest.json` |
+| Real Q36 packaged WebView2 | **8 acceptance groups PASS**, actual native, no mocks, page exceptions=0 | `functional-e2e.json`, `functional-e2e-r14.json` |
+| Real reported-GGUF Prism GUI | **2 complete cycles PASS**, answers 5 and 56, page exceptions=0 | `prism-e2e.json`, `prism-e2e-r5.json` |
+| Private user backup | PASS, **926 files / 4,400,671 bytes** | `backup.json` |
+| One explicit C: NSIS | **exit 0** | `nsis-result.json` |
+| Pre-first-launch equality | **29,476 payload files**, **926 user files unchanged** | `installed-payload.json` |
+| C: registration/shortcuts | PASS, actual uninstall destination + both shortcuts | `installed-payload.json` |
+| Signed native activation | PASS, full real model/generation test start enabled | `native-activated.json`, `activation-r4-result.json` |
+| Normal initial startup | PASS, manual/unloaded, prior settings retained | `normal-startup.json` |
+| Target-only Prism saved profile | PASS, unrelated profile/defaults/library retained | `normal-target-prism-r2.json` |
+| Target profile process restart | PASS, full profile store equal after restart | `normal-target-profile-restart-qualified.json` |
+| Final normal user handoff | PASS, app left open, debugging off, manual/unloaded | `user-handoff-final.json`, `final-sanity.json` |
+
+Q36's real GUI exercised the actual r3 capability-backed NativeSettings choice,
+durable settings save/reselection, process restart, GUI load, live child-bound
+INFO, invalid-choice refusal before any unload/new job, nonempty GUI chat,
+GUI unload/reload and a new real child. Observed settings were context 4096,
+prefill 512, expert slots 5, F32 K/V, MTP 2, private-cache protocol 2 with shared
+prompt/conversation caches disabled, and bounded CPU/H2D/I/O receipt bytes. It
+did not claim a total-process memory bound. GGUF/pack size/mtime remained intact.
+
+Both Japanese recovery notices and numeric speed were rendered in actual
+packaged WebView2 using synthetic sessions, asserted without template slots and
+visually inspected from `e2e-profile/screenshots/japanese-recovery-{0,1}.png`.
+These screenshots remain outside Git. No normal-profile screenshot or private
+conversation body was recorded.
+
+Prism GUI tested the exact full-hash reported GGUF, explicit PrismML despite the
+retained old Automatic override, saved profile persistence, actual owned process
+and executable hash, effective 98,304 capacity, log-observed Q8 K/V and flash
+attention, GUI arithmetic 5/56, GUI unload and restart. These are two short
+inputs at that capacity, **not a 98K input/full-window quality qualification**.
+
+Final focused source verification after the product fixes: **44/44 PASS** across
+Q36 memory/contracts and explicit-reference route tests, plus TypeScript PASS.
+The first added FP32 regression initially used a legacy/no-KV-capability fixture,
+which correctly drops unknown cache flags; it failed its explicit-flag assertion.
+The fixture was corrected to carry the real digest-bound r3 KV capability before
+the passing run. No legacy capability restriction was removed.
+
+### Backup, overwrite and activation detail
+
+Private backup (protected owner-only directory):
+`H:/Strata/private-backups/personal-052-local2-20261107`.
+Preflight SHA-256:
+`b0615cde24599e71b26ca0b96890ea4eeb057f4422c2bf309ae4b6f74a3782ba`.
+It covers host data/chats, Roaming/Strata, Local settings/component selection,
+tuning/launch and discovered model run-config JSON. No weights were copied or
+deleted. Every old fallback file and all 926 user files matched before first
+launch. There was only **one** final NSIS invocation, with exact arguments `/S`
+and `/D=C:\Users\downl\AppData\Local\Programs\Strata`.
+
+The first offline component install was safely refused at the full test start:
+automatic discovery selected a previous native config with unsupported
+`--vram-reserve-mib 1536`. The failed component did not replace 0.5.1. Its logs are
+retained. Retry r2 used the actually GUI-qualified config, but removing its API
+key left the optional desktop Hakua principal configuration invalid. Retry r3
+kept the private key but still had desktop-only principal bindings unsuitable
+for the update sandbox. No user config was edited to hide either failure.
+
+Retry r4 used the existing `--model-config` option with a protected probe-only
+copy of the actual qualified native config, keeping its native capability/digest,
+bounded args, private-cache settings and authentication, while omitting only the
+optional desktop `hakua_harness` principal block. Control still unpacked and
+verified the signature/every file, checked hardware fit, loaded the real Q36
+model, required a generation-ready response, stopped its sandbox, and only then
+switched to the new component. This **did not disable the model test, native
+guards or signatures** and does not claim desktop memory-principal E2E coverage.
+All failed test starts and protected config copies remain under the private
+backup's `activation-r2/r3/r4` directories and `app/receipts`.
+
+No cleanup of old C: build/control staging or old test profiles was needed: C:
+space recovered externally. The authorized legacy source trees remain intact.
+All new scratch/temp/build/GUI profiles stayed on H:. The unchanged resource
+floors passed every successful owned Job phase. No global environment, pagefile,
+registry entry for another app or unrelated worktree was modified.
+
+### Normal-user target selection and final open app
+
+The actual normal Host's current model was **not** the reported GGUF. The two
+same-filename historical references therefore were not bulk-migrated. Exactly
+one existing reference matched the current on-disk path and full known SHA-256;
+that target was selected by content identity for its own saved profile. The
+different previous current model and both library records were preserved.
+
+A fresh protected state/library snapshot and the actual WebView's entire
+`strata.run-profiles.v1` were captured under the backup's `target-selection`.
+Using the normal target Models/Saved settings UI, one new target-only profile
+was created with **only `runtime.backend=PrismML` changed from its original
+config**, plus the target-specific default association. The existing unrelated
+profile and unrelated default mappings stayed identical; profile count changed
+from 1 to 2. The normal user's context/precision settings were not replaced by
+the isolated 96K/Q8 E2E settings. Because the target was not the current model,
+no global `/api/engine` runtime patch was applied to the different current model.
+
+An immediate forced-close QA attempt failed persistence on restart; its receipt
+remains. The retry waited for storage persistence and used a normal window close.
+A fresh process then verified the complete saved profile store equal to the
+expected post-save snapshot, including the Prism choice and previous current
+model. The final app was launched normally again, without remote-debug arguments.
+Actual User/Machine/driver Automatic environment remained equal to its snapshot;
+the final Node Host also retained the old Automatic executable override. No
+generic-gguf active pointer or unrelated profile was rewritten.
+
+Final independent sanity receipt verified installer/shell hashes, all 141 new
+component files, built-in-key signature, all 139 old fallback files, actual Host/
+Control/native versions, target-profile restart evidence, idle/unloaded state,
+absence of remote-debug flags and exact Automatic environment retention.
+Final open app PID at observation: **26844**. The user-facing process is
+intentional; no compiler, native/llama model or owned QA worker was left running.
+
+### Retained QA failures and execution recipe scope
+
+All failed GUI attempts keep unique `functional-e2e-rN.json` /
+`prism-e2e-rN.json` and owned guard receipts; only the passing attempts create
+the acceptance receipt. The external hash-recorded adapters corrected actual
+role/navigation differences (Expert mode, native version button/menu radio,
+unique retry preset names, GUI unload control), local-client/Origin headers,
+formatted runtime version, and enabled the runtime's supported log-verbosity
+environment for observing allocation. They did not stub routes/components,
+capabilities, inference or binaries.
+
+The prepared shell ancestry check was replaced by a stricter architecture-correct
+Control owner lifetime/creation-token check. A synthetic Host-home environment
+bootstrap was needed because setting USERPROFILE on the shell prevents WebView2
+CDP from opening on this PC, but leaving Node's real home allowed the existing
+user SOUL directive to enlarge a supposedly isolated test prompt to 3,362 tokens.
+That attempt timed out and was not qualified. The bootstrap changes **only the
+test Node process environment** to the synthetic home; shell Windows identity is
+retained for WebView2, and no modules/functions/network/model are replaced. The
+normal user's files or SOUL were not edited or logged. Passing isolated runs use
+the real app's default short prompt, unique synthetic chat IDs and complete
+session hydration before sending. Q36 r14 and Prism r5 then passed.
+
+Execution-only recipes and their hashes remain in
+`app/execution-20261108`. Frozen app and native source checks remain in force;
+application changes required real rebuilds and requalification, rather than
+patching installed files. The earlier installers are retained under unique
+candidate preservation directories with relocation records.
+
+### Residual limits and parent handoff
+
+This unit is **local-install successful**, not a public release. The four
+pre-existing generic native CUDA resource violations remain explicitly recorded;
+`releaseQualified=false` throughout. No new native performance, total-process
+memory bound, full-window input, general model quality or real-file explicit-MTP
+negative qualification is claimed. The broader Spin8 A–H/publication goal remains
+with the parent. Installer is still Windows code-unsigned; component signatures
+are integrity signatures, not Windows executable signing.
+
+The final product-fix commits `4e63f338` and `52048324` are local descendants of the
+already pushed `7cacaf59`. The latest steering assigns final push/handoff and
+used-worktree cleanup to the parent, so this execution did not push these later
+commits or delete any worktree. The final evidence-only commit should be pushed
+with them by the parent. The app must remain open for the user; do not rerun QA
+or stop a newly active user conversation during parent cleanup.
+
+Self-review-event: ticket_completed, qa_defect, local_fix. Kept every failed
+gate/timeout and distinct pre/post-fix artifact. Product repairs were the narrow
+FP32 runtime projection, missing crypto import and generated-reserve persistence;
+source tests, actual rebuilds, package tests and real GUI flows validated them.
+Rejected: declaring helper-only success, suppressing failed test starts, skipping
+generation verification, lowering floors, using fake API/model data, modifying
+normal weights or broad profiles, claiming the old binary contained new fixes,
+or calling this a completed public release. No PC-wide governance was altered.
