@@ -3,6 +3,39 @@
 Local installation is successful. App is open normally, unloaded, with remote
 debugging disabled. Do not stop an active user conversation during cleanup.
 
+## Final parent delivery — 2026-11-08
+
+The parent independently reread `final-sanity.json`, checked the installed shell
+ProductVersion, C: uninstall registration, running executable and the final
+installer SHA-256. All matched the values below. Main's product-fix/evidence
+commits were pushed through `07000776d094e894e0375e406d6d0cc227ad3005`;
+`git ls-remote origin refs/heads/main` matched exactly. The subsequent cleanup
+documentation/helper commit does not alter the compiled source `52048324`.
+
+Five integrated worktrees were removed using ordinary `git worktree remove`
+without force: GUI consistency, native32GB16GB, hybrid integration, Spin8 CUDA
+and the Spin8 baseline. Their exact HEADs were checked as ancestors of pushed
+main and their nonignored working trees were clean. Before removal, all130 files
+(43,564,295 bytes) in the native worktree's ignored evidence directory were copied
+and SHA-256 verified at:
+
+`H:/Strata/private-backups/retired-worktrees-20261108/native-32gb16gb-evidence`
+
+The protected backup includes `evidence-inventory.json` and `cleanup.json`.
+Branches and the external qualification/build outputs remain. Active main, the
+original C: checkout, frozen upstream/resource donor and historical CUDA-KV
+evidence worktree remain intentionally available. External CMake caches that name
+removed source worktrees need reconfiguration before a future rebuild.
+
+Reproduction: `_docs/cleanup-integrated-worktrees-20261108.py` was first run in
+plan mode, then with `--execute`. Both checked remote ancestry and process use;
+execution reported all five paths absent. The user's running installed app was
+not stopped by cleanup. No personal model, profile or installed file was deleted.
+
+The earlier "Parent next actions" section is the installation-worker handoff;
+its push and used-worktree cleanup items are now complete. The broader runtime/
+Spin8/public-release limitations remain open as stated there.
+
 ## Delivered source and artifact
 
 - Compiled app/Control source: `52048324c235e15ad34b95ec84a80dbad7e2c492`.

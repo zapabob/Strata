@@ -2,6 +2,12 @@
 
 Updated: 2026-11-07. Owner: OpenCode. Full product/release goal remains open.
 
+**Superseded for current installation/push/cleanup status:** read
+`_docs/2026-11-08_personal-local2-installed-handoff_OpenCode.md` first. Local.2 is
+installed, final source/evidence are pushed, and five integrated worktrees were
+removed after evidence preservation. The following sections retain the earlier
+source-checkpoint history, not the current installation status.
+
 ## Current request
 
 The user requested all current work on main, commit/push, a personal build and
