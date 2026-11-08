@@ -63,8 +63,8 @@ test('bounded launch freezes memory expectations; explicit legacy has no new fla
     assert.equal(prepareQ36Launch({args,requested:{memoryMode:'bounded-experts-v1'},memoryCapability:{...memory,binarySha256:sha},binarySha256:sha,...patch}).ok,false,JSON.stringify(patch));
 });
 
-async function fixture(capability=true){
-  let f;f=nativeFixture({packaged:true,q36CapabilityProbe:async exe=>({kvCapability:null,memoryCapability:capability===true?{...memory,binarySha256:q36FileSha256(join(f.repo,'strata.exe'))}:typeof capability==='function'?await capability(exe):capability})});
+async function fixture(capability=true,kvCapability=null){
+  let f;f=nativeFixture({packaged:true,q36CapabilityProbe:async exe=>({kvCapability:kvCapability?{...kvCapability,binarySha256:q36FileSha256(join(f.repo,'strata.exe'))}:null,memoryCapability:capability===true?{...memory,binarySha256:q36FileSha256(join(f.repo,'strata.exe'))}:typeof capability==='function'?await capability(exe):capability})});
   f.catalog.families[0].family='qwen36';
   writeFileSync(join(f.repo,'strata.exe'),'inert memory capability fixture');
   writeFileSync(join(f.repo,'strata-iq2_xs.json'),JSON.stringify({parallel:1,args}));
@@ -83,6 +83,22 @@ test('real PATCH service and buildConfig preserve canonical adapter and explicit
     assert.equal(run.q36_run.backend.memoryCapability.binarySha256,q36FileSha256(join(f.repo,'strata.exe')));
     assert.equal(run.q36_run.observed.status,'unobserved');
     assert.equal(JSON.parse(readFileSync(join(f.repo,'strata-iq2_xs.json'))).arch,undefined);
+  }finally{await f.cleanup();}
+});
+
+test('saved Q36 FP32 settings project to native argv without invalid generic Control scalars',async()=>{
+  const f=await fixture(true,{schema:1,family:'qwen35moe',layoutVersion:1,scaleSchema:'none',cacheTypesK:['f32','f16'],cacheTypesV:['f32','f16'],flags:['--cache-type-k','--cache-type-v'],quality:'experimental-unqualified'});try{
+    writeFileSync(join(f.repo,'strata-iq2_xs.json'),JSON.stringify({parallel:1,args:[...args,'--cache-type-k','f32','--cache-type-v','f32']}));
+    await f.control.saveChecked('iq2_xs',{values:{q36_memory:'bounded-experts-v1',cache_type_k:'f32',cache_type_v:'f32'}});
+    const saved=JSON.parse(readFileSync(join(f.repo,'strata-iq2_xs.json')));
+    assert.equal(saved.cache_type_k,'f32');assert.equal(saved.cache_type_v,'f32');
+    const done=await finishJob(f.control,f.control.operation('load',{model:'iq2_xs'}).id);assert.equal(done.state,'done',done.error);
+    const run=JSON.parse(readFileSync(f.launchConfigs.at(-1)));
+    assert.equal(Object.hasOwn(run,'cache_type_k'),false);assert.equal(Object.hasOwn(run,'cache_type_v'),false);
+    assert.equal(run.args[run.args.indexOf('--cache-type-k')+1],'f32');
+    assert.equal(run.args[run.args.indexOf('--cache-type-v')+1],'f32');
+    assert.equal(run.q36_run.requested.kv_k,'f32');assert.equal(run.q36_run.requested.kv_v,'f32');
+    assert.equal(run.q36_run.backend.memoryCapability.binarySha256,q36FileSha256(join(f.repo,'strata.exe')));
   }finally{await f.cleanup();}
 });
 for(const kind of ['unknown','wronghash','wrongfamily','missing-store','missing-slots','zero-slots','malformed'])test(`bounded ${kind} fails before persistence/replacement and known job creation`,async()=>{

@@ -440,3 +440,28 @@ backup, overwrite and activation. Runtime-source/native guards and resource
 floors remain unchanged. The next scoped commit will contain only this execution
 log and the owned cancellation/cache environment helpers; application code stays
 identical to reviewed 3425966c. Its actual commit is the new build provenance.
+
+## 2026-11-08 actual packaged GUI boundary finding
+
+Parent completed exact payload/self-test qualification from `7cacaf59`: 29,476
+files, 13/13 steps passed, shell hash d38fa549... . The real Q36 model moved to
+`H:/Strata/models/qwen36-UD-Q4_K_XL`; full GGUF hash still matches 55983c5a... .
+An interrupted partial fixture and all failed GUI attempts are preserved on H:.
+Actual WebView2 confirmed the native memory selector and saved settings across
+reselection and process restart. Prepared navigation assumptions were corrected
+only in hash-recorded external QA adapters.
+
+GUI load then exposed a real runtime boundary: after the actual settings save,
+native cache_type_k/v=f32 scalars survive into the runtime config, while Control's
+generic override validator deliberately excludes f32. The engine never starts.
+An isolated fixture-only scalar removal did not fix the actual UI round trip;
+the save writes them back. This is a product defect, not a waived QA check.
+
+The minimal native-control projection now removes only duplicate f32 generic
+scalars after successful Q36 admission, retaining exact --cache-type-k/v f32 argv,
+requested/planned contract, capability/digest and saved source settings. Generic
+Control types, source validation and native capability guards remain unchanged.
+A service-level regression saves the actual scalar choices and verifies source
+retention, projected scalar omission, argv and contract. Fresh source commit,
+Control/app rebuild and package/GUI checks are required; the previous installer
+is retained as a failed-to-qualify candidate, not installed.

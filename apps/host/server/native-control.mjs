@@ -593,6 +593,10 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
    const prepared=prepareQ36Launch({args:cfg.args??[],userArgs:cfg[USER_KEY]??[],privacyRequired,binarySha256:typeof trusted.binarySha256==='string'?trusted.binarySha256:null,kvCapability:trusted.kvCapability??null,memoryCapability:trusted.memoryCapability??null,requested:{memoryMode:cfg.q36_memory,cacheTypeK:cfg.cache_type_k,cacheTypeV:cfg.cache_type_v,spin8Mode:cfg.spin8_mode,context:cfg.max_context??undefined,mtp:cfg.mtp===false?0:undefined,parallel:cfg.parallel??undefined}});
    if(!prepared.ok)throw Object.assign(new Error(prepared.error.message),{code:prepared.error.code});
    cfg.args=prepared.argv;q36Note=prepared.note;cfg.q36_run=prepared.contract;
+   // Control's generic serving overrides do not include native Q36 FP32.
+   // The admitted argv and Q36 contract already carry the verified F32 choice;
+   // omit only its duplicate generic scalar from this runtime projection.
+   for(const key of ['cache_type_k','cache_type_v'])if(cfg[key]==='f32')delete cfg[key];
    if(prepared.contract.requested.q36_memory==='legacy'&&Array.isArray(cfg[USER_KEY]))cfg[USER_KEY]=setUserFlag(cfg[USER_KEY],'--q36-memory',null);
   }else if(privacyRequired)privateMemoryArgs(cfg);
   return {cfg,resources,visionPreferences,parallelChoice,parallelNote,dsNote,q36Note};
