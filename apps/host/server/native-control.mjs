@@ -597,6 +597,13 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
    // The admitted argv and Q36 contract already carry the verified F32 choice;
    // omit only its duplicate generic scalar from this runtime projection.
    for(const key of ['cache_type_k','cache_type_v'])if(cfg[key]==='f32')delete cfg[key];
+   // A generated Qwen3.8 reserve is not an explicit Q36 user request. Do not
+   // persist it and then reinterpret it as user-owned on the next Q36 load.
+   // Explicit reserves still take the existing refuse-before-start path above.
+   if(resources&&asked===null){
+    delete resources.vram_reserve_mib;
+    if(Array.isArray(resources.args))resources.args=resources.args.filter((value,index,list)=>value!=='--vram-reserve-mib'&&list[index-1]!=='--vram-reserve-mib');
+   }
    if(prepared.contract.requested.q36_memory==='legacy'&&Array.isArray(cfg[USER_KEY]))cfg[USER_KEY]=setUserFlag(cfg[USER_KEY],'--q36-memory',null);
   }else if(privacyRequired)privateMemoryArgs(cfg);
   return {cfg,resources,visionPreferences,parallelChoice,parallelNote,dsNote,q36Note};

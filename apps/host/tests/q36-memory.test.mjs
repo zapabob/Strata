@@ -101,6 +101,23 @@ test('saved Q36 FP32 settings project to native argv without invalid generic Con
     assert.equal(run.q36_run.backend.memoryCapability.binarySha256,q36FileSha256(join(f.repo,'strata.exe')));
   }finally{await f.cleanup();}
 });
+
+test('generated resource reserve cannot become an unsupported explicit Q36 flag on reload',async()=>{
+  const f=await fixture();try{
+    await f.control.saveChecked('iq2_xs',{values:{q36_memory:'bounded-experts-v1'}});
+    for(let cycle=0;cycle<2;cycle++){
+      const done=await finishJob(f.control,f.control.operation('load',{model:'iq2_xs',resourceProfile:'performance'}).id);
+      assert.equal(done.state,'done',done.error);
+      const saved=JSON.parse(readFileSync(join(f.repo,'strata-iq2_xs.json')));
+      assert.equal(saved.vram_reserve_mib,undefined);
+      assert.equal(saved.args.includes('--vram-reserve-mib'),false);
+      assert.equal(saved.ui_resource_profile,'performance');
+      const run=JSON.parse(readFileSync(f.launchConfigs.at(-1)));
+      assert.equal(run.q36_run.effective.q36_memory,'bounded-experts-v1');
+      for(const instance of f.control.state().instances)await f.control.unload(instance.id);
+    }
+  }finally{await f.cleanup();}
+});
 for(const kind of ['unknown','wronghash','wrongfamily','missing-store','missing-slots','zero-slots','malformed'])test(`bounded ${kind} fails before persistence/replacement and known job creation`,async()=>{
   const f=await fixture(kind==='unknown'?null:kind==='wronghash'?{...memory,binarySha256:'ab'.repeat(32)}:true);try{
     const path=join(f.repo,'strata-iq2_xs.json');

@@ -32,6 +32,7 @@ import { agentSkipReason, mergeAgentLocalInstances, supervisorIsReady, superviso
  * live metrics and the local inference API. No runtime dependencies.
  */
 import http from 'node:http';
+import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
 import { statfsSync, cpSync, createReadStream, createWriteStream, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { pipeline } from 'node:stream/promises';

@@ -465,3 +465,23 @@ A service-level regression saves the actual scalar choices and verifies source
 retention, projected scalar omission, argv and contract. Fresh source commit,
 Control/app rebuild and package/GUI checks are required; the previous installer
 is retained as a failed-to-qualify candidate, not installed.
+
+The corrected FP32 source at `4e63f338` rebuilt and passed payload/self-tests.
+Actual native GUI admission reached READY with exact context/prefill/KV/MTP and
+bounded INFO. The initial ownership probe assumed direct shell ancestry, contrary
+to native-control's documented Control-owner model. The execution probe now checks
+the actual engine digest/argv, owner ancestor's --die-with-pid and creation token
+against the packaged Node child of the isolated shell; no unrelated process is
+adopted. Native invalid-choice refusal also passed before replacement/job creation.
+
+Actual chat then failed with `createHash is not defined`: index.mjs used it for
+the native private session without importing node:crypto. Added the missing
+import. A repeated start could also persist a generated generic-Qwen VRAM reserve
+and reinterpret it as an explicit unsupported Q36 setting. Generated reserves are
+now omitted from the Q36 persisted resource projection only when no explicit user
+reserve was requested; explicit unsupported choices still refuse before start.
+The service regression performs two full load/unload cycles with the resource
+choice and asserts retained bounded mode and no generated reserve leakage.
+Focused Q36/admission/reference route checks: 44/44 PASS; TypeScript PASS.
+Previous GUI failures and both previous installers remain preserved; another
+fresh source-bound Control/app build and real GUI run are required.
