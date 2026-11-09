@@ -1,9 +1,9 @@
 # Strata · Hakua
 
-Installed personal baseline: `Strata-0.5.3-local.1-windows-x64-setup.exe`; short-model
-and workspace WebView2 checks passed. Resource qualification remains failed.
-New private source candidate: `Strata-0.5.4-local.1-windows-x64-setup.exe`, official
-v0.2.13/f33c8c30; build/installation pending. [Current record](docs/UPSTREAM_0213.md).
+Installed personal build: `Strata-0.5.4-local.1-windows-x64-setup.exe`, official
+v0.2.13/f33c8c30. Build, overwrite and short-model/workspace WebView2 checks passed.
+Twelve CUDA resource violations remain; releaseQualified=false. Prism passed on
+rerun after one restart warm-up timeout. [Current record](docs/UPSTREAM_0213.md).
 
 **Vorheriger Quellcode-Stand:** Upstream `v0.2.12` / `146df3c4`; die zugehörigen Ergebnisse bleiben getrennt.
 Das zuvor geprüfte persönliche Setup heißt `Strata-0.5.2-local.2-windows-x64-setup.exe`.

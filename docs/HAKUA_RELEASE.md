@@ -1,14 +1,20 @@
 # Hakua Windows release qualification
 
-## Source integration candidate — official 0.2.13
+## Installed personal build — official 0.2.13 integration
 
 The source worktree contains upstream `f33c8c30` / `v0.2.13` with the fork's
-API adaptations. Candidate versions: product0.5.4-local.1, Control0.5.5,
-native0.5.4. See [the integration record](UPSTREAM_0213.md). New native builds,
-hardware qualification and a new installer remain pending. The installed
-0.5.3-local.1 passed its own short-model and workspace checks; its twelve CUDA
-resource violations and releaseQualified=false remain. Earlier local.2 results
-also retain their original source/artifact identities. Public stable remains0.5.1.
+API adaptations. Personal versions: product0.5.4-local.1, Control0.5.5,
+native0.5.4. App/Control source85a78234 and native source7bb24974 have separately
+bound artifacts. Five-job builds, protected bounded/legacy/restart short native
+requests, CPU/GPU/sanitizer checks, signed component test-start, backed-up
+overwrite and actual installed WebView2 Q36/Prism/workspace checks passed.
+Prism passed on rerun after one retained restart warm-up timeout. The installed
+payload matched29544 files and preserved4028 backed-up user files. Normal startup
+is open without debugging, unloaded, with settings retained.
+The fresh native resource guard still measured12 violations; releaseQualified=false.
+Full-window generation and general/low-precision quality remain unqualified.
+See [the integration record](UPSTREAM_0213.md). Earlier0.5.3 and local.2 results
+retain their original source/artifact identities. Public stable remains0.5.1.
 
 ## Windows release: 0.5.1
 

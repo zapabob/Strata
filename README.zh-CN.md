@@ -1,7 +1,7 @@
 # Strata · Hakua
 
-已安装个人版 `Strata-0.5.3-local.1-windows-x64-setup.exe` 的短请求与工作区 WebView2 检查已通过，资源认定仍未通过。
-新的私有源码候选计划使用 `Strata-0.5.4-local.1-windows-x64-setup.exe`，集成官方 v0.2.13/f33c8c30；编译、安装与新实机验证尚未完成。[当前记录](docs/UPSTREAM_0213.md)。
+已安装个人版 `Strata-0.5.4-local.1-windows-x64-setup.exe`，集成官方 v0.2.13/f33c8c30。编译、覆盖安装、短请求与工作区 WebView2 检查已通过。
+仍有12项实测 CUDA 资源违规，releaseQualified=false。Prism重启时出现过一次预热超时，同配置重新验证已通过。[当前记录](docs/UPSTREAM_0213.md)。
 
 **之前的源码集成：** 官方 `v0.2.12`／main `146df3c4` 的[集成记录](docs/UPSTREAM_0212.md)保持独立。
 已测试的个人安装包 `Strata-0.5.2-local.2-windows-x64-setup.exe` 早于此次源码合并。

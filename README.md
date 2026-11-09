@@ -1,16 +1,17 @@
 # Hakua / Strata
 
-Installed personal build: `0.5.3-local.1` (Control `0.5.4`, native `0.5.3`),
+Installed personal build: `0.5.4-local.1` (Control `0.5.5`, native `0.5.4`),
 including opt-in refusal-direction GUI controls for compatible Qwen3.8 engines.
-Installer name: `Strata-0.5.3-local.1-windows-x64-setup.exe`. Build/overwrite and
+Installer name: `Strata-0.5.4-local.1-windows-x64-setup.exe`. Build/overwrite and
 actual installed WebView2 checks passed for its short Qwen3.6/Prism and workspace paths;
-this is not a public download. CUDA resource qualification remains failed.
+this is not a public download. Twelve measured CUDA resource violations remain;
+`releaseQualified=false`. Prism passed on rerun after one restart warm-up timeout.
 
-**Source integration candidate:** official `v0.2.13` / main at `f33c8c30`,
-with Hakua and the fork's runtime/state contracts retained. Candidate versions:
-product `0.5.4-local.1`, Control `0.5.5`, native `0.5.4`. Native builds and
-hardware qualification for the new source are pending. See [the integration record](docs/UPSTREAM_0213.md).
-Planned private installer: `Strata-0.5.4-local.1-windows-x64-setup.exe`.
+**Source integration:** official `v0.2.13` / main at `f33c8c30`, with Hakua and
+the fork's runtime/state contracts retained. App/Control source `85a78234` and
+native source `7bb24974` have separate artifact-bound checks. The app is open
+normally without debugging and starts with models unloaded. See
+[the integration record](docs/UPSTREAM_0213.md) for evidence and limits.
 
 The installed personal `0.5.2-local.2` build
 (`Strata-0.5.2-local.2-windows-x64-setup.exe`, Control `0.5.3`, native `0.5.2`,

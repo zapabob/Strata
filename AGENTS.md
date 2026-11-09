@@ -10,11 +10,11 @@ For subsequent local candidate builds, request five compiler jobs (`CARGO_BUILD_
 Keep existing resource floors and frozen evidence intact. The completed native
 0.5.3 build used four jobs; record that result with its actual parallelism.
 
-The current local candidate also adds on-demand sidebar workspace file CRUD.
-Its fresh app output is `H:/Strata/releases/local-053-20261109-opencode/app-files`;
-the earlier `app` output and its failed/passing evidence remain preserved.
+The installed local build retains on-demand sidebar workspace file CRUD.
+Its fresh app output is `H:/Strata/releases/upstream-0213-20261109-opencode/app-native054`;
+earlier 0.5.3 outputs and all failed/passing evidence remain preserved.
 
-Hakua product version 0.5.4-local.1, engine 0.5.4 (Metal source 0.5.0-metal), Control 0.5.5. This source candidate integrates upstream Niko1221 0.2.13 at f33c8c30588ff00e24b6b63bad0bf6a14da19081 (upstream engine 0.1.59; fork package versions remain independent). The installed 0.5.3-local.1 and its native 0.5.3 source/artifacts remain separate. New source/build results belong in _docs/2026-11-10_upstream-0213-integration_OpenCode.md; previous overwrite results remain in _docs/2026-11-09_local-053-overwrite_OpenCode.md. Existing resource findings and releaseQualified=false remain bound to their measured binaries. Do not transfer them as qualification of new source. See docs/UPSTREAM_0213.md and docs/HAKUA_RELEASE.md for source versus artifact status. Upstream reference: the public model families are DeepSeekV4.1-Flash-1017,
+Hakua product version 0.5.4-local.1, engine 0.5.4 (Metal source 0.5.0-metal), Control 0.5.5. This installed personal build integrates upstream Niko1221 0.2.13 at f33c8c30588ff00e24b6b63bad0bf6a14da19081 (upstream engine 0.1.59; fork package versions remain independent). App/Control source is 85a78234cfcdccd8741cc921677802aba1869e44; separately frozen native source is 7bb2497400b8ea40d5d07f5244f010d3aa5eacc0 under H:/Strata/worktrees/native-054-source-20261110. Five-job builds, short native checks, backed-up overwrite and actual installed Q36/Prism/workspace checks passed; Prism had one retained warm-up timeout before a passing rerun. The new native resource guard measured twelve violations; releaseQualified=false remains. The normal app is left open without debugging, models unloaded and settings retained. New source/build results belong in _docs/2026-11-10_upstream-0213-integration_OpenCode.md; previous 0.5.3 results remain separate in _docs/2026-11-09_local-053-overwrite_OpenCode.md. Do not transfer measured qualification to changed source/binaries. See docs/UPSTREAM_0213.md and docs/HAKUA_RELEASE.md for limits. Upstream reference: the public model families are DeepSeekV4.1-Flash-1017,
 Qwen3.8-Flash-Next and Qwen3.6-35B-A3B. DeepSeek V4.1-Flash runs in the app and in the Terminal
 (`strata launch --family deepseek41 --model ist-das-2.00bpw`; sets in
 [docs/MODELS.md](docs/MODELS.md#deepseek-v41-flash)). Read **[docs/AI_REFERENCE.md](docs/AI_REFERENCE.md)** for model availability, APIs, hardware limits and

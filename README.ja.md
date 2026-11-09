@@ -1,13 +1,13 @@
 # Hakua / Strata
 
-導入済み個人版は `0.5.3-local.1`（Control `0.5.4`、native `0.5.3`）です。
+導入済み個人版は `0.5.4-local.1`（Control `0.5.5`、native `0.5.4`）です。
 対応Qwen3.8向けの任意の拒否方向ベクトルGUIを含みます。
-`Strata-0.5.3-local.1-windows-x64-setup.exe` の上書きと実WebView2での短いQwen3.6・Prism・ワークスペース検証は完了しました。CUDA資源認定は未合格です。
+`Strata-0.5.4-local.1-windows-x64-setup.exe` の上書きと実WebView2での短いQwen3.6・Prism・ワークスペース検証は完了しました。CUDA資源違反12件を保持し、`releaseQualified=false` です。Prismは再起動時のwarm-up timeoutが1回あり、同じ設定の再検証で通過しました。
 公開ダウンロードを示すものではありません。
 
-**ソース統合候補:** 公式 `v0.2.13`／mainの `f33c8c30` を取り込み、Hakuaと独自機能の契約を維持しています。
-新候補は製品0.5.4-local.1、Control0.5.5、native0.5.4です。予定インストーラー名は `Strata-0.5.4-local.1-windows-x64-setup.exe` です。
-新ソースの再ビルド・実機認定は進行中です。[統合記録](docs/UPSTREAM_0213.md)をご覧ください。
+**ソース統合:** 公式 `v0.2.13`／mainの `f33c8c30` を取り込み、Hakuaと独自機能の契約を維持しています。
+アプリとControlは `85a78234`、nativeは `7bb24974` のソースに対応する成果物で個別に検証しました。
+通常アプリはデバッグなし・モデル未読み込みの状態で開いています。[統合記録](docs/UPSTREAM_0213.md)に実測結果と未認定範囲を記録しています。
 導入済み個人版 `Strata-0.5.2-local.2-windows-x64-setup.exe` の検証は、このソース統合前の実行ファイルに対するものです。
 以下の公開配布リンクは引き続き安定版0.5.1を示します。
 

@@ -1,6 +1,7 @@
 # Official 0.2.13 integration
 
-Status: IN_PROGRESS. Agent: OpenCode. Plan: PLAN-2026-11-10-upstream-0213.
+Status: COMPLETED for private source/build/overwrite delivery, with the explicit
+qualification limits below. Agent: OpenCode. Plan: PLAN-2026-11-10-upstream-0213.
 
 ## Requirements and decisions
 
@@ -242,3 +243,155 @@ User explicitly approved unloading the current Prism model for new tests and
 installation. By the subsequent inspection the model and shell had already
 exited, leaving15111MiB free VRAM; no absent process was claimed stopped. Test
 models are serialized. Old user data and installed0.5.3 bytes remain preserved.
+
+## Final build, overwrite and installed evidence
+
+App/Control checkpoint `85a78234cfcdccd8741cc921677802aba1869e44` adds only the
+measured native mapped-pack admission hash, its existing registry test update,
+and this evidence log. The mapped-admission lifecycle group passed. Native source
+stays frozen at7bb24974; no already frozen adapter/source was edited.
+
+Legacy7 and restart2 phases completed with protected input hashes unchanged.
+Bounded-versus-legacy request/token comparison and restart comparison passed.
+Fresh spill guard completed with12 actual violations; audit recorded completed
+FAIL, nativeFunctionalChecksPassed=true and releaseQualified=false. The resource
+guard and audit exit failures were retained. No allowance or guard was relaxed.
+The fresh quality validator accepted the private-build disposition: functional
+checks pass and genuine resource failures stay failures.
+
+Fresh delivery adapters were generated under the new H: output with template and
+transformation hashes. Historical native/component/app helpers remain intact.
+The app recipes include the previously observed LF-only scratch fixture, normal
+owned-window close, full bounded ownership probes, non-pooled Node QA HTTP,
+actual Chat options navigation and actual engine INFO readiness. Four actual-app
+recipes plus qualification generated and syntax-checked before runtime execution.
+Exact dependency scopes use the new C: staging path. The old UI output54 files
+was preserved by same-volume rename with a matching inventory before Vite ran.
+
+Control was rebuilt from85a78234 for the final app, not relabelled from7bb24974.
+The final Control archive SHA256 is
+`81a8cb78a066b9ca9599d7d95f19d10d1e8e2671c9dc967be49326854c9d21f0`.
+Its build/stage phase passed in158.281s. Pinned interpreter cache was copied and
+verified, original preserved. Complete earlier Control staging was preserved.
+
+Composition authenticated the complete older signed payload before retaining
+Prism0.4.1/TurboQuant0.4.0/notices, verified new native sources and fresh quality,
+composed/signed the new0.5.4 component through the production signer, checked its
+archive, PE dependencies and builtin trusted-key signature, then preserved the
+entire old bundle and staged the new one by same-volume renames. No key contents,
+key hash or key-derived private data was inspected or logged. Signed manifest
+SHA256 `52e8674bf1dec83df9d972ec4fd5dfa5607bc9b1d30ec3eb99ade499de116ab3`.
+
+Five-job incremental desktop build passed in717.062s with preserved prior Cargo
+executable/installer artifacts. Qualification passed in107.531s: thirteen actual
+startup self-tests and29544 exact payload files. Installer:
+
+```text
+H:/Strata/releases/upstream-0213-20261109-opencode/app-native054/Strata-0.5.4-local.1-windows-x64-setup.exe
+112415417 bytes
+SHA256 ae05518656ee5afdf92665f5dd71a06a69425ae1957a9ac31468d8a4a1790750
+```
+
+Qualified/delivered shell SHA256 is
+`e00ebf5c6d5b54f89a1830f694cd5cce184caa868bfc06d4c0d7f38da180e450`.
+The separately saved unbundled shell has its own hash in app-build.json; it is
+not substituted for the actual extracted/installed shell identity.
+
+Candidate Q36 r1 passed714.375s; candidate Prism r1 passed161.625s. A fresh private
+backup retained4028 user/config files without copying model weights. Three exact
+previously reviewed large retained component caches were rehashed and included;
+the100MiB limit remains for every other non-weight file. Backup, silent NSIS
+overwrite, before-first-launch payload/user/registration verification and signed
+full-test-start activation all passed. Installed payload29544 files matched;
+4028 backed-up files and the previous0.5.3 component were retained; both shortcuts
+and registry target/version were correct. Explicit installation target remains
+`C:/Users/downl/AppData/Local/Programs/Strata`.
+
+Activation uses the actual candidate's retained production-prepared native-tune
+config after normal GUI unload removed ephemeral instance JSON. The exact tested
+binary, memory mode, model/privacy args and4096/512/5/2/F32 settings are checked.
+Memory-principal credentials are removed only from the private test sandbox;
+engine authentication remains enabled. Test-start was not disabled. Older engine
+selection/payload preservation and new imported component membership were checked.
+
+Installed Q36 r1 passed844.657s with actual installed EXE, Host, WebView2, native
+inference, observed private/cache ownership, settings after restart, unload/new
+owned child, Japanese notices/speed, unsupported projection rejection, zero page
+errors and seven actual workspace file UI checks. Normal user hashes were
+unchanged. Historical recipe labels containing053 remain labels only; the exact
+0.5.4 binary, package/source hashes and observed INFO identify this execution.
+
+Installed Prism r1 returned the first correct answer, then its second load stayed
+in native warm-up until the existing health deadline. The retained log ends at
+"warming up the model with an empty run" before supervised SIGTERM. No model
+OOM/format error was reported. The unchanged serial r2 passed in130.406s with
+both correct answers, restart/new process, actual Q8 K/V and flash attention,
+zero page errors, model metadata preserved and normal user hashes unchanged.
+The failed r1 is retained; no production retry/timeout setting or backend binary
+was changed. Its root cause remains unresolved, not claimed fixed by a rerun.
+
+A supplemental source-memory consent/recovery browser fixture failed at browser
+launch in Chrome, then in Edge, reporting the non-default debugging directory
+requirement (Edge also reported a token/path error). Vite close errors followed
+the failed launch. No UI assertion in that fixture is claimed passed. Browser
+sandbox/security settings were not weakened. Its two receipts remain. This does
+not replace the passing actual installed tests or server-side memory tests.
+
+Final normal-startup.json passed: ok=true, leftOpen=true, debuggingEnabled=false,
+manualUnloaded=true, settingsRetained=true; product0.5.4-local.1, Control0.5.5,
+native0.5.4. Process readback found the installed shell open and no native/Prism
+model process. This handoff ran outside QA containment. Source was still clean
+at85a78234 before these documentation-only closeout edits.
+
+## Evidence, changed surfaces and remaining limits
+
+Evidence root: `H:/Strata/releases/upstream-0213-20261109-opencode`.
+Native evidence: native-evidence/{freeze.json,results,receipts}; actual build and
+failed/rebound receipts remain at the root receipts/. App evidence: app-native054/
+{control-build.json,staged-native.json,app-build.json,app-qualification.json,
+candidate-q36-e2e.json,candidate-prism-e2e.json,installed-q36-e2e.json,
+installed-prism-e2e.json,backup.json,installed-payload.json,native-activated.json,
+normal-startup.json}. Private backup: H:/Strata/private-backups/local-054-20261110-opencode.
+Operational generator/adapter provenance and frozen-source inventories are also
+retained under the evidence root. No failed attempt was overwritten.
+
+Changed implementation surfaces are the reviewed upstream merge across engine
+geometry/backend CMake, source/native/Metal/SYCL references, Control/Terminal/feed
+APIs, Host settings/native starts/lazy UI/catalogs, setup and official tests/docs;
+fork adaptations are listed earlier. Follow-up changes are exact native admission,
+async/offline fixture repairs, Chinese missing-key translations and independent
+product/Control/native version sources. Current closeout updates only AGENTS
+artifact metadata, README preambles, HAKUA_RELEASE/UPSTREAM_0213 and this log.
+
+Residual limits: twelve newly measured CUDA resource violations; releaseQualified,
+full-window/general/low-precision model quality and positive Qwen3.8 projection
+remain false/unqualified. Other backend/device builds were not run on this PC.
+Full server discovery exceeded its600s budget; the explicit affected187-test
+group passed instead. Six base catalogs retain their pre-existing56 missing
+manual web/skill keys; none were newly lost. The supplemental memory browser
+fixture is blocked as described. One Prism restart warm-up timeout remains an
+observed risk. Security comparisons cover the cited public records, not a claim
+of a full vulnerability audit or absence of vulnerabilities.
+
+Recommended next actions are source-bound investigation of the Prism warm-up
+failure, resource findings, long-context/quality qualification and remaining
+catalog/browser-fixture gaps. Public release/tag/feed publication was not part
+of this private overwrite; the published stable download remains0.5.1.
+
+Self-review-event: ticket_completed / qa_defect. Evidence includes each retained
+failed gate, corrected fixture and passing fresh owned receipt above. Decision:
+review-only for governance. Project AGENTS changed artifact-status metadata only;
+no PC-wide AGENTS, SOP, Skill, source/secret/resource guard or release allowance
+was weakened. Narrow recipe changes were validated by generation/syntax and the
+actual runtime checks. Bypassing browser sandboxing, disabling native test-start,
+removing failed evidence or calling short tests general qualification were
+rejected. Final source checks and remote readback are recorded below when run.
+
+Final readback passed: the exact installer and installed-shell hashes still
+match qualification, and the actual unchanged activation test-config hash
+matches native-activated.json. Explicit model path, private conversation cache,
+shared-cache-off arguments and source-bound bounded mode were checked without
+printing authentication data. Product consistency check passed; all6 current
+version tests passed in3.79s under isolated H: scratch; `git diff --check` passed.
+These final edits are documentation/status metadata only and do not requalify or
+rebuild the installed85a78234 app/Control or7bb24974 native artifact.
