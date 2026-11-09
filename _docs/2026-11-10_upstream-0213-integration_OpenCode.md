@@ -190,3 +190,55 @@ check with CRLF handling reports only four terminal blank lines in the unchanged
 upstream vendored dependency; the127-file provenance check already matched its
 manifest and upstream pin. These bytes were preserved. No model/runtime/private
 payload was staged. Source checkpoint does not declare build/install completion.
+
+## Source checkpoint, Control and native verification continuation
+
+Merge checkpoint `7bb2497400b8ea40d5d07f5244f010d3aa5eacc0` has parents1f666144
+and officialf33c8c30. It was committed locally; publication is not yet complete.
+New frozen native source is `H:/Strata/worktrees/native-054-source-20261110` at
+that commit. Every tracked file's physical bytes matched the primary checkout.
+After copying LF/CRLF-equivalent bytes, Git initially reported stat-only changes
+despite identical filtered blob hashes. Refreshing the exclusively owned frozen
+index with `git add -u` left the index tree unchanged and made status clean.
+Fresh freeze-source-verify-r1 passed; the failed initial freeze receipt remains.
+No primary source or prior frozen worktree was reset or rewritten.
+
+Native compilation completed all targets in the five-job r1 attempt, then the
+original helper's version probe failed; this remains a failed attempt. Both
+executables subsequently reported0.5.4 directly. The unchanged authoritative
+five-job build/helper rerun r2 passed in14.024s with the retained objects, and a
+separate source-bound bind phase passed. No probe check was relaxed, and that
+incremental timing is not a clean-build result. Actual compiled input count779.
+strata SHA256 `57d4dc6e06ef50e40d52539dd69ebf87c52f017f87fa2ea0e2621dadbc260c34`;
+Q36 SHA256 `d21628d9c24cc73720bbd8ef170e2c06d7500b38ce6c68f063e827274a29c411`.
+Fresh stage, CPU, GPU and both sanitizer cases passed under drained Jobs.
+
+Bounded-memory model phase passed seven actual short private-cache requests at
+4096 capacity with unchanged model/pack/tokenizer snapshots. Same-owner reuse,
+different/missing owner separation, cancellation/clearing and nonempty short
+generation passed. This does not qualify full-window or general model quality.
+The exact measured native hash is now admitted for mapped-pack launch; no other
+unknown binary gains admission and legacy remains the default. Legacy/restart,
+comparison, resource guard and final audit are still in progress.
+
+Fresh generated qualification adapters live under the new H: output, with exact
+template/transformation hashes. Earlier0.5.3 adapters/evidence remain unchanged.
+The first generated set missed an escaped version-regex identity and failed
+before init; it is preserved. Corrected native-r2 preserves all original
+functional/resource/model gates and uses the actual C: compiler graph plus
+byte-identical H: source freeze. Native evidence is in native-evidence/.
+
+Control0.5.5 archive70752510 bytes, SHA256
+`71b88908d902cd8feca21888c8bbaa3bf15c7fa567e842893145b4ce47d34904`, was built
+from7bb24974 with private Python3.12.15 and the unchanged hash-locked wheels.
+Its production stage checks passed. The outer build r1 then rejected the new
+untracked backup directory. Fresh accept-control-r1 preserved that complete
+backup under the existing ignored archive, rechecked inventories/archive/source
+binding and production stage-control --check, and confirmed clean source.
+Both the failed build receipt and passing acceptance receipt remain; a source
+checkpoint change will require a newly bound Control for the final app build.
+
+User explicitly approved unloading the current Prism model for new tests and
+installation. By the subsequent inspection the model and shell had already
+exited, leaving15111MiB free VRAM; no absent process was claimed stopped. Test
+models are serialized. Old user data and installed0.5.3 bytes remain preserved.
