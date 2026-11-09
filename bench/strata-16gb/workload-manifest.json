@@ -1,6 +1,7 @@
 {
   "schemaVersion": 1,
   "created": "2026-11-02",
+  "updated": "2026-11-09",
   "target": {
     "gpu": "NVIDIA GeForce RTX 5060 Ti",
     "vramMib": 16311,
@@ -25,11 +26,29 @@
     {
       "id": "L0-context-ladder",
       "kind": "capacity",
-      "context": [4096, 32768, 65536, 131072],
+      "context": [4096, 32768, 65536, 98304, 131072],
       "inputNearContext": false,
       "notes": "Capacity vs near-full input are separate arms"
+    },
+    {
+      "id": "L1-near-full-ladder",
+      "kind": "qualification",
+      "context": [32768, 65536, 98304, 131072],
+      "inputNearContext": true,
+      "minInputFraction": 0.99,
+      "repetitions": 3,
+      "aggregation": "median",
+      "notes": "Phase 0 qualification ladder. Run smallest-first; do not advance to the next step until the current step completes all repetitions. Judge each step by the median run."
     }
   ],
+  "safety": {
+    "watchdogFreeRamFloorMib": 1024,
+    "watchdogFloorStatus": "provisional",
+    "stepTimeoutSeconds": {
+      "131072": 3600
+    },
+    "notes": "Abort a run and record outcome=watchdog_stop when free RAM falls below the floor. Verify the watchdog and manual stop with a dummy load before any run at 98304 or above."
+  },
   "privacy": {
     "forbidPromptTextInResults": true,
     "forbidApiKeys": true,
