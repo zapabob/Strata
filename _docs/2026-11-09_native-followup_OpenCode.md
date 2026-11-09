@@ -85,3 +85,10 @@ contains diagnostic/research/QA files only; no production kernel or compiled
 application source has changed from the tested personal local.2 build. The exact
 validated local.2 installer can therefore be used for the requested overwrite,
 with its compiled source52048324 recorded separately from this newer checkpoint.
+
+The exact qualified installer was then successfully run once for this overwrite:
+exit0,29,476 payload files matched,957 user files preserved,141 signed native files
+unchanged. Normal startup was initially unloaded. A normal app/workflow reload
+subsequently restored Swift; read-only checks verified the same settings and exact
+runtime argv without creating another instance. Latest results and the pending
+engineering gates are in `_docs/2026-11-09_main-push-reinstall-handoff_OpenCode.md`.

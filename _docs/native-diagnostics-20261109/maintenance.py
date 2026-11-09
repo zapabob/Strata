@@ -93,8 +93,36 @@ def pause(base: str, shell) -> None:
 
 def restore(base: str) -> None:
     snapshot = json.loads((PRIVATE / 'snapshot.json').read_text(encoding='utf-8'))
-    assert json.loads((PRIVATE / 'pause.json').read_text())['ok']
+    paused = json.loads((PRIVATE / 'pause.json').read_text())
+    reconciled = PRIVATE / 'pause-reconciled.json'
+    assert paused['ok'] or (reconciled.is_file() and json.loads(reconciled.read_text())['ok']), 'Pause did not settle'
     assert sha(Path(snapshot['sourceConfig'])) == snapshot['sourceSHA256'], 'Do not overwrite concurrent user edits'
+    existing = get(base, '/api/native')['instances']
+    if existing:
+        # A user/normal workflow can reload the same model while update checks
+        # finish. Verify that restoration; never start a duplicate or stop it.
+        assert len(existing) == 1
+        observed_id = existing[0]['id']
+        assert re.fullmatch(r'[0-9a-f-]{36}', observed_id)
+        def observed_restore():
+            rows = get(base, '/api/native')['instances']
+            assert len(rows) == 1 and rows[0]['id'] == observed_id, 'Model changed during restore observation'
+            item = rows[0]
+            for key in ['model', 'context', 'parallel', 'gpus', 'vision']:
+                assert item.get(key) == snapshot['instance'].get(key), 'A different model/configuration is active'
+            config = Path('C:/Users/downl/.strata/data/native-instances') / (observed_id + '.json')
+            current = json.loads(config.read_text(encoding='utf-8-sig'))
+            assert current.get('args') == snapshot['runtimeConfig'].get('args'), 'Runtime arguments differ'
+            assert item['status'] != 'error', 'Externally started restoration failed'
+            return item if item['status'] == 'ready' and item.get('phase') in ['idle', 'reading', 'thinking', 'generating'] else None
+        item = until(observed_restore, 660)
+        assert sha(Path(snapshot['sourceConfig'])) == snapshot['sourceSHA256']
+        write('restored.json', {'ok': True, 'observedExternalRestore': True, 'loadRequestsSent': 0,
+            'model': item['model'], 'context': item.get('context'), 'parallel': item.get('parallel'),
+            'sourceSettingsUnchanged': True, 'runtimeArgsUnchanged': True, 'interruptedTurnResubmitted': False})
+        print(json.dumps({'restored': True, 'observedExternalRestore': True, 'sameRuntimeArgs': True,
+                          'sameModelContextParallel': True, 'loadRequestsSent': 0}), flush=True)
+        return
     assert not get(base, '/api/chat/active')['turns'], 'A new user conversation is active'
     assert not get(base, '/api/native')['instances'], 'A model was loaded during diagnostics'
     job = post(base, '/api/native/operations', {'kind': 'load', 'args': snapshot['restoreArgs']})

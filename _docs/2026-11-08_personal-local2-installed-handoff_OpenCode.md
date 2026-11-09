@@ -1,5 +1,10 @@
 # Personal local.2 installed — parent handoff
 
+Latest continuation/push/same-version reinstall:
+`_docs/2026-11-09_main-push-reinstall-handoff_OpenCode.md`.
+The artifact/compiled-source identities below remain unchanged; fresh preservation
+counts and diagnostic progress are in that newer record.
+
 Local installation is successful. App is open normally, unloaded, with remote
 debugging disabled. Do not stop an active user conversation during cleanup.
 

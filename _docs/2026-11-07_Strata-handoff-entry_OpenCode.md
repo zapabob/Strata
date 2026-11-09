@@ -2,7 +2,7 @@
 
 最新のmain引き継ぎ書:
 
-`_docs/2026-11-08_personal-local2-installed-handoff_OpenCode.md`
+`_docs/2026-11-09_main-push-reinstall-handoff_OpenCode.md`
 
 個人用local.2の上書き、mainへのpush、統合済みworktree5件の証跡退避・削除まで完了。
 旧source checkpointは `_docs/2026-11-07_main-checkpoint-handoff_OpenCode.md` に保持。
