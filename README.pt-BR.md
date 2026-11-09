@@ -1,5 +1,9 @@
 # Strata · Hakua
 
+**Código candidato:** inclui upstream `v0.2.12` / `146df3c4`; faltam compilação nativa e testes de hardware.
+O instalador pessoal testado antes desta integração é `Strata-0.5.2-local.2-windows-x64-setup.exe`.
+Os links abaixo continuam sendo de 0.5.1. [Estado da integração](docs/UPSTREAM_0212.md).
+
 A versão 0.5.1 carrega modelos manualmente e corrige a inicialização do Qwen3.6 nativo. Preserva os modelos existentes e os pacotes de especialistas verificados.
 
 Modelos locais, chat, ferramentas e memória Hakua opcional. Este é o [fork de zapabob](https://github.com/zapabob/Strata) de [Niko1221/Strata](https://github.com/Niko1221/Strata).
@@ -72,4 +76,8 @@ Obrigado a todas as pessoas que apoiam o Strata.
 
 <!-- supporters:start (one line per public supporter, newest last; copy a line and change the GitHub name in all four places) -->
 <a href="https://github.com/ryan4yin"><img src="https://github.com/ryan4yin.png?size=96" width="48" height="48" alt="ryan4yin" title="ryan4yin"></a>
+<a href="https://github.com/themactep"><img src="https://github.com/themactep.png?size=96" width="48" height="48" alt="themactep" title="themactep"></a>
+<a href="https://github.com/macintog"><img src="https://github.com/macintog.png?size=96" width="48" height="48" alt="macintog" title="macintog"></a>
+<a href="https://github.com/bisonbet"><img src="https://github.com/bisonbet.png?size=96" width="48" height="48" alt="bisonbet" title="bisonbet"></a>
+<a href="https://github.com/vizv"><img src="https://github.com/vizv.png?size=96" width="48" height="48" alt="vizv" title="vizv"></a>
 <!-- supporters:end -->

@@ -1,5 +1,10 @@
 # Strata · Hakua
 
+**源码集成候选：** 已合入官方 `v0.2.12`／最新main `146df3c4`，保留Hakua及分支功能。
+原生编译与硬件验证尚未完成。[集成记录](docs/UPSTREAM_0212.md)。
+已测试的个人安装包 `Strata-0.5.2-local.2-windows-x64-setup.exe` 早于此次源码合并。
+以下公开下载链接仍属于0.5.1。
+
 0.5.1改为手动加载模型，并修复原生Qwen3.6的启动流程。现有模型和已验证的专家包均予以保留。
 
 在本机运行模型、聊天和工具，并可选用 Hakua 记忆。这是 [zapabob](https://github.com/zapabob/Strata) 维护的 [Niko1221/Strata](https://github.com/Niko1221/Strata) 分支。
@@ -72,4 +77,8 @@ Strata 使用 MIT 许可证。模型权重、Hakua-memory 和依赖保留各自�
 
 <!-- supporters:start (one line per public supporter, newest last; copy a line and change the GitHub name in all four places) -->
 <a href="https://github.com/ryan4yin"><img src="https://github.com/ryan4yin.png?size=96" width="48" height="48" alt="ryan4yin" title="ryan4yin"></a>
+<a href="https://github.com/themactep"><img src="https://github.com/themactep.png?size=96" width="48" height="48" alt="themactep" title="themactep"></a>
+<a href="https://github.com/macintog"><img src="https://github.com/macintog.png?size=96" width="48" height="48" alt="macintog" title="macintog"></a>
+<a href="https://github.com/bisonbet"><img src="https://github.com/bisonbet.png?size=96" width="48" height="48" alt="bisonbet" title="bisonbet"></a>
+<a href="https://github.com/vizv"><img src="https://github.com/vizv.png?size=96" width="48" height="48" alt="vizv" title="vizv"></a>
 <!-- supporters:end -->

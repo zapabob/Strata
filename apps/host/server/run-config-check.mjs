@@ -21,7 +21,7 @@ export const KNOWN_KEYS = new Set([
   'before_load_strict', 'before_load_timeout_s', 'cors_origins', 'trusted_origins', 'allowed_hosts', 'open_browser', 'prevent_sleep',
   'max_queue', 'queue_timeout', 'max_tokens', 'min_tokens', 'answer_room', 'threads', 'replicas', 'replica_cpus', 'replica_load_tokens',
   'elastic', 'elastic_idle_s', 'elastic_mib', 'min_free_vram_mib', 'vram_segment_mib', 'slot_save_path', 'telemetry_read_key', 'batch_telemetry',
-  'reasoning_effort', 'reasoning_close_retry', 'reasoning_loop_recovery', 'repeat_stop_tokens', 'tool_call_recovery', 'codex_compaction_cache',
+  'reasoning_effort', 'reasoning_close_retry', 'reasoning_loop_recovery', 'repeat_stop_tokens', 'tool_call_recovery', 'undeclared_tool_calls', 'codex_compaction_cache',
   'codex_thread_titles', 'expert_profile_save', 'expert_profile_save_every', 'images', 'vision', 'mmproj', 'draft_vocab', 'ui_resource_profile',
   'ui_vision_enabled', 'ui_context_chosen', 'component', 'native', 'uma', 'remote_expert_opt', 'diffusion_model', 'llm', 'vae', 'quant', 'type', 'url', 'timeout_s',
   'hakua_harness',
@@ -134,6 +134,9 @@ export function checkRunConfig(text, { known = KNOWN_KEYS } = {}) {
       if (typeof value !== 'number' || !Number.isFinite(value) || value < lo || value > hi) add('error', 'number-range', key, { key, min: lo, max: hi, value: show(value) }, `"${key}" must be a number from ${lo} to ${hi}, not ${show(value)}.`);
     } else if (key === 'reasoning_effort') {
       if (!REASONING.includes(value)) add('error', 'choice', key, { key, choices: REASONING.join(', '), value: show(value) }, `"reasoning_effort" must be one of ${REASONING.join(', ')}, not ${show(value)}.`);
+    } else if (key === 'undeclared_tool_calls') {
+      const choices = ['text', 'call'];
+      if (!choices.includes(value)) add('error', 'choice', key, { key, choices: choices.join(', '), value: show(value) }, `"undeclared_tool_calls" must be one of ${choices.join(', ')}, not ${show(value)}.`);
     } else if (key === 'gpu') {
       const ok = Number.isInteger(value) && value >= 0 || Array.isArray(value) && value.length > 0 && value.every(n => Number.isInteger(n) && n >= 0);
       if (!ok) add('error', 'gpu', key, {}, '"gpu" must be a graphics card number such as 0, or a list such as [0, 1].');

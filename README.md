@@ -1,6 +1,14 @@
 # Hakua / Strata
 
-This source tree prepares the unpublished personal app `0.5.2-local.2` / Control `0.5.3` candidate with native `0.5.2` and the exact private PrismML `0.4.1` runtime. Native r3 has bounded functional checks, but its generic CUDA resource guard still fails: `releaseQualified=false`. PrismML's short checks do not qualify full-window input or all models. Final app build, GUI qualification and installation require the parent review gate. The release links and measurements below describe published `0.5.1`.
+**Source integration candidate:** official `v0.2.12` / latest main at `146df3c4`,
+with Hakua and the fork's runtime/state contracts retained. Native builds and
+hardware qualification are pending. See [the integration record](docs/UPSTREAM_0212.md).
+
+The installed personal `0.5.2-local.2` build
+(`Strata-0.5.2-local.2-windows-x64-setup.exe`, Control `0.5.3`, native `0.5.2`,
+PrismML `0.4.1`) was measured **before** this source merge. Its four resource-guard
+failures remain open; `releaseQualified=false`. The download links below describe
+published `0.5.1`, not a new installer for this integration.
 
 Version 0.5.1 adds manual model loading and fixes native Qwen3.6 startup. Existing models and verified expert packs are retained.
 
@@ -136,4 +144,8 @@ Thank you to everyone who supports Strata.
 
 <!-- supporters:start (one line per public supporter, newest last; copy a line and change the GitHub name in all four places) -->
 <a href="https://github.com/ryan4yin"><img src="https://github.com/ryan4yin.png?size=96" width="48" height="48" alt="ryan4yin" title="ryan4yin"></a>
+<a href="https://github.com/themactep"><img src="https://github.com/themactep.png?size=96" width="48" height="48" alt="themactep" title="themactep"></a>
+<a href="https://github.com/macintog"><img src="https://github.com/macintog.png?size=96" width="48" height="48" alt="macintog" title="macintog"></a>
+<a href="https://github.com/bisonbet"><img src="https://github.com/bisonbet.png?size=96" width="48" height="48" alt="bisonbet" title="bisonbet"></a>
+<a href="https://github.com/vizv"><img src="https://github.com/vizv.png?size=96" width="48" height="48" alt="vizv" title="vizv"></a>
 <!-- supporters:end -->

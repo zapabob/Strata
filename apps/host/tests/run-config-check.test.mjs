@@ -41,6 +41,22 @@ test('every key the app edits is a known key', () => {
   for (const field of NATIVE_FIELDS) assert.ok(KNOWN_KEYS.has(field.id), field.id);
 });
 
+test('official undeclared tool-call modes survive checked parsing; invalid modes stop before startup', () => {
+  for (const mode of ['text', 'call', null]) {
+    assert.deepEqual(checkAndParseRunConfig(JSON.stringify({undeclared_tool_calls: mode})), {
+      ok: true, issues: [], config: {undeclared_tool_calls: mode},
+    });
+  }
+  for (const mode of ['execute', true, 1, [], {}]) {
+    const result = checkAndParseRunConfig(JSON.stringify({undeclared_tool_calls: mode}));
+    assert.equal(result.ok, false);
+    assert.equal(result.config, null);
+    assert.deepEqual(result.issues.map(issue => [issue.level, issue.code, issue.key]),
+      [['error', 'choice', 'undeclared_tool_calls']]);
+    assert.equal(result.issues[0].params.choices, 'text, call');
+  }
+});
+
 test('every key setup itself writes into a run config is a known key, so a freshly set-up model shows no warning in the settings file panel (QA 0213: "args_written" was flagged as unknown)', async () => {
   const setup = await readFile(new URL('../../../setup.py', import.meta.url), 'utf8');
   const block = /^SETUP_KEYS = frozenset\(\{([^}]*)\}\)/m.exec(setup);

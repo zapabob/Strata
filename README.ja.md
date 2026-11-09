@@ -1,5 +1,10 @@
 # Hakua / Strata
 
+**ソース統合候補:** 公式 `v0.2.12`／最新mainの `146df3c4` を取り込み、Hakuaと独自機能の契約を維持しています。
+ネイティブの再ビルド・実機認定は未実施です。[統合記録](docs/UPSTREAM_0212.md)をご覧ください。
+導入済み個人版 `Strata-0.5.2-local.2-windows-x64-setup.exe` の検証は、このソース統合前の実行ファイルに対するものです。
+以下の公開配布リンクは引き続き安定版0.5.1を示します。
+
 0.5.1では起動時のモデル自動読み込みを停止し、ネイティブQwen3.6の起動処理を修正しました。既存モデルと検証済みexpert packは保持します。
 
 ローカルの言語モデルをWindowsのデスクトップ画面から使うアプリです。
@@ -122,4 +127,8 @@ Strata を支えてくださるすべての方に感謝します。
 
 <!-- supporters:start (one line per public supporter, newest last; copy a line and change the GitHub name in all four places) -->
 <a href="https://github.com/ryan4yin"><img src="https://github.com/ryan4yin.png?size=96" width="48" height="48" alt="ryan4yin" title="ryan4yin"></a>
+<a href="https://github.com/themactep"><img src="https://github.com/themactep.png?size=96" width="48" height="48" alt="themactep" title="themactep"></a>
+<a href="https://github.com/macintog"><img src="https://github.com/macintog.png?size=96" width="48" height="48" alt="macintog" title="macintog"></a>
+<a href="https://github.com/bisonbet"><img src="https://github.com/bisonbet.png?size=96" width="48" height="48" alt="bisonbet" title="bisonbet"></a>
+<a href="https://github.com/vizv"><img src="https://github.com/vizv.png?size=96" width="48" height="48" alt="vizv" title="vizv"></a>
 <!-- supporters:end -->

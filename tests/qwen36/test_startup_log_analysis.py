@@ -18,6 +18,7 @@ from types import SimpleNamespace
 from unittest import mock
 
 from startup_log_analysis import analyze_startup_logs
+from serve.native_family import NativeAdmission, native_admission_from_env, q36_memory_mode, validate_q36_memory_args
 
 
 def _placement(seconds: str, generation: str) -> str:
@@ -73,6 +74,8 @@ class StartupLogAnalysisTest(unittest.TestCase):
         path = Path(__file__).resolve().parents[2] / "serve" / "server.py"
         tree = ast.parse(path.read_text(encoding="utf-8"))
         helper = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "q36_startup_child_env")
+        checks = [n for n in tree.body if isinstance(n, ast.FunctionDef) and
+                  n.name in ("q36_verify_memory_args", "q36_verify_kv_args")]
         engine = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == "StrataEngine")
         init = copy.deepcopy(next(n for n in engine.body if isinstance(n, ast.FunctionDef) and n.name == "__init__"))
         stop = next(i for i, n in enumerate(init.body) if isinstance(n, ast.Expr) and isinstance(n.value, ast.Call)
@@ -80,14 +83,17 @@ class StartupLogAnalysisTest(unittest.TestCase):
                     and n.value.args[0].value == "spawned")
         init.body = init.body[:stop + 1]
         fixture_class = ast.ClassDef(name="SpawnPrefix", bases=[], keywords=[], body=[init], decorator_list=[])
-        module = ast.fix_missing_locations(ast.Module(body=[helper, fixture_class], type_ignores=[]))
+        module = ast.fix_missing_locations(ast.Module(body=[helper, *checks, fixture_class], type_ignores=[]))
         fake_popen = mock.Mock(return_value=SimpleNamespace(pid=8765))
         namespace = {"os": os, "re": re, "uuid": uuid, "time": time, "Path": Path, "json": json,
+                     "native_admission_from_env": native_admission_from_env,
+                     "NativeAdmission": NativeAdmission, "q36_memory_mode": q36_memory_mode,
+                     "validate_q36_memory_args": validate_q36_memory_args,
                      "threading": SimpleNamespace(Event=threading.Event, Thread=mock.Mock()), "subprocess": subprocess,
                      "engine_nice": lambda env: 0, "end_leftover_engines": mock.Mock(), "popen": fake_popen,
                      "narrate_start": mock.Mock(), "_echoing": set()}
         exec(compile(module, str(path), "exec"), namespace)
-        supplied = {"STRATA_Q36_LAUNCH_GENERATION": "owned-launch", "STRATA_Q36_STARTUP_GENERATION": "stale", "KEEP": "unchanged"}
+        supplied = {"STRATA_REQUIRE_Q36_KV": "1", "STRATA_Q36_LAUNCH_GENERATION": "owned-launch", "STRATA_Q36_STARTUP_GENERATION": "stale", "KEEP": "unchanged"}
         with tempfile.TemporaryDirectory() as folder, mock.patch.dict(os.environ, {}, clear=True):
             log = str(Path(folder) / "engine.log")
             generations = []

@@ -1,0 +1,977 @@
+{
+  "fork_parent": "dce71248c61992a9ba1e8af99711c2eccc795f4e",
+  "upstream_parent": "146df3c468739147f520ac3816de806f71232571",
+  "upstream_base": "9f7d977d220e9fdf2ec53cf2620cdadac1cfb24e",
+  "merge_conflicts": 0,
+  "protected_git_contents_unchanged": [
+    "spin8",
+    "tqcodec",
+    "adapters/upstream",
+    "serve/memory_harness.py",
+    "serve/llama_memory.py",
+    "serve/native_family.py",
+    "strata_control/update_keys.json",
+    "apps/host/server/memory.mjs",
+    "apps/host/server/q36-run-contract.mjs",
+    "apps/host/server/q36-kv-capabilities.mjs",
+    "src/qwen35",
+    "include/strata/qwen35",
+    "tools/qwen35_absent_mtp.patch",
+    "packaging/full_windows.py"
+  ],
+  "counts": {
+    "APPLIED_UPSTREAM": 119,
+    "ADAPTED_FORK": 39
+  },
+  "incoming_files": [
+    {
+      "path": ".github/ISSUE_TEMPLATE/bug_report.yml",
+      "upstream_blob": "4d438eee6690f75b16ebe89b1aa0502b1d0bdb9a",
+      "merged_blob": "4d438eee6690f75b16ebe89b1aa0502b1d0bdb9a",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "AGENTS.md",
+      "upstream_blob": "165e716b5dd9803a196b6e2edb673155f0ba9087",
+      "merged_blob": "d2004b8458414d8e9077df968f081b74e0117b0d",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "CMakeLists.txt",
+      "upstream_blob": "57d6b6a3ce52c9bdc0792bed4220f6a319304163",
+      "merged_blob": "db1b50d09fc5af6d21702726cf23f5269c5d302e",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "README.de.md",
+      "upstream_blob": "c848366828e4036205276f6b0e1aef83691bc28e",
+      "merged_blob": "48ca534ddf2bc3c6eb753310714254abcc65efdc",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "README.es.md",
+      "upstream_blob": "64f41e5b64511bd8ee91ed4344ba9a941f95157f",
+      "merged_blob": "ca8f0ee4a7605efd197f2ab575d2b3539c0663af",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "README.fr.md",
+      "upstream_blob": "41fd2c453f10966c00ef3bb3a5052b647d8d6917",
+      "merged_blob": "e5932c662029ef6d2ae46fede03a5d0a005b967b",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "README.ja.md",
+      "upstream_blob": "fac624042c810dbc90d3b270c9f439fe6b79526a",
+      "merged_blob": "a9367de6cb95344abea7b74c827542a9a3064ed6",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "README.md",
+      "upstream_blob": "440580407f14f1f0d2904014bb2ed0e9b41343ce",
+      "merged_blob": "93e47e9ac0c3ee2a96e303c255613e56f0857725",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "README.pl.md",
+      "upstream_blob": "6b0dafc3c15ade2a9bf24adce498a94eecea793a",
+      "merged_blob": "e3c8c14e8c36e1fc5c1688f8ca17d8c98f6b1a92",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "README.pt-BR.md",
+      "upstream_blob": "a7337c4e05eb41ffea58bf18c73f9bf2a7c1b2e5",
+      "merged_blob": "0bff4255a18373a73c0caa68dbc9c1729fcf3c3f",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "README.zh-CN.md",
+      "upstream_blob": "ef4ed349f333df2521d8895e2b1416d0096a4658",
+      "merged_blob": "4afa876d8dc3480cca38e106f3dba78a7b705269",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "apps/desktop/package.json",
+      "upstream_blob": "a3df37ff53c21c18903b9ccd52a407fbb16b71b4",
+      "merged_blob": "691d372731f8cba82feb5748e20c1b3d63f82d86",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "apps/desktop/src-tauri/Cargo.lock",
+      "upstream_blob": "ea7332da4b7d5ec5f282a47f6634e789fe19fdf2",
+      "merged_blob": "c496a4cfc96d087bfd889dc6252050e4f3d71d10",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "apps/desktop/src-tauri/Cargo.toml",
+      "upstream_blob": "0068756ba1101d62c8e32451f9db244352761ac7",
+      "merged_blob": "bfeac01904a1ac12d517ab982910f608c872f95b",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "apps/host/package-lock.json",
+      "upstream_blob": "c6b1b24ef00133a4fe8fb5213856b2b66ec3225f",
+      "merged_blob": "83a1522d695e93114df6748ec02878bf45d8c177",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "apps/host/package.json",
+      "upstream_blob": "87627b8ec2bcf4c0432f84a21f1c463be9b297d0",
+      "merged_blob": "cbac0ad2987eda215e154bf4e04805a432e0f153",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "apps/host/scripts/make-df2-locales.py",
+      "upstream_blob": "7e1c3a0e7dfa7d18ef1ab683224ed5dfad1d7918",
+      "merged_blob": "7e1c3a0e7dfa7d18ef1ab683224ed5dfad1d7918",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "apps/host/server/native-gateway.mjs",
+      "upstream_blob": "f3cdd834569e3319878cb6f8ebbacfd4a102be7a",
+      "merged_blob": "8d41b12a87b42b7ec8eaf150b56d040eaa1a125a",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "apps/host/src/components/SettingsUpdates.tsx",
+      "upstream_blob": "30ceedb53271401d4c158718c34606539f4c8000",
+      "merged_blob": "30ceedb53271401d4c158718c34606539f4c8000",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "apps/host/src/locales/df2-de.json",
+      "upstream_blob": "79cc5de6e8f7fb54de3ad68806eec82c322d26d3",
+      "merged_blob": "79cc5de6e8f7fb54de3ad68806eec82c322d26d3",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "apps/host/src/locales/df2-en.json",
+      "upstream_blob": "f06a9cf12424099272b64ded65ac07000fe30698",
+      "merged_blob": "f06a9cf12424099272b64ded65ac07000fe30698",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "apps/host/src/locales/df2-es.json",
+      "upstream_blob": "d3715b3179475595aacc030535eeebfa061ba9a8",
+      "merged_blob": "d3715b3179475595aacc030535eeebfa061ba9a8",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "apps/host/src/locales/df2-fr.json",
+      "upstream_blob": "777a3a043df38aaee642444c44d3c17e4ac1c464",
+      "merged_blob": "777a3a043df38aaee642444c44d3c17e4ac1c464",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "apps/host/src/locales/df2-ja.json",
+      "upstream_blob": "6123cf773e8e299371feaf866b20c9e78cbb99d1",
+      "merged_blob": "6123cf773e8e299371feaf866b20c9e78cbb99d1",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "apps/host/src/locales/df2-ko.json",
+      "upstream_blob": "242a2ce27929a9aea84b6a9a7157f3c1fd97c705",
+      "merged_blob": "242a2ce27929a9aea84b6a9a7157f3c1fd97c705",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "apps/host/src/locales/df2-pt.json",
+      "upstream_blob": "2a6992be63040d72f82b72fa755b0a89034b1bec",
+      "merged_blob": "2a6992be63040d72f82b72fa755b0a89034b1bec",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "apps/host/src/locales/df2-ru.json",
+      "upstream_blob": "a42539dec1e580ebb2f7e1e179dccaf6b659da65",
+      "merged_blob": "a42539dec1e580ebb2f7e1e179dccaf6b659da65",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "apps/host/src/locales/df2-zh.json",
+      "upstream_blob": "5246d614334315059487df2b544b1b502d596f9b",
+      "merged_blob": "5246d614334315059487df2b544b1b502d596f9b",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "apps/host/tests/drafting.test.mjs",
+      "upstream_blob": "c55e09afc25f39d0a5caac9532b4a065607ccfae",
+      "merged_blob": "23d1f2931e9ddb81158a3c73f70d729705d06184",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "apps/host/tests/native-gateway.test.mjs",
+      "upstream_blob": "a982744985372db2b56ed758b9535a8b016570dc",
+      "merged_blob": "f9544ca73fe0a390402f06c0683a0e896ea189c6",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "apps/host/tests/qa1-storage.test.mjs",
+      "upstream_blob": "6b94cd068a2fb31344ac2081af239957d4551cd8",
+      "merged_blob": "eff531dbaea1a33dd02196b44cb294cf757c2a63",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "data/dflash2-tuned/LICENSE",
+      "upstream_blob": "d645695673349e3947e8e5ae42332d0ac3164cd7",
+      "merged_blob": "d645695673349e3947e8e5ae42332d0ac3164cd7",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "data/dflash2-tuned/NOTICE.md",
+      "upstream_blob": "bcdeca3c6e024ac42903a565abcae80993f61cef",
+      "merged_blob": "bcdeca3c6e024ac42903a565abcae80993f61cef",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "docs/DETAILS.md",
+      "upstream_blob": "1327e6a4dc5e13a11125879c2a010b07eadab5bf",
+      "merged_blob": "1327e6a4dc5e13a11125879c2a010b07eadab5bf",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "docs/MAC.md",
+      "upstream_blob": "20bd10d4bf1e7e42bd91266077ef9e16c52688db",
+      "merged_blob": "20bd10d4bf1e7e42bd91266077ef9e16c52688db",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "include/strata/core/expert_source.hpp",
+      "upstream_blob": "5bb2c59598547e8e06b11672f4a1ba0d21eb84a9",
+      "merged_blob": "5bb2c59598547e8e06b11672f4a1ba0d21eb84a9",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "include/strata/core/flag_order.hpp",
+      "upstream_blob": "93c28f129050090cbbd837fcb0def34da8a0054e",
+      "merged_blob": "93c28f129050090cbbd837fcb0def34da8a0054e",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "include/strata/core/peer_experts.hpp",
+      "upstream_blob": "68ec1867cf013379438dc2bbbc6ea4572f4ac707",
+      "merged_blob": "68ec1867cf013379438dc2bbbc6ea4572f4ac707",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "include/strata/core/run_manifest.hpp",
+      "upstream_blob": "c3fed98941f99327e95fef8b8b750bc1e141b4d3",
+      "merged_blob": "c3fed98941f99327e95fef8b8b750bc1e141b4d3",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "include/strata/core/verify.hpp",
+      "upstream_blob": "a0dbeda0ab76d2799d79da0e9a5490799cd29d31",
+      "merged_blob": "a0dbeda0ab76d2799d79da0e9a5490799cd29d31",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "include/strata/kernels/cpu/expert_layout.hpp",
+      "upstream_blob": "38610cd6debafaa0b04999dab47f4e09991c1366",
+      "merged_blob": "38610cd6debafaa0b04999dab47f4e09991c1366",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "include/strata/kernels/cpu/iq_avx512.hpp",
+      "upstream_blob": "5fbcc10a92eacafdad78fd2bbd3ef66abb55946d",
+      "merged_blob": "5fbcc10a92eacafdad78fd2bbd3ef66abb55946d",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "include/strata/kernels/qsa_select.hpp",
+      "upstream_blob": "91f9f0cc97e0aaf8db8bd2ff5881356850ebf13c",
+      "merged_blob": "91f9f0cc97e0aaf8db8bd2ff5881356850ebf13c",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "include/strata/kernels/qsa_two_pass.hpp",
+      "upstream_blob": "e4e687dad3a1bc3e621409ace2a8d3635cfc508c",
+      "merged_blob": "e4e687dad3a1bc3e621409ace2a8d3635cfc508c",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "include/strata/kernels/qsa_two_pass_status.hpp",
+      "upstream_blob": "297c2e4668f6e9725249342a55a10f68467e3b63",
+      "merged_blob": "297c2e4668f6e9725249342a55a10f68467e3b63",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "include/strata/kernels/verify_kernels.hpp",
+      "upstream_blob": "57d407b708c3e94f3b7d54aaff7e1ab6531f5b81",
+      "merged_blob": "57d407b708c3e94f3b7d54aaff7e1ab6531f5b81",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "include/strata/prefill/kernels.hpp",
+      "upstream_blob": "291a576944b7737c4bddd9e2e2e2c8ca670a79d0",
+      "merged_blob": "291a576944b7737c4bddd9e2e2e2c8ca670a79d0",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "include/strata/prefill/mmq_ids_margin.hpp",
+      "upstream_blob": "2a8a35802c94195ff7e9a792e01b360bc799a0f8",
+      "merged_blob": "2a8a35802c94195ff7e9a792e01b360bc799a0f8",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "include/strata/prefill/moe_fused_iq.hpp",
+      "upstream_blob": "16049deff433fc85cc345b3cf9267f95e11f693b",
+      "merged_blob": "16049deff433fc85cc345b3cf9267f95e11f693b",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "include/strata/prefill/moe_iq4_w4a8.hpp",
+      "upstream_blob": "67021667c210aecdbe5c9d092b3bd42c32688efc",
+      "merged_blob": "67021667c210aecdbe5c9d092b3bd42c32688efc",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "include/strata/prefill/moe_mmq.hpp",
+      "upstream_blob": "2f2aba9bbd5cc120a8d3cd9bb169035be2fb7ff0",
+      "merged_blob": "2f2aba9bbd5cc120a8d3cd9bb169035be2fb7ff0",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "include/strata/prefill/timer_marks.hpp",
+      "upstream_blob": "dd3f139d5b4f84319ff680d0f50aa3253c2d952f",
+      "merged_blob": "dd3f139d5b4f84319ff680d0f50aa3253c2d952f",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "include/strata/program/adaptive_range.hpp",
+      "upstream_blob": "1bc0b4b264d9e40cbb23ece269bf3eb5e76ac3b5",
+      "merged_blob": "1bc0b4b264d9e40cbb23ece269bf3eb5e76ac3b5",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "include/strata/spec/window_rule.hpp",
+      "upstream_blob": "813690d3ed96522c1fab5f81bd050ad754035372",
+      "merged_blob": "813690d3ed96522c1fab5f81bd050ad754035372",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "metal/CMakeLists.txt",
+      "upstream_blob": "0caeb338d0464b883fb0c959699ffb6432b79f6e",
+      "merged_blob": "9685aa74ac8563d451abd61d607d5d2d073aece3",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "metal/kernels/gr.metal",
+      "upstream_blob": "a40a2f59425183bbaab62c2fe661c6b40626978e",
+      "merged_blob": "a40a2f59425183bbaab62c2fe661c6b40626978e",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "metal/kernels/mm_i8.metal",
+      "upstream_blob": "5d98ed06afe1ad2a338d6f9d5d8912e8eaf3eaa0",
+      "merged_blob": "5d98ed06afe1ad2a338d6f9d5d8912e8eaf3eaa0",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "metal/kernels/moe_mm.metal",
+      "upstream_blob": "aa4334ad8227cb1beec0b5c6dab5ef580d923ae6",
+      "merged_blob": "aa4334ad8227cb1beec0b5c6dab5ef580d923ae6",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "metal/kernels/qsa_prompt.metal",
+      "upstream_blob": "1a7de7472f09c7486e0fe1f5377c6398f8c23aa9",
+      "merged_blob": "1a7de7472f09c7486e0fe1f5377c6398f8c23aa9",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "metal/setup_mac.py",
+      "upstream_blob": "41a4e1ca9b82f00be63fd9ba0b67310a0149424d",
+      "merged_blob": "41a4e1ca9b82f00be63fd9ba0b67310a0149424d",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "metal/src/engine/prompt_chain.inc",
+      "upstream_blob": "759bb82433be50ad2bc00bc6867b4f3973588d44",
+      "merged_blob": "759bb82433be50ad2bc00bc6867b4f3973588d44",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "metal/src/engine/stubs.cpp",
+      "upstream_blob": "4749a3fd66d07c14f112c73b97398aa382ba1392",
+      "merged_blob": "4749a3fd66d07c14f112c73b97398aa382ba1392",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "metal/src/engine/stubs_025.cpp",
+      "upstream_blob": "4b6b45b779887bb213138e587aba8dd813b4744d",
+      "merged_blob": "4b6b45b779887bb213138e587aba8dd813b4744d",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "metal/src/engine/window.cpp",
+      "upstream_blob": "081e332eae18e6d18438ea19f35fb389a8b87861",
+      "merged_blob": "081e332eae18e6d18438ea19f35fb389a8b87861",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "metal/src/mtl_rt.h",
+      "upstream_blob": "759903b0e16b1338fa6b1eab9b9d53d6e4c5bebd",
+      "merged_blob": "759903b0e16b1338fa6b1eab9b9d53d6e4c5bebd",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "metal/src/mtl_rt.mm",
+      "upstream_blob": "3165f8ec5153a0be035dd5272ea2c000c20eb076",
+      "merged_blob": "3165f8ec5153a0be035dd5272ea2c000c20eb076",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "metal/tests/mm_i8_bench.cpp",
+      "upstream_blob": "38f5c07e64bffea08ec8577c6469de99e9ea4173",
+      "merged_blob": "38f5c07e64bffea08ec8577c6469de99e9ea4173",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "metal/tests/moe_mm_parity.cpp",
+      "upstream_blob": "8acc747eb083e8b1489292d9e95d9be6c6ed797e",
+      "merged_blob": "8acc747eb083e8b1489292d9e95d9be6c6ed797e",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "packaging/UPDATES.md",
+      "upstream_blob": "7336313344fee48c7749b115d04e95a191ca1384",
+      "merged_blob": "bd404b15655fe51f3d101547d025cb9d2ed06bbe",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "packaging/build_dsv41_hip_linux.sh",
+      "upstream_blob": "cceb8e3ace98c55b2f565544e69154f20750fd64",
+      "merged_blob": "cceb8e3ace98c55b2f565544e69154f20750fd64",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "packaging/build_hip_linux.sh",
+      "upstream_blob": "b2c8f4f5b1f9d1b26b94ac7501c14cdf54b31f9f",
+      "merged_blob": "b2c8f4f5b1f9d1b26b94ac7501c14cdf54b31f9f",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "packaging/feed_tool.py",
+      "upstream_blob": "a256efe3a70a365bac9f4ee13ad6409f667dfdc9",
+      "merged_blob": "a256efe3a70a365bac9f4ee13ad6409f667dfdc9",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "packaging/mac/build_dsv41_engine.sh",
+      "upstream_blob": "f0bd3b796ccb92be42767055bb26eb26c30aa9d3",
+      "merged_blob": "f0bd3b796ccb92be42767055bb26eb26c30aa9d3",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "packaging/make_local_feed.py",
+      "upstream_blob": "6371d8790ab96d4b96706b713786c5d9ff1935da",
+      "merged_blob": "ebcc15e2ec6e6eb59a8216fca55ee2e16c297ee7",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "serve/frontend.py",
+      "upstream_blob": "51763da0dc80ef842898aaefb97b68784f6a1550",
+      "merged_blob": "51763da0dc80ef842898aaefb97b68784f6a1550",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "serve/server.py",
+      "upstream_blob": "b5eed4000f7e89e9087167b705cc62bac1599c02",
+      "merged_blob": "1e6305e2fa03d66baec84d8d1e4ffe33e578854c",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "serve/test_anthropic_tool_results.py",
+      "upstream_blob": "bad89bd98be2c2f95db6a26bf9924d15603a5aab",
+      "merged_blob": "bad89bd98be2c2f95db6a26bf9924d15603a5aab",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "serve/test_frontend.py",
+      "upstream_blob": "a86a8945a45dffc3b6e95fedc414c52f66f2ae9b",
+      "merged_blob": "a86a8945a45dffc3b6e95fedc414c52f66f2ae9b",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "serve/test_parallel.py",
+      "upstream_blob": "f8715a228b649c9bcd80d66f0c29b243ff567525",
+      "merged_blob": "f8715a228b649c9bcd80d66f0c29b243ff567525",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "serve/test_request_accounting.py",
+      "upstream_blob": "6bedbd589473983d5c4f94f56123b5a9ba24510a",
+      "merged_blob": "6bedbd589473983d5c4f94f56123b5a9ba24510a",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "serve/test_server.py",
+      "upstream_blob": "f19768e61690fc77adbb660fe910a945c279bbbd",
+      "merged_blob": "e8e7069d041da457dda7a458d418a592fe1b2f3a",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "serve/test_tool_name_mcp_member.py",
+      "upstream_blob": "d9ebc0a356c31fab321c5c8074a792e1079da4e2",
+      "merged_blob": "d9ebc0a356c31fab321c5c8074a792e1079da4e2",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "serve/test_tool_name_prefix.py",
+      "upstream_blob": "48e187d74069908eae14b1964f8a8c3a6f27c544",
+      "merged_blob": "48e187d74069908eae14b1964f8a8c3a6f27c544",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "serve/test_tool_opener_misspelt.py",
+      "upstream_blob": "40d87d54930a782de0d8ec19739c72ea89168131",
+      "merged_blob": "37ebf54cc2cfe73853fba0167cbf256f8c65a803",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "serve/test_yield_accounting.py",
+      "upstream_blob": "a7bf13aaa66fb01f738e9a13166bef6d6b5f9071",
+      "merged_blob": "a7bf13aaa66fb01f738e9a13166bef6d6b5f9071",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "setup.py",
+      "upstream_blob": "cf801d3e0d8ca5a1ec4535707a001d679fc3db9f",
+      "merged_blob": "ab84348b0dbd5834a03915f0303c43d58a5e4201",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "src/core/arch_defaults.cpp",
+      "upstream_blob": "eb23951bfd8f18e7ed0efee081e841196be3ddf9",
+      "merged_blob": "eb23951bfd8f18e7ed0efee081e841196be3ddf9",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "src/core/arch_defaults_test.cpp",
+      "upstream_blob": "858e4063e3672eea0656034a38f06f8afcb088a6",
+      "merged_blob": "858e4063e3672eea0656034a38f06f8afcb088a6",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "src/core/expert_source.cpp",
+      "upstream_blob": "97585f891b15e1f63856bbef269aab0638447bbb",
+      "merged_blob": "ae817db1aa1407ae900bb7ee9605bde491a90b37",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "src/core/native_dense.cpp",
+      "upstream_blob": "2efd06e1f2172d7229d012ae61da38769c1f2f45",
+      "merged_blob": "2efd06e1f2172d7229d012ae61da38769c1f2f45",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "src/core/native_head.cpp",
+      "upstream_blob": "8ee819b85cf35c2b9514a1f4ab8232b2a2aec3d1",
+      "merged_blob": "8ee819b85cf35c2b9514a1f4ab8232b2a2aec3d1",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "src/core/peer_experts.cpp",
+      "upstream_blob": "e5508905bcb91fd0988adc18b6d38dde51e78fb7",
+      "merged_blob": "e5508905bcb91fd0988adc18b6d38dde51e78fb7",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "src/core/verify.cpp",
+      "upstream_blob": "af6179c7373b0c897118336b3b25a96a5cc76d7c",
+      "merged_blob": "af6179c7373b0c897118336b3b25a96a5cc76d7c",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "src/kernels/cpu/cpu_dispatch_dump.cpp",
+      "upstream_blob": "a7243c1b38f9953f1f02dfe526e0b27787019c30",
+      "merged_blob": "a7243c1b38f9953f1f02dfe526e0b27787019c30",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "src/kernels/cpu/expert.cpp",
+      "upstream_blob": "4bd62890e8ff281022b18990854464b5c709997d",
+      "merged_blob": "4bd62890e8ff281022b18990854464b5c709997d",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "src/kernels/cpu/expert_layout.cpp",
+      "upstream_blob": "8a4b95a0c06926cdfc771628dabc612aff98b9b9",
+      "merged_blob": "8a4b95a0c06926cdfc771628dabc612aff98b9b9",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "src/kernels/cpu/iq_avx512.cpp",
+      "upstream_blob": "eb3abc0caf17c0f670eb2af558ed54dd7492f5c3",
+      "merged_blob": "eb3abc0caf17c0f670eb2af558ed54dd7492f5c3",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "src/kernels/cpu/kq_cpu_bench.cpp",
+      "upstream_blob": "f28c5ccf15caddea5c083472cb0ba5b74e64e6d5",
+      "merged_blob": "ba895ad359caea7f4df19e2078676881f91d1687",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "src/kernels/cpu/kq_window_bench.cpp",
+      "upstream_blob": "45ccebe29e8e494d9bc0be2d62b1bd88d0b8bc52",
+      "merged_blob": "45ccebe29e8e494d9bc0be2d62b1bd88d0b8bc52",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "src/kernels/cpu/native_expert.cpp",
+      "upstream_blob": "6c3a101c047ee48f8bd9a320ad6a938057b92274",
+      "merged_blob": "6c3a101c047ee48f8bd9a320ad6a938057b92274",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "src/kernels/cpu/portable.cpp",
+      "upstream_blob": "ff023cf174145afc6830fb252dbd4b2ab1fd82dc",
+      "merged_blob": "ff023cf174145afc6830fb252dbd4b2ab1fd82dc",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "src/kernels/cuda/iq_kernels.cu",
+      "upstream_blob": "c70ca9e106a9bbf7518e4d74963a9a18744d3a1a",
+      "merged_blob": "c70ca9e106a9bbf7518e4d74963a9a18744d3a1a",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "src/kernels/cuda/qsa_select.cu",
+      "upstream_blob": "0d0296e390b7107542ab85750bca4114eadfc200",
+      "merged_blob": "0d0296e390b7107542ab85750bca4114eadfc200",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "src/kernels/cuda/verify_kernels.cu",
+      "upstream_blob": "2f47f2da34ead1615ba057a0de25ff494638b16b",
+      "merged_blob": "2f47f2da34ead1615ba057a0de25ff494638b16b",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "src/kernels/native_expert_parity.cpp",
+      "upstream_blob": "84f71ab074cc2503b74ead0f5a6392343f7346cd",
+      "merged_blob": "84f71ab074cc2503b74ead0f5a6392343f7346cd",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "src/kernels/qsa_two_pass_parity.cpp",
+      "upstream_blob": "8d03ae23b770490c931f8ad9b1e57d184dce34f2",
+      "merged_blob": "8d03ae23b770490c931f8ad9b1e57d184dce34f2",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "src/ngram/ple_reader.cpp",
+      "upstream_blob": "215f29d3ac584b0098985584a4b1c7f076bfdce4",
+      "merged_blob": "215f29d3ac584b0098985584a4b1c7f076bfdce4",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "src/ngram/ple_reader_test.cpp",
+      "upstream_blob": "46fcee5e6d760c9a0cf64256cd82d8d37a58b4fa",
+      "merged_blob": "ff6d0f21850fa53dd5add417dca2a3422442c335",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "src/prefill/kernels.cu",
+      "upstream_blob": "775da499edce333f328cd4376323ee9da54ca1a0",
+      "merged_blob": "775da499edce333f328cd4376323ee9da54ca1a0",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "src/prefill/moe_f16_common.cuh",
+      "upstream_blob": "0bd0be5d319192370580a205b51d952d03d36355",
+      "merged_blob": "0bd0be5d319192370580a205b51d952d03d36355",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "src/prefill/moe_f16_kq.cu",
+      "upstream_blob": "8ea6bbc27c541f203aac7cc8bc04abae5cf02148",
+      "merged_blob": "8ea6bbc27c541f203aac7cc8bc04abae5cf02148",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "src/prefill/moe_f16_kq.hpp",
+      "upstream_blob": "ed04cd3f77e6ab55dc2ada1f38c84d6885d62fb2",
+      "merged_blob": "ed04cd3f77e6ab55dc2ada1f38c84d6885d62fb2",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "src/prefill/moe_fused_iq.cu",
+      "upstream_blob": "fde0b9db81fcc93e5f654649438b13cca067917e",
+      "merged_blob": "fde0b9db81fcc93e5f654649438b13cca067917e",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "src/prefill/moe_iq4_w4a8.cu",
+      "upstream_blob": "4b26d06c467f3fb0231e5ed99f95587b20474310",
+      "merged_blob": "4b26d06c467f3fb0231e5ed99f95587b20474310",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "src/prefill/moe_mmq.cu",
+      "upstream_blob": "a26bcb1e460110358bcbb00fb0dd21a0b6e607f8",
+      "merged_blob": "a26bcb1e460110358bcbb00fb0dd21a0b6e607f8",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "src/prefill/prefill.cpp",
+      "upstream_blob": "0ef3cce9f90dde654e0a22d9918b79320cb5dcee",
+      "merged_blob": "cbf4921a9e5eab97104e4f9c59a4ff34972b03c2",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "src/program/generate.cpp",
+      "upstream_blob": "03113d5a494b282ff51c9fa64b49eeb17d75e9d2",
+      "merged_blob": "5285b9290a69c8beb3b0769b9a3e4c92882472fe",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "src/spec/window_rule_test.cpp",
+      "upstream_blob": "d4954cc9f79faf24f9cae24fd56b60bf6322cbd5",
+      "merged_blob": "d4954cc9f79faf24f9cae24fd56b60bf6322cbd5",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "src/split/CMakeLists.txt",
+      "upstream_blob": "6f07f5df323600bd7b704f9a5979a9a77a304015",
+      "merged_blob": "6f07f5df323600bd7b704f9a5979a9a77a304015",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "src/split/src/engine.cu",
+      "upstream_blob": "69911b306bf46514b72b888a12a018084fc8e916",
+      "merged_blob": "69911b306bf46514b72b888a12a018084fc8e916",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "src/split/src/expert_residency.hpp",
+      "upstream_blob": "82b6448c840115ae4d8fb33bb3977ee2d7ea9e12",
+      "merged_blob": "82b6448c840115ae4d8fb33bb3977ee2d7ea9e12",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "src/split/src/model.cpp",
+      "upstream_blob": "46f6df72b778872c6f3b92148304e01f917e5574",
+      "merged_blob": "46f6df72b778872c6f3b92148304e01f917e5574",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "src/split/src/model.hpp",
+      "upstream_blob": "b41038ccb480527bbc3b8b8faa76a72685a4f30f",
+      "merged_blob": "b41038ccb480527bbc3b8b8faa76a72685a4f30f",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "src/split/tools/expert_residency_test.cpp",
+      "upstream_blob": "fec5aeb598adecdb6594b451f1b414ab50ed92d3",
+      "merged_blob": "fec5aeb598adecdb6594b451f1b414ab50ed92d3",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "strata_cli/__init__.py",
+      "upstream_blob": "29e9689c812ac37e65d8196c5f1edbd2527403ac",
+      "merged_blob": "891d6f3e664803c5fa1e97826131419acc37a32b",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "strata_cli/drafting_cmd.py",
+      "upstream_blob": "a44ccf8dcc89c8d4dc279f51c6053160ae38dd90",
+      "merged_blob": "a44ccf8dcc89c8d4dc279f51c6053160ae38dd90",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "strata_cli/launch/runner.py",
+      "upstream_blob": "6669e192d89badee392e946ca8de11b93811f00d",
+      "merged_blob": "6669e192d89badee392e946ca8de11b93811f00d",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "strata_control/drafting.py",
+      "upstream_blob": "394ff3d22177506bd4c32e8f82f974bf87f8a580",
+      "merged_blob": "394ff3d22177506bd4c32e8f82f974bf87f8a580",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "strata_control/drafting_fetch.py",
+      "upstream_blob": "8380c3e5e3aafa5072aab1c16ed2c344f73c3813",
+      "merged_blob": "8380c3e5e3aafa5072aab1c16ed2c344f73c3813",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "strata_control/feed.py",
+      "upstream_blob": "76daee91869894c731a3f73795959d0a87914226",
+      "merged_blob": "76daee91869894c731a3f73795959d0a87914226",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "strata_control/split_engine.py",
+      "upstream_blob": "07545a5fa2cab607310b3066777e9e92f160d1e3",
+      "merged_blob": "07545a5fa2cab607310b3066777e9e92f160d1e3",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "sycl/src/prefill/prefill.cpp",
+      "upstream_blob": "0f69aed79a714eeb4c063f0b25689fcc23c32068",
+      "merged_blob": "0f69aed79a714eeb4c063f0b25689fcc23c32068",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "tests/core/flag_order_test.cu",
+      "upstream_blob": "7c2df6a797cca53c2896b3b0e81b3dc458b736f9",
+      "merged_blob": "7c2df6a797cca53c2896b3b0e81b3dc458b736f9",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "tests/core/run_manifest_test.cpp",
+      "upstream_blob": "9dd30ca3fc93d773effac6fc6b4c4df219588111",
+      "merged_blob": "9dd30ca3fc93d773effac6fc6b4c4df219588111",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "tests/cuda/prefill_fused_iq_test.cpp",
+      "upstream_blob": "a848e89529113fd6e488578d2afeafa21d89f60c",
+      "merged_blob": "a848e89529113fd6e488578d2afeafa21d89f60c",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "tests/cuda/prefill_iq4_w4a8_test.cu",
+      "upstream_blob": "3db700d35e1050d7428731c4bb349bad26f97d22",
+      "merged_blob": "3db700d35e1050d7428731c4bb349bad26f97d22",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "tests/desktop/test_control_install.py",
+      "upstream_blob": "b720e40739a8c66aa7416fe2527b8c9c7ca393d3",
+      "merged_blob": "b720e40739a8c66aa7416fe2527b8c9c7ca393d3",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "tests/ngram/ple_issue_bench.cpp",
+      "upstream_blob": "dfb15bbd8c8022ddd3a3d7f91b43621bf440f888",
+      "merged_blob": "dfb15bbd8c8022ddd3a3d7f91b43621bf440f888",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "tests/prefill/mmq_ids_margin_test.cpp",
+      "upstream_blob": "9fe43e7027829777c1e5bf4e72f235dcc8db2a57",
+      "merged_blob": "9fe43e7027829777c1e5bf4e72f235dcc8db2a57",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "tests/prefill/qsa_two_pass_status_test.cpp",
+      "upstream_blob": "311e7fcbe5deb71d4b58b14fe48861e41b63edf2",
+      "merged_blob": "311e7fcbe5deb71d4b58b14fe48861e41b63edf2",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "tests/prefill/qsa_two_pass_test.cpp",
+      "upstream_blob": "8ad0b03e27a4d523fdcb5cc2400736a18b5b230a",
+      "merged_blob": "8ad0b03e27a4d523fdcb5cc2400736a18b5b230a",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "tests/prefill/timer_marks_test.cpp",
+      "upstream_blob": "03aa1afad1232114c90bb6088acaeac3f7dc3ea5",
+      "merged_blob": "03aa1afad1232114c90bb6088acaeac3f7dc3ea5",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "tests/program/adaptive_range_test.cpp",
+      "upstream_blob": "67e39ea4a46328c5be50ae37e5864ab144748438",
+      "merged_blob": "67e39ea4a46328c5be50ae37e5864ab144748438",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "tests/split/test_split_engine.py",
+      "upstream_blob": "226631a2276105c3624a4b19e02835091da22e3b",
+      "merged_blob": "226631a2276105c3624a4b19e02835091da22e3b",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "tests/terminal/test_download_integrity.py",
+      "upstream_blob": "60939bd5eb8601ccb73dcbceec8df51dd67bda1e",
+      "merged_blob": "60939bd5eb8601ccb73dcbceec8df51dd67bda1e",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "tests/terminal/test_drafting.py",
+      "upstream_blob": "387432564f79f520ed287f235ddebdb6a47cf3f8",
+      "merged_blob": "387432564f79f520ed287f235ddebdb6a47cf3f8",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "tests/terminal/test_drafting_auto_mtp.py",
+      "upstream_blob": "3f9ed7f48532e5bd9bdd47acf8355b7c58f9e9fd",
+      "merged_blob": "f6cdc1c4d11efbfda49600df3ee975f8f6a0f41b",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "tests/terminal/test_drafting_hardware.py",
+      "upstream_blob": "2f08e33bc8e2d0ef8529554ca1947573ea5fac34",
+      "merged_blob": "2f08e33bc8e2d0ef8529554ca1947573ea5fac34",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "tests/terminal/test_drafting_single.py",
+      "upstream_blob": "e03420ff3fe8386e301f041d406646580c05daee",
+      "merged_blob": "e03420ff3fe8386e301f041d406646580c05daee",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "tests/terminal/test_drafting_streaming_class.py",
+      "upstream_blob": "71cae586056d6367e7e0e368cac825a28b33c1bb",
+      "merged_blob": "71cae586056d6367e7e0e368cac825a28b33c1bb",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "tests/terminal/test_drafting_tuned.py",
+      "upstream_blob": "b303ecfe25c1245cfab1d7d01ffd9e5c1f933125",
+      "merged_blob": "65531a8f76633f1468d3f87939cdf1954377f2fc",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "tests/terminal/test_launch_precedence_0213.py",
+      "upstream_blob": "ddc633a2bd3c5e435baf80072817b542dcff84bc",
+      "merged_blob": "ddc633a2bd3c5e435baf80072817b542dcff84bc",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "tests/terminal/test_tui2_023_old_launcher.py",
+      "upstream_blob": "e037b8fa895bc5e15322383ffeab70fdc8138e77",
+      "merged_blob": "a02e5fefcc67a97f34af008cdaba74847e780071",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "tests/terminal/test_tui2_023_versions.py",
+      "upstream_blob": "f3b8176ffaa33d2427478089460c84f71e0f37d7",
+      "merged_blob": "1b68757d7a469961aa103bfe6e701bf8f3ab391a",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "tools/check_isa_guard.py",
+      "upstream_blob": "b603461a60ec151a712c03ab5f21140a60985b7b",
+      "merged_blob": "bd0ed373e3cf01d3618cc04c8692569f1cb8618f",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "tools/force_check.py",
+      "upstream_blob": "a56bd2dbfb39d8bbe2005e8138b4e3ebdf1c819e",
+      "merged_blob": "a56bd2dbfb39d8bbe2005e8138b4e3ebdf1c819e",
+      "classification": "APPLIED_UPSTREAM"
+    },
+    {
+      "path": "tools/test_setup_download.py",
+      "upstream_blob": "9bd724612c498447000eecbd3f6ac1448eefa037",
+      "merged_blob": "118c400ceabcb1b4c11cfa6774eba03536b2b850",
+      "classification": "ADAPTED_FORK"
+    },
+    {
+      "path": "tools/test_setup_unsloth.py",
+      "upstream_blob": "f108491aefd3d26412c4acafcae2cf7c6b2ec0dc",
+      "merged_blob": "adb6e3cf48c670cd76d61fcc6305b725eff4a1e3",
+      "classification": "ADAPTED_FORK"
+    }
+  ],
+  "runtime_qualified": false
+}
