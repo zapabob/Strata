@@ -1,6 +1,7 @@
 # Main delivery of the official 0.2.12 source integration
 
-Date: 2026-11-09. Owner: OpenCode. Status: main commit/push in progress.
+Date: 2026-11-09. Owner: OpenCode. Status: source integration committed to main,
+pushed and remote-readback verified. This follow-up record documents delivery.
 
 ## Request and scope
 
@@ -53,13 +54,27 @@ H: and adequate RAM, native backend compilation and actual-model qualification.
 The existing four CUDA resource failures/`releaseQualified=false` remain visible.
 The source promotion does not replace the installed personal local.2 payload.
 
-## Delivery procedure and pending receipt
+## Executed delivery and verified receipt
 
-Finish the existing two-parent merge with a concise area-prefixed commit; update
-main through `git merge --ff-only integration/upstream-0212-20261109`; check its
-tree/parents, then `git push origin main`. Read `refs/heads/main` back from origin
-and compare it with local HEAD. Append the actual hashes/results after execution.
+The final pre-commit credential/payload scan passed for161 staged files; the
+staged whitespace/conflict check passed. `git diff --exit-code` showed no
+unstaged integration edits. Normal commit hooks were not bypassed.
 
-Self-review-event: ticket_completed (delivery unit pending), review-only. Preserve
+Source merge commit: `773013efdf4c75f6f54ee5102ef3aef3cbfc6711`.
+Message: `[Other] merge upstream 0.2.12 while preserving Hakua APIs`.
+Parents: `dce71248c61992a9ba1e8af99711c2eccc795f4e` and
+`146df3c468739147f520ac3816de806f71232571`.
+
+`git merge --ff-only integration/upstream-0212-20261109` advanced main to this
+exact commit. Its checkout was clean. `git ls-tree` on the stash's third parent
+confirmed all5 previously untracked README/7z preparation files were preserved.
+
+`git push origin main` succeeded: `dce71248..773013ef main -> main`.
+Fresh `git ls-remote origin refs/heads/main` returned the complete source merge
+SHA above. `git status --short --branch` then showed `## main...origin/main`
+with no edits. The following documentation-only commit records this observed
+source push; it does not change the tested runtime sources or qualification.
+
+Self-review-event: ticket_completed (Git source-delivery unit only), review-only. Preserve
 the source-versus-binary distinction and the named stash. No governance or test
 gate was weakened to perform the user-authorised Git delivery.
