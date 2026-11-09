@@ -11,6 +11,8 @@ import { speedOptions } from '../lib/deepseek-speed';
 import { draftingChoices } from '../lib/drafting';
 import type { RunCard } from '../lib/native-fit';
 import { NativeMcpEditor } from './NativeMcpEditor';
+import { RefusalProjectionStatus } from './RefusalProjectionStatus';
+import type { RefusalProjectionSettings } from '../lib/refusal-projection';
 /** One of the speed features: what it is called, what it does, whether it is on by default, and the engine environment it writes outside its default (server/native-settings.mjs). */
 interface SpeedSwitch {
     id: string;
@@ -34,6 +36,7 @@ export function NativeSettings({ model }: {
     const saveRequest = useRef(0);
     const [modelFields, setModelFields] = useState<NativeField[] | null>([]);
     const [settingsIssues, setSettingsIssues] = useState<{ field: string; message: string }[]>([]);
+    const [projection, setProjection] = useState<RefusalProjectionSettings | null>(null);
     const [switches, setSwitches] = useState<SpeedSwitch[]>([]);   // the speed switches that apply to this model on this PC
     const [dsExperts, setDsExperts] = useState(false);      // the installed DeepSeek engine knows --experts (0.1.50 or newer)
     const [tuned, setTuned] = useState<{ preset: { name: string } | null; changed: TunedChange[] } | null>(null);
@@ -49,6 +52,7 @@ export function NativeSettings({ model }: {
         setOriginal('');
         setModelFields([]);
         setSettingsIssues([]);
+        setProjection(null);
         setValues({});
         setText('');
         setMcp('{}');
@@ -62,11 +66,13 @@ export function NativeSettings({ model }: {
             speedSwitches?: SpeedSwitch[];
             fields?: NativeField[];
             settingsIssues?: { field: string; message: string }[];
+            refusalProjection?: RefusalProjectionSettings;
         }>(`/api/native/models/${model}/settings`).then(input => {
             if (!active || owner.current !== visit)
                 return;
             setModelFields(input.fields ?? null);
             setSettingsIssues(input.settingsIssues ?? []);
+            setProjection(input.refusalProjection ?? null);
             setDsExperts(!!input.capabilities?.dsExperts);
             setSwitches(input.speedSwitches ?? []);
             setTuned(input.tuned ?? null);
@@ -97,11 +103,13 @@ export function NativeSettings({ model }: {
                 mcp: Record<string, any>;
                 fields?: NativeField[];
                 settingsIssues?: { field: string; message: string }[];
+                refusalProjection?: RefusalProjectionSettings;
             }>(`/api/native/models/${model}/settings`, { values: parsed, mcp: tools });
             if (!current()) return;
             const result = nativeSettingsResponse(input);
             if (input.fields) setModelFields(input.fields);
             setSettingsIssues(input.settingsIssues ?? []);
+            setProjection(input.refusalProjection ?? null);
             setValues(result.values);
             setMcp(JSON.stringify(result.mcp, null, 2));
             setText(JSON.stringify(result.values, null, 2));
@@ -142,13 +150,20 @@ export function NativeSettings({ model }: {
     </details>;
     const family = (native?.catalog?.families ?? []).find(f => f.sizes.some(s => s.id === model))?.family ?? null;
     const draftingOffered = !!draftingChoices(family, native?.capabilities?.dflash2);
-    const rows = (modelFields ?? []).filter(f => (f.id !== 'ds_experts' || dsExperts || values[f.id] != null) && (f.id !== 'drafting' || draftingOffered || values[f.id] != null) && `${tr(f.label)} ${f.id} ${tr(f.group)}`.toLowerCase().includes(query.toLowerCase()));
+    const projectionField = modelFields?.find(f => f.id === 'refusal_direction_removal');
+    const rows = (modelFields ?? []).filter(f => f.id !== 'refusal_direction_removal' && (f.id !== 'ds_experts' || dsExperts || values[f.id] != null) && (f.id !== 'drafting' || draftingOffered || values[f.id] != null) && `${tr(f.label)} ${f.id} ${tr(f.group)}`.toLowerCase().includes(query.toLowerCase()));
     const switchRows = switches.filter(sw => `${tr(sw.label)} ${sw.id} ${tr('Speed')}`.toLowerCase().includes(query.toLowerCase()));
     const memoryOffered = modelFields?.some(f => f.id === 'q36_memory' && f.supported !== false) || values.q36_memory != null;
     const memory = actualMemoryReceipt(native?.instances.find(i => i.model === model && i.status === 'ready' &&
         ['idle', 'reading', 'generating'].includes(i.phase) && ['idle', 'reading', 'generating'].includes(i.metrics?.live?.state))?.metrics?.engine);
     return <details className="native-settings" ref={details}><summary>{tr("Native engine settings")}</summary>{tr(tuned?.changed?.length ? <div className="native-tuned"><p className="small"><strong>{tr("Your tuning '{0}' sets", [tuned.preset?.name ?? ''])}</strong></p><ul>{tuned.changed.map(c => { const d = describeChange(c); return <li key={c.flag}><span>{d.name}</span><b>{d.now || tr('off')}</b>{d.was !== null ? <small className="muted">{tr("was {0}", [d.was])}</small> : null}</li>; })}</ul></div> : null)}<p className="small muted">{tr(!original ? 'Reading saved settings… ' : '')}{tr("Settings for this model. Blank values use Strata\u2019s defaults.")}</p><div className="editor-tabs" role="tablist" aria-label={tr("Native settings editor")}>{tr(['fields', 'json', 'tools'].map(t => <button key={t} role="tab" aria-selected={tab === t} onClick={() => chooseTab(t)}>{tr(t === 'fields' ? 'Parameters' : t === 'json' ? 'JSON' : 'MCP tools')}</button>))}</div>
   {settingsIssues.map(issue => <ErrorNotice key={issue.field} message={issue.message}/>)}
+  <section className="native-settings-group" aria-label={tr('Refusal-direction removal')}>
+    <label className="native-setting-row"><span><strong>{tr('Refusal-direction removal')}</strong><small>{tr('Experimental, off by default. Removes the bundled refusal direction from the original Qwen3.8-Flash-Next residual stream at layers 4–44. Changes responses; neither behaviour nor speed is guaranteed. Reload to apply. Model weights are unchanged.')}</small></span>{projectionField ? <NativeFieldInput field={projectionField} value={values.refusal_direction_removal} onChange={v => change('refusal_direction_removal', v)}/> : null}</label>
+    <p className="small muted">{tr(projection?.requested ? 'Saved load setting: on. Reload to apply.' : 'Saved load setting: off (default).')}</p>
+    {projection?.reason ? <p className="small muted">{tr(projection.reason)}</p> : null}
+    <RefusalProjectionStatus instance={native?.instances.find(i => i.model === model)}/>
+  </section>
   {memoryOffered ? <p className="small muted" data-q36-memory-observed={memory?.mode}>{memory
     ? tr('Actual expert storage: {0}. CPU staging {1} bytes; H2D staging {2} bytes; I/O scratch {3} bytes. Expert working storage only; total process memory is not bounded.', [memory.mode, String(memory.cpuStageBytes), String(memory.h2dStageBytes), String(memory.ioScratchBytes)])
     : tr('Actual expert storage is not reported yet.')}</p> : null}

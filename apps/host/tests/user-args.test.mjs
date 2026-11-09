@@ -22,7 +22,7 @@ function fixture(config = {}, { gpus = [{ index: 0, vram_gb: 12 }] } = {}) {
   mkdirSync(install, { recursive: true });
   process.env.STRATA_INSTALL_DIR = install;
   const path = join(install, 'strata-q2_0.json');
-  writeFileSync(path, JSON.stringify({ exe: 'component:strata-engine', tokenizer: join(install, 'tok'), args: ARGS, model_name: 'Qwen q2_0', port: 8080, ...config }));
+  writeFileSync(path, JSON.stringify({ arch: 'qwen4exp', exe: 'component:strata-engine', tokenizer: join(install, 'tok'), args: ARGS, model_name: 'Qwen q2_0', port: 8080, ...config }));
   const saved = [];
   const control = {
     control: { dir: join(root, 'control') }, version: '0.2.0',

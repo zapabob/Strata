@@ -4,12 +4,19 @@ import { checkWholeNumber, numberProblem } from '../lib/number-field';
 import { useEffect, useState } from 'react';
 import { Btn, Dialog } from '../components/ui';
 import { saveEngine, useStore } from '../lib/store';
+import { useNative } from '../lib/native';
+import { actualProjectionState } from '../lib/refusal-projection';
+import { RefusalProjectionStatus } from '../components/RefusalProjectionStatus';
 export function SamplingDrawer({ open, onClose }: {
     open: boolean;
     onClose: () => void;
 }) {
     const engine = useStore(s => s.engine);
     const modelId = useStore(s => s.library?.loaded);
+    const native = useNative();
+    const instance = native?.instances.find(i => i.id === native.defaultId);
+    const projectionState = actualProjectionState(instance);
+    const projectionLoaded = ['loaded', 'applied', 'request-off'].includes(projectionState);
     const [tab, setTab] = useState<'sampling' | 'advanced'>('sampling');
     const [local, setLocal] = useState<Record<string, number | boolean>>({});
     // What was typed in a number field, kept as text so a half-typed or wrong number can be said so in words (the save stays off until it is right).
@@ -72,7 +79,7 @@ export function SamplingDrawer({ open, onClose }: {
       </div> : <div className="stack">
         {tr(slider('sample.repeat', 'Repetition penalty', .5, 3, .01, 'Above 1 discourages repeated text.'))}
         <div className="sampling-number-grid">{tr(numberFields.map(field => { const problem = problemOf(field); const note = problem ? tr(problem.text, problem.args) : null; return <label className="input-field" key={field.id}><span>{tr(field.label)}</span><input className="st-input" type="number" inputMode="numeric" min={field.min} max={field.max} step={1} disabled={pending || !engine} value={typed[field.id] ?? String(Number(value(field.id)))} aria-invalid={problem ? true : undefined} aria-describedby={`response-note-${field.id}`} onChange={e => { const text = e.target.value; setTyped(prev => ({ ...prev, [field.id]: text })); const check = checkWholeNumber(text, field.min, field.max); if (check.ok) setLocal(prev => ({ ...prev, [field.id]: check.value })); }}/><small id={`response-note-${field.id}`} className={problem ? 'field-problem' : 'muted'} role={problem ? 'alert' : undefined}>{note ?? tr(field.id === 'sample.seed' ? '−1 chooses a random seed.' : '0 uses the engine default.')}</small></label>; }))}</div>
-        <div className="response-projection"><div><strong>{tr("Speed projection")}</strong><p className="small muted">{tr("Experimental control vector. Requires a compatible engine with the vector loaded.")}</p></div><button className="st-toggle" role="switch" aria-label={tr("Speed projection")} aria-checked={Boolean(value('sample.speedProjection'))} disabled={pending || !engine} onClick={() => setLocal(prev => ({ ...prev, 'sample.speedProjection': !Boolean(value('sample.speedProjection')) }))}/></div>
+        <div className="response-projection"><div><strong>{tr('Refusal-direction removal')}</strong><p id="response-projection-help" className="small muted">{tr('Request switch only. First enable the bundled vector in Native engine settings and reload a compatible model. This switch does not load a vector. Experimental; behaviour and speed are not guaranteed.')}</p><RefusalProjectionStatus instance={instance}/></div><button className="st-toggle" role="switch" aria-label={tr('Refusal-direction removal for requests')} aria-describedby="response-projection-help" aria-checked={projectionLoaded && Boolean(value('sample.speedProjection'))} disabled={pending || !engine || !projectionLoaded} onClick={() => setLocal(prev => ({ ...prev, 'sample.speedProjection': !Boolean(value('sample.speedProjection')) }))}/></div>
       </div>)}
     </div>
     {tr(error ? <p className="inline-error" role="alert">{tr(error)}</p> : null)}

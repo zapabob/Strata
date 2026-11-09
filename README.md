@@ -1,5 +1,10 @@
 # Hakua / Strata
 
+Current personal build candidate: `0.5.3-local.1` (Control `0.5.4`, native `0.5.3`),
+including opt-in refusal-direction GUI controls for compatible Qwen3.8 engines.
+Installer name: `Strata-0.5.3-local.1-windows-x64-setup.exe`. Build/overwrite and
+actual installed WebView2 verification are in progress; this is not a public download.
+
 **Source integration candidate:** official `v0.2.12` / latest main at `146df3c4`,
 with Hakua and the fork's runtime/state contracts retained. Native builds and
 hardware qualification are pending. See [the integration record](docs/UPSTREAM_0212.md).

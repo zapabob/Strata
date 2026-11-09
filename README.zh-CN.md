@@ -1,5 +1,8 @@
 # Strata · Hakua
 
+Current personal candidate: `Strata-0.5.3-local.1-windows-x64-setup.exe`; build,
+overwrite and actual installed WebView2 checks are pending. No public download.
+
 **源码集成候选：** 已合入官方 `v0.2.12`／最新main `146df3c4`，保留Hakua及分支功能。
 原生编译与硬件验证尚未完成。[集成记录](docs/UPSTREAM_0212.md)。
 已测试的个人安装包 `Strata-0.5.2-local.2-windows-x64-setup.exe` 早于此次源码合并。

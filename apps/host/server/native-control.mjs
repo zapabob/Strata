@@ -32,6 +32,7 @@ import { markEngine, engineRefusal } from './engine-version.mjs';
 import { friendlyModelName } from './model-names.mjs';
 import { parseSaved as parseRoles, mirror as mirrorRoles } from './gpu-roles.mjs';
 import { configContextLimit } from './dsv41-context.mjs';
+import { PROJECTION_KEY, probeRefusalProjection, projectionModelReason, projectionView, projectionRequested, admitProjection, applyProjection, clearOwnedProjection } from './refusal-projection.mjs';
 
 const ROOT=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 /* What the load says when the server had to start the normal layer split because the all-cards split engine would not come up (the engine's own reason stays in its log). */
@@ -130,7 +131,7 @@ function watchQ36EngineLog(logPath, onChunk, pollMs) {
   return stop;
 }
 
-export function createNativeControl({directory,requests=()=>[],changed=()=>{},spawnProcess=spawn,fetcher=fetch,modelsDirectory,nativeDataDirectory=value=>value,beforeLoad=async()=>{},hardwareProbe=()=>[],observationProbe,control=null,ready=null,appUpdater=null,appDirectory=dirname(ROOT),defaultRepo=process.env.STRATA_NATIVE_REPO??resolve(ROOT,'../../Strata'),engineLogPollMs=200,q36CapabilityProbe=probeQ36Capabilities}={}){
+export function createNativeControl({directory,requests=()=>[],changed=()=>{},spawnProcess=spawn,fetcher=fetch,modelsDirectory,nativeDataDirectory=value=>value,beforeLoad=async()=>{},hardwareProbe=()=>[],observationProbe,control=null,ready=null,appUpdater=null,appDirectory=dirname(ROOT),defaultRepo=process.env.STRATA_NATIVE_REPO??resolve(ROOT,'../../Strata'),engineLogPollMs=200,q36CapabilityProbe=probeQ36Capabilities,refusalCapabilityProbe=probeRefusalProjection}={}){
  mkdirSync(directory,{recursive:true});
  const settingsPath=join(directory,'native-host.json');
  let preferences=readJson(settingsPath,{repo:defaultRepo});
@@ -325,6 +326,12 @@ export function createNativeControl({directory,requests=()=>[],changed=()=>{},sp
   const family=catalog?.families?.find(f=>f.sizes?.some(s=>s.id===model))?.family??null;
   return nativeServingPolicy(config,family,capability,memoryCapability);
  }
+ function projectionContext(model,config,selectedExe=packaged?selectedEngineExe:null){
+  const exe=typeof config.exe==='string'&&!config.exe.startsWith('component:')?resolve(config.cwd??repo(),config.exe):selectedExe;
+  const context={root:packaged?control.control.dir:repo(),policy:policyFor(model,config),family:snapshot.catalog?.families?.find(f=>f.sizes?.some(s=>s.id===model))?.family??null,backend:config.backend??snapshot.engine?.backend??snapshot.installed?.engine?.backend};
+  return {...context,capability:projectionModelReason(config,context)?null:refusalCapabilityProbe(exe)};
+ }
+ function projectionSettings(model,config){const view=projectionView(config,projectionContext(model,config));return {refusalProjection:view};}
  async function probeQ36For(model,exe){
   const result=await q36CapabilityProbe(exe);
   // Older injected/public KV probes keep their flat return shape.
@@ -353,7 +360,8 @@ export function createNativeControl({directory,requests=()=>[],changed=()=>{},sp
  /** Every engine-starting entry point admits the same config before it writes or replaces anything. */
  function captureStart(args,runPath=null){
   const found=runPath?{path:runPath}:recordFile(args.model),text=readFileSync(found.path,'utf8'),config=checkedSettingsConfig(text);
-  servingConfig(args,config,{negotiating:true,...knownQ36Memory(args.model,config)});
+  const next=servingConfig(args,config,{negotiating:true,...knownQ36Memory(args.model,config)});
+  if(projectionRequested(next,packaged?control.control.dir:repo()))admitProjection(next,projectionContext(args.model,next));
   return {...found,text,config};
  }
  async function startAdmission(args,config){
@@ -364,11 +372,12 @@ export function createNativeControl({directory,requests=()=>[],changed=()=>{},sp
   const {kvCapability=null,memoryCapability=null}=q36Config(config,args.model)?await probeQ36For(args.model,exe):{};
   if(memoryCapability||kvCapability)binarySha256=(memoryCapability??kvCapability).binarySha256;
   const trusted={exe,binarySha256,kvCapability,memoryCapability};
-  servingConfig(args,config,trusted);
+  const next=servingConfig(args,config,trusted);
+  if(projectionRequested(next,packaged?control.control.dir:repo()))admitProjection(next,projectionContext(args.model,next,exe));
   return trusted;
  }
  const q36Config=(config,model)=>policyFor(model,config).id==='q36';
- function settings(model){const {entry,config}=record(model);const values=Object.fromEntries(NATIVE_FIELDS.map(f=>[f.id,servingValue(config,f.id)]));if(typeof values.aliases==='string')values.aliases=values.aliases.split(',').map(v=>v.trim()).filter(Boolean);values.sampling=config.sampling??{};values.args=config.args??[];values.env=publicNativeEnv(config.env??{});return {model,values,mcp:publicMcpServers(config.mcp_servers??config.mcpServers??{}),restartNeeded:true,capabilities:{dsExperts:ownEngine(config,model)&&dsExpertsSupported(config),...(q36Config(config,model)?{q36Kv:{status:'unknown',defaultK:'f32',defaultV:'f32',quality:'experimental-unqualified'}}:{})},speedSwitches:speedSwitchRows(config.env??{},{deepseek:ownEngine(config,model),arch:config.arch??null,backend:config.backend??entry?.backend??snapshot.installed?.engine?.backend??null,gpus:snapshot.hardware?.gpus??[]})};}
+ function settings(model){const {entry,config}=record(model);const values=Object.fromEntries(NATIVE_FIELDS.map(f=>[f.id,servingValue(config,f.id)]));if(values[PROJECTION_KEY]===null&&projectionRequested(config,packaged?control.control.dir:repo()))values[PROJECTION_KEY]=true;if(typeof values.aliases==='string')values.aliases=values.aliases.split(',').map(v=>v.trim()).filter(Boolean);values.sampling=config.sampling??{};values.args=config.args??[];values.env=publicNativeEnv(config.env??{});return {model,values,mcp:publicMcpServers(config.mcp_servers??config.mcpServers??{}),restartNeeded:true,capabilities:{dsExperts:ownEngine(config,model)&&dsExpertsSupported(config),...(q36Config(config,model)?{q36Kv:{status:'unknown',defaultK:'f32',defaultV:'f32',quality:'experimental-unqualified'}}:{})},speedSwitches:speedSwitchRows(config.env??{},{deepseek:ownEngine(config,model),arch:config.arch??null,backend:config.backend??entry?.backend??snapshot.installed?.engine?.backend??null,gpus:snapshot.hardware?.gpus??[]})};}
  async function settingsKv(model){
   const {config}=record(model);
   let kvCapability=null,memoryCapability=null;
@@ -378,7 +387,9 @@ export function createNativeControl({directory,requests=()=>[],changed=()=>{},sp
    else if(typeof config.exe==='string')exe=resolve(config.cwd??repo(),config.exe);
    ({kvCapability,memoryCapability}=await probeQ36For(model,exe));
   }
-  return {...servingSettingsView(config,policyFor(model,config,kvCapability,snapshot.catalog,memoryCapability),nativeFields()),q36KvCapability:kvCapability??{status:'unknown',quality:'experimental-unqualified'},q36MemoryCapability:memoryCapability};
+  const projection=projectionSettings(model,config),view=servingSettingsView(config,policyFor(model,config,kvCapability,snapshot.catalog,memoryCapability),nativeFields());
+  view.fields=view.fields.map(f=>f.id===PROJECTION_KEY?{...f,supported:projection.refusalProjection.supported,unavailableReason:projection.refusalProjection.reason}:f);
+  return {...view,...projection,q36KvCapability:kvCapability??{status:'unknown',quality:'experimental-unqualified'},q36MemoryCapability:memoryCapability};
  }
  // The HTTP boundary negotiates Q36 before saving; synchronous internal callers remain conservative.
  async function saveChecked(model,input){const before=JSON.stringify(record(model).config);const view=await settingsKv(model);if(JSON.stringify(record(model).config)!==before)throw new Error('The settings changed while checking the engine. Read them again before saving.');return save(model,input,view.q36KvCapability,view.q36MemoryCapability);}
@@ -386,7 +397,11 @@ export function createNativeControl({directory,requests=()=>[],changed=()=>{},sp
   if([...jobs.values()].some(j=>j.state==='running'||j.state==='cancelling'))throw new Error('Finish the current operation before saving native settings.');
   const {path,config}=record(model);
   if(busy(requests().filter(r=>instances.get(r.instanceId)?.model===model)))throw new Error('Finish this model’s requests before saving its settings.');
-  const patch=validateNativeSettings(values??{}),next=applyServingPatch(config,patch),policy=policyFor(model,config,capability,snapshot.catalog,memoryCapability);
+  const patch=validateNativeSettings(values??{});let next=applyServingPatch(config,patch);const policy=policyFor(model,config,capability,snapshot.catalog,memoryCapability);
+  if(Object.hasOwn(patch,PROJECTION_KEY)){
+   if(patch[PROJECTION_KEY]===true)admitProjection(next,projectionContext(model,next));
+   if(patch[PROJECTION_KEY]===false||patch[PROJECTION_KEY]===null)next=clearOwnedProjection(next,packaged?control.control.dir:repo());
+  }
   assertServingSettings(next,policy);
   if(patch.ds_experts!=null&&!dsExpertsSupported(config))throw new Error('The Speed choice needs the newer DeepSeek engine. Update the engine in Settings, then choose it.');
   for(const field of servingSettingsView(next,policy,nativeFields()).fields)if(field.supported===false&&patch[field.id]!=null&&JSON.stringify(patch[field.id])!==JSON.stringify(config[field.id]))throw new Error(`${field.label} needs a newer native Strata installation. Update it in Settings → About.`);
@@ -395,10 +410,13 @@ export function createNativeControl({directory,requests=()=>[],changed=()=>{},sp
   if('vram_reserve_mib' in patch){const base=captureUserArgs(next);const mine=setUserFlag(base,'--vram-reserve-mib',patch.vram_reserve_mib);if(mine.length)next[USER_KEY]=mine;else delete next[USER_KEY];next.args=mine.length&&patch.vram_reserve_mib!==null?mergeUserArgs(next.args??[],mine):setUserFlag(next.args??[],'--vram-reserve-mib',null);delete next.ui_reserve_applied;if(Array.isArray(next.args_written))next.args_written=[...next.args];}
   if(mcp!==undefined){next.mcp_servers=validateMcpServers(mcp,config.mcp_servers??config.mcpServers??{});delete next.mcpServers;}
   copyFileSync(path,path+'.bak');chmodSync(path+'.bak',0o600);const temp=path+'.ui-tmp';writeFileSync(temp,JSON.stringify(next,null,2)+'\n',{mode:0o600});renameSync(temp,path);
-  return {...settings(model),...servingSettingsView(next,policy,nativeFields())};
+  const projection=projectionSettings(model,next),view=servingSettingsView(next,policy,nativeFields());
+  view.fields=view.fields.map(f=>f.id===PROJECTION_KEY?{...f,supported:projection.refusalProjection.supported,unavailableReason:projection.refusalProjection.reason}:f);
+  return {...settings(model),...view,...projection};
  }
  function previousEngine(){if(packaged)return !!snapshot.engine?.previous;try{const data=snapshot.installed?.data_dir??snapshot.installed?.data_folder;return [join(preferences.repo,'engine/.previous'),data&&join(data,'engine/.previous')].filter(Boolean).some(existsSync)&&readFileSync(join(preferences.repo,'setup.py'),'utf8').includes('--rollback-engine');}catch{return false;}}
  function installSettings(args,capability=null,negotiating=true,memoryCapability=null){
+  if(args.values?.[PROJECTION_KEY]===true)throw new Error('Enable refusal-direction removal in the prepared model’s native settings. No vector download is needed.');
   const family=snapshot.catalog?.families?.find(f=>f.family===args.family),size=family?.sizes?.find(s=>s.model===args.model);
   const existing=size&&snapshot.installed?.models?.find(m=>m.model===size.id);
   const config=existing?record(existing.model).config:{},known=existing?knownQ36Memory(existing.model,config):{},policy=nativeServingPolicy(config,family?.family??null,capability,memoryCapability??known.memoryCapability);
@@ -606,6 +624,8 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
    }
    if(prepared.contract.requested.q36_memory==='legacy'&&Array.isArray(cfg[USER_KEY]))cfg[USER_KEY]=setUserFlag(cfg[USER_KEY],'--q36-memory',null);
   }else if(privacyRequired)privateMemoryArgs(cfg);
+  if(projectionRequested(cfg,packaged?control.control.dir:repo()))Object.assign(cfg,applyProjection(cfg,projectionContext(args.model,cfg,trusted.exe)));
+  else if(cfg[PROJECTION_KEY]===false)Object.assign(cfg,clearOwnedProjection(cfg,packaged?control.control.dir:repo()));
   return {cfg,resources,visionPreferences,parallelChoice,parallelNote,dsNote,q36Note};
  }
  /* One drafter per run. Control (strata_control/drafting.py) says which one this load runs and whether its file is on this computer: the plan of the saved model file with the choice the Load carries. */
@@ -758,6 +778,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   writeFileSync(configPath,JSON.stringify(cfg,null,2),{mode:0o600});
   if(memoryAccess)desktopMemoryAccess.set(id,memoryAccess);
   const instance={id,apiModelId,fingerprint,context:entry.context??0,aliases:cfg.aliases??[],vision:!!cfg.vision,resourceProfile:cfg.ui_resource_profile??null,model:args.model,label:friendlyModelName(snapshot.catalog,args.model)??entry.model_name??args.model,port:cfg.port,gpus:Array.isArray(cfg.gpu)?cfg.gpu:cfg.gpu===undefined?[]:[cfg.gpu],status:'loading',phase:'loading',parallel:cfg.parallel??1,mcpServers:cfg.mcp_servers??cfg.mcpServers??{},key,configPath,ownerJob:job.id,loadedAt:new Date().toISOString(),metrics:null,error:null,...(picturesNote?{picturesNote}:{})};
+  instance.refusalProjection={vectorVerified:projectionRequested(cfg,packaged?control.control.dir:repo()),requested:projectionRequested(config,packaged?control.control.dir:repo())};
   const capture=(args.runObservation===true||observationEnabled())?beginObservation(id,job,cfg,{executable:trustedEngineExe??undefined}):null;
   /* Another model on the same graphics card: the engine takes the card's free memory, so a second one usually finds none. Loading goes on (recommend, never force); if it fails, the reason is said. */
   const sharedWith=instance.gpus.length?[...instances.values()].find(i=>i.id!==id&&i.status!=='error'&&i.model!==args.model&&i.gpus.some(g=>instance.gpus.includes(g))):null;
@@ -797,8 +818,17 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
     try{
      writeFileSync(input,JSON.stringify(value,null,2),{mode:0o600});rmSync(output,{force:true});
      const answer=await control.splitEngine({configPath:input,outPath:output});
+     if(answer.split===true&&answer.written){
+      let candidate=JSON.parse(readFileSync(output,'utf8'));
+      if(projectionRequested(value,packaged?control.control.dir:repo())){
+       candidate[PROJECTION_KEY]=true;
+       const exe=typeof candidate.exe==='string'&&!candidate.exe.startsWith('component:')?resolve(candidate.cwd??repo(),candidate.exe):null;
+       const context=projectionContext(args.model,candidate,exe);admitProjection(candidate,context);candidate=applyProjection(candidate,context);
+      }
+      if(answer.line){instance.splitNote=answer.line;append(id,answer.line);}
+      return candidate;
+     }
      if(answer.line){instance.splitNote=answer.line;append(id,answer.line);}
-     if(answer.split===true&&answer.written)return JSON.parse(readFileSync(output,'utf8'));
     }catch{/* the layer split config stands */}
     finally{for(const f of [input,output]){try{rmSync(f,{force:true});}catch{/* best effort */}}}
     return value;

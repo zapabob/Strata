@@ -4,6 +4,7 @@ import { validMcpName, MCP_NAME_HELP } from './mcp-names.mjs';
 export const NATIVE_CACHE_TYPES=['f32','f16','bf16','q8_0','q4_0','turbo2','turbo3','turbo4','turbo5','turbo6'];
 export const NATIVE_SPIN8_MODES=['off','codec_only','vector','spinor_plus','spinor_minus','consensus'];
 export const NATIVE_FIELDS=[
+ {id:'refusal_direction_removal',label:'Refusal-direction removal',group:'Responses',type:'boolean',hint:'Experimental, off by default. Removes the bundled refusal direction from the original Qwen3.8-Flash-Next residual stream at layers 4–44. Changes responses; neither behaviour nor speed is guaranteed. Reload to apply. Model weights are unchanged.'},
  {id:'reasoning_budget_tokens',label:'Thinking token budget',group:'Responses',type:'number',min:0,max:1048576,hint:'Leave blank for the model default.'},
  {id:'fit_max_tokens',label:'Fit output to remaining context',group:'Responses',type:'boolean',hint:'Shortens the requested output cap when the prompt leaves less room.'},
  {id:'anthropic_thinking',label:'Anthropic thinking',group:'Responses',type:'enum',choices:['model','on_request'],hint:'Follow the model default or think only when requested.'},
@@ -95,7 +96,7 @@ export function setSpeedSwitch(env,id,on){
 /** What the settings answer carries: each switch that applies, with its words, its default, the entries it writes outside the default, and whether the feature is on. */
 export function speedSwitchRows(env,context){return SPEED_SWITCHES.filter(s=>speedSwitchApplies(s.id,context)).map(s=>({...s,on:speedSwitchIsOn(env,s.id)}));}
 /** Settings the app itself applies when it starts a model (they are not read from the engine's source, so the engine's text never says it supports them). */
-export const APP_OWNED_FIELDS=['mtp','batchMtp','drafting','ds_experts','q36_memory'];
+export const APP_OWNED_FIELDS=['mtp','batchMtp','drafting','ds_experts','q36_memory','refusal_direction_removal'];
 /** The families that have a Drafting choice and the model names the DFlash2 drafter was made for (strata_control/drafting.py SUPPORTED_FAMILIES, _SUPPORTED_NAME): Qwen3.8-Flash-Next, Gyro and Unsloth's quantizations of the same weights; not Swift, Coder or NVFP4. */
 export const DRAFTING_FAMILIES=['qwen','gyro','unsloth'];
 const DFLASH2_MODEL=/^qwen3\.8-flash-next(-gyro-[a-z0-9._-]+|-unsloth-[a-z0-9._-]+|-(q|iq|tq)\d[a-z0-9_.]*)?$/i;

@@ -31,14 +31,14 @@ const SAMPLING = Object.freeze({
   'sample.seed': ['seed', -1],
 });
 
-/** The request fields for the Expert settings that are not at their default, or null when all are. */
+/** Numeric overrides and explicit vector ON/OFF; null preserves the unconfigured agent route. */
 export function samplingFromExpert(expert) {
   const out = {};
   for (const [id, [field, recommended]] of Object.entries(SAMPLING)) {
     const v = expert?.[id];
     if (typeof v === 'number' && Number.isFinite(v) && v !== recommended) out[field] = v;
   }
-  if (expert?.['sample.speedProjection'] === false) out.experimental_speed_projection = false;
+  if (typeof expert?.['sample.speedProjection'] === 'boolean') out.experimental_speed_projection = expert['sample.speedProjection'];
   const cap = Number(expert?.['sample.maxTokens']);
   if (Number.isFinite(cap) && cap > 0) out.max_tokens = Math.floor(cap);
   return Object.keys(out).length ? out : null;

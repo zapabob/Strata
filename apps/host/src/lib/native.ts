@@ -7,6 +7,7 @@ export interface NativeSize {/** The first engine that reads this size's files (
 export interface NativeFamily {family:string;title:string;about:string;experimental:boolean;images:boolean;sizes:NativeSize[]}
 export interface NativeField {id:string;label:string;group:string;/** Legacy host projection only; current hosts resolve adapter applicability. */notForModel?:string;type:'number'|'boolean'|'string'|'enum'|'array';min?:number;max?:number;choices?:string[];choiceLabels?:Record<string,string>;defaultLabel?:string;hint?:string;supported?:boolean;forModel?:string;unavailableReason?:string}
 export type Q36MemoryMode = 'legacy' | 'bounded-experts-v1';
+export interface NativeInstance { refusalProjection?: { vectorVerified: boolean; requested: boolean } }
 export interface Q36MemoryReceipt {mode:Q36MemoryMode;cpuStageBytes:number;h2dStageBytes:number;ioScratchBytes:number}
 export interface NativeServingPolicy { id:'q38'|'q36'|'deepseek41'|'unknown'; ordinaryKv:string[]; note:string }
 export interface NativeJob {id:string;kind:string;guided?:boolean;model?:string;family?:string;state:'running'|'cancelling'|'done'|'error'|'cancelled';startedAt:string;summary:string;error:string|null;details?:string;result:Record<string,any>|null;progress?:Record<string,any>|null;/** An engine update beside a loaded model: which step it is on and the models it concerns (the app words these itself). */step?:'getting-ready'|'stopping'|'stopped';models?:string[]}

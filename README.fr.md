@@ -1,5 +1,8 @@
 # Strata · Hakua
 
+Current personal candidate: `Strata-0.5.3-local.1-windows-x64-setup.exe`; build,
+overwrite and actual installed WebView2 checks are pending. No public download.
+
 **Code candidat :** upstream `v0.2.12` / `146df3c4` est intégré ; compilation native et essais matériels restent à faire.
 L’installeur personnel testé avant cette intégration est `Strata-0.5.2-local.2-windows-x64-setup.exe`.
 Les liens ci-dessous restent ceux de 0.5.1. [État de l’intégration](docs/UPSTREAM_0212.md).

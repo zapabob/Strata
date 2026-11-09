@@ -4,7 +4,7 @@ import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {NATIVE_FIELDS} from '../../server/native-settings.mjs';
 import {createNativeControl} from '../../server/native-control.mjs';
-export function nativeFixture({modelsDirectory,tuneHandler,engineStatus,q36CapabilityProbe,observationProbe,packagedStartError,packaged=false}={}){
+export function nativeFixture({modelsDirectory,tuneHandler,engineStatus,q36CapabilityProbe,refusalCapabilityProbe,draftingPlan,splitEngine,observationProbe,packagedStartError,packaged=false}={}){
  const root=mkdtempSync(join(tmpdir(),'strata-native-test-')),repo=join(root,'repo'),directory=join(root,'data');
  const venvBin=process.platform==='win32'?'.venv/Scripts':'.venv/bin',venvPython=process.platform==='win32'?'.venv/Scripts/python.exe':'.venv/bin/python';
  for(const path of ['tools','serve',venvBin,'engine/.previous'])mkdirSync(join(repo,path),{recursive:true});
@@ -40,12 +40,13 @@ export function nativeFixture({modelsDirectory,tuneHandler,engineStatus,q36Capab
  const packagedStarts=[],effects=[],launchConfigs=[];
  const packagedControl=packagedStartError||packaged?{
   control:{dir:repo,python:join(repo,venvPython),cli:join(repo,'strata.py')},version:'0.4.0',
+  ...(draftingPlan?{draftingPlan}:{}),...(splitEngine?{splitEngine}:{}),
   async installedModels(){return {install_dir:repo,models:installed.models.map(m=>({id:m.model,name:m.model,source_config:join(repo,m.config),component_status:'present',context_tokens:32768,backend:'cuda'}))};},
   async engine(){return {usable:true,backend:'cuda',components_dir:join(root,'components'),engine:{version:'0.4.0',platform:'windows-x86_64',backend:'cuda',root:repo,exe:join(repo,'strata.exe')}};},
   async stop(){effects.push('stop');if(stopError)throw stopError;return {};},async status(){return typeof runtimeStatus==='function'?runtimeStatus():runtimeStatus;},async saveProfile(_id,path){effects.push('persist-profile');launchConfigs.push(path);return {};},async start(){effects.push('start');packagedStarts.push(true);const error=typeof packagedStartError==='function'?packagedStartError(packagedStarts.length):packagedStartError;if(error)throw error;return {ok:true,state:'ready'};},
  }:null;
  if(packagedControl){mkdirSync(directory,{recursive:true});writeFileSync(join(directory,'native-host.json'),JSON.stringify({installDir:repo}));}
- const control=createNativeControl({directory,defaultRepo:repo,spawnProcess,fetcher,modelsDirectory,observationProbe,beforeLoad:async()=>{effects.push('before-load');},requests:()=>requests,control:packagedControl,q36CapabilityProbe});
+  const control=createNativeControl({directory,defaultRepo:repo,spawnProcess,fetcher,modelsDirectory,observationProbe,beforeLoad:async()=>{effects.push('before-load');},requests:()=>requests,control:packagedControl,q36CapabilityProbe,refusalCapabilityProbe});
  return {control,repo,directory,catalog,installed,requests,calls,rpcCalls,children,packagedStarts,effects,launchConfigs,setMetricsStatus:value=>metricsStatus=value,setRuntimeStatus:value=>runtimeStatus=value,setStopError:value=>stopError=value,setExternal:value=>external=value,setHardware:value=>hardware=value,setBenchmarkWait:value=>benchmarkWait=value,setProgramWait:value=>programWait=value,setHealthStatus:value=>healthStatus=value,setHealthWait:value=>healthWait=value,hasPendingHealth:()=>!!releaseHealth,releaseHealth:()=>{healthWait=false;releaseHealth?.();releaseHealth=null;},cleanup:async()=>{await control.close();rmSync(root,{recursive:true,force:true});}};
 }
 export async function finishJob(control,id){for(let n=0;n<400;n++){const job=control.state().jobs.find(j=>j.id===id);if(job.state!=='running')return job;await new Promise(r=>setTimeout(r,10));}throw new Error('Fixture operation timed out');}

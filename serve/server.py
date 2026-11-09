@@ -7118,6 +7118,8 @@ class Service:
                                 "id": request_id,
                                 "projection": (sampling or {}).get("experimental_speed_projection") is not False
                                 if loaded else None,
+                                "projection_child_generation": getattr(self.engine, "_child_generation", None)
+                                if loaded else None,
                                 "time": started, "duration_s": round(time.time() - started, 1), "finish": finish,
                                 "prompt_tokens": seen, "reused": last.get("reused"), "output_tokens": n,
                                 "first_engine_token_s": first_engine_token_s,

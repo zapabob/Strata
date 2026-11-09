@@ -98,7 +98,7 @@ export function expertParams(cores = null) {
     { id: 'sample.repeat', group: 'Sampling', label: 'Repeat penalty', effect: 'Discourages loops', type: 'number', value: 1.05, recommended: 1.05 },
     { id: 'sample.seed', group: 'Sampling', label: 'Seed', effect: 'Fixes output for repeatability', type: 'number', value: -1, recommended: -1 },
 
-    { id: 'sample.speedProjection', group: 'Sampling', label: 'Speed projection', effect: 'Experimental control vector; requires engine support', type: 'toggle', value: true, recommended: true },
+    { id: 'sample.speedProjection', group: 'Sampling', label: 'Refusal-direction removal for requests', effect: 'Request switch only; requires the bundled vector loaded by a compatible engine', type: 'toggle', value: true, recommended: true },
     { id: 'sample.maxTokens', group: 'Sampling', label: 'Max output tokens', effect: 'Zero uses the engine default', type: 'number', value: 0, recommended: 0 },
 
     // Server

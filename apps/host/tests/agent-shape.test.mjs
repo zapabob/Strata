@@ -17,7 +17,8 @@ const skip = !HARNESS || !resolveHarness({ env: process.env }).ok ? 'STRATA_HARN
 
 test('only the Expert settings that differ from their defaults are sent; the thinking budget only while thinking is on', () => {
   assert.equal(samplingFromExpert({}), null);
-  assert.equal(samplingFromExpert({ 'sample.temp': 0.6, 'sample.topP': 0.95, 'sample.topK': 40, 'sample.repeat': 1.05, 'sample.seed': -1, 'sample.speedProjection': true, 'sample.maxTokens': 0 }), null, 'all defaults: nothing');
+  assert.equal(samplingFromExpert({ 'sample.temp': 0.6, 'sample.topP': 0.95, 'sample.topK': 40, 'sample.repeat': 1.05, 'sample.seed': -1, 'sample.maxTokens': 0 }), null, 'all defaults: nothing');
+  assert.deepEqual(samplingFromExpert({ 'sample.speedProjection': true }), { experimental_speed_projection: true }, 'an explicit ON overrides a native sampling default of false too');
   assert.deepEqual(samplingFromExpert({ 'sample.temp': 0.2, 'sample.topK': 10, 'sample.seed': 7, 'sample.maxTokens': 500, 'sample.speedProjection': false }),
     { temperature: 0.2, top_k: 10, seed: 7, max_tokens: 500, experimental_speed_projection: false });
   const body = { model: 'm', messages: [], max_tokens: 4096, chat_template_kwargs: { enable_thinking: true, reasoning_effort: 'high' } };
