@@ -17,6 +17,35 @@ import upgrade
 
 
 class AdapterContracts(TestCase):
+    def test_git_paths_decode_as_utf8_on_windows(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            filename = '以前のファイル.md'
+            (root / filename).write_text('fixture', encoding='utf-8')
+            subprocess.run(['git', 'init', '--quiet', directory], check=True, timeout=30)
+            subprocess.run(['git', '-C', directory, 'add', '--', filename], check=True, timeout=30)
+            with patch.object(candidate_common, 'ROOT', root):
+                self.assertEqual(candidate_common.git('ls-files', '-z'), filename + '\0')
+
+    def test_q36_fixture_starts_legacy_and_isolates_both_settings_files(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            model = work / 'fixture.gguf'
+            for path in (model, Path(str(model) + '.q36epk'), Path(str(model) + '.q36epk.verified')):
+                path.write_bytes(b'fixture')
+            tokenizer = work / 'tokenizer'
+            tokenizer.mkdir()
+            (tokenizer / 'tokenizer.json').write_text('{}', encoding='utf-8')
+            commit = 'a' * 40
+            with patch.object(recipes, 'MODEL', model), patch.object(recipes, 'TOKENIZER', tokenizer), patch.object(recipes, 'staged', return_value={'engineSHA256': 'b' * 64}), patch.object(recipes, 'load', return_value={'ok': True, 'sourceCommit': commit, 'shellSHA256': 'c' * 64}), patch.object(recipes, 'preserved_copy', return_value={'inventorySHA256': 'd' * 64}):
+                fixture = recipes.prepare_q36(work, work / 'app', commit)
+            home = Path(fixture['home'])
+            config = json.loads((home / 'install/strata-qwen36-ud-q4_k_xl.json').read_text())
+            self.assertEqual(config['q36_memory'], 'legacy')
+            self.assertNotIn('--q36-memory', config['args'])
+            for path in ('settings.json', 'Roaming/Strata/settings.json'):
+                self.assertEqual(json.loads((home / path).read_text())['data_dir'], str(home))
+
     def test_control_packaging_does_not_require_signed_native(self) -> None:
         with tempfile.TemporaryDirectory() as directory, patch.object(candidate_common, 'OUT', Path(directory)), patch.object(candidate_build, 'inventory', return_value={}), patch.object(candidate_common, 'staged', side_effect=AssertionError('native gate')) as native, patch.object(candidate_common.subprocess, 'run', side_effect=RuntimeError('stop before packaging')) as run:
             with self.assertRaisesRegex(RuntimeError, 'stop before packaging'):
@@ -72,6 +101,8 @@ class AdapterContracts(TestCase):
                 self.assertNotIn('plan.target', source)
                 self.assertNotIn('0.5.2', source)
                 if kind == 'q36':
+                    self.assertIn('result.workspaceFilesAcceptance=await workspaceFilesAcceptance(', source)
+                    self.assertIn('Native config escaped isolated fixture', source)
                     self.assertIn("name:'Model version'", source)
                     self.assertIn("name:/^More versions/", source)
                     self.assertIn("name:'Legacy'", source)

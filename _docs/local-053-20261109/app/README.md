@@ -18,7 +18,7 @@ fresh Control archive use the reviewed app checkout. Their source commits are
 recorded separately from the independently pinned native source commit.
 
 The parent must first supply
-`H:/Strata/releases/local-053-20261109-opencode/app/staged-native.json`
+`H:/Strata/releases/local-053-20261109-opencode/app-files/staged-native.json`
 and the staged component at
 `apps/desktop/src-tauri/resources/engine-bundle/0.5.3-windows-x86_64-cuda-cuda13`.
 The receipt must contain the agreed `ok`, `signatureVerified`,
@@ -28,6 +28,14 @@ The receipt must contain the agreed `ok`, `signatureVerified`,
 The inventory digest uses the historical preparation convention: SHA-256 of the
 UTF-8 JSON object mapping relative forward-slash paths to file SHA-256 values,
 sorted keys, separators `(',', ':')`, including `engine-component.json`.
+
+The file-enabled candidate uses fresh `BASE/app-files`; keep the earlier `BASE/app`
+installer and all its evidence. The already completed signed native receipt may
+be reused only after current payload/archive/production verification; the new
+Control, app and GUI receipts must be generated against the newly reviewed app
+commit. Q36 real-app acceptance now also requires sidebar file CRUD in its isolated
+workspace, and the native fixture starts legacy then explicitly opts in through
+the UI. Git output is decoded as UTF-8 so Japanese source filenames are preserved.
 
 No old native hash, source count or commit is asserted. `verify-native.mjs` calls
 production `verifyEngine`, `verifyNativeBuild`, `verifyPublicAssets`, and Control's

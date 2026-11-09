@@ -17,7 +17,7 @@ ROOT = HERE.parents[2]
 HISTORY = ROOT / '_docs/personal-install-20261107'
 RUNTIME = Path('H:/Strata/releases/personal-052-local2-20261107/app/execution-20261108')
 BASE = Path('H:/Strata/releases/local-053-20261109-opencode')
-OUT = BASE / 'app'
+OUT = BASE / 'app-files'
 PRODUCT, CONTROL, ENGINE = '0.5.3-local.1', '0.5.4', '0.5.3'
 RESOURCES = ROOT / 'apps/desktop/src-tauri/resources'
 SIGNED = RESOURCES / 'engine-bundle/0.5.3-windows-x86_64-cuda-cuda13'
@@ -74,7 +74,7 @@ def digest(value: dict) -> str:
 
 
 def git(*args: str) -> str:
-    return subprocess.check_output(['git', *args], cwd=ROOT, text=True, timeout=30).strip()
+    return subprocess.check_output(['git', *args], cwd=ROOT, text=True, encoding='utf-8', timeout=30).strip()
 
 
 def approved_source(commit: str | None) -> str:

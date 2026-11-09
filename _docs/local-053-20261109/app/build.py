@@ -10,7 +10,7 @@ def build_control(commit: str) -> None:
     require(not terminal.exists(), 'Fresh terminal output required')
     control = RESOURCES / 'control'
     old = inventory(control)
-    staging = ROOT / '_docs/local-archive/2026-11-09-pre-main/control-staging'
+    staging = ROOT / '_docs/local-archive/2026-11-09-pre-main/control-staging-files'
     require(not staging.exists(), 'Retain prior Control staging')
     env = build_env(require_native=False)
     subprocess.run([str(PYTHON), '-B', 'packaging/package_terminal.py', '--out', str(terminal),

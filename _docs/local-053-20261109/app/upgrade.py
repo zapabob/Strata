@@ -57,6 +57,8 @@ def acceptance(commit: str, target: str = 'candidate') -> None:
         require(result['ok'] and result['sourceCommit'] == commit and result['target'] == target, 'Target-specific GUI evidence missing')
         require(result[actual] is True and result['actualWebView2'] is True and result['actualShellAndHost'] is True and result['userHashesUnchanged'] is True and result['installedExeTest'] == (target == 'installed'), 'Actual target runtime required')
         if kind == 'q36':
+            files = result.get('workspaceFilesAcceptance', {})
+            require(files.get('ok') is True and files.get('noMocks') is True and files.get('isolatedWorkspace') is True, 'Actual sidebar file CRUD acceptance required')
             projection = result.get('projectionAcceptance', {})
             require(projection.get('ok') is True and projection.get('supported') is False and projection.get('positiveProjectionRuntimeTested') is False and projection.get('q38RuntimeQualified') is False, 'Actual Q36 negative projection acceptance required')
         expected = (INSTALLED if target == 'installed' else OUT / 'extracted') / 'strata-desktop.exe'

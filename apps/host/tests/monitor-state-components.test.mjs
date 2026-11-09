@@ -30,7 +30,7 @@ const boundary = {
   client: `export const api={get:async()=>({}),post:async()=>({})};`,
   snapshot: `export const monitorPng=async()=>'';`,
 };
-const empty = {TaskTree:'TaskTree',FloatingMenu:'FloatingMenu',QuitStrata:'QuitStrataDialog',HakuaLlamaChat:'HakuaLlamaChat',SnapshotDialog:'SnapshotDialog',CommandPalette:'CommandPalette',Shortcuts:'ShortcutsDialog',FolderPathDialog:'FolderPathDialog',Setup:'SetupScreen',Chat:'ChatScreen',ModelRun:'ModelRunScreen',Serving:'ServingScreen',Tasks:'TasksScreen',Skills:'SkillsScreen',Settings:'SettingsScreen'};
+const empty = {WorkspaceFiles:'WorkspaceFiles',TaskTree:'TaskTree',FloatingMenu:'FloatingMenu',QuitStrata:'QuitStrataDialog',HakuaLlamaChat:'HakuaLlamaChat',SnapshotDialog:'SnapshotDialog',CommandPalette:'CommandPalette',Shortcuts:'ShortcutsDialog',FolderPathDialog:'FolderPathDialog',Setup:'SetupScreen',Chat:'ChatScreen',ModelRun:'ModelRunScreen',Serving:'ServingScreen',Tasks:'TasksScreen',Skills:'SkillsScreen',Settings:'SettingsScreen'};
 for (const [file, name] of Object.entries(empty)) boundary[file] = `export const ${name}=()=>null;`;
 const compiled = await build({
   stdin: {contents: `import React from 'react';import {renderToStaticMarkup} from 'react-dom/server';

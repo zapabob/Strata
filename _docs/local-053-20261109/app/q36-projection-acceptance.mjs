@@ -57,7 +57,8 @@ export function createQ36ProjectionAcceptance({getPage,request,until,language,mo
  }
  async function japaneseSettings(){
   await language('ja');
-  const page=getPage(),panel=page.locator('details.native-settings');await panel.waitFor();await panel.evaluate(element=>element.open=true);
+   const page=getPage(),expert=page.getByRole('button',{name:'上級モード',exact:true});await expert.waitFor({state:'visible'});await expert.click();
+   const panel=page.locator('details.native-settings');await panel.waitFor();await panel.evaluate(element=>element.open=true);
   const region=panel.getByRole('region',{name:japaneseLabel,exact:true});await region.waitFor({state:'visible'});
   await region.getByText(japaneseLabel,{exact:true}).waitFor({state:'visible'});
   assert.equal(await region.getByRole('combobox',{name:japaneseLabel,exact:true}).count(),0,'Unsupported Q36 must not offer enable');

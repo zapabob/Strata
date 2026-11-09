@@ -248,3 +248,41 @@ resource, signature, dependency, clean-source and installed-target gates remain.
 Do not turn a passed short test, compiler rebind or signature into release/model
 quality qualification. Source-bound recovery evidence and remaining app/installed
 results must still be recorded before completion.
+
+## First installer and added sidebar file scope
+
+After the exact pending dependency scope fix, a fresh owned recovery Job reran
+all source/signature/native/backend/dependency/ZIP/staged-byte gates and completed
+the existing signed component. The failed r2 receipt remains; the published
+staged-native receipt names its passing recovery Job and helper digest.
+Fresh source ff299806 Control r3 passed in120.093s. Initial app r1 failed before
+compilation on Windows' cp932 decoding of raw UTF-8 Git paths. Original cached
+Cargo artifacts were verified unchanged and preserved, then UTF-8-mode app r2
+passed with five jobs in576.235s. The installer is112132793 bytes, SHA256
+a14cbd83ce1d8f0b813cda1c4c2e71cfb3f4dd43c22a1014b4cc064409af217e.
+It remains in the earlier app output and has NOT been installed.
+
+Qualification r1 stopped at the unchanged C: floor. Seven inactive pre0.5.2
+managed engines were preserved on H: with byte checks;0.5.1 and0.5.2 remain in
+place and no model weights moved. Qualification r2 then passed in95.266s,
+including all13 actual production startup self-tests. GUI Q36 attempts remained
+failed (navigation, fixture raw-memory conflict and later a source-adapter
+anchor check); all profiles, diagnostics and receipts remain. The old normal
+app/model reopened; explicit approved pause finally stopped1 active turn and
+1 instance through normal APIs, preserved source settings, and exited that shell.
+
+The user then requested CRUD for old files in Strata's left sidebar. That feature
+is implemented with bounded registered-workspace APIs, text editor, visible file
+actions and reversible workspace trash. Source HTTP/file tests10 passed, actual
+browser desktop/mobile checks8 passed with0 page errors, TypeScript passed and
+monitor checks6 passed. See2026-11-09_workspace-file-crud_OpenCode.md. Source-only
+and installed-EXE results remain distinct. A fresh app-files output preserves
+the first installer and its evidence. The tracked helpers now include root,
+Unicode, language-wait and isolated legacy-to-bounded fixture corrections.
+
+Fork PR3 was merged upstream of local main and fast-forwarded safely to
+3a9bd2f4. Only the three benchmark documentation/schema/manifest files changed;
+the working CRUD edits and untracked bytes were verified unchanged. These new
+ladder definitions are not runtime measurements. Continue the actual five-job
+file-enabled app package and backed-up overwrite; keep native12 resource findings
+and every unqualified flag unchanged.

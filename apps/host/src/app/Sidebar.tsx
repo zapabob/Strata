@@ -4,6 +4,7 @@ import { useNative } from '../lib/native';
 import { projectedModelState } from '../lib/native-monitor';
 import { modelFamilyIcon } from '../lib/model-icons';
 import { TaskTree } from './TaskTree';
+import { WorkspaceFiles } from './WorkspaceFiles';
 /** Quiet navigation, with the same destinations at every window size. */
 import { useEffect, useId, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
@@ -94,7 +95,7 @@ export function Sidebar({ containerRef }: {
         <button className="st-btn st-btn--primary nav-new" aria-label={tr("New chat")} title={tr("New chat")} onClick={() => runCommand('new')}><Icon name="new-chat" size={18}/><span className="nav__rail-hide">{tr("New chat")}</span></button>
         <TaskTree collapsed={collapsed}/>
         {tr(collapsed ? <div className="nav-recent" aria-label={tr("Recent chats")}>{tr(recentChats(sessions, activeSession).map((session, index) => <RecentChatLink key={session.id} session={session} slot={index + 1} active={activeSession === session.id && location.route === 'chat'}/>))}</div> : null)}
-        {!collapsed ? <div className="ws">
+        <div className="ws" style={collapsed ? { display: 'none' } : undefined}>
           <div className="ws__head">{tr(searchOpen ? <div className="nav-search"><Icon name="search" size={16}/><input ref={searchInput} className="st-input st-input--bare" type="search" placeholder={tr("Search chats…")} aria-label={tr("Search chats")} value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => {
                     if (e.key === 'Escape') {
                         e.preventDefault();
@@ -114,9 +115,10 @@ export function Sidebar({ containerRef }: {
                 {tr(!shown.length ? <p className="small muted ws__empty">{tr(q ? 'No matching chats' : 'No chats yet')}</p> : null)}
                 {tr(!q && rows.length > shown.length ? <button className="ws-view small" onClick={() => { setNavOpen(false); setRecentOpen(true); }}>{tr("View all chats")}</button> : null)}
               </div> : null)}
+              <WorkspaceFiles workspace={w} hidden={!expanded}/>
             </div>;
             })}
-        </div> : null}
+        </div>
       </div>
       <div className="nav__foot">
         <button className="enginechip" data-state={status === 'Ready' ? 'ready' : modelState.busy ? 'busy' : 'off'} onClick={() => go('models')} title={tr("{0} \u00B7 {1} \u00B7 {2}", [modelName, modelLine, tr(status)])} aria-label={tr("{0} \u00B7 {1}", [modelName, modelLine])}><span className="enginechip__family"><Icon name={modelFamilyIcon(current?.family)} size={20}/><span className="enginechip__dot"/></span><span className="enginechip__text nav__rail-hide"><span className="enginechip__title">{modelName}</span><span className="enginechip__sub">{modelLine}</span></span></button>

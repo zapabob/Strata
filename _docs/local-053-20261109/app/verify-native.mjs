@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {join,resolve} from 'node:path';
 import {spawnSync} from 'node:child_process';
-import {verifyEngine,verifyNativeBuild,sha256,verifyPublicAssets} from 'file:///H:/Strata/worktrees/main-integration-20261106/apps/host/scripts/release-integrity.mjs';
-const root=resolve(import.meta.dirname,'../../..'),out='H:/Strata/releases/local-053-20261109-opencode/app';
+import {verifyEngine,verifyNativeBuild,sha256,verifyPublicAssets} from '../../../apps/host/scripts/release-integrity.mjs';
+const root=resolve(import.meta.dirname,'../../..'),out='H:/Strata/releases/local-053-20261109-opencode/app-files';
 if(!process.argv.includes('--execute')){console.log(JSON.stringify({wouldVerify:false,executesEngine:false,receipt:join(out,'staged-native.json')}));process.exit(0);}
 const signed=JSON.parse(readFileSync(join(out,'staged-native.json'))),folder=join(root,'apps/desktop/src-tauri/resources/engine-bundle/0.5.3-windows-x86_64-cuda-cuda13');
 assert.equal(signed.ok,true);assert.equal(signed.signatureVerified,true);assert.equal(signed.releaseQualified,false);

@@ -1,0 +1,17 @@
+.workspace-files { margin: var(--st-s-2) 0 var(--st-s-3) var(--st-s-4); }
+.workspace-files__toggle { display: flex; align-items: center; gap: var(--st-s-2); width: 100%; min-height: var(--st-s-8); border: 0; background: transparent; color: var(--st-ink-soft); text-align: left; cursor: pointer; font: inherit; font-size: var(--st-fs-sm); }
+.workspace-files__toggle > .st-icon:first-child { transform: rotate(0deg); }
+.workspace-files__toggle > .st-icon.is-open { transform: rotate(90deg); }
+.workspace-files__body { padding-left: var(--st-s-2); }
+.workspace-files__toolbar, .workspace-files__entry, .workspace-files__undo { display: flex; align-items: center; gap: var(--st-s-1); min-width: 0; }
+.workspace-files__toolbar .st-btn--icon, .workspace-files__entry .st-btn--icon { width: var(--st-s-8); height: var(--st-s-8); flex: none; opacity: 1; }
+.workspace-files__path { min-width: 0; flex: 1; overflow-wrap: anywhere; }
+.workspace-files__list { list-style: none; padding: 0; margin: var(--st-s-1) 0; }
+.workspace-files__item { display: flex; align-items: center; flex: 1; min-width: 0; gap: var(--st-s-2); min-height: var(--st-s-8); padding: var(--st-s-1); color: var(--st-ink); border: 0; border-radius: var(--st-r-sm); background: transparent; font: inherit; font-size: var(--st-fs-sm); text-align: left; cursor: pointer; }
+.workspace-files__item > span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.workspace-files__item > .st-icon { flex: none; }
+.workspace-files__item:hover, .workspace-files__toggle:hover { background: var(--st-surface-2); }
+.workspace-files__toggle:focus-visible, .workspace-files__item:focus-visible { outline: 2px solid var(--st-focus); outline-offset: 2px; }
+.workspace-files__error { color: var(--st-danger-text); overflow-wrap: anywhere; }
+.workspace-files__editor.st-input { width: 100%; min-height: 45vh; resize: vertical; font-family: var(--st-font-mono); font-size: var(--st-fs-sm); line-height: var(--st-lh-body); tab-size: 4; }
+.workspace-files__undo { flex-wrap: wrap; margin-top: var(--st-s-2); }

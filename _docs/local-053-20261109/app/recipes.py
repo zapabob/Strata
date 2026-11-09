@@ -1,6 +1,7 @@
 """Checked, in-memory adapters of immutable successful execution recipes."""
 from __future__ import annotations
 
+import time
 from common import *
 
 OLD_OUT = 'H:/Strata/releases/personal-052-local2-20261107/app'
@@ -29,6 +30,7 @@ def qa(kind: str, target: str, attempt: str, work: Path) -> str:
     require(bool(re.fullmatch('r[1-9][0-9]*', attempt)), 'Invalid attempt')
     source = RUNTIME / ('qa-q36-r14.mjs' if kind == 'q36' else 'qa-prism-r5.mjs')
     text = source.read_text(encoding='utf-8')
+    text = text.replace('H:/Strata/worktrees/main-integration-20261106', ROOT.as_posix())
     old_attempt = 'r14' if kind == 'q36' else 'r5'
     text = text.replace(OLD_OUT + '/execution-20261108/isolate-host-home.mjs', (HERE / 'isolate-host-home.mjs').as_posix())
     text = text.replace(OLD_OUT + '/execution-20261108/probe-runtime-owned.py', (HERE / 'probe.py').as_posix())
@@ -59,6 +61,7 @@ def qa(kind: str, target: str, attempt: str, work: Path) -> str:
     text = text.replace("if(result.ok)writeFileSync(join(out,'" + ('functional-e2e' if kind == 'q36' else 'prism-e2e') + ".json'),JSON.stringify(result,null,2)+'\\n',{flag:'wx'});", '')
     text = replace(text, 'result.actualShellAndHost=true;', 'result.actualShellAndHost=true;result.actualWebView2=true;')
     if kind == 'q36':
+        text = "import {workspaceFilesAcceptance} from " + json.dumps((HERE / 'workspace-files-acceptance.mjs').as_uri()) + ";\n" + text
         text = q36_projection(text)
     return text
 
@@ -69,7 +72,9 @@ def q36_projection(text: str) -> str:
     acceptance = replace(acceptance, "import assert from 'node:assert/strict';\n", '')
     binding = "\nconst projectionQa=createQ36ProjectionAcceptance({getPage:()=>page,request,until,language,modelScreen,modelId,modelPath,hashFile:sha256,getBase:()=>base,home,result});\n"
     text = replace(text, 'const synthetic=', acceptance + binding + 'const synthetic=')
-    text = replace(text, "await start();await language('en');await modelScreen();\n", "await start();await language('en');await modelScreen();await projectionQa.japaneseSettings();\n")
+    text = replace(text, "await start();await language('en');await modelScreen();\n", "await start();await language('en');await modelScreen();result.workspaceFilesAcceptance=await workspaceFilesAcceptance({getPage:()=>page,request,home,language,modelScreen});assert.equal(resolve((await request(`/api/native/models/${modelId}/settings-file`)).path).toLowerCase(),resolve(modelPath).toLowerCase(),'Native config escaped isolated fixture');await projectionQa.japaneseSettings();\n")
+    anchor = "await page.getByRole('button',{name:/^Saved settings/}).click();await page.getByRole('menuitem',{name:'Save current settings…',exact:true}).click();"
+    text = replace(text, anchor, "await page.getByRole('combobox',{name:'Conversation context',exact:true}).click();await page.getByRole('option',{name:'4K',exact:true}).click();" + anchor)
     for marker, extra in [
         ('real-native053-capability-and-native-settings-save', "await projectionQa.status('save-only');"),
         ('saved-native-settings-after-reselection', "await projectionQa.status('after-reselection');"),
@@ -93,8 +98,9 @@ def prepare_q36(work: Path, app: Path, commit: str) -> dict:
     home = work / 'e2e-profile'
     require(not home.exists(), 'Fresh isolated profile required')
     home.mkdir()
-    for name in ['data', 'install', 'profiles', 'runtime', 'models', 'Local', 'Roaming', 'webview', 'desktop', 'temp', 'screenshots']:
+    for name in ['data', 'install', 'profiles', 'runtime', 'models', 'Local', 'Roaming', 'webview', 'desktop', 'temp', 'screenshots', 'workspace']:
         (home / name).mkdir()
+    (home / 'workspace/qa-existing-note.md').write_text('Isolated workspace file acceptance fixture.\n', encoding='utf-8')
     component = preserved_copy(SIGNED, home / 'components/engine' / SIGNED.name)
     files = [MODEL, Path(str(MODEL) + '.q36epk'), Path(str(MODEL) + '.q36epk.verified')]
     require(all(p.is_file() for p in files) and (TOKENIZER / 'tokenizer.json').is_file(), 'Existing model/verified pack/tokenizer required')
@@ -102,11 +108,16 @@ def prepare_q36(work: Path, app: Path, commit: str) -> dict:
     model_id = 'qwen36-ud-q4_k_xl'
     cfg = dict(exe='component:strata-engine', tokenizer=str(TOKENIZER), cwd=str(home / 'install'), arch='qwen35moe', backend='cuda',
                model_name='Isolated local053 Qwen3.6', host='127.0.0.1', parallel=1, ui_context_chosen=True, ui_vision_enabled=False,
-               ui_resource_profile='performance', q36_memory='bounded-experts-v1', open_browser=False,
+               ui_resource_profile='performance', q36_memory='legacy', open_browser=False,
                args=['--native', str(MODEL), '--q36-expert-store', 'mapped-pack', '--max-context', '4096', '--prefill', '512',
                      '--expert-slots', '5', '--mtp', '2', '--no-warmup', '--greedy', '--prompt-cache', '0', '--conversation-cache-mib', '0',
-                     '--private-conversation-cache', '--cache-type-k', 'f32', '--cache-type-v', 'f32', '--q36-memory', 'bounded-experts-v1'])
+                      '--private-conversation-cache', '--cache-type-k', 'f32', '--cache-type-v', 'f32'])
     write_new(home / 'install' / f'strata-{model_id}.json', cfg)
+    settings = dict(data_dir=str(home), data_dir_at=time.time())
+    write_new(home / 'settings.json', settings)
+    terminal = home / 'Roaming/Strata'
+    terminal.mkdir()
+    write_new(terminal / 'settings.json', settings)
     write_new(home / 'data/native-host.json', dict(installDir=str(home / 'install'), downloadDirectory=str(home / 'models')))
     write_new(home / 'data/state.json', dict(version=1, setup=dict(complete=True, flowVersion=2, step=4, history=[]), installed={}, current=None, loaded=None,
               beginner=dict(priority='balanced', contextLength='4k', readImages=False, gpuIdle='never'),

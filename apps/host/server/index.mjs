@@ -93,6 +93,7 @@ import { apiPath } from './api-paths.mjs';
 import { findFreePort, listenProblem } from './ports.mjs';
 import { validateChatImages } from './chat-images.mjs';
 import { createTimeSkip, measureFolder, timeskipRevisionMessage, imageTypeOf } from './timeskip.mjs';
+import { listWorkspaceFiles, readWorkspaceFile, createWorkspaceFile, updateWorkspaceFile, renameWorkspaceFile, trashWorkspaceFile, restoreWorkspaceFile, openWorkspaceFile, workspaceFileError } from './workspace-files.mjs';
 
 const HERE = fileURLToPath(new URL('.', import.meta.url));
 const ROOT = resolve(HERE, '..');
@@ -1861,37 +1862,25 @@ async function api(req, res, path, method, url) {
   // --- workspaces ---------------------------------------------------------
   // Read one file for the preview pane. Bounded deliberately: only inside a
   // registered workspace, only text, only up to a size that can be shown.
-  if (path === '/api/workspace/file') {
-    const rootId = url.searchParams.get('root');
-    const rel = url.searchParams.get('path') ?? '';
-    const root = (rootId ? workspaces.find((w) => w.id === rootId)?.path : null) ?? WORKSPACE;
-    const target = resolve(root, rel);
-    // A relative path may not escape its workspace.
-    if (target !== resolve(root) && !target.startsWith(resolve(root) + '/')) {
-      return error(res, 400, 'That file is outside the workspace.');
-    }
-    let st;
+  if (['/api/workspace/entries', '/api/workspace/file', '/api/workspace/trash', '/api/workspace/open'].includes(path)) {
     try {
-      st = statSync(target);
-    } catch {
-      return error(res, 404, "That file doesn't exist any more.");
-    }
-    if (!st.isFile()) return error(res, 400, "That's a folder, not a file.");
-    const LIMIT = 200 * 1024;
-    if (st.size > LIMIT) {
-      return json(res, 200, { path: rel, tooLarge: true, sizeKb: st.size / 1024, text: '' });
-    }
-    let text = '';
-    try {
-      text = readFileSync(target, 'utf8');
-    } catch {
-      return json(res, 200, { path: rel, binary: true, sizeKb: st.size / 1024, text: '' });
-    }
-    // A NUL byte in the first block is the usual signal for a binary file.
-    if (text.slice(0, 1024).includes('\u0000')) {
-      return json(res, 200, { path: rel, binary: true, sizeKb: st.size / 1024, text: '' });
-    }
-    return json(res, 200, { path: rel, text, sizeKb: st.size / 1024, updatedAt: st.mtime.toISOString() });
+      const body = ['POST', 'PUT', 'PATCH'].includes(method) ? await readBody(req, 1300000) : {};
+      const rootId = body.root ?? url.searchParams.get('root');
+      const workspace = rootId ? workspaces.find(w => w.id === rootId) : method === 'GET' && path === '/api/workspace/file' ? workspaces[0] : null;
+      if (!workspace) return error(res, 404, 'That workspace is not in your list.');
+      const relativePath = body.path ?? url.searchParams.get('path') ?? '';
+      if (path === '/api/workspace/entries' && method === 'GET') return json(res, 200, listWorkspaceFiles(workspace.path, relativePath, Number(url.searchParams.get('offset') ?? 0)));
+      if (path === '/api/workspace/file') {
+        if (method === 'GET') return json(res, 200, readWorkspaceFile(workspace.path, relativePath));
+        if (method === 'POST') return json(res, 201, createWorkspaceFile(workspace.path, body));
+        if (method === 'PUT') return json(res, 200, updateWorkspaceFile(workspace.path, body));
+        if (method === 'PATCH') return json(res, 200, renameWorkspaceFile(workspace.path, body));
+        if (method === 'DELETE') return json(res, 200, trashWorkspaceFile(workspace.path, { path: relativePath, revision: url.searchParams.get('revision') }));
+      }
+      if (path === '/api/workspace/trash' && method === 'POST') return json(res, 200, restoreWorkspaceFile(workspace.path, body.trashId));
+      if (path === '/api/workspace/open' && method === 'POST') return json(res, 200, openWorkspaceFile(workspace.path, relativePath));
+      return error(res, 405, 'That operation is unavailable.');
+    } catch (e) { const failure = workspaceFileError(e); return error(res, failure.status, failure.message); }
   }
 
   // The folder a chat works in, and opening its files by path (notes-split-agent8.md).
