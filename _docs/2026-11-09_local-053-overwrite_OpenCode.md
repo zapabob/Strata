@@ -91,6 +91,23 @@ and unsupported Q36 enable rejection before persistence/job/unload. Source-only
 helper checks pass; actual browser receipts are still required. Do not infer a
 positive applied projection test from a Q36 unsupported result.
 
+## Packaging preparation while native compilation runs
+
+Fresh component composition helpers are prepared under
+`_docs/local-053-20261109/component/`:13 fixture cases and syntax/help/plans passed.
+They require current native functional/model evidence, preserve the completed
+resource FAIL as FAIL, authenticate the older runtime-only inputs, and create a
+new signed native0.5.3 composite/ZIP with fixed Prism/TurboQuant trees. Their
+real compose/sign/stage operations have NOT_RUN. No inherited pass is copied.
+
+The production Host build initially failed when the generic test wrapper's
+256MiB NODE_OPTIONS propagated to Vite's child; parent CLI heap flags alone did
+not change that child budget. With >3GiB available RAM and explicit isolated
+child NODE_OPTIONS1024MiB, the actual approved-assets production build passed:
+458 modules,8.70s. Existing dynamic-import/large-chunk warnings remain. The
+normal package adapter already specifies1024MiB. This is a frontend build, not
+an NSIS, overwrite or GPU/runtime result.
+
 Applied compatible canonical prompt, PC/project AGENTS; Common, Start Gate,
 Skill Selection, DeepResearch, Security, Application, WebApp, Frontend, Python,
 TypeScript, CPP and Rust SOPs; baseline skills plus build-manager/qa-engineer and
