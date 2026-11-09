@@ -11,6 +11,7 @@ import adapter
 import common
 import model
 import phases
+import retry_prepare
 
 
 def good_run() -> dict:
@@ -235,3 +236,98 @@ def test_environment_scopes_temps_and_removes_user_flags(monkeypatch: pytest.Mon
     for key in ("TMP", "TEMP", "UV_CACHE_DIR", "CUDA_CACHE_PATH", "PIP_CACHE_DIR"):
         assert Path(env[key]).is_relative_to(common.BASE)
     assert env["CMAKE_BUILD_PARALLEL_LEVEL"] == "1" and env["UV_PYTHON_DOWNLOADS"] == "never"
+
+
+@pytest.mark.parametrize("newline", ["\n", "\r\n"])
+def test_cache_parser_comments_blanks_types_and_exact_values(newline: str) -> None:
+    contents = newline.join(["# CMakeCache KEY:TYPE=VALUE", "", "//Default GPU architectures",
+        "//continued comment with: punctuation=ignored", "CMAKE_CUDA_ARCHITECTURES:UNINITIALIZED=120", "",
+        "# internal entries", "CMAKE_HOME_DIRECTORY:INTERNAL=H:/frozen-source",
+        "STRATA_CUDA_SPILL_BASELINE:FILEPATH=", "FLAGS:STRING=-DNAME=a=b", ""])
+    assert phases.parse_cmake_cache(contents) == {"CMAKE_CUDA_ARCHITECTURES": "120",
+        "CMAKE_HOME_DIRECTORY": "H:/frozen-source", "STRATA_CUDA_SPILL_BASELINE": "", "FLAGS": "-DNAME=a=b"}
+
+
+@pytest.mark.parametrize("entry", ["KEY\n:STRING=value", "KEY:STRING\n=value", "KEY:STRING=value\nKEY:STRING=other",
+                                   " KEY:STRING=value", "KEY:=value"])
+def test_cache_parser_rejects_split_malformed_or_duplicate_entries(entry: str) -> None:
+    with pytest.raises(RuntimeError, match="Malformed|Duplicate"):
+        phases.parse_cmake_cache(entry)
+
+
+@pytest.mark.parametrize("architecture", [None, "121", "120;121", "120 ", "120-real"])
+def test_cache_validation_keeps_exact_120_guard(architecture: str | None, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(phases, "BUILD", tmp_path)
+    root = Path("H:/frozen-source")
+    cache = "# heading\r\n\r\nCMAKE_HOME_DIRECTORY:INTERNAL=H:/frozen-source\r\n\r\n// arch120\r\n"
+    if architecture is not None:
+        cache += "CMAKE_CUDA_ARCHITECTURES:UNINITIALIZED=" + architecture + "\r\n"
+    (tmp_path / "CMakeCache.txt").write_bytes(cache.encode())
+    with pytest.raises(RuntimeError, match="CMake recipe drift: CMAKE_CUDA_ARCHITECTURES"):
+        phases.validate_cache(root)
+
+
+def retry_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path, str]:
+    base = tmp_path / "local-053-20261109-opencode"
+    (base / "receipts").mkdir(parents=True)
+    (base / "native").mkdir()
+    (base / "native-build").mkdir()
+    root, commit = Path("H:/frozen-source"), "1" * 40
+    identity = {"sourceRoot": str(root), "sourceCommit": commit, "ggmlRoot": str(common.GGML),
+                "ggmlCommit": common.GGML_PIN, "helpers": {"helper": "unchanged"}}
+    phase_run = {**good_run(), "native_exit_code": 1, "exit_code": 1,
+                 "native_exit_code_observation": "OBSERVED_BEFORE_CLEANUP"}
+    values = {"freeze.json": identity, "build-source.json": identity,
+              "receipts/build-phase.json": {"passed": False, "run": phase_run, "frozenIdentity": identity},
+              "receipts/build-configure.json": {"passed": True, "run": good_run()}}
+    for name, value in values.items():
+        (base / name).write_text(json.dumps(value), encoding="utf-8")
+    (base / "receipts/build-phase.txt").write_text("BLOCKED/FAIL: RuntimeError: CMake recipe drift: CMAKE_CUDA_ARCHITECTURES\n")
+    monkeypatch.setattr(retry_prepare, "BASE", base)
+    monkeypatch.setattr(retry_prepare, "freeze", lambda *_: identity)
+    return base, root, commit
+
+
+def test_retry_preparation_is_readonly_by_default_and_preserves_whole_tree(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    base, root, commit = retry_fixture(tmp_path, monkeypatch)
+    before = {p.relative_to(base).as_posix(): p.read_bytes() for p in base.rglob("*") if p.is_file()}
+    report = retry_prepare.prepare(root, commit)
+    assert report["eligible"] and report["renamed"] is False and base.is_dir()
+    destination = Path(report["destination"])
+    assert not destination.exists()
+    # Only the isolated pytest fixture is renamed; the real BASE is never changed by these tests.
+    assert retry_prepare.prepare(root, commit, execute=True)["renamed"] is True
+    assert not base.exists()
+    assert {p.relative_to(destination).as_posix(): p.read_bytes() for p in destination.rglob("*") if p.is_file()} == before
+
+
+@pytest.mark.parametrize("blocker", ["successful-phase", "active-job", "unconfirmed-job", "configure-failed",
+                                    "binary", "helper-started", "active-lock", "destination", "other-failure", "app"])
+def test_retry_preparation_refuses_unsafe_or_reused_state(blocker: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    base, root, commit = retry_fixture(tmp_path, monkeypatch)
+    phase = common.read_json(base / "receipts/build-phase.json")
+    if blocker == "successful-phase":
+        phase["passed"] = True
+    elif blocker == "active-job":
+        phase["run"]["job_active_after"] = 1
+    elif blocker == "unconfirmed-job":
+        phase["run"]["termination_confirmed"] = False
+    elif blocker == "configure-failed":
+        (base / "receipts/build-configure.json").write_text(json.dumps({"passed": False, "run": good_run()}))
+    elif blocker == "binary":
+        (base / "native-build/Release").mkdir()
+        (base / "native-build/Release/strata.exe").write_bytes(b"fixture")
+    elif blocker == "helper-started":
+        (base / "receipts/build-helper.json").write_text("{}")
+    elif blocker == "active-lock":
+        (base / "active.json").write_text("{}")
+    elif blocker == "destination":
+        base.with_name(base.name + "-configure-failed-r1").mkdir()
+    elif blocker == "other-failure":
+        (base / "receipts/build-phase.txt").write_text("another failure")
+    elif blocker == "app":
+        (base / "app").mkdir()
+    (base / "receipts/build-phase.json").write_text(json.dumps(phase))
+    with pytest.raises(RuntimeError):
+        retry_prepare.prepare(root, commit, execute=True)
+    assert base.is_dir()

@@ -149,6 +149,53 @@ Success-only receipts are `candidate-q36-e2e.json`, `candidate-prism-e2e.json`,
 fresh recipe hash, unchanged user hashes, `quality`, and `releaseQualified:false`.
 An extracted-candidate pass cannot satisfy the installed gate.
 
+### Q36 refusal-direction negative acceptance (candidate and installed)
+
+Both generated Q36 recipes now inline `q36-projection-acceptance.mjs` into the
+existing real WebView2 lifecycle. No extra phase or browser launch is needed.
+Keep using `qa-q36 --target candidate` and `qa-q36 --target installed`; include
+these helper changes in the parent's next reviewed clean app commit. The native
+source root/receipt binding remains independent.
+
+The actual settings API must expose `refusal_direction_removal` with
+`supported:false` and a nonempty unavailable reason, and `refusalProjection`
+must independently report unsupported, a Q36 reason, and saved intent OFF.
+Japanese native settings must show the named region `拒否方向ベクトルの除去`,
+a Japanese Q36 reason and an accessible Japanese `role=status` observation;
+there must be no operable projection-enable combobox for this model.
+
+With the real bounded Q36 child ready, both a settings PATCH and a load operation
+requesting `refusal_direction_removal:true` must fail with 400/422 and a relevant
+reason. The exact config hash, settings/MCP/projection values, job IDs, ready
+instance, process ID and child generation must remain unchanged. These are real
+loopback requests with the usual UI/Origin headers, not intercepted API routes.
+
+The status is checked after native settings save, model reselection, profile
+restart, rejected enable, both unloads and the real reload. Only `unobserved` or
+real INFO-backed `off` is accepted. `off` additionally needs the current live,
+admitted child's matching generation/PID and `cvec=0`; an unloaded child must
+return to `unobserved`. Q36 may not display `loaded`, `applied`, `request-off` or
+an unverified-vector badge. Reload also requires a different actual generation.
+
+In the ordinary chat Sampling drawer, acceptance opens the accessible Response
+settings/Advanced controls and requires the renamed request-only switch, disabled
+and unchecked without a verified loaded vector, its loading-versus-request help,
+and non-applied status. It rejects the old experimental-speed switch name. The
+disabled switch is not force-clicked and no positive projection request is sent.
+Native Japanese-region and request-switch screenshots use only the isolated QA
+profile. Normal-user hashes remain under the existing dispatcher checks.
+
+Success now requires `projectionAcceptance.ok:true`, `supported:false`,
+`positiveProjectionRuntimeTested:false` and `q38RuntimeQualified:false` in both
+target-specific Q36 receipts. Existing shell/Host/installed-EXE, Q36 functional,
+settings, reload, Japanese recovery and resource gates remain in force.
+
+This is negative Q36 coverage. No compatible Q38 runtime is qualified, and no
+positive loaded/applied transition or same-child projection execution is claimed.
+In particular, a real applied-to-unobserved transition cannot be exercised on
+this unsupported Q36 model; no positive observation/history is fabricated to
+simulate one. Actual Sampling selectors and screenshots await the parent run.
+
 ## Overwrite, backup and failure handling
 
 The fresh private backup is
@@ -200,6 +247,13 @@ Node homedir-preload check with rejection of a normal/private home. Additional
 tests reject candidate receipts at installed acceptance, new user files before
 first launch, and an existing NSIS claim before any installer subprocess.
 Both checked-in MJS files pass `node --check`. `adapter.py --help` also passed.
+
+Follow-up projection acceptance validation: all **11 Python contract cases**
+passed, including syntax of the same five generated JS variants. The added case
+runs **4 Node subtests** against the pure negative-capability/observation checks,
+covering missing reasons, saved-enable intent, positive badges, missing INFO,
+dead/stopped children and stale generation/PID. The new runtime helper also
+passes `node --check`. These tests do not launch a browser or model.
 
 The new signed native staging and current version metadata were not available
 when these helpers were prepared. Full build/packaging/signature/source checks,

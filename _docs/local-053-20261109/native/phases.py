@@ -53,9 +53,23 @@ def build(root: Path, commit: str) -> None:
     save(BASE / "results/build.json", binding(root, "build-binding", BUILD / "Release"), fresh=True)
 
 
+def parse_cmake_cache(contents: str) -> dict[str, str]:
+    """Parse one KEY:TYPE=VALUE per line, never consuming comments/newlines as keys."""
+    entries: dict[str, str] = {}
+    for number, line in enumerate(contents.splitlines(), 1):
+        if not line.strip() or line.lstrip().startswith(("#", "//")):
+            continue
+        match = re.fullmatch(r"([A-Za-z_][A-Za-z0-9_.+-]*):([A-Z][A-Z0-9_]*)=(.*)", line)
+        require(match is not None, f"Malformed CMake cache entry at line {number}")
+        key, _kind, value = match.groups()
+        require(key not in entries, f"Duplicate CMake cache key: {key}")
+        entries[key] = value
+    return entries
+
+
 def validate_cache(root: Path) -> None:
     contents = (BUILD / "CMakeCache.txt").read_text(encoding="utf-8")
-    entries = dict(re.findall(r"^([^/#][^:=]*):[^=]+=(.*)$", contents, re.M))
+    entries = parse_cmake_cache(contents)
     expected = {"CMAKE_HOME_DIRECTORY": str(root), "CMAKE_CUDA_ARCHITECTURES": "120",
                 "STRATA_GGML_DIR": "H:/Strata/deps/ggml-3cf03257", "STRATA_PORTABLE": "ON",
                 "STRATA_ENABLE_CUDA": "ON", "STRATA_NATIVE_EXPERTS": "ON", "STRATA_ENABLE_SPIN8": "ON",

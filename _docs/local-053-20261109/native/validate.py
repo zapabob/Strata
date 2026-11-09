@@ -31,6 +31,7 @@ def main() -> int:
         ("node-syntax", [str(NODE), "--check", str(HERE / "binding.mjs")]),
         ("binding-help", [str(NODE), str(HERE / "binding.mjs"), "--help"]),
         ("adapter-help", python + [str(HERE / "adapter.py"), "--help"]),
+        ("retry-help", python + [str(HERE / "retry_prepare.py"), "--help"]),
         ("model-help", python + [str(HERE / "model.py"), "--help"]),
         ("dry-plan", python + [str(HERE / "adapter.py"), "plan", "--source-root", "H:/PARENT-SUPPLIES-FROZEN-SOURCE",
                                 "--reviewed-commit", "0" * 40]),

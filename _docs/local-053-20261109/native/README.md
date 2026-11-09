@@ -17,6 +17,7 @@ final disposition.
 | `model.py` | r3-derived short mapped-pack bounded/legacy comparison and separately requested restart |
 | `test_adapters.py` | Non-launching guard/receipt/protocol/comparison regression tests |
 | `validate.py` | Retained syntax/help/dry-plan/tokenizer/small-test validation, entirely in this directory |
+| `retry_prepare.py` | Read-only eligibility inspection; explicit parent-only whole-BASE archival of the first pre-compile parser failure |
 
 Historical scripts and outputs remain at `_docs/personal-native-20261107/` and
 `H:/Strata/releases/personal-052-local2-20261107/`. They are read-only references,
@@ -251,6 +252,54 @@ record. Every named phase/command is one-shot. A failed configure/build director
 partial package or failed qualification is retained; ask parent to choose a
 reviewed recovery/new-run path rather than deleting outputs. There is no automatic
 retry, output rename or baseline change.
+
+### First-attempt cache-parser correction and explicit retry preparation
+
+The parent's first attempt configured successfully, then the adapter rejected
+`CMAKE_CUDA_ARCHITECTURES` before invoking the build helper. The cache actually
+contains `CMAKE_CUDA_ARCHITECTURES:UNINITIALIZED=120`. Cache parsing now handles
+one strict `KEY:TYPE=VALUE` line at a time, including LF/CRLF, blank lines and
+comments. Values are not trimmed/coerced; the exact expected `120` and all other
+recipe/resource checks remain unchanged. Malformed and duplicate entries fail.
+
+Read-only validation of the retained actual cache passed all existing recipe and
+compiler checks: 550 entries, architecture `120`. Updated adapter validation is
+`validation-20261109-164839/results.json`: all checks passed, including 54 tests.
+The original failure receipts and original adapter hashes remain untouched.
+
+Parent may use the following narrow recovery helper. Without `--execute` it only
+inspects. It requires the specific failed build receipt, observed exit 1, atomic
+containment and confirmed empty owned Job; configure must have passed with native
+exit zero and confirmed cleanup. Source/helper identity must still match the
+supplied freeze. An active lock, started build-helper evidence, compiled native
+binary/record, nonempty native stage, app subtree or existing destination blocks
+the operation. Run with exclusive parent ownership of this output directory.
+
+```powershell
+$py = 'C:/Users/downl/AppData/Local/Programs/Python/Python312/python.exe'
+$dir = 'H:/Strata/worktrees/main-integration-20261106/_docs/local-053-20261109/native'
+$frozen = @('--source-root', 'H:/Strata/worktrees/native-053-source-20261109',
+            '--reviewed-commit', '26e5889625938459580313ca7ce6b3931606c27b')
+
+# Read-only eligibility inspection:
+& $py -B "$dir/retry_prepare.py" @frozen
+
+# Parent only, after review: rename the entire retained BASE, without editing its contents.
+& $py -B "$dir/retry_prepare.py" @frozen --execute
+```
+
+The only destination is the fresh sibling
+`H:/Strata/releases/local-053-20261109-opencode-configure-failed-r1`. There is no
+overwrite, deletion, compilation or automatic init/build. This preparation task
+ran inspection only (`eligible=true`, `renamed=false`). After the parent's rename
+succeeds, parent can initialize fresh BASE with current adapter hashes:
+
+```powershell
+& $py -B "$dir/adapter.py" init @frozen --execute
+```
+
+Any new build remains a separate parent-authorized command from the earlier
+section. Do not use the generic `bind` phase to bypass this parser-failure recovery.
 
 ## Evidence handoff generated later
 

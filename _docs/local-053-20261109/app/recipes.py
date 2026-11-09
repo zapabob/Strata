@@ -58,7 +58,31 @@ def qa(kind: str, target: str, attempt: str, work: Path) -> str:
     # Keep all failed attempts. Only this fresh invocation may publish its own target acceptance.
     text = text.replace("if(result.ok)writeFileSync(join(out,'" + ('functional-e2e' if kind == 'q36' else 'prism-e2e') + ".json'),JSON.stringify(result,null,2)+'\\n',{flag:'wx'});", '')
     text = replace(text, 'result.actualShellAndHost=true;', 'result.actualShellAndHost=true;result.actualWebView2=true;')
+    if kind == 'q36':
+        text = q36_projection(text)
     return text
+
+
+def q36_projection(text: str) -> str:
+    """Extend the existing real lifecycle; never replace APIs, INFO, or positive observations."""
+    acceptance = (HERE / 'q36-projection-acceptance.mjs').read_text(encoding='utf-8')
+    acceptance = replace(acceptance, "import assert from 'node:assert/strict';\n", '')
+    binding = "\nconst projectionQa=createQ36ProjectionAcceptance({getPage:()=>page,request,until,language,modelScreen,modelId,modelPath,hashFile:sha256,getBase:()=>base,home,result});\n"
+    text = replace(text, 'const synthetic=', acceptance + binding + 'const synthetic=')
+    text = replace(text, "await start();await language('en');await modelScreen();\n", "await start();await language('en');await modelScreen();await projectionQa.japaneseSettings();\n")
+    for marker, extra in [
+        ('real-native053-capability-and-native-settings-save', "await projectionQa.status('save-only');"),
+        ('saved-native-settings-after-reselection', "await projectionQa.status('after-reselection');"),
+        ('saved-profile-after-process-restart', "await projectionQa.status('after-profile-restart',true);"),
+        ('gui-load-actual-info-private-owner', 'await projectionQa.rejectedEnable(first);'),
+        ('real-gui-nonempty-chat', 'await projectionQa.sampling();'),
+        ('gui-stop-restart-new-owned-child', "assert.notEqual(restarted.generation,first.generation);await projectionQa.status('reloaded-child');"),
+    ]:
+        anchor = "result.checks.push('" + marker + "');"
+        text = replace(text, anchor, anchor + extra)
+    unloaded = "await until(async()=>!(await request('/api/native')).instances.some(i=>i.status==='ready'));"
+    text = replace(text, unloaded, unloaded + "await projectionQa.status('after-unload',true);", count=2)
+    return replace(text, 'result.modelFilesPreserved=true;result.ok=true;', 'result.projectionAcceptance=projectionQa.receipt();result.modelFilesPreserved=true;result.ok=true;')
 
 
 def prepare_q36(work: Path, app: Path, commit: str) -> dict:

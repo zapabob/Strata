@@ -53,6 +53,16 @@ class AdapterContracts(TestCase):
                     self.assertIn("name:'Model version'", source)
                     self.assertIn("name:/^More versions/", source)
                     self.assertIn("name:'Legacy'", source)
+                    self.assertIn('await projectionQa.japaneseSettings();', source)
+                    self.assertIn('await projectionQa.rejectedEnable(first);', source)
+                    self.assertIn('await projectionQa.sampling();', source)
+                    self.assertIn("await projectionQa.status('save-only');", source)
+                    self.assertIn("await projectionQa.status('after-profile-restart',true);", source)
+                    self.assertEqual(source.count("await projectionQa.status('after-unload',true);"), 2)
+                    self.assertIn('result.projectionAcceptance=projectionQa.receipt();', source)
+                    self.assertIn("result.checks.push('invalid-choice-rejected-before-unload-or-job')", source)
+                    self.assertIn("result.checks.push('japanese-numeric-speed-and-both-recovery-notices')", source)
+                    self.assertNotIn('page.route(', source)
                 else:
                     self.assertIn('PrismML 0.4.1 · 1965755c', source)
                     self.assertIn("'56'", source)
@@ -61,6 +71,10 @@ class AdapterContracts(TestCase):
             with self.subTest(recipe=name):
                 run = subprocess.run([str(NODE), '--input-type=module', '--check'], input=source, text=True, encoding='utf-8', capture_output=True, timeout=30)
                 self.assertEqual(run.returncode, 0, run.stderr)
+
+    def test_projection_observation_and_negative_capability_contracts(self) -> None:
+        run = subprocess.run([str(NODE), '--test', str(HERE / 'test-projection-acceptance.mjs')], capture_output=True, text=True, encoding='utf-8', timeout=30)
+        self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
 
     def test_resource_floors_boundaries(self) -> None:
         sample = dict(ramBytes=3 * 1024**3, commitBytes=4 * 1024**3, cFreeBytes=5 * 1024**3, hFreeBytes=10 * 1024**3)

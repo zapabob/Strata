@@ -56,6 +56,9 @@ def acceptance(commit: str, target: str = 'candidate') -> None:
         result = load(OUT / f'{target}-{kind}-e2e.json')
         require(result['ok'] and result['sourceCommit'] == commit and result['target'] == target, 'Target-specific GUI evidence missing')
         require(result[actual] is True and result['actualWebView2'] is True and result['actualShellAndHost'] is True and result['userHashesUnchanged'] is True and result['installedExeTest'] == (target == 'installed'), 'Actual target runtime required')
+        if kind == 'q36':
+            projection = result.get('projectionAcceptance', {})
+            require(projection.get('ok') is True and projection.get('supported') is False and projection.get('positiveProjectionRuntimeTested') is False and projection.get('q38RuntimeQualified') is False, 'Actual Q36 negative projection acceptance required')
         expected = (INSTALLED if target == 'installed' else OUT / 'extracted') / 'strata-desktop.exe'
         require(Path(result['shellPath']).resolve() == expected.resolve() and result['shellSHA256'] == sha(expected), 'GUI shell identity drift')
 

@@ -62,6 +62,35 @@ Build, signature, qualification, overwrite, installed-model/browser results and
 artifact hashes are pending real execution. No formal compliance, new release,
 all-model quality or full-window qualification is claimed.
 
+## Main freeze and real build execution
+
+Main GUI/version/helper checkpoint `26e5889625938459580313ca7ce6b3931606c27b`
+was committed and pushed; remote main matched. Version consistency and its six
+tests passed. Frozen native source is the clean detached worktree
+`H:/Strata/worktrees/native-053-source-20261109` at that commit. New app source may
+advance for measured digest admission without changing that native checkout.
+
+The first actual configure passed with CUDA13.3.73/MSVC19.44.35224.0, sm120,
+then the adapter's cache parser falsely rejected the actual120 value by spanning
+comments/blank lines. No engine compilation had started. The owned Job drained
+all243 processes with0 active children and no floor stop. It remains a failure.
+The complete failed output was preserved at
+`H:/Strata/releases/local-053-20261109-opencode-configure-failed-r1` after receipt,
+source and absence-of-binary checks. The narrow per-line parser correction passed
+54 small tests and all actual550 cache entries; expected settings/floors unchanged.
+Fresh init and explicit launch now run the real one-job build under the original
+output root, with independent receipts. Its completion is still pending.
+
+The previously constrained Windows Job fixture group was rerun under fresh H:
+scratch with adequate resources:27 passed,0 skipped,15.54s. The earlier C:-temp
+failures remain in the previous source integration record; no guard was changed.
+The TypeScript1024MiB check also now passes after resource recovery.
+
+Installed E2E recipes now include actual Japanese refusal-projection inspection
+and unsupported Q36 enable rejection before persistence/job/unload. Source-only
+helper checks pass; actual browser receipts are still required. Do not infer a
+positive applied projection test from a Q36 unsupported result.
+
 Applied compatible canonical prompt, PC/project AGENTS; Common, Start Gate,
 Skill Selection, DeepResearch, Security, Application, WebApp, Frontend, Python,
 TypeScript, CPP and Rust SOPs; baseline skills plus build-manager/qa-engineer and
