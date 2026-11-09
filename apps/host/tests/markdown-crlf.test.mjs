@@ -31,6 +31,7 @@ const bundle = await build({
 const dir = mkdtempSync(join(tmpdir(), 'strata-crlf-'));
 const file = join(dir, 'render.cjs');
 writeFileSync(file, bundle.outputFiles[0].text);
+let renders = 0;
 function render(text) {
   const run = spawnSync(process.execPath, ['--max-old-space-size=200', file], { cwd: root, input: JSON.stringify(text), encoding: 'utf8', timeout: 20000, maxBuffer: 20 * 1024 * 1024 });
   return { ok: run.status === 0 && !run.error, out: run.stdout, err: (run.stderr || '') + (run.error?.message ?? ''), status: run.status, signal: run.signal };

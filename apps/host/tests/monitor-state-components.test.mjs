@@ -91,9 +91,9 @@ test('connection banner describes app/live updates, uses real retry handler and 
   __monitorUI.store.connection='connecting';assert.match(text(render('ConnectionBar')),/Connecting to the app and live updates/);
   __monitorUI.store.connection='live';assert.equal(render('ConnectionBar'),'');
 });
-test('all nine catalogs translate unloaded and connection states through production components',()=>{
+test('all nine catalogs translate unloaded and connection states through production components',async()=>{
   for(const {value:language} of LANGUAGES){
-    setup();setTranslationLanguage(language);
+    setup();await setTranslationLanguage(language);
     assert.ok(text(chip(render('Sidebar'))).includes(tr('No model loaded')));
     assert.ok(text(render('MonitorScreen')).includes(tr('No model loaded')));
     for(const key of ['Live app updates are interrupted.','Connecting to the app and live updates…','. Retained readings may be stale. This connection carries app data and live updates.','App data could not be refreshed','Retry the app connection.']){

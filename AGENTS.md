@@ -14,7 +14,7 @@ The current local candidate also adds on-demand sidebar workspace file CRUD.
 Its fresh app output is `H:/Strata/releases/local-053-20261109-opencode/app-files`;
 the earlier `app` output and its failed/passing evidence remain preserved.
 
-Hakua product version 0.5.3-local.1, engine 0.5.3 (Metal source 0.5.0-metal), Control 0.5.4. The local candidate adds refusal-direction GUI controls to upstream Niko1221 0.2.12 at 146df3c468739147f520ac3816de806f71232571 (upstream engine 0.1.58, taken as source; fork package versions remain independent). Native/app build and overwrite results belong in _docs/2026-11-09_local-053-overwrite_OpenCode.md. Existing local.2 measurements and its releaseQualified=false/four resource findings remain bound to its older binaries. Do not transfer them as qualification of new source. See docs/UPSTREAM_0212.md and docs/HAKUA_RELEASE.md for source versus artifact status. Upstream reference: the public model families are DeepSeekV4.1-Flash-1017,
+Hakua product version 0.5.4-local.1, engine 0.5.4 (Metal source 0.5.0-metal), Control 0.5.5. This source candidate integrates upstream Niko1221 0.2.13 at f33c8c30588ff00e24b6b63bad0bf6a14da19081 (upstream engine 0.1.59; fork package versions remain independent). The installed 0.5.3-local.1 and its native 0.5.3 source/artifacts remain separate. New source/build results belong in _docs/2026-11-10_upstream-0213-integration_OpenCode.md; previous overwrite results remain in _docs/2026-11-09_local-053-overwrite_OpenCode.md. Existing resource findings and releaseQualified=false remain bound to their measured binaries. Do not transfer them as qualification of new source. See docs/UPSTREAM_0213.md and docs/HAKUA_RELEASE.md for source versus artifact status. Upstream reference: the public model families are DeepSeekV4.1-Flash-1017,
 Qwen3.8-Flash-Next and Qwen3.6-35B-A3B. DeepSeek V4.1-Flash runs in the app and in the Terminal
 (`strata launch --family deepseek41 --model ist-das-2.00bpw`; sets in
 [docs/MODELS.md](docs/MODELS.md#deepseek-v41-flash)). Read **[docs/AI_REFERENCE.md](docs/AI_REFERENCE.md)** for model availability, APIs, hardware limits and
@@ -37,7 +37,7 @@ Strata has three parts:
 
 - **The app** (`apps/desktop`, the Tauri shell; `apps/host`, the Node host and the web UI). It is for people who do
   not want a terminal. One installer per system ([latest release](https://github.com/Niko1221/Strata/releases/latest)):
-  `Strata-0.2.9-windows-x64-setup.exe`, `Strata-0.2.9-linux-x86_64.AppImage`, `Strata-0.2.9-macos-arm64.dmg`.
+  `Strata-0.2.13-windows-x64-setup.exe`, `Strata-0.2.13-linux-x86_64.AppImage`, `Strata-0.2.13-macos-arm64.dmg`.
   The Windows and Linux installers carry no engine: the app downloads the engine for the graphics card on first
   start, or installs a file the user already has. The Mac dmg keeps its small Metal engine inside.
 - **The Terminal** (`strata.py`, `strata_cli/`, `strata_control/`): the `strata` command. It sets up a model, serves

@@ -1,12 +1,14 @@
 # Hakua Windows release qualification
 
-## Source integration candidate — official 0.2.12
+## Source integration candidate — official 0.2.13
 
-The source worktree contains upstream `146df3c4` / `v0.2.12` with the fork's
-API adaptations. See [the integration record](UPSTREAM_0212.md). Native builds,
-hardware qualification and a new installer remain pending. Existing local.2
-measurements describe its pre-integration binaries; public stable remains 0.5.1.
-The older resource-guard failures are not cleared by this merge.
+The source worktree contains upstream `f33c8c30` / `v0.2.13` with the fork's
+API adaptations. Candidate versions: product0.5.4-local.1, Control0.5.5,
+native0.5.4. See [the integration record](UPSTREAM_0213.md). New native builds,
+hardware qualification and a new installer remain pending. The installed
+0.5.3-local.1 passed its own short-model and workspace checks; its twelve CUDA
+resource violations and releaseQualified=false remain. Earlier local.2 results
+also retain their original source/artifact identities. Public stable remains0.5.1.
 
 ## Windows release: 0.5.1
 

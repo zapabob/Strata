@@ -1,13 +1,16 @@
 # Hakua / Strata
 
-Current personal build candidate: `0.5.3-local.1` (Control `0.5.4`, native `0.5.3`),
+Installed personal build: `0.5.3-local.1` (Control `0.5.4`, native `0.5.3`),
 including opt-in refusal-direction GUI controls for compatible Qwen3.8 engines.
 Installer name: `Strata-0.5.3-local.1-windows-x64-setup.exe`. Build/overwrite and
-actual installed WebView2 verification are in progress; this is not a public download.
+actual installed WebView2 checks passed for its short Qwen3.6/Prism and workspace paths;
+this is not a public download. CUDA resource qualification remains failed.
 
-**Source integration candidate:** official `v0.2.12` / latest main at `146df3c4`,
-with Hakua and the fork's runtime/state contracts retained. Native builds and
-hardware qualification are pending. See [the integration record](docs/UPSTREAM_0212.md).
+**Source integration candidate:** official `v0.2.13` / main at `f33c8c30`,
+with Hakua and the fork's runtime/state contracts retained. Candidate versions:
+product `0.5.4-local.1`, Control `0.5.5`, native `0.5.4`. Native builds and
+hardware qualification for the new source are pending. See [the integration record](docs/UPSTREAM_0213.md).
+Planned private installer: `Strata-0.5.4-local.1-windows-x64-setup.exe`.
 
 The installed personal `0.5.2-local.2` build
 (`Strata-0.5.2-local.2-windows-x64-setup.exe`, Control `0.5.3`, native `0.5.2`,
@@ -153,4 +156,8 @@ Thank you to everyone who supports Strata.
 <a href="https://github.com/macintog"><img src="https://github.com/macintog.png?size=96" width="48" height="48" alt="macintog" title="macintog"></a>
 <a href="https://github.com/bisonbet"><img src="https://github.com/bisonbet.png?size=96" width="48" height="48" alt="bisonbet" title="bisonbet"></a>
 <a href="https://github.com/vizv"><img src="https://github.com/vizv.png?size=96" width="48" height="48" alt="vizv" title="vizv"></a>
+<a href="https://github.com/kod88vn"><img src="https://github.com/kod88vn.png?size=96" width="48" height="48" alt="kod88vn" title="kod88vn"></a>
+<a href="https://github.com/seoulworker"><img src="https://github.com/seoulworker.png?size=96" width="48" height="48" alt="seoulworker" title="seoulworker"></a>
+<a href="https://github.com/jackyini"><img src="https://github.com/jackyini.png?size=96" width="48" height="48" alt="jackyini" title="jackyini"></a>
+<a href="https://github.com/router0mail"><img src="https://github.com/router0mail.png?size=96" width="48" height="48" alt="router0mail" title="router0mail"></a>
 <!-- supporters:end -->

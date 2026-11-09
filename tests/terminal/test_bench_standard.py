@@ -979,6 +979,9 @@ class EngineProcessTests(unittest.TestCase):
 
             def wait(self, timeout=None):
                 return 0
+
+            def kill(self):                       # stop_engine's last step on Windows, when taskkill (mocked below) left the process running
+                pass
         seen = {}
 
         def popen(command, **kwargs):

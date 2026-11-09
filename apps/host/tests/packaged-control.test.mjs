@@ -3,9 +3,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { existsSync } from 'node:fs';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, appendFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, appendFileSync, realpathSync } from 'node:fs';
 import { join, basename } from 'node:path';
-import { tmpdir } from 'node:os';
+import { tmpdir as osTmpdir } from 'node:os';
+// the canonical scratch root: on a Mac the temp folder is /var/folders/..., which resolves to /private/var/...; the paths the host reports are the resolved ones
+const tmpdir = () => realpathSync(osTmpdir());
 import { bundledPython, componentsDirectory, controlEnvironment, createControl, findControl, runCli } from '../server/control-runtime.mjs';
 import { resolvePython } from '../server/python-resolver.mjs';
 import { createNativeControl } from '../server/native-control.mjs';
@@ -314,7 +316,12 @@ test('packaged: a model id with dots (DeepSeek) is listed, loaded from its run c
     await f.native.unload(instance.id);
     assert.deepEqual(f.calls.filter(c => c[0] === 'stop').at(-1), ['stop', 'app-1']);
     assert.equal(f.native.state().instances.length, 0);
-    for (const odd of ['a..b', '../x', 'x/y', '.hidden']) assert.equal((await finish(f.native, f.native.operation('load', { model: odd }).id)).state, 'error', odd);
+    const callsBefore = f.calls.length, jobsBefore = f.native.state().jobs.length;
+    for (const odd of ['a..b', '../x', 'x/y', '.hidden']) {
+      assert.throws(() => f.native.operation('load', { model: odd }), /Choose an installed model/, odd);
+    }
+    assert.equal(f.calls.length, callsBefore, 'invalid identifiers never reach Control');
+    assert.equal(f.native.state().jobs.length, jobsBefore, 'invalid identifiers never create jobs');
   } finally { await f.native.close(); f.cleanup(); }
 });
 

@@ -189,8 +189,8 @@ test('actual INFO and same-child request history drive status; requested setting
   instance.status = 'error'; assert.equal(actualProjectionState(instance), 'unobserved');
 });
 
-test('Japanese UI copy names refusal-direction removal and every catalog supplies the new keys', () => {
-  setTranslationLanguage('ja');
+test('Japanese UI copy names refusal-direction removal and every catalog supplies the new keys', async () => {
+  await setTranslationLanguage('ja');
   assert.equal(tr('Refusal-direction removal'), '拒否方向ベクトルの除去');
   assert.match(tr('Engine reports: vector not loaded (off).'), /未読み込み/);
   for (const lang of ['en', 'ja', 'zh', 'de', 'es', 'ru', 'pt', 'ko', 'fr']) {

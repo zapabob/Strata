@@ -40,3 +40,4 @@ serve/web/vendor/** -text
 # Local native qualification receipts bind these adapter bytes across worktrees.
 _docs/local-053-20261109/native/*.py text eol=lf
 _docs/local-053-20261109/native/*.mjs text eol=lf
+third_party/strata-ggml/** text eol=lf

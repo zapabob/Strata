@@ -24,7 +24,7 @@ const vite=await createServer({root,server:{host:'127.0.0.1',port:0,strictPort:f
     import {setTranslationLanguage,validLanguage} from '/src/lib/i18n.ts';
     import '/src/styles/kit/tokens.css'; import '/src/styles/kit/components.css'; import '/src/styles/app.css';
     const language=new URL(location.href).searchParams.get('lang');
-    if(validLanguage(language))setTranslationLanguage(language);
+     if(validLanguage(language))await setTranslationLanguage(language);
     const view=createRoot(document.getElementById('root'));
     view.render(React.createElement(HakuaLlamaChat,{
       access:{profileKey:'synthetic-ui-principal',runtimeId:'synthetic-runtime'},

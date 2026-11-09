@@ -1,6 +1,6 @@
 # Local 0.5.3 overwrite and installed WebView2 verification
 
-Date2026-11-09. OpenCode. IN_PROGRESS. User requested existing PR updates,
+Date2026-11-09. OpenCode. COMPLETED for the private app-files candidate. User requested existing PR updates,
 main commit/push, overwrite installation and Playwright real-app verification,
 then added GUI refusal-direction removal. Goal is an actual installed, verified
 candidate; new speed-plan source is unavailable and is not part of this build.
@@ -286,3 +286,35 @@ the working CRUD edits and untracked bytes were verified unchanged. These new
 ladder definitions are not runtime measurements. Continue the actual five-job
 file-enabled app package and backed-up overwrite; keep native12 resource findings
 and every unqualified flag unchanged.
+
+## Completed app-files installation (read back 2026-11-10)
+
+Source `1f6661441bf7c09791abd6806a0e551477110b48` includes CRUD and fork PR3.
+Fresh Control 0.5.4 and the five-job incremental app build passed. App build
+1185.015s; qualification 80.36s with thirteen actual startup self-tests.
+`app-files/Strata-0.5.3-local.1-windows-x64-setup.exe`:112132501 bytes,
+SHA256 `20894bd6973fc5da5dd6fe7a86c5c288fb7b305da28124eb05268e4861c1a6eb`.
+The previous `app` installer remains preserved separately.
+
+Backup4017 files passed after review of the exact three large component-cache
+files. No weights were copied. Backed-up overwrite224.468s and verification
+79.375s passed:29486 payload files match, user4017 files and older components
+retained, registry target and both shortcuts verified. Activation r1 could not
+find an ephemeral run config; reviewed activation r2 verified the retained
+production-prepared native-tune contract and changed only the exact selector.
+
+Actual candidate Q36 r7 and Prism r1 passed; actual installed Q36 r3 and Prism
+r1 passed in the installed shell's WebView2 with real native/Prism inference,
+no mocked model results, zero page errors, private caches, settings retention,
+unload/reload and scoped ownership. Installed CRUD passed seven real UI checks,
+including external-edit conflicts, reversible trash and Japanese mobile input.
+The Q36 projection result is unsupported/rejected, not a positive Qwen3.8 test.
+
+Final normal startup receipt: ok=true, leftOpen=true, debuggingEnabled=false,
+manualUnloaded=true, settingsRetained=true. Installed shell SHA256
+`4b9cea00c591c41bbe73fd1766a43362778209ba7e9c5877b552652835c3d02e`.
+Evidence root: `H:/Strata/releases/local-053-20261109-opencode/app-files`,
+especially installed-q36-e2e.json, installed-prism-e2e.json and normal-startup.json.
+Native source remains ded724a4. All twelve resource failures, qualification=false
+and full-window/quality limits remain. This completes that personal overwrite;
+the subsequent official0.2.13 integration needs its own new evidence.

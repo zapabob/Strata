@@ -1,9 +1,11 @@
 # Strata · Hakua
 
-Current personal candidate: `Strata-0.5.3-local.1-windows-x64-setup.exe`; build,
-overwrite and actual installed WebView2 checks are pending. No public download.
+Installed personal baseline: `Strata-0.5.3-local.1-windows-x64-setup.exe`; short-model
+and workspace WebView2 checks passed. Resource qualification remains failed.
+New private source candidate: `Strata-0.5.4-local.1-windows-x64-setup.exe`, official
+v0.2.13/f33c8c30; build/installation pending. [Current record](docs/UPSTREAM_0213.md).
 
-**Kandydat źródłowy:** zawiera upstream `v0.2.12` / `146df3c4`; kompilacja natywna i testy sprzętowe pozostają do wykonania.
+**Poprzedni kod:** upstream `v0.2.12` / `146df3c4`; jego wyniki pozostają oddzielne.
 Wcześniej sprawdzony instalator osobisty to `Strata-0.5.2-local.2-windows-x64-setup.exe`.
 Poniższe odnośniki nadal dotyczą 0.5.1. [Stan integracji](docs/UPSTREAM_0212.md).
 
@@ -83,4 +85,8 @@ Dziękujemy wszystkim, którzy wspierają Stratę.
 <a href="https://github.com/macintog"><img src="https://github.com/macintog.png?size=96" width="48" height="48" alt="macintog" title="macintog"></a>
 <a href="https://github.com/bisonbet"><img src="https://github.com/bisonbet.png?size=96" width="48" height="48" alt="bisonbet" title="bisonbet"></a>
 <a href="https://github.com/vizv"><img src="https://github.com/vizv.png?size=96" width="48" height="48" alt="vizv" title="vizv"></a>
+<a href="https://github.com/kod88vn"><img src="https://github.com/kod88vn.png?size=96" width="48" height="48" alt="kod88vn" title="kod88vn"></a>
+<a href="https://github.com/seoulworker"><img src="https://github.com/seoulworker.png?size=96" width="48" height="48" alt="seoulworker" title="seoulworker"></a>
+<a href="https://github.com/jackyini"><img src="https://github.com/jackyini.png?size=96" width="48" height="48" alt="jackyini" title="jackyini"></a>
+<a href="https://github.com/router0mail"><img src="https://github.com/router0mail.png?size=96" width="48" height="48" alt="router0mail" title="router0mail"></a>
 <!-- supporters:end -->

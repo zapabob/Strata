@@ -1,12 +1,13 @@
 # Hakua / Strata
 
-個人用ビルド候補は `0.5.3-local.1`（Control `0.5.4`、native `0.5.3`）です。
+導入済み個人版は `0.5.3-local.1`（Control `0.5.4`、native `0.5.3`）です。
 対応Qwen3.8向けの任意の拒否方向ベクトルGUIを含みます。
-`Strata-0.5.3-local.1-windows-x64-setup.exe` のビルド・上書き・実WebView2確認は進行中です。
+`Strata-0.5.3-local.1-windows-x64-setup.exe` の上書きと実WebView2での短いQwen3.6・Prism・ワークスペース検証は完了しました。CUDA資源認定は未合格です。
 公開ダウンロードを示すものではありません。
 
-**ソース統合候補:** 公式 `v0.2.12`／最新mainの `146df3c4` を取り込み、Hakuaと独自機能の契約を維持しています。
-ネイティブの再ビルド・実機認定は未実施です。[統合記録](docs/UPSTREAM_0212.md)をご覧ください。
+**ソース統合候補:** 公式 `v0.2.13`／mainの `f33c8c30` を取り込み、Hakuaと独自機能の契約を維持しています。
+新候補は製品0.5.4-local.1、Control0.5.5、native0.5.4です。予定インストーラー名は `Strata-0.5.4-local.1-windows-x64-setup.exe` です。
+新ソースの再ビルド・実機認定は進行中です。[統合記録](docs/UPSTREAM_0213.md)をご覧ください。
 導入済み個人版 `Strata-0.5.2-local.2-windows-x64-setup.exe` の検証は、このソース統合前の実行ファイルに対するものです。
 以下の公開配布リンクは引き続き安定版0.5.1を示します。
 
@@ -136,4 +137,8 @@ Strata を支えてくださるすべての方に感謝します。
 <a href="https://github.com/macintog"><img src="https://github.com/macintog.png?size=96" width="48" height="48" alt="macintog" title="macintog"></a>
 <a href="https://github.com/bisonbet"><img src="https://github.com/bisonbet.png?size=96" width="48" height="48" alt="bisonbet" title="bisonbet"></a>
 <a href="https://github.com/vizv"><img src="https://github.com/vizv.png?size=96" width="48" height="48" alt="vizv" title="vizv"></a>
+<a href="https://github.com/kod88vn"><img src="https://github.com/kod88vn.png?size=96" width="48" height="48" alt="kod88vn" title="kod88vn"></a>
+<a href="https://github.com/seoulworker"><img src="https://github.com/seoulworker.png?size=96" width="48" height="48" alt="seoulworker" title="seoulworker"></a>
+<a href="https://github.com/jackyini"><img src="https://github.com/jackyini.png?size=96" width="48" height="48" alt="jackyini" title="jackyini"></a>
+<a href="https://github.com/router0mail"><img src="https://github.com/router0mail.png?size=96" width="48" height="48" alt="router0mail" title="router0mail"></a>
 <!-- supporters:end -->

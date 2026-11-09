@@ -22,11 +22,11 @@ def first(path, pattern):
 class VersionBump(unittest.TestCase):
     def test_product_and_engine_versions_are_independent(self):
         # Product follows VERSION; Product, Control and native sources are independently versioned.
-        # Upstream 0.2.12 versions do not replace the fork's independent versions.
+        # Upstream 0.2.13 versions do not replace the fork's independent versions.
         product = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
         self.assertEqual(strata_cli.PRODUCT_VERSION, product)
         self.assertEqual(strata_cli.version(), (ROOT / "CONTROL_VERSION").read_text(encoding="utf-8").strip())
-        self.assertEqual(first("CMakeLists.txt", r"^project\(strata VERSION ([0-9.]+) "), "0.5.3")
+        self.assertEqual(first("CMakeLists.txt", r"^project\(strata VERSION ([0-9.]+) "), "0.5.4")
         self.assertIn('STRATA_VERSION="0.5.0-metal"', (ROOT / "metal" / "CMakeLists.txt").read_text(encoding="utf-8"))
 
     def test_all_app_version_sources_agree(self):
@@ -46,8 +46,8 @@ class VersionBump(unittest.TestCase):
         product = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
         agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
         self.assertIn(f"Hakua product version {product}", agents)
-        self.assertIn("engine 0.5.3", agents)
-        self.assertIn("0.2.12", agents)
+        self.assertIn("engine 0.5.4", agents)
+        self.assertIn("0.2.13", agents)
         for name in ("README.md", "README.de.md", "README.es.md", "README.fr.md", "README.ja.md", "README.pl.md", "README.pt-BR.md", "README.zh-CN.md"):
             text = (ROOT / name).read_text(encoding="utf-8")
             # Every fork README links to this product, rather than an upstream installer.

@@ -9,7 +9,7 @@ import { existsSync, readdirSync, readFileSync, writeFileSync, mkdirSync, realpa
 import { join, resolve, dirname, basename, sep, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:net';
-import { NATIVE_FIELDS, APP_OWNED_FIELDS, withoutDraftLayer, resolveDrafter, validateNativeSettings, validateMcpServers, publicMcpServers, publicNativeEnv, restoreNativeEnv, speedSwitchRows } from './native-settings.mjs';
+import { draftingHint, NATIVE_FIELDS, APP_OWNED_FIELDS, withoutDraftLayer, resolveDrafter, validateNativeSettings, validateMcpServers, publicMcpServers, publicNativeEnv, restoreNativeEnv, speedSwitchRows } from './native-settings.mjs';
 import { resourceSettings, saferStart, reserveChoice } from './native-resources.mjs';
 import { USER_KEY, capture as captureUserArgs, flagValue, merge as mergeUserArgs, setFlag as setUserFlag, stamped as stampedUserArgs } from './native-user-args.mjs';
 import { resolvePython, venvPython } from './python-resolver.mjs';
@@ -414,6 +414,7 @@ export function createNativeControl({directory,requests=()=>[],changed=()=>{},sp
   view.fields=view.fields.map(f=>f.id===PROJECTION_KEY?{...f,supported:projection.refusalProjection.supported,unavailableReason:projection.refusalProjection.reason}:f);
   return {...settings(model),...view,...projection};
  }
+ async function settingsHints(model){try{if(!packaged||typeof control.draftingPlan!=='function')return {};const {path}=recordFile(model),d=await control.draftingPlan({configPath:path,mode:'dflash2'});return Number(d?.drafter_gb)>0?{drafting:draftingHint(d.drafter_gb)}:{};}catch{return {};}}
  function previousEngine(){if(packaged)return !!snapshot.engine?.previous;try{const data=snapshot.installed?.data_dir??snapshot.installed?.data_folder;return [join(preferences.repo,'engine/.previous'),data&&join(data,'engine/.previous')].filter(Boolean).some(existsSync)&&readFileSync(join(preferences.repo,'setup.py'),'utf8').includes('--rollback-engine');}catch{return false;}}
  function installSettings(args,capability=null,negotiating=true,memoryCapability=null){
   if(args.values?.[PROJECTION_KEY]===true)throw new Error('Enable refusal-direction removal in the prepared model’s native settings. No vector download is needed.');
@@ -430,7 +431,7 @@ export function createNativeControl({directory,requests=()=>[],changed=()=>{},sp
  }
  async function plan(args){await refresh();if(!snapshot.available)throw new Error(snapshot.error);await preflightInstall(args);const result=await tool('strata_install',installArgs(args,false));
   /* A chosen drafter that is not on this computer yet is part of the download: its size is listed beside the model's (Control decides; nothing is fetched here). */
-  const choice=args.drafting??(dflash2Served===true?'auto':undefined);if(packaged&&typeof choice==='string'&&typeof control.draftingPlan==='function'){try{const size=snapshot.catalog?.families?.find(f=>f.family===args.family)?.sizes.find(s=>s.model===args.model),here=snapshot.installed?.models?.find(m=>m.model===size?.id);const d=await control.draftingPlan({mode:choice,family:args.family??null,dataDir:here?.runDataFolder??snapshot.installed?.data_folder??null,...(unloadsRunning(args)?{unloading:true}:{})});if(d.needed||d.mtp_needed)return {...result,drafting:{needed:true,drafter:d.needed?'dflash2':'mtp',gb:d.needed?d.gb:d.mtp_gb,line:d.line}};}catch{/* the model plan still stands */}}
+  const choice=args.drafting??(dflash2Served===true?'auto':undefined);if(packaged&&typeof choice==='string'&&typeof control.draftingPlan==='function'){try{const size=snapshot.catalog?.families?.find(f=>f.family===args.family)?.sizes.find(s=>s.model===args.model),here=snapshot.installed?.models?.find(m=>m.model===size?.id);const d=await control.draftingPlan({mode:choice,family:args.family??null,model:args.model??null,dataDir:here?.runDataFolder??snapshot.installed?.data_folder??null,...(unloadsRunning(args)?{unloading:true}:{})});if(d.needed||d.mtp_needed)return {...result,drafting:{needed:true,drafter:d.needed?'dflash2':'mtp',gb:d.needed?d.gb:d.mtp_gb,line:d.line,...(d.needed&&d.tuned===true?{tuned:true}:{})}};}catch{/* the model plan still stands */}}
   return result;}
  /* The folder the person picked in the first-run chooser can be the one that holds their GGUF files (or a folder inside it). It is theirs, not a Strata data folder: packs are never made in it, and a Strata folder around it (<Strata>/models/<tag>) is used instead (#3507, #3424). */
  function ownFilesDataFolder(candidate,args){if(!candidate||args.data_dir!==undefined||!args.gguf_dir)return candidate;const same=(a,b)=>{const x=resolve(a),y=resolve(b);return process.platform==='win32'?x.toLowerCase()===y.toLowerCase():x===y;};const inside=(a,b)=>{const rel=relative(resolve(b),resolve(a));return rel===''||(!!rel&&!rel.startsWith('..')&&!isAbsolute(rel));};if(!same(candidate,args.gguf_dir)&&!inside(candidate,args.gguf_dir))return candidate;const models=dirname(resolve(args.gguf_dir)),top=dirname(models);return basename(models).toLowerCase()==='models'&&/strata/i.test(basename(top))?top:undefined;}
@@ -634,11 +635,30 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
  async function draftPlan(args,configFile,{noSplit=false}={}){
   if(!packaged||typeof control.draftingPlan!=='function')return null;
   const asked=args.values?.drafting;
-  /* The plan is for the cards this Load uses: the screen's own card choice goes over the ones the saved settings name (the all-cards split engine needs two or more). */
+  try{return await withPlanFile(args,configFile,planFile=>control.draftingPlan({configPath:planFile,...(asked===undefined?{}:{mode:asked===null?'auto':asked}),...(noSplit?{noSplit:true}:{}),...(unloadsRunning(args)?{unloading:true}:{})}));}catch{return null;}
+ }
+ /* The plan is for the cards this Load uses: the screen's own card choice goes over the ones the saved settings name (the all-cards split engine needs two or more). `use` gets the file to hand to Control; a temporary one is removed after. */
+ async function withPlanFile(args,configFile,use){
   let planFile=configFile,temporary=null;
   if(Array.isArray(args.gpus)&&args.gpus.length&&args.gpus.every(Number.isInteger)){try{const work=join(directory,'native-instances');mkdirSync(work,{recursive:true});temporary=join(work,'drafting-plan-'+randomUUID()+'.json');writeFileSync(temporary,JSON.stringify({...readJson(configFile),gpu:args.gpus.length===1?args.gpus[0]:args.gpus}),{mode:0o600});planFile=temporary;}catch{temporary=null;planFile=configFile;}}
-  try{return await control.draftingPlan({configPath:planFile,...(asked===undefined?{}:{mode:asked===null?'auto':asked}),...(noSplit?{noSplit:true}:{}),...(unloadsRunning(args)?{unloading:true}:{})});}catch{return null;}
+  try{return await use(planFile);}
   finally{if(temporary){try{rmSync(temporary,{force:true});}catch{/* best effort */}}}
+ }
+ /* Auto and its drafter (the tuned one where the set has one, else the standard DFlash2 drafter: whatever Control's Auto plan says is `needed`), on every path that starts a model: a plain load, a restart of the stopped models and a tuning run fetch it as the Models screen's own Load does (Control: pinned, checked, marked, licence and notice), but they were not asked for it, so
+    the 12 hour rule of the Terminal's launch applies (--throttle: a feed that had nothing a short while ago is not asked again, a feed that does not answer is not an error). A choice the person named or saved (MTP, DFlash2, off) wins: this never runs for it. */
+ function autoChoice(value){return value==null||String(value).toLowerCase()==='auto';}
+ async function fetchAutoDrafter(job,args,configFile,drafts,{noSplit=false,after}={}){
+  if(!packaged||typeof control.draftingFetch!=='function'||drafts?.needed!==true||!autoChoice(readJson(configFile).drafting))return false;
+  job.engineAbort??=new AbortController();
+  try{
+   const got=await withPlanFile(args,configFile,planFile=>control.draftingFetch({configPath:planFile,mode:'auto',throttle:true,...(noSplit?{noSplit:true}:{}),...(unloadsRunning(args)?{unloading:true}:{}),signal:job.engineAbort.signal,onEvent:event=>{if(event.event==='progress'&&job.state==='running'){job.summary=event.step;job.details=event.total>1&&event.done<event.total?`${(event.done/1e9).toFixed(2)} of ${(event.total/1e9).toFixed(2)} GB`:undefined;emit();}}}));
+   if(job.state==='running'&&after){job.summary=after;job.details=undefined;emit();}
+   return got?.pack!=null&&got?.skipped!==true;
+  }catch(error){if(job.state==='running'){job.drafterNote=error.message;if(after){job.summary=after;job.details=undefined;}emit();}return false;}
+ }
+ /* The same for a path that has no Load of its own around it (a restart of stopped models, a tuning run): plan the saved settings file, then fetch. */
+ async function autoDrafterFor(job,model,after){
+  try{const {path}=recordFile(model),args={model,multiple:true},drafts=await draftPlan(args,path);return await fetchAutoDrafter(job,args,path,drafts,{after});}catch{return false;}
  }
  /* The choice changed to the MTP and its layer is not here yet: it is fetched once, by the installer (finished steps are skipped), in this Load. Only the Models screen's own Load carries the choice; a restart or a tuning run never fetches. */
  async function installMtpLayer(job,args,config){
@@ -750,6 +770,8 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   if(drafts?.mtp_needed===true&&(args.values?.drafting!==undefined||drafts.split===true&&(config.drafting==null||String(config.drafting).toLowerCase()==='auto'))){/* the Models screen's own Load carries the choice; a plain Auto load fetches the layer too when Control says the all-cards split engine will take the start (it runs the MTP and nothing else): the same as the Terminal */await installMtpLayer(job,args,config);if(job.state!=='running')return;await refresh(true);config=checkedSettingsConfig(readFileSync(recordFile(args.model).path,'utf8'));drafts=await draftPlan(args,configFile);
    /* The draft layer for the split could not be had (no internet, disk): the load goes on as the 0.2.10 app did, the normal layer split with the plan DFlash2's again (the Models screen's own Load fetches that drafter below). One plain line says so. */
    if(drafts?.split===true&&drafts.mtp_needed===true){noSplit=true;job.drafterNote=job.drafterNote??'The MTP drafter could not be downloaded.';job.summary='Loading the model…';emit();drafts=await draftPlan(args,configFile,{noSplit:true});}}
+  /* A plain load (the Models screen's own Load carries its choice and fetches below): Auto on a set that has the tuned drafter fetches it now, so the start uses it. Not on this computer and not reachable: the MTP or the stock drafter runs as before. */
+  if(args.values?.drafting===undefined&&drafts?.needed===true){const got=await fetchAutoDrafter(job,args,configFile,drafts,{noSplit,after:'Loading the model…'});if(job.state!=='running')return;if(got)drafts=await draftPlan(args,configFile,{noSplit});}
   const {cfg,resources,visionPreferences,parallelChoice,parallelNote:chosenNote,dsNote,q36Note}=buildConfig(args,config,drafts?.choice==='dflash2'&&drafts.needed===true&&args.values?.drafting===undefined?'mtp':drafts?.choice??null,trusted);/* (a drafter that is not here and will not be fetched by this load: the MTP runs, and the request slots stay) */
   let parallelNote=chosenNote;
   await prepareDrafter(job,args,cfg,configFile,drafts,{noSplit});if(job.state!=='running')return;
@@ -977,6 +999,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   for(const old of offer.instances){
    const instance={...old,ownerJob:job.id,status:'loading',phase:'loading',error:null,metrics:null,loadedAt:new Date().toISOString()};
    instances.set(instance.id,instance);if(!defaultId||!instances.has(defaultId))defaultId=instance.id;job.summary=`Starting ${instance.label}. Loading can take a few minutes.`;emit();
+   await autoDrafterFor(job,instance.model,`Starting ${instance.label}. Loading can take a few minutes.`);
    let wait=960;try{const {config,entry}=record(instance.model);wait=startWaitFor(config,entry,instance.model);}catch{/* the usual wait */}
    let capture=null;
    try{
@@ -1050,6 +1073,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   const prepared=await tuneConfig(args,job);if(!prepared||job.state!=='running')return;const {path}=prepared;
   if(externalRunning().length)throw new Error('Stop the native server running outside this UI before tuning.');
   if(busy(requests().filter(r=>instances.has(r.instanceId))))throw new Error('Finish requests before tuning.');
+  await autoDrafterFor(job,args.model,'Finding the fastest settings for your PC…');if(job.state!=='running')return;
   for(const id of [...instances.keys()])await unload(id);
   if(job.state!=='running')return;
   job.summary='Finding the fastest settings for your PC…';emit();
@@ -1181,7 +1205,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   const opened=opener(`http://127.0.0.1:${port}/`);
   return {...opened,...(desktopMemoryAccess.get(instance.id)??{})};
  }
- return {state:publicState,runObservations,tuneStatus,tuneEffective,tuneOff,tunePresets:{list:()=>autotuner.list(),action:(kind,id,extra)=>autotuner.action(kind,id,extra),undoFor:async args=>autotuner.undoFor((await tuneConfig(args)).path)},refresh,localPreview,openHakuaChat,configure,setDownloadDirectory,planModelsFolder,startModelsFolder,interruptedMove,finishInterruptedMove,leaveInterruptedMove,plan,settings,settingsKv,save,saveChecked,settingsFile,openSettingsFile,operation,dismissRestart,cancel,unload,resolveInstance,poll,logs:()=>logs.slice(),benchmarkReport:()=>readJson(join(directory,'native-benchmark.json'),null),setDefault(id){defaultId=resolveInstance(id).id;emit();return publicState();},hasLive:()=>[...instances.values()].some(i=>i.status==='ready'),defaultInstanceId:()=>defaultId,readyInstances:()=>[...instances.values()].filter(i=>i.status==='ready'),close};
+ return {state:publicState,settingsHints,runObservations,tuneStatus,tuneEffective,tuneOff,tunePresets:{list:()=>autotuner.list(),action:(kind,id,extra)=>autotuner.action(kind,id,extra),undoFor:async args=>autotuner.undoFor((await tuneConfig(args)).path)},refresh,localPreview,openHakuaChat,configure,setDownloadDirectory,planModelsFolder,startModelsFolder,interruptedMove,finishInterruptedMove,leaveInterruptedMove,plan,settings,settingsKv,save,saveChecked,settingsFile,openSettingsFile,operation,dismissRestart,cancel,unload,resolveInstance,poll,logs:()=>logs.slice(),benchmarkReport:()=>readJson(join(directory,'native-benchmark.json'),null),setDefault(id){defaultId=resolveInstance(id).id;emit();return publicState();},hasLive:()=>[...instances.values()].some(i=>i.status==='ready'),defaultInstanceId:()=>defaultId,readyInstances:()=>[...instances.values()].filter(i=>i.status==='ready'),close};
 }
 /* A DeepSeek config on AMD written by setup 0.2.8 or earlier names ONE card and marks it "asked", though setup picked it itself (strata_control/gpu_pick.py): it must not stop the app's recommended cards from applying. A card setup named for itself is the first of the usable cards, largest memory first; another card number was the person's. Roles and a "gpus_by" marker are always honoured. */
 export function setupPickedOneCard(config,hardware){

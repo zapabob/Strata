@@ -1,10 +1,9 @@
 # Strata · Hakua
 
-Current personal candidate: `Strata-0.5.3-local.1-windows-x64-setup.exe`; build,
-overwrite and actual installed WebView2 checks are pending. No public download.
+已安装个人版 `Strata-0.5.3-local.1-windows-x64-setup.exe` 的短请求与工作区 WebView2 检查已通过，资源认定仍未通过。
+新的私有源码候选计划使用 `Strata-0.5.4-local.1-windows-x64-setup.exe`，集成官方 v0.2.13/f33c8c30；编译、安装与新实机验证尚未完成。[当前记录](docs/UPSTREAM_0213.md)。
 
-**源码集成候选：** 已合入官方 `v0.2.12`／最新main `146df3c4`，保留Hakua及分支功能。
-原生编译与硬件验证尚未完成。[集成记录](docs/UPSTREAM_0212.md)。
+**之前的源码集成：** 官方 `v0.2.12`／main `146df3c4` 的[集成记录](docs/UPSTREAM_0212.md)保持独立。
 已测试的个人安装包 `Strata-0.5.2-local.2-windows-x64-setup.exe` 早于此次源码合并。
 以下公开下载链接仍属于0.5.1。
 
@@ -84,4 +83,8 @@ Strata 使用 MIT 许可证。模型权重、Hakua-memory 和依赖保留各自�
 <a href="https://github.com/macintog"><img src="https://github.com/macintog.png?size=96" width="48" height="48" alt="macintog" title="macintog"></a>
 <a href="https://github.com/bisonbet"><img src="https://github.com/bisonbet.png?size=96" width="48" height="48" alt="bisonbet" title="bisonbet"></a>
 <a href="https://github.com/vizv"><img src="https://github.com/vizv.png?size=96" width="48" height="48" alt="vizv" title="vizv"></a>
+<a href="https://github.com/kod88vn"><img src="https://github.com/kod88vn.png?size=96" width="48" height="48" alt="kod88vn" title="kod88vn"></a>
+<a href="https://github.com/seoulworker"><img src="https://github.com/seoulworker.png?size=96" width="48" height="48" alt="seoulworker" title="seoulworker"></a>
+<a href="https://github.com/jackyini"><img src="https://github.com/jackyini.png?size=96" width="48" height="48" alt="jackyini" title="jackyini"></a>
+<a href="https://github.com/router0mail"><img src="https://github.com/router0mail.png?size=96" width="48" height="48" alt="router0mail" title="router0mail"></a>
 <!-- supporters:end -->

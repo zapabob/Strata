@@ -37,6 +37,7 @@ export function NativeSettings({ model }: {
     const [modelFields, setModelFields] = useState<NativeField[] | null>([]);
     const [settingsIssues, setSettingsIssues] = useState<{ field: string; message: string }[]>([]);
     const [projection, setProjection] = useState<RefusalProjectionSettings | null>(null);
+    const [hints, setHints] = useState<Record<string, string>>({});   // a field's hint worded for this model (the Drafting size)
     const [switches, setSwitches] = useState<SpeedSwitch[]>([]);   // the speed switches that apply to this model on this PC
     const [dsExperts, setDsExperts] = useState(false);      // the installed DeepSeek engine knows --experts (0.1.50 or newer)
     const [tuned, setTuned] = useState<{ preset: { name: string } | null; changed: TunedChange[] } | null>(null);
@@ -62,6 +63,7 @@ export function NativeSettings({ model }: {
             values: Record<string, any>;
             mcp: Record<string, any>;
             tuned?: { preset: { name: string } | null; changed: TunedChange[] } | null;
+            hints?: Record<string, string>;
             capabilities?: { dsExperts?: boolean };
             speedSwitches?: SpeedSwitch[];
             fields?: NativeField[];
@@ -76,6 +78,7 @@ export function NativeSettings({ model }: {
             setDsExperts(!!input.capabilities?.dsExperts);
             setSwitches(input.speedSwitches ?? []);
             setTuned(input.tuned ?? null);
+            setHints(input.hints ?? {});
             const value = nativeSettingsResponse(input);
             setValues(value.values);
             setText(JSON.stringify(value.values, null, 2));
@@ -168,7 +171,7 @@ export function NativeSettings({ model }: {
     ? tr('Actual expert storage: {0}. CPU staging {1} bytes; H2D staging {2} bytes; I/O scratch {3} bytes. Expert working storage only; total process memory is not bounded.', [memory.mode, String(memory.cpuStageBytes), String(memory.h2dStageBytes), String(memory.ioScratchBytes)])
     : tr('Actual expert storage is not reported yet.')}</p> : null}
   {modelFields === null ? <p className="small muted">{tr('Serving capabilities are unavailable. Read the settings again before choosing cache formats.')}</p> : null}
-  {tr(tab === 'fields' ? <><input className="st-input" type="search" aria-label={tr("Search native parameters")} placeholder={tr("Search parameters…")} value={query} onChange={e => setQuery(e.target.value)}/>{tr(['Responses', 'GPU & memory', 'Serving', 'Image reading', 'Tools', 'Recovery'].map(group => rows.some(f => f.group === group) ? <section className="native-settings-group" key={group}><h3 className="h4">{tr(group)}</h3>{tr(rows.filter(f => f.group === group).map(f => <label className="native-setting-row" key={f.id}><span><strong>{tr(f.label)}</strong>{tr(f.supported === false ? <small>{f.unavailableReason ?? tr("Requires a newer Strata installation.")}</small> : f.hint ? <small>{tr(f.hint)}</small> : null)}</span><NativeFieldInput field={f} model={model} value={values[f.id]} onChange={v => change(f.id, v)}/></label>))}</section> : null))}
+  {tr(tab === 'fields' ? <><input className="st-input" type="search" aria-label={tr("Search native parameters")} placeholder={tr("Search parameters…")} value={query} onChange={e => setQuery(e.target.value)}/>{tr(['Responses', 'GPU & memory', 'Serving', 'Image reading', 'Tools', 'Recovery'].map(group => rows.some(f => f.group === group) ? <section className="native-settings-group" key={group}><h3 className="h4">{tr(group)}</h3>{tr(rows.filter(f => f.group === group).map(f => <label className="native-setting-row" key={f.id}><span><strong>{tr(f.label)}</strong>{tr(f.supported === false ? <small>{f.unavailableReason ?? tr("Requires a newer Strata installation.")}</small> : f.hint ? <small>{tr(hints[f.id] ?? f.hint)}</small> : null)}</span><NativeFieldInput field={f} model={model} value={values[f.id]} onChange={v => change(f.id, v)}/></label>))}</section> : null))}
    {tr(switchRows.length ? <section className="native-settings-group"><h3 className="h4">{tr("Speed")}</h3>{tr(switchRows.map(sw => <label className="native-setting-row" key={sw.id}><span><strong>{tr(sw.label)}</strong><small>{tr(sw.hint)}</small></span><Select ariaLabel={tr(sw.label)} value={switchIsOn(sw, values.env) ? 'on' : 'off'} options={sw.default === 'on' ? [{ value: 'on', label: 'On (recommended)' }, { value: 'off', label: 'Off' }] : [{ value: 'off', label: 'Off (recommended)' }, { value: 'on', label: 'On' }]} onChange={v => changeSwitch(sw, v === 'on')}/></label>))}</section> : null)}
    <section className="native-settings-group"><h3 className="h4">{tr("Sampling")}</h3>{tr([['temperature', 'Temperature'], ['top_p', 'Top-p'], ['top_k', 'Top-k'], ['min_p', 'Min-p'], ['repetition_penalty', 'Repetition penalty'], ['presence_penalty', 'Presence penalty'], ['frequency_penalty', 'Frequency penalty'], ['penalty_last_n', 'Penalty window'], ['seed', 'Seed']].map(([id, label]) => <label className="native-setting-row" key={id}><span><strong>{tr(label)}</strong></span><DecimalInput ariaLabel={tr("Native {0}", [label])} value={values.sampling?.[id] ?? null} onChange={n => { const sampling = { ...values.sampling }; if (n === null) delete sampling[id]; else sampling[id] = n; change('sampling', sampling); }}/></label>))}</section></> : tab === 'json' ? <><p className="small muted">{tr("Engine arguments and STRATA environment flags are editable here. Program paths and network access remain managed by the host.")}</p><textarea className="st-input native-json" aria-label={tr("Native configuration JSON")} spellCheck={false} value={text} onChange={e => { setText(e.target.value); setNotice(''); }}/></> : <>
    <p className="small muted">{tr("Add local programs or HTTP MCP servers. Connected tools can read or change the resources you give them access to. Enable tools in chat when you want the model to use them.")}</p><NativeMcpEditor text={mcp} onChange={value => { setMcp(value); setNotice(''); }}/><details><summary className="small">{tr("Configuration example")}</summary><pre className="native-example">{'{\n  "files": {\n    "command": "npx",\n    "args": ["-y", "@modelcontextprotocol/server-filesystem", "/your/folder"],\n    "disabled": false\n  }\n}'}</pre><p className="xs muted">{tr("Saved credentials are masked. Keep the mask to preserve an existing value; type a new value to replace it.")}</p></details></>)}

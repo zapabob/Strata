@@ -65,12 +65,17 @@ class FatalGpuRestart(unittest.TestCase):
         self.note(svc)                      # the two old ones aged out: only this one counts
 
     def test_the_request_in_flight_fails_as_an_engine_death_not_a_bad_request(self):
-        eng = types.SimpleNamespace(last_err=None, ended=False)
+        eng = S.StrataEngine.__new__(S.StrataEngine)
+        eng.last_err, eng.ended = None, False
+        eng._q36_memory_observation = {"mode": "bounded-experts-v1"}
+        eng._native_admitted_child = object()
         with self.assertRaises(S.EngineDied) as cm:
             S.StrataEngine._raise_if_fatal_gpu(eng, "ERR fatal GPU error: cudaStreamSynchronize(s): an illegal memory access was encountered")
         self.assertIn("illegal memory access", str(cm.exception))
         self.assertTrue(eng.ended)                                  # the next request starts the engine at once
         self.assertTrue(eng.last_err.startswith("fatal GPU error"))
+        self.assertIsNone(eng._q36_memory_observation)
+        self.assertIsNone(eng._native_admitted_child)
 
     def test_an_ordinary_engine_error_stays_a_bad_request(self):
         eng = types.SimpleNamespace(last_err=None, ended=False)

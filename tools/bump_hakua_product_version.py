@@ -246,7 +246,9 @@ def collect() -> dict[str, str]:
         re.M,
     ).group(1)
     version_file = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
-    agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8").splitlines()[2]
+    agents_text = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    banner = re.search(r"^Hakua product version [^\n]+", agents_text, re.M)
+    agents = banner.group(0) if banner else ""
     readme = re.search(
         r"App version in this preview tree\s*[:|]\s*`([^`]+)`",
         (ROOT / "README.md").read_text(encoding="utf-8"),
