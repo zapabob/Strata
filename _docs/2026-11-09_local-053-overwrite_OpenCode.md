@@ -108,6 +108,23 @@ child NODE_OPTIONS1024MiB, the actual approved-assets production build passed:
 normal package adapter already specifies1024MiB. This is a frontend build, not
 an NSIS, overwrite or GPU/runtime result.
 
+## Explicit four-job switch and Windows test portability
+
+The user requested four-core parallel building. On inspection the single-job
+attempt had already ended (49-minute whole attempt, owned Jobs drained). The
+attempted ownership-checked stop found no such MSBuild process and stopped
+nothing. Actual retained error: the new upstream `flag_order_test.cu` used GCC
+`__atomic_load_n`/`__ATOMIC_SEQ_CST` unconditionally on MSVC. Production engine
+logic is unchanged; the test now uses the same Windows interlocked primitive as
+its production header, retaining GCC's path elsewhere and every assertion.
+
+Keep the failed attempt, all compiler output and resource receipts. A separately
+reviewed transition archives only its metadata under `attempts/single-job-build-r2`,
+retains the configured build path and compiled objects, and freezes the new clean
+source. Native build/helper commands and CMAKE_BUILD_PARALLEL_LEVEL now request4.
+RAM/commit/disk floors are unchanged. Final build and GPU test results remain
+pending; do not relabel the earlier full build as a pass.
+
 Applied compatible canonical prompt, PC/project AGENTS; Common, Start Gate,
 Skill Selection, DeepResearch, Security, Application, WebApp, Frontend, Python,
 TypeScript, CPP and Rust SOPs; baseline skills plus build-manager/qa-engineer and

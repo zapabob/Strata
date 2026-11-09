@@ -235,7 +235,7 @@ def test_environment_scopes_temps_and_removes_user_flags(monkeypatch: pytest.Mon
     assert "STRATA_UNKNOWN_SPEED_FLAG" not in env and "PYTHONPATH" not in env and "AWS_SECRET_ACCESS_KEY" not in env
     for key in ("TMP", "TEMP", "UV_CACHE_DIR", "CUDA_CACHE_PATH", "PIP_CACHE_DIR"):
         assert Path(env[key]).is_relative_to(common.BASE)
-    assert env["CMAKE_BUILD_PARALLEL_LEVEL"] == "1" and env["UV_PYTHON_DOWNLOADS"] == "never"
+    assert env["CMAKE_BUILD_PARALLEL_LEVEL"] == "4" and env["UV_PYTHON_DOWNLOADS"] == "never"
 
 
 @pytest.mark.parametrize("newline", ["\n", "\r\n"])

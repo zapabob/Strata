@@ -1,5 +1,12 @@
 # Local 0.5.3 native adapters — prepared, execution pending
 
+The user's later four-core request overrides the original one-job recipe below:
+current build/bind commands pass `4` and CMAKE_BUILD_PARALLEL_LEVEL is `4`.
+The completed failed single-job attempt is retained. The explicit transition in
+`../parallel4/prepare.py` keeps its intermediate build path and archives metadata;
+it accepts only the reviewed MSVC test portability source change before rebind.
+Resource floors and all functional/resource assertions remain unchanged.
+
 These are native-only adapters for parent-reviewed execution. The implementation
 session has run adapter checks and a read-only tokenizer/header check. It has not
 built or started an engine, run inference, staged a component, or qualified a

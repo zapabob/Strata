@@ -109,7 +109,7 @@ def environment() -> dict[str, str]:
                PIP_NO_INDEX="1", PIP_CACHE_DIR=str(BASE / "cache/pip"),
                CUDA_CACHE_PATH=str(BASE / "cache/cuda"), XDG_CACHE_HOME=str(BASE / "cache"),
                PYTHONDONTWRITEBYTECODE="1", PYTHONNOUSERSITE="1", PYTEST_DISABLE_PLUGIN_AUTOLOAD="1",
-               CUDA_PATH=str(CUDA), CUDA_PATH_V13_3=str(CUDA), CMAKE_BUILD_PARALLEL_LEVEL="1",
+                CUDA_PATH=str(CUDA), CUDA_PATH_V13_3=str(CUDA), CMAKE_BUILD_PARALLEL_LEVEL="4",
                CTEST_PARALLEL_LEVEL="1", MSBUILDDISABLENODEREUSE="1", CMAKE_BUILD_TYPE="Release")
     return env
 

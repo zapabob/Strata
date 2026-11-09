@@ -36,7 +36,7 @@ def binding(root: Path, name: str, folder: Path) -> dict[str, Any]:
 def build(root: Path, commit: str) -> None:
     require(not BUILD.exists() and not any(NATIVE.iterdir()), "Fresh build/native outputs required")
     save(BASE / "build-source.json", {**freeze(root, commit), "configure": configure(root),
-         "parallelism": 1, "buildHelper": str(root / "tools/build_hakua_engine.mjs"),
+         "parallelism": 4, "buildHelper": str(root / "tools/build_hakua_engine.mjs"),
          "historicalRecipe": "personal-native-20261107/build.py; no explicit spill baseline"}, fresh=True)
     checked(root, "tool-node", [str(NODE), "--version"], 15)
     require(text("tool-node").strip() == "v24.22.2", "Private Node version mismatch")
@@ -48,7 +48,7 @@ def build(root: Path, commit: str) -> None:
     validate_cache(root)
     # The unmodified current source helper builds all targets serially and writes native-build.json.
     result = owned(root, "build-helper", [str(NODE), str(root / "tools/build_hakua_engine.mjs"),
-                   str(BUILD), "1"], 5100, output_bytes=64 * 1024**2)
+                    str(BUILD), "4"], 5100, output_bytes=64 * 1024**2)
     require(result["passed"], "Build/helper failed. Preserve failure; run probe-diagnostic explicitly, never synthesize identity")
     save(BASE / "results/build.json", binding(root, "build-binding", BUILD / "Release"), fresh=True)
 
@@ -67,7 +67,7 @@ def parse_cmake_cache(contents: str) -> dict[str, str]:
     return entries
 
 
-def validate_cache(root: Path) -> None:
+def validate_cache(root: Path, *, record: bool = True) -> None:
     contents = (BUILD / "CMakeCache.txt").read_text(encoding="utf-8")
     entries = parse_cmake_cache(contents)
     expected = {"CMAKE_HOME_DIRECTORY": str(root), "CMAKE_CUDA_ARCHITECTURES": "120",
@@ -87,15 +87,16 @@ def validate_cache(root: Path) -> None:
     cxx = list((BUILD / "CMakeFiles").glob("*/CMakeCXXCompiler.cmake"))
     require(len(cxx) == 1 and 'set(CMAKE_CXX_COMPILER_ID "MSVC")' in cxx[0].read_text(encoding="utf-8"), "MSVC required")
     # Keep actual compiler data/hashes rather than inventing an MSVC minor version.
-    save(BASE / "results/compiler.json", {"cacheSHA256": sha(BUILD / "CMakeCache.txt"),
-         "cache": entries, "cuda": compilers[0].read_text(encoding="utf-8"), "cxx": cxx[0].read_text(encoding="utf-8")}, fresh=True)
+    if record:
+        save(BASE / "results/compiler.json", {"cacheSHA256": sha(BUILD / "CMakeCache.txt"),
+             "cache": entries, "cuda": compilers[0].read_text(encoding="utf-8"), "cxx": cxx[0].read_text(encoding="utf-8")}, fresh=True)
 
 
 def bind(root: Path) -> None:
     require((BUILD / "CMakeCache.txt").is_file(), "Explicit bind requires an existing configured build")
     require(not (BASE / "results/build.json").exists(), "Build already bound")
     # Explicit retry of the same authoritative helper, not a replacement version probe/identity writer.
-    checked(root, "bind-helper", [str(NODE), str(root / "tools/build_hakua_engine.mjs"), str(BUILD), "1"], 5100)
+    checked(root, "bind-helper", [str(NODE), str(root / "tools/build_hakua_engine.mjs"), str(BUILD), "4"], 5100)
     save(BASE / "results/build.json", binding(root, "bind-binding", BUILD / "Release"), fresh=True)
 
 

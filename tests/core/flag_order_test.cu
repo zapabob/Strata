@@ -28,7 +28,14 @@ __global__ void consumer(volatile uint32_t* flag, uint32_t want, volatile uint32
     *seen = *staging;        // what the graph's PCIe group would read
 }
 
-static uint32_t rd(volatile uint32_t* p) { return __atomic_load_n((uint32_t*) p, __ATOMIC_SEQ_CST); }
+static uint32_t rd(volatile uint32_t* p) {
+#if defined(_WIN32)
+    // Match flag_raise_max's Windows interlocked ordering on mapped host words.
+    return (uint32_t) _InterlockedCompareExchange((volatile long*) p, 0, 0);
+#else
+    return __atomic_load_n((uint32_t*) p, __ATOMIC_SEQ_CST);
+#endif
+}
 
 static int run_device(int dev) {
     CK(cudaSetDevice(dev));
