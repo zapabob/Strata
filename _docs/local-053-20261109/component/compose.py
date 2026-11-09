@@ -27,7 +27,7 @@ def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description=__doc__)
     result.add_argument("--execute", action="store_true")
     result.add_argument("--reviewed-commit", help="Full current app HEAD; execute only")
-    result.add_argument("--native-source-root", type=Path, help="Explicit frozen 26e native checkout")
+    result.add_argument("--native-source-root", type=Path, help="Explicit reviewed frozen native checkout")
     result.add_argument("--key", type=Path, help="Explicit absolute signing-key path; read only by feed_tool.py")
     result.add_argument("--plan", action="store_true", help="Read-only plan (also the default)")
     result.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)

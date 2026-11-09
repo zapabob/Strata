@@ -8,6 +8,8 @@ def build_control(commit: str) -> None:
     text = (HISTORY / 'build.py').read_text(encoding='utf-8')
     text = text.replace("'C:/Users/downl/AppData/Local/Temp/strata-packaging-cache'", "str(OUT/'packaging-cache')")
     scope = dict(globals(), __name__='historical_recipe', __file__=str(HISTORY / 'build.py'))
+    # Control is built independently; signed native verification still gates app/QA/install.
+    scope['build_env'] = lambda: build_env(require_native=False)
     exec(compile(text, str(HISTORY / 'build.py'), 'exec'), scope)
     scope['build_control'](commit)
 

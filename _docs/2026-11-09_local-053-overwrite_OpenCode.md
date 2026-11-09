@@ -125,6 +125,34 @@ source. Native build/helper commands and CMAKE_BUILD_PARALLEL_LEVEL now request4
 RAM/commit/disk floors are unchanged. Final build and GPU test results remain
 pending; do not relabel the earlier full build as a pass.
 
+The portability/parallel checkpoint `ded724a4029cbfcf48d58821f01f88fe246c7460`
+was committed/pushed and the detached native root fast-forwarded to it. Only
+`tests/core/flag_order_test.cu` changed among native source/test paths. The guarded
+transition archived the completed failed single-job metadata; objects remain at
+the identical build path. A fresh source/adapters freeze and `bind` controller
+now explicitly invoke the authoritative build helper with parallelism4.
+The first helper-test run used C: scratch and the old expected parallelism1:
+49 passed/5 failed. Correct H: scratch and the new user-requested expectation:
+54 passed. An additional actual-cache read-only check preserved compiler.json.
+The component composition pin now follows the reviewed ded724a4 native freeze.
+
+## Fresh native functional evidence and independent Control packaging
+
+The four-job authoritative rebind passed (17.39s with retained objects, not a
+full-build performance claim). Native source ded724a4 binds765 source files.
+New strata SHA2560932216088cb3a5813175d595a5f1f7f16633f4a7883c438439ded7f5c3bc410;
+Q36 SHA2568aca225a2d58a35df910fc1d66e4d979d3f2cb4fb7a131ec10d4eada439bef4b.
+Native-only staging, CPU and GPU suites passed; both sanitizer cases passed;
+the actual MSVC flag-order GPU test passed without changing assertions.
+The seven-case actual bounded protocol/driver passed. Full protected-input
+posthash, legacy/restart/comparison/resource/audit results remain pending.
+This exact digest is added to Host mapped admission; no arbitrary binary is trusted.
+
+Control packaging is source-independent of native signing. Its dedicated build
+may now run while native evidence finishes; every app/QA/install phase still
+requires the complete signed-native receipt and production verifiers. Rust's
+build concurrency is also4 per the user's request. Floors remain unchanged.
+
 Applied compatible canonical prompt, PC/project AGENTS; Common, Start Gate,
 Skill Selection, DeepResearch, Security, Application, WebApp, Frontend, Python,
 TypeScript, CPP and Rust SOPs; baseline skills plus build-manager/qa-engineer and

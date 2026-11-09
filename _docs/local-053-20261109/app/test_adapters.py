@@ -4,16 +4,28 @@ from __future__ import annotations
 import ast
 import contextlib
 import io
+import tempfile
 from unittest import TestCase, main
 from unittest.mock import patch
 
 import adapter
+import common as candidate_common
 from common import *
 import recipes
 import upgrade
 
 
 class AdapterContracts(TestCase):
+    def test_only_control_can_build_without_signed_native_staging(self) -> None:
+        with tempfile.TemporaryDirectory() as directory, patch.object(candidate_common, 'OUT', Path(directory)), patch.object(candidate_common, 'staged', side_effect=AssertionError('native gate')) as native:
+            env = candidate_common.build_env(require_native=False)
+            native.assert_not_called()
+            self.assertEqual(env['CARGO_BUILD_JOBS'], '4')
+            self.assertNotIn('STRATA_NATIVE_SOURCE_COMMIT', env)
+            with patch.dict(os.environ, {'LOCAL053_NATIVE_SOURCE_ROOT': str(ROOT)}):
+                with self.assertRaisesRegex(AssertionError, 'native gate'):
+                    candidate_common.build_env()
+
     def test_python_syntax_without_bytecode(self) -> None:
         for path in HERE.glob('*.py'):
             ast.parse(path.read_text(encoding='utf-8'), filename=str(path))

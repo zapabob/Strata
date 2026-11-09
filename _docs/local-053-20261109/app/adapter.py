@@ -83,7 +83,7 @@ def guarded(args: argparse.Namespace) -> int:
             command = [str(PYTHON), '-B', str(HERE / 'adapter.py'), args.step, '--execute', '--worker', '--reviewed-commit', args.reviewed_commit,
                        '--native-source-root', args.native_source_root, '--target', args.target, '--attempt', args.attempt]
             worker = 'import json,subprocess,sys;assert sys.stdin.readline().strip()=="GO";raise SystemExit(subprocess.call(json.loads(sys.argv[1])))'
-            child = subprocess.Popen([str(PYTHON), '-B', '-c', worker, json.dumps(command)], cwd=ROOT, env=build_env(), stdin=subprocess.PIPE, stdout=log, stderr=subprocess.STDOUT, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
+            child = subprocess.Popen([str(PYTHON), '-B', '-c', worker, json.dumps(command)], cwd=ROOT, env=build_env(require_native=args.step != 'build-control'), stdin=subprocess.PIPE, stdout=log, stderr=subprocess.STDOUT, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
             require(winjob.contain(child), 'Owned child containment failed')
             child.stdin.write('GO\n')
             child.stdin.flush()
@@ -133,14 +133,18 @@ def main() -> int:
     if not args.execute:
         print(json.dumps(dict(wouldExecute=False, step=args.step, target=args.target, output=str(OUT),
               product=PRODUCT, control=CONTROL, native=ENGINE, requiresReviewedCleanSource=True,
-              requiresParentSignedReceipt=True, releaseQualified=False, normalLaunchOutsideGuard=args.step == 'normal-start')))
+              requiresParentSignedReceipt=args.step != 'build-control', releaseQualified=False, normalLaunchOutsideGuard=args.step == 'normal-start')))
         return 0
     commit = approved_source(args.reviewed_commit)
     require_resources()
     require(args.native_source_root is not None and Path(args.native_source_root).is_absolute(), 'Explicit native source root required')
     # This variable exists only in this helper/children, never in a global config.
     os.environ['LOCAL053_NATIVE_SOURCE_ROOT'] = args.native_source_root
-    staged()
+    if args.step == 'build-control':
+        require(BASE.is_dir(), 'Native run must initialise the shared output first')
+        OUT.mkdir(exist_ok=True)
+    else:
+        staged()
     if args.step == 'normal-start':
         require(not args.worker, 'Normal launch must be outside QA containment')
         execute(args, commit)

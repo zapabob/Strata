@@ -28,6 +28,8 @@ export const Q36_CAPABILITY_REVISION = 'q36-typed-kv-1';
  * H:\Strata\releases\hakua040-native-sync-20261103\Release\strata.exe.
  * An older binary is not listed. Legacy placement stays the default. */
 export const Q36_MAPPED_PACK_DIGESTS = new Set([
+  // Local 0.5.3: source-bound CPU/GPU/sanitizer and seven short bounded-runtime checks; full-window is separate.
+  '0932216088cb3a5813175d595a5f1f7f16633f4a7883c438439ded7f5c3bc410',
   // Personal 0.5.2 r3: source-bound mapped/bounded short lifecycle checks; full-window qualification is separate.
   '13fc3b96fe71afcb98990d828d2c743f85e8b59b16174a1f7da3eb4ef9b4f8e3',
   // 0.5.1 sm_120: source-bound mapped-pack verification with protected unchanged-file receipts.

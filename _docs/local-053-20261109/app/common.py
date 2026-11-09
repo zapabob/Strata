@@ -135,7 +135,7 @@ def staged() -> dict:
     return receipt
 
 
-def build_env() -> dict:
+def build_env(*, require_native: bool = True) -> dict:
     env = {k: v for k, v in os.environ.items() if not k.upper().startswith(('STRATA_', 'DSH_', 'WEBVIEW2_', 'NODE_OPTIONS', 'PYTHONPATH', 'PYTHONHOME', 'TAURI_SIGNING_'))}
     temp = OUT / 'temp'
     temp.mkdir(exist_ok=True)
@@ -144,7 +144,9 @@ def build_env() -> dict:
                UV_CACHE_DIR=str(OUT / 'uv-cache'), PSModuleAnalysisCachePath=str(temp / 'PSModuleAnalysisCache'),
                npm_config_cache=str(OUT / 'npm-cache'), XDG_CACHE_HOME=str(OUT / 'xdg-cache'),
                STRATA_PUBLIC_PACKAGE='1', STRATA_PUBLIC_ASSETS=str(PUBLIC_ASSETS), STRATA_PUBLIC_ASSETS_RECEIPT=str(PUBLIC_RECEIPT),
-               CARGO_TARGET_DIR=str(CARGO_TARGET), CARGO_BUILD_JOBS='1', RUSTC_WRAPPER='', RUSTC_WORKSPACE_WRAPPER='')
+               CARGO_TARGET_DIR=str(CARGO_TARGET), CARGO_BUILD_JOBS='4', RUSTC_WRAPPER='', RUSTC_WORKSPACE_WRAPPER='')
+    if not require_native:
+        return env
     native_root = os.environ.get('LOCAL053_NATIVE_SOURCE_ROOT')
     require(bool(native_root) and Path(native_root).is_absolute(), 'Explicit native source root required')
     receipt = staged()
