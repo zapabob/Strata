@@ -6,14 +6,27 @@ from pathlib import Path
 import tempfile
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 import zipfile
 
 import compose as cli
 import core
+import deps as dependency_cli
 import quality
 
 
 class Fixtures(unittest.TestCase):
+    def test_dependency_scope_tracks_same_volume_primary_staging(self) -> None:
+        pending = core.STAGING / 'pending-engine-bundle' / core.NAME
+        with patch('sys.argv', ['deps.py', str(pending)]), patch.object(dependency_cli, 'production_modules', return_value=(None, None, 'fixture')), patch.object(dependency_cli, 'check_dependencies') as check:
+            dependency_cli.main()
+            check.assert_called_once_with(pending, 'fixture')
+        old = core.WORK / 'pending-engine-bundle' / core.NAME
+        with patch('sys.argv', ['deps.py', str(old)]), patch.object(dependency_cli, 'production_modules') as production:
+            with self.assertRaises(core.Blocked):
+                dependency_cli.main()
+            production.assert_not_called()
+
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory(prefix="fixture-", dir=core.HERE)
         self.addCleanup(self.temp.cleanup)

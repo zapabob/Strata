@@ -194,3 +194,57 @@ the fragile historical import. Component pending/prior trees stay on C: for
 same-volume renames; signed outputs/ZIP/cache remain on H:. App13 and component13
 small tests passed. Native helper LF bytes were restored exactly after checkout
 conversion, and scoped gitattributes protects their existing freeze hashes.
+
+## Execution continuation and retained failures
+
+C: main checkpoint0298af8b produced the fresh Control0.5.4 archive successfully
+in97.109s (r2); r1 remains failed. The explicit five-job incremental native
+rebind then passed in15.297s using retained objects. Both executables and
+native-build.json remained byte-identical to the measured four-job build.
+This is incremental timing, not a clean-build benchmark.
+
+Bounded7, legacy7 and restart2 actual short requests passed. The first restart
+controller disappeared before producing model results; its incomplete evidence
+is preserved as attempts/model-restart-interrupted-r1. The next restart completed
+its actual driver with a drained Job, then was interrupted during posthash.
+That failed outer attempt is retained as interrupted-r2. An explicit separate
+owned Job finished only the original protected-file posthash, checked the actual
+completed driver/protocol/source hashes, and retained its recovery helper hash.
+No inference result was invented or replayed as new. Fresh comparison passed.
+
+The new CUDA resource guard actually completed with12 violations (four earlier
+kernel findings plus eight IQ4 specializations). Audit retains FAIL and all
+qualification flags false; quality.validate() accepted the source-bound short
+functional evidence and genuine completed resource failure for this private build.
+No CUDA allowances or production kernels were changed for installation.
+
+The user explicitly approved stopping all current Strata conversations/model for
+overwrite. The original conservative pause helper refused multiple turns. Before
+the separately approved pause could act, the old shell and native process had
+already exited; that script also stopped without action. Existing0.5.2 signature
+and all141 payload members verified after partial NTFS compression. No absent
+runtime is claimed to have been stopped or restored by these attempts.
+
+Composition r1 signed/packed successfully but aborted at the unchanged C:5GiB
+floor during pending staging; its drained Job and entire outputs are preserved.
+Inactive runtime/Control/native041 backups and the failed C: stage were relocated
+to H:/Strata/private-backups/local053-c-space-preserved-20261109 with SHA256 checks:
+6041 files,0 lost. A read-only Git pack blocked relocation of old C: build output;
+the complete4172-file tree was restored in place and checked against the retained
+H: copy. No source reset/clean or user-file disposal occurred.
+
+Composition r2 reached a complete verified C: pending signed payload, then failed
+because deps.py still allowed the historical H: pending path. The Node source,
+native765-file binding, signatures and backend byte guards passed on that C: tree.
+The dependency scope now names the exact C: STAGING constant; a regression check
+accepts that path and rejects the obsolete H: path before production imports.
+Reuse of signed ZIP/pending bytes requires all production verifiers again under
+a fresh owned Job, preserving the failed worker receipt. Source changes require
+a newly source-bound Control before the app's five-job incremental build.
+
+Self-review-event: qa_defect. The worktree migration missed one downstream scope
+constant. The narrow fix and exact-path acceptance/rejection check address it;
+resource, signature, dependency, clean-source and installed-target gates remain.
+Do not turn a passed short test, compiler rebind or signature into release/model
+quality qualification. Source-bound recovery evidence and remaining app/installed
+results must still be recorded before completion.

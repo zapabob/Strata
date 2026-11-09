@@ -4,14 +4,14 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from core import NAME, RESOURCES, WORK, check_dependencies, production_modules, require
+from core import NAME, RESOURCES, STAGING, WORK, check_dependencies, production_modules, require
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("folder", type=Path)
     args = parser.parse_args()
-    require(args.folder in (WORK / "unsigned" / NAME, WORK / "pending-engine-bundle" / NAME,
+    require(args.folder in (WORK / "unsigned" / NAME, STAGING / "pending-engine-bundle" / NAME,
                             RESOURCES / "engine-bundle" / NAME), "Explicit managed dependency scope required")
     _, _, deps = production_modules()
     check_dependencies(args.folder, deps)
