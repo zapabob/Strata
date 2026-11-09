@@ -158,3 +158,39 @@ Skill Selection, DeepResearch, Security, Application, WebApp, Frontend, Python,
 TypeScript, CPP and Rust SOPs; baseline skills plus build-manager/qa-engineer and
 yaraikata-memo. Scope-owned helper work is logged in this directory. Source checks
 and actual output receipts, not helper intent or reported prior passes, gate installation.
+
+## Primary checkout and five-job update
+
+The user designated `C:/Users/downl/Documents/ChatGPT/Strata` as the primary
+checkout, then requested five-way build parallelism. Main now checks out there
+at `da01b4fd7c417d59fb5fee77b623acaf62dc17e2`; the former H: main worktree
+is detached at that same commit. The old C: branch remains at91f5057b.
+All607 previously untracked C: files retained their paths and Git content hashes.
+No stash was applied or removed. The first fingerprint attempt failed before
+any branch change because PowerShell decoded Japanese paths incorrectly; a
+byte-preserving Git subprocess check then verified the successful switch.
+
+App build environment now requests Cargo5 and CMake5. Component execution's
+fixed app-root check and both handoff command paths now name the C: checkout.
+Large outputs/caches and the independently frozen native root remain on H:.
+The completed native build and its four-job frozen adapters are historical
+evidence and retain their actual identities. Future native rebuilds require
+an explicit five-job invocation and a separate reviewed freeze.
+
+The actual bounded-model outer phase has now passed, including protected-input
+posthash and a drained owned Job. Control attempt r1 failed: importing the
+historical recipe replaced the intended independent build_env override, so it
+still required the not-yet-created signed-native receipt. That failure and its
+logs remain intact; Control, NSIS and the new overwrite are still incomplete.
+See `2026-11-09_primary-checkout-five-jobs_OpenCode.md` for migration checks.
+
+The later no-deletion organization request has been applied:15 local input units,
+including ignored descendants, are preserved as6622 files in the C: local archive.
+All SHA256 inventories matched before/after moving and after NTFS compression.
+The complete old sibling-runtime and notices roots were also retained by rename;
+production checks passed for the newly staged C: Prism0.4.1/TurboQuant0.4.0/notices.
+Control now uses an explicit fresh-stage/preserve-whole-root recipe, replacing
+the fragile historical import. Component pending/prior trees stay on C: for
+same-volume renames; signed outputs/ZIP/cache remain on H:. App13 and component13
+small tests passed. Native helper LF bytes were restored exactly after checkout
+conversion, and scoped gitattributes protects their existing freeze hashes.

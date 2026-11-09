@@ -20,6 +20,7 @@ NATIVE = BASE / "native-component" / NAME
 REFERENCE = Path("H:/Strata/releases/personal-052-local2-20261107/app/signed-component-r4/0.5.2-windows-x86_64-cuda-cuda13")
 RESOURCES = ROOT / "apps/desktop/src-tauri/resources"
 WORK = BASE / "app/component-053"
+STAGING = ROOT / "_docs/local-archive/2026-11-09-pre-main/component-staging"
 RECEIPT = BASE / "app/staged-native.json"
 PYTHON = Path("C:/Users/downl/AppData/Local/Programs/Python/Python312/python.exe")
 NODE = Path("C:/Users/downl/AppData/Local/Programs/Strata/node/node.exe")

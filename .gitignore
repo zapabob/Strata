@@ -46,6 +46,9 @@ td.log
 /_docs/perf131k/
 /_scratch/perf131k/
 
+# Retained pre-main local logs, intake and runtime backups; not release source.
+/_docs/local-archive/2026-11-09-pre-main/
+
 # image encoder (setup.py --vision): build output and the generated build script
 build-vision*/
 build-vision.bat

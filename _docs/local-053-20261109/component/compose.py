@@ -15,7 +15,7 @@ import uuid
 
 from core import (BASE, HERE, MANIFEST, NAME, NATIVE, NATIVE_COMMIT, NATIVE_ROOT, NODE,
                   PRISM, PRISM_EXE, PYTHON, RECEIPT, REFERENCE, RESOURCES, ROOT, TURBO,
-                  WORK, Blocked, check_archive, check_dependencies, compose, copy_tree,
+                  WORK, STAGING, Blocked, check_archive, check_dependencies, compose, copy_tree,
                   digest, inventory, load, no_links, preserve_bundle_metadata, production_modules,
                   require, sha, write_new)
 from quality import finished, validate
@@ -39,7 +39,8 @@ def plan(args: argparse.Namespace) -> dict:
             "nativeSourceCommit": NATIVE_COMMIT, "reviewedAppCommit": args.reviewed_commit,
             "nativeOnly": str(NATIVE), "retainedReference": str(REFERENCE),
             "unsigned": str(WORK / "unsigned" / NAME), "signed": str(WORK / "signed" / NAME),
-            "staged": str(RESOURCES / "engine-bundle" / NAME), "receipt": str(RECEIPT),
+             "staged": str(RESOURCES / "engine-bundle" / NAME), "receipt": str(RECEIPT),
+             "sameVolumeStaging": str(STAGING), "priorEngineBundle": str(STAGING / "prior-engine-bundle"),
             "key": "explicit path required on execute; not inspected by plan",
             "reportNames": ["package.json", "cpu.json", "gpu.json", "sanitizer.json", "spill.json",
                             "model-bounded.json", "model-legacy7.json", "model-restart.json",
@@ -91,10 +92,10 @@ def freeze(args: argparse.Namespace) -> dict:
             and args.native_source_root == NATIVE_ROOT, "Explicit frozen native root required")
     require(args.key is not None and args.key.is_absolute(), "Explicit absolute key path required")
     # The key is opaque: no read/stat/hash and no key-derived data in any receipt.
-    for root in (ROOT, NATIVE_ROOT, BASE, REFERENCE, RESOURCES, WORK):
+    for root in (ROOT, NATIVE_ROOT, BASE, REFERENCE, RESOURCES, WORK, STAGING):
         no_links(root)
         require(not args.key.is_relative_to(root), "Key must be outside source/release/resource trees")
-    require(ROOT == Path("H:/Strata/worktrees/main-integration-20261106"), "Unexpected app checkout")
+    require(ROOT == Path("C:/Users/downl/Documents/ChatGPT/Strata"), "Unexpected app checkout")
     for root, commit in ((ROOT, args.reviewed_commit), (NATIVE_ROOT, NATIVE_COMMIT)):
         require(git(root, "rev-parse", "HEAD") == commit, "Reviewed source HEAD changed")
         require(not git(root, "status", "--porcelain", "--untracked-files=all"), "Parent must freeze clean checkouts")
@@ -178,8 +179,9 @@ def worker(args: argparse.Namespace, identity: dict) -> None:
     verify_node(RESOURCES, "siblings", False)
     write_new(WORK / "inputs.json", {"reference": old_tree, "native": native_tree, "quality": quality,
                                     "binding": bound, "siblingBackends": sibling_tree})
-    for directory in ("unsigned", "signed", "pending-engine-bundle", "archive"):
+    for directory in ("unsigned", "signed", "archive"):
         (WORK / directory).mkdir()
+    (STAGING / "pending-engine-bundle").mkdir()
     unsigned, signed = (WORK / name / NAME for name in ("unsigned", "signed"))
     compose(NATIVE, REFERENCE, unsigned, admit)
     verify_payload(unsigned, ec, signing, signed=False)
@@ -198,7 +200,7 @@ def worker(args: argparse.Namespace, identity: dict) -> None:
     archive = WORK / "archive" / ("strata-engine-" + NAME + ".zip")
     entry = load(archive.with_name(archive.name + ".entry.json"))
     check_archive(archive, entry, signed_tree)
-    pending = WORK / "pending-engine-bundle" / NAME
+    pending = STAGING / "pending-engine-bundle" / NAME
     require(copy_tree(signed, pending, admit) == signed_tree, "Fresh staged copy differs")
     verify_payload(pending, ec, signing, signed=True)
     verify_node(pending, "0.5.3", True)
@@ -208,13 +210,13 @@ def worker(args: argparse.Namespace, identity: dict) -> None:
             and inventory(NATIVE, admit) == native_tree and inventory(REFERENCE, admit) == old_tree
             and inventory(RESOURCES / "local-backends", admit) == sibling_tree, "Inputs changed before staging")
     bundle = RESOURCES / "engine-bundle"
-    prior = preserve_bundle_metadata(bundle, WORK / "pending-engine-bundle", admit)
+    prior = preserve_bundle_metadata(bundle, STAGING / "pending-engine-bundle", admit)
     write_new(WORK / "prior-engine-bundle.json", {"inventory": prior, "inventorySHA256": digest(prior)})
-    require(not (WORK / "prior-engine-bundle").exists(), "Prior backup already exists")
+    require(not (STAGING / "prior-engine-bundle").exists(), "Prior backup already exists")
     # Same-volume renames preserve the ENTIRE former managed root. No delete or automatic rollback.
-    bundle.rename(WORK / "prior-engine-bundle")
-    require(inventory(WORK / "prior-engine-bundle", admit) == prior, "Preserved managed root differs")
-    (WORK / "pending-engine-bundle").rename(bundle)
+    bundle.rename(STAGING / "prior-engine-bundle")
+    require(inventory(STAGING / "prior-engine-bundle", admit) == prior, "Preserved managed root differs")
+    (STAGING / "pending-engine-bundle").rename(bundle)
     staged = bundle / NAME
     verify_payload(staged, ec, signing, signed=True)
     verify_node(staged, "0.5.3", True)
@@ -231,7 +233,7 @@ def worker(args: argparse.Namespace, identity: dict) -> None:
                "archive": str(archive), "archiveSHA256": sha(archive), "archiveBytes": archive.stat().st_size,
                "payloadInventorySHA256": digest(signed_tree), "quality": quality,
                "reviewedAppCommit": args.reviewed_commit, "nativeSourceRoot": str(NATIVE_ROOT),
-               "priorEngineBundle": str(WORK / "prior-engine-bundle"), "installed": False}
+                "priorEngineBundle": str(STAGING / "prior-engine-bundle"), "installed": False}
     pending_receipt = WORK / "staged-native.pending.json"
     write_new(pending_receipt, receipt)
     write_new(WORK / "completed.json", {"ok": True, "stagedReceiptSHA256": sha(pending_receipt)})
@@ -250,8 +252,10 @@ def main() -> int:
         return 0
     admit()
     require(not WORK.exists(), "Prior component attempt exists; retain it for parent disposition")
+    require(not STAGING.exists(), "Prior same-volume staging must be retained")
     (BASE / "app").mkdir(exist_ok=True)
     WORK.mkdir()  # Exclusive reservation; failed attempts are never reused.
+    STAGING.mkdir(parents=True)
     (WORK / "temp").mkdir()
     token = uuid.uuid4().hex
     write_new(WORK / "reservation.json", {"identity": identity, "token": token})

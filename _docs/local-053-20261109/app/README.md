@@ -42,8 +42,10 @@ Prism's manifest and executable also have the requested fixed hashes.
 Keep that reference available. Both unchanged backend trees are verified, not
 reconstructed from an old pass receipt.
 
-`build.py` reuses the historical fresh Control packaging function, including the
-current lock, CPython `3.12.15`, and Hakua-memory `0.3.5`. Its cache is moved to H:.
+`build.py` uses the fresh Control packaging recipe with the current lock, CPython
+`3.12.15`, and Hakua-memory `0.3.5`. Its cache is on H:. It stages the new Control
+in a fresh C: archive directory, preserves the entire previous Control by rename,
+then moves the verified new tree into place. Existing repository files are retained.
 The app build preserves the actual existing Cargo-cache shell and every existing
 NSIS EXE with their current hashes before invoking the standard Tauri NSIS build.
 It makes no `local.1` assumption. Build temporary directories, npm/uv caches,
@@ -65,10 +67,13 @@ Raw arguments and tokens are never printed.
 
 ## Parent commands
 
-Run from `H:/Strata/worktrees/main-integration-20261106` after coordinating the
+Run from `C:/Users/downl/Documents/ChatGPT/Strata` after coordinating the
 metadata change and committing the intended clean source. The native source root
 must be the frozen checkout that matches the new receipt, which can differ from
 the app checkout. The helper does not create or modify that checkout.
+
+Subsequent candidate builds use five jobs for Cargo and CMake. Large outputs and
+caches stay on H:. The already completed native build retains its four-job receipt.
 
 ```powershell
 $uv = 'C:/Users/downl/.local/bin/uv.exe'

@@ -144,7 +144,8 @@ def build_env(*, require_native: bool = True) -> dict:
                UV_CACHE_DIR=str(OUT / 'uv-cache'), PSModuleAnalysisCachePath=str(temp / 'PSModuleAnalysisCache'),
                npm_config_cache=str(OUT / 'npm-cache'), XDG_CACHE_HOME=str(OUT / 'xdg-cache'),
                STRATA_PUBLIC_PACKAGE='1', STRATA_PUBLIC_ASSETS=str(PUBLIC_ASSETS), STRATA_PUBLIC_ASSETS_RECEIPT=str(PUBLIC_RECEIPT),
-               CARGO_TARGET_DIR=str(CARGO_TARGET), CARGO_BUILD_JOBS='4', RUSTC_WRAPPER='', RUSTC_WORKSPACE_WRAPPER='')
+                CARGO_TARGET_DIR=str(CARGO_TARGET), CARGO_BUILD_JOBS='5', CMAKE_BUILD_PARALLEL_LEVEL='5',
+                RUSTC_WRAPPER='', RUSTC_WORKSPACE_WRAPPER='')
     if not require_native:
         return env
     native_root = os.environ.get('LOCAL053_NATIVE_SOURCE_ROOT')

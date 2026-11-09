@@ -5,13 +5,41 @@ from common import *
 
 
 def build_control(commit: str) -> None:
-    text = (HISTORY / 'build.py').read_text(encoding='utf-8')
-    text = text.replace("'C:/Users/downl/AppData/Local/Temp/strata-packaging-cache'", "str(OUT/'packaging-cache')")
-    scope = dict(globals(), __name__='historical_recipe', __file__=str(HISTORY / 'build.py'))
-    # Control is built independently; signed native verification still gates app/QA/install.
-    scope['build_env'] = lambda: build_env(require_native=False)
-    exec(compile(text, str(HISTORY / 'build.py'), 'exec'), scope)
-    scope['build_control'](commit)
+    require(not (OUT / 'control-build.json').exists(), 'Control build already recorded')
+    terminal = OUT / 'terminal'
+    require(not terminal.exists(), 'Fresh terminal output required')
+    control = RESOURCES / 'control'
+    old = inventory(control)
+    staging = ROOT / '_docs/local-archive/2026-11-09-pre-main/control-staging'
+    require(not staging.exists(), 'Retain prior Control staging')
+    env = build_env(require_native=False)
+    subprocess.run([str(PYTHON), '-B', 'packaging/package_terminal.py', '--out', str(terminal),
+                    '--target', 'windows-x86_64', '--keep-staging', '--cache', str(OUT / 'packaging-cache')],
+                   cwd=ROOT, env=env, check=True, timeout=900)
+    archive, = terminal.glob('strata-terminal-*.zip')
+    require(inventory(control) == old, 'Staged Control changed during build')
+    staging.mkdir(parents=True)
+    fresh = staging / 'fresh-control'
+    # The production stager only cleans fresh scratch here; the existing Control is preserved whole.
+    subprocess.run([str(PYTHON), '-B', 'apps/desktop/scripts/stage-control.py', '--archive', str(archive),
+                    '--out', str(fresh)], cwd=ROOT, env=env, check=True, timeout=300)
+    bundle = load(fresh / 'BUNDLE.json')
+    require(bundle['version'] == CONTROL and bundle['python']['version'] == '3.12.15'
+            and bundle['installed']['hakua-memory'] == '0.3.5', 'Control identities differ')
+    require((fresh / 'COMMIT').read_text().strip() == commit, 'Control source commit mismatch')
+    require(bundle['lock']['sha256'] == sha(ROOT / 'packaging/locks/runtime-windows-x86_64-cp312.txt'), 'Control lock mismatch')
+    shutil.copy2(control / '.gitignore', fresh / '.gitignore')
+    tree = inventory(fresh)
+    require(inventory(control) == old, 'Existing Control changed before preservation')
+    control.rename(staging / 'prior-control')
+    require(inventory(staging / 'prior-control') == old, 'Preserved Control differs')
+    fresh.rename(control)
+    require(inventory(control) == tree, 'New Control staging differs')
+    write_new(OUT / 'control-inventory.json', tree)
+    write_new(OUT / 'control-build.json', dict(ok=True, sourceCommit=commit, productVersion=PRODUCT,
+              controlVersion=CONTROL, archive=str(archive), archiveSHA256=sha(archive), bundle=bundle,
+              inventorySHA256=digest(tree), priorControl=str(staging / 'prior-control'),
+              priorControlInventorySHA256=digest(old), repositoryFilesDeleted=False))
 
 
 def snapshot_cache() -> None:

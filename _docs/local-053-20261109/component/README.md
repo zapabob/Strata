@@ -2,7 +2,7 @@
 
 Prepared code only. `compose.py` defaults to a read-only plan. It composes a fresh native-only 0.5.3 package with the fixed Prism 0.4.1 and TurboQuant 0.4.0 trees, signs a separate copy, packs a production ZIP, and stages the signed package for the existing app helpers. This preparation does not qualify a new native release.
 
-All paths are fixed to this local candidate. `--reviewed-commit` is the **app** HEAD. `--native-source-root` must explicitly name `H:/Strata/worktrees/native-053-source-20261109`, clean at `26e5889625938459580313ca7ce6b3931606c27b`. App HEAD may advance independently. `verifyNativeBuild` receives the separate source root, commit and actual manifest digest every time.
+All paths are fixed to this local candidate. The app checkout is `C:/Users/downl/Documents/ChatGPT/Strata`. `--reviewed-commit` is the **app** HEAD. `--native-source-root` must explicitly name `H:/Strata/worktrees/native-053-source-20261109`, clean at `ded724a4029cbfcf48d58821f01f88fe246c7460`. App HEAD may advance independently. `verifyNativeBuild` receives the separate source root, commit and actual manifest digest every time.
 
 ## Parent prerequisites
 
@@ -25,7 +25,7 @@ Supply an explicit absolute key path outside source, release and resource trees.
 These commands are examples for the parent to run after review. The execution command was **not** run during preparation. Keep `$appHead` and `$componentKeyPath` as explicit parent-selected values; do not put key contents in either variable.
 
 ```powershell
-$component = 'H:/Strata/worktrees/main-integration-20261106/_docs/local-053-20261109/component'
+$component = 'C:/Users/downl/Documents/ChatGPT/Strata/_docs/local-053-20261109/component'
 $python = 'C:/Users/downl/AppData/Local/Programs/Python/Python312/python.exe'
 $uv = 'C:/Users/downl/.local/bin/uv.exe'
 $nativeRoot = 'H:/Strata/worktrees/native-053-source-20261109'
@@ -54,7 +54,7 @@ Composition begins with all bytes of the new native-only package. Only `local-ba
 
 Unsigned, signed and pending staged copies have distinct fresh destinations. Signing may change only `engine-component.json`. Production `feed_tool.py pack-engine --format zip --url-prefix=` writes a root-payload ZIP with a flat relative entry URL. Every archive member is rehashed; membership, installed bytes, manifest digest, archive bytes and digest must agree. Native, Prism and TurboQuant dependency checks use separate DLL search scopes.
 
-Only after all these checks does the helper carry the reviewed root `.gitignore` and `README.txt` forward into the pending root, rename the **entire** former `resources/engine-bundle` root to `BASE/app/component-053/prior-engine-bundle`, verify its inventory, and rename the pending root into `resources/engine-bundle`. Unknown root-level files block replacement. This preserves tracked scaffolding and keeps app source clean. It never deletes the prior root or mutates installed components. A final integrity/source check runs at the actual staged destination. The worker prepares a pending receipt; the controller publishes `BASE/app/staged-native.json` only after Job completion and confirmed cleanup, followed by another inventory/archive check.
+Pending C: staging and the preserved old bundle live under `_docs/local-archive/2026-11-09-pre-main/component-staging` in the primary checkout. Unsigned/signed outputs, ZIP and receipts remain on H:. Only after all checks does the helper carry the reviewed root `.gitignore` and `README.txt` forward into that pending root, rename the **entire** former `resources/engine-bundle` root to `component-staging/prior-engine-bundle`, verify its inventory, and rename the pending root into `resources/engine-bundle`. These are same-volume C: renames. Unknown root-level files block replacement. This preserves tracked scaffolding and keeps app source clean. It never deletes the prior root or mutates installed components. A final integrity/source check runs at the actual staged destination. The worker prepares a pending receipt; the controller publishes `BASE/app/staged-native.json` only after Job completion and confirmed cleanup, followed by another inventory/archive check.
 
 The app receipt contains all requested fields, including `ok`, `signatureVerified:true`, `releaseQualified:false`, the native commit, entrypoint/manifest digests, fixed Prism identity, ZIP path/digest/bytes, and `quality`. `payloadInventorySHA256` is SHA-256 of UTF-8 `json.dumps(path_to_SHA256, sort_keys=True, separators=(',', ':'))`, **including** the signed manifest. Extra fields record native-build identity, dynamic source count, TurboQuant identity, reviewed app commit and retained bundle location.
 

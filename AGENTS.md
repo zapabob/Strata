@@ -1,5 +1,15 @@
 # AGENTS.md
 
+## Local working location and build concurrency
+
+The user's primary working checkout is `C:/Users/downl/Documents/ChatGPT/Strata`
+on `main`. Use it for ongoing edits and parent build commands. Keep large build
+outputs, caches and the separately frozen native source under `H:/Strata`.
+For subsequent local candidate builds, request five compiler jobs (`CARGO_BUILD_JOBS=5`,
+`CMAKE_BUILD_PARALLEL_LEVEL=5`, or the native build helper's explicit parallelism `5`).
+Keep existing resource floors and frozen evidence intact. The completed native
+0.5.3 build used four jobs; record that result with its actual parallelism.
+
 Hakua product version 0.5.3-local.1, engine 0.5.3 (Metal source 0.5.0-metal), Control 0.5.4. The local candidate adds refusal-direction GUI controls to upstream Niko1221 0.2.12 at 146df3c468739147f520ac3816de806f71232571 (upstream engine 0.1.58, taken as source; fork package versions remain independent). Native/app build and overwrite results belong in _docs/2026-11-09_local-053-overwrite_OpenCode.md. Existing local.2 measurements and its releaseQualified=false/four resource findings remain bound to its older binaries. Do not transfer them as qualification of new source. See docs/UPSTREAM_0212.md and docs/HAKUA_RELEASE.md for source versus artifact status. Upstream reference: the public model families are DeepSeekV4.1-Flash-1017,
 Qwen3.8-Flash-Next and Qwen3.6-35B-A3B. DeepSeek V4.1-Flash runs in the app and in the Terminal
 (`strata launch --family deepseek41 --model ist-das-2.00bpw`; sets in

@@ -9,6 +9,7 @@ from unittest import TestCase, main
 from unittest.mock import patch
 
 import adapter
+import build as candidate_build
 import common as candidate_common
 from common import *
 import recipes
@@ -16,11 +17,20 @@ import upgrade
 
 
 class AdapterContracts(TestCase):
+    def test_control_packaging_does_not_require_signed_native(self) -> None:
+        with tempfile.TemporaryDirectory() as directory, patch.object(candidate_common, 'OUT', Path(directory)), patch.object(candidate_build, 'inventory', return_value={}), patch.object(candidate_common, 'staged', side_effect=AssertionError('native gate')) as native, patch.object(candidate_common.subprocess, 'run', side_effect=RuntimeError('stop before packaging')) as run:
+            with self.assertRaisesRegex(RuntimeError, 'stop before packaging'):
+                candidate_build.build_control('a' * 40)
+            native.assert_not_called()
+            self.assertIn('packaging/package_terminal.py', run.call_args.args[0])
+            self.assertEqual(run.call_args.kwargs['env']['CARGO_BUILD_JOBS'], '5')
+
     def test_only_control_can_build_without_signed_native_staging(self) -> None:
         with tempfile.TemporaryDirectory() as directory, patch.object(candidate_common, 'OUT', Path(directory)), patch.object(candidate_common, 'staged', side_effect=AssertionError('native gate')) as native:
             env = candidate_common.build_env(require_native=False)
             native.assert_not_called()
-            self.assertEqual(env['CARGO_BUILD_JOBS'], '4')
+            self.assertEqual(env['CARGO_BUILD_JOBS'], '5')
+            self.assertEqual(env['CMAKE_BUILD_PARALLEL_LEVEL'], '5')
             self.assertNotIn('STRATA_NATIVE_SOURCE_COMMIT', env)
             with patch.dict(os.environ, {'LOCAL053_NATIVE_SOURCE_ROOT': str(ROOT)}):
                 with self.assertRaisesRegex(AssertionError, 'native gate'):
