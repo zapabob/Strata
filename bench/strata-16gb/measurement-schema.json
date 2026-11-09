@@ -71,6 +71,20 @@
         "observedAt": { "type": "string" }
       }
     },
+    "ram": {
+      "type": "object",
+      "description": "System RAM time-series summary sampled by the bench harness; absent on pure diagnostic captures",
+      "properties": {
+        "freeMibMin": { "type": ["number", "null"] },
+        "commitHeadroomMibMin": { "type": ["number", "null"] },
+        "sampleIntervalSec": { "type": ["number", "null"] }
+      }
+    },
+    "outcome": {
+      "type": ["string", "null"],
+      "enum": ["completed", "oom", "watchdog_stop", "manual_stop", "unresponsive", null],
+      "description": "How the run ended. A watchdog_stop or unresponsive run is not comparable."
+    },
     "metrics": {
       "type": "object",
       "description": "Filled by bench harness; absent on pure diagnostic captures",
@@ -82,6 +96,8 @@
         "cached_prefix_tokens": { "type": ["integer", "null"] },
         "gpu_dedicated_peak_mib": { "type": ["number", "null"] },
         "gpu_shared_peak_mib": { "type": ["number", "null"] },
+        "disk_read_bytes": { "type": ["integer", "null"] },
+        "disk_write_bytes": { "type": ["integer", "null"] },
         "oom_or_abort": { "type": "boolean" }
       }
     }
