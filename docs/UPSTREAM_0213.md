@@ -1,5 +1,9 @@
 # Official 0.2.13 source integration
 
+This page retains the original054 integration measurements. The later055 native
+repairs, folder-history cleanup and browser tools use the same official intake;
+see the [055 release scope](HAKUA_RELEASE.md#preview-055-local1--native-repairs-folder-history-and-browser-tools).
+
 The installed personal build (product0.5.4-local.1, Control0.5.5, native0.5.4) combines official main
 [`f33c8c30`](https://github.com/Niko1221/Strata/commit/f33c8c30588ff00e24b6b63bad0bf6a14da19081)
 and [v0.2.13](https://github.com/Niko1221/Strata/releases/tag/v0.2.13) with the

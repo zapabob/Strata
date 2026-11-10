@@ -10,11 +10,30 @@ For subsequent local candidate builds, request five compiler jobs (`CARGO_BUILD_
 Keep existing resource floors and frozen evidence intact. The completed native
 0.5.3 build used four jobs; record that result with its actual parallelism.
 
-The installed local build retains on-demand sidebar workspace file CRUD.
-Its fresh app output is `H:/Strata/releases/upstream-0213-20261109-opencode/app-native054`;
-earlier 0.5.3 outputs and all failed/passing evidence remain preserved.
+The installed local build retains sidebar file CRUD and confirmed folder chat-history cleanup.
+Its fresh app output is `H:/Strata/releases/repair-055-20261110-opencode/app-native055-ui-search`;
+earlier0.5.4/0.5.3 outputs and all failed/passing evidence remain preserved.
 
-Hakua product version 0.5.5-local.1, engine 0.5.5 (Metal source 0.5.0-metal), Control 0.5.6. These are repair-candidate source versions; final source-bound native/app/installed acceptance is pending. The published 0.5.4-local.1 preview retains app/Control source 85a78234cfcdccd8741cc921677802aba1869e44 and native source 7bb2497400b8ea40d5d07f5244f010d3aa5eacc0 under H:/Strata/worktrees/native-054-source-20261110, with its twelve violations, retained Prism timeout and releaseQualified=false. Diagnostic repair libraries now pass the unchanged resource guard and21 serial GPU checks; source sidebar/lifecycle checks passed. Original-contract Prism repetitions pass on driver621.14, but the historical timeout's backend cause is not established. Those diagnostic results do not qualify changed final binaries. Keep upstream Niko1221 0.2.13 at f33c8c30588ff00e24b6b63bad0bf6a14da19081 (upstream engine0.1.59; independent fork versions). New repair/build results belong in _docs/2026-11-10_release-055-repair_OpenCode.md; previous0.5.4 and0.5.3 records remain separate. The user approved normal model unload; no currently absent model/shell is claimed stopped. Preserve source/build evidence and all older published assets. See docs/UPSTREAM_0213.md and docs/HAKUA_RELEASE.md for historical limits. Upstream reference: the public model families are DeepSeekV4.1-Flash-1017,
+Hakua product version 0.5.5-local.1, engine 0.5.5 (Metal source 0.5.0-metal), Control 0.5.6.
+Final native sourceb995af139cc823537489b886bc1e8602cf10301c is frozen under
+H:/Strata/worktrees/native-055-source-20261110. App/Control source is
+35863deadec1bfa0fc7f250c111d219bb3344b57. Five-job builds, unchanged resource
+guard with zero violations,21 final numerical checks and actual installed Q36/
+Prism/agent/restart/bulk-delete checks passed. Backup4078 files and installed
+payload29544 files were verified. Browser/search was enabled on this PC while
+preserving provider/key/approval choices. Normal startup passed unloaded/no-debug.
+Public search sites and broad autonomous-search/model quality remain unqualified;
+releaseQualified=false. The historical054 Prism timeout's backend cause is not
+established. The old054 sources85a78234/7bb24974, twelve findings and all assets
+remain unchanged. Keep upstream Niko1221 0.2.13 at
+f33c8c30588ff00e24b6b63bad0bf6a14da19081 (upstream engine0.1.59; independent versions).
+New repair/build records are _docs/2026-11-10_release-055-repair_OpenCode.md and
+_docs/2026-11-10_install-sidebar-web_OpenCode.md; publication/readback is tracked
+in _docs/2026-11-11_preview-055-release_OpenCode.md. Previous records stay separate.
+The user approved normal unload; no absent model/shell is claimed stopped.
+Preserve source/build evidence and older published assets. See docs/UPSTREAM_0213.md
+and docs/HAKUA_RELEASE.md for historical limits. Upstream reference: the public
+model families are DeepSeekV4.1-Flash-1017,
 Qwen3.8-Flash-Next and Qwen3.6-35B-A3B. DeepSeek V4.1-Flash runs in the app and in the Terminal
 (`strata launch --family deepseek41 --model ist-das-2.00bpw`; sets in
 [docs/MODELS.md](docs/MODELS.md#deepseek-v41-flash)). Read **[docs/AI_REFERENCE.md](docs/AI_REFERENCE.md)** for model availability, APIs, hardware limits and

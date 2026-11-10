@@ -1,5 +1,68 @@
 # Hakua Windows release qualification
 
+## Preview 0.5.5-local.1 — native repairs, folder history and browser tools
+
+[Release and assets](https://github.com/zapabob/Strata/releases/tag/v0.5.5-local.1) ·
+[Quick install](../INSTALL.md) · [Full install/rollback](HAKUA_INSTALL.md).
+Product0.5.5-local.1, Control0.5.6, native0.5.5. App/Control source is
+35863deadec1bfa0fc7f250c111d219bb3344b57; independently frozen native source is
+b995af139cc823537489b886bc1e8602cf10301c. Official0.2.13 intake staysf33c8c30.
+The measured machine is RTX5060Ti16GB/32GB RAM, driver621.14, CUDA13.3.73, sm_120.
+
+The final native resource guard passes with **zero violations**, unchanged
+allowances/no passing baseline. All21 final kernel/numerical checks passed,
+including actual repaired routes and DFlash byte equality. CPU/GPU/memcheck and
+protected real-Q36 bounded7/legacy7/restart2 short requests passed at4096 capacity.
+Five-job incremental builds retained the old caches/evidence. W4A8 remains opt-in;
+extra weight reads include slower measured cases, so no general speedup is claimed.
+
+The installer passed13 production self-tests and29544 installed payload hashes.
+Backup4078 files includes three explicitly reviewed large non-weight files
+(1,229,812,132 bytes) in private storage. A first backup size refusal and first
+activation-fixture failure are retained. Fresh activation used the exact live
+observed Q36 config saved before normal teardown, with required signatures and
+full test-start. Old components/settings/models remained. Actual installed
+WebView2 checked Q36, Prism plain and Harness-agent replies before/after restart,
+normal child exits, workspace CRUD and confirmed26-chat bulk deletion. Bulk
+deletion includes archive/beyond20 rows but retains other folders, files and chats
+created after confirmation. Normal startup passed open/no-debug/unloaded.
+
+Local agents receive capability-aware proactive search guidance. Browser-enabled
+profiles use isolated Chrome/Edge, current accessibility snapshots and coordinate
+tools. Actual MCP input/submit/coordinate checks and27 Harness/tool/permission
+tests passed. Text-only models omit image responses. Manual/Plan permission,
+provider/key and unrelated tool preferences remain. This PC's browser/search
+switches were enabled by the user's request. Public search is **not qualified**:
+Bing result links were unconfirmed and DuckDuckGo presented human verification.
+An initial title-only public assertion was invalidated; no challenge was bypassed.
+Broad autonomous-model search-choice quality is not established by scripted tests.
+
+**releaseQualified=false** remains explicit. Full-window generation, general/
+low-precision quality, positive Qwen3.8 projection, other GPUs/backends and absent
+pointer-table MMQ coverage are not promoted. The historical054 Prism warm-up
+timeout and its unconfirmed backend cause remain separate from the reproduced
+agent/lifecycle fixes. Older failed full-discovery/localization/memory-UI results
+stay retained. This Windows package still has no native image input or separate
+native DeepSeek engine.
+
+Installer112445444 bytes, SHA
+`c2eac64146485720f2fef61e5fe3a2824e48fa15b1c1887a03761fa0ac90becf`.
+Bundle1654538418 bytes, SHA
+`de11e7c34f54401395b6a28292c5336f2a94791d6778dd9ea612e4a29919b6b7`.
+The real7z/tar bundle uses Copy mode and every inner byte/hash was read back.
+Its first readback stopped at the unchanged3GiB RAM floor during a running user
+model. That drained failure remains; user-approved normal unload preceded the
+complete passing continuation. No installer/native rebuild was substituted.
+
+The EXE has no Authenticode/Tauri updater signature. Fork engine/feed signatures
+are separate. Stable0.5.1/Latest and all older release assets are retained.
+The preview uses explicit immutable URLs and signed feed sequence20261111000100;
+older feeds are refused by anti-replay even across sources. Use retained installed
+component rollback or separate stable/preview state roots. See the
+[repair record](../_docs/2026-11-10_release-055-repair_OpenCode.md),
+[feature/installed record](../_docs/2026-11-10_install-sidebar-web_OpenCode.md) and
+[publication record](../_docs/2026-11-11_preview-055-release_OpenCode.md).
+
 ## Preview 0.5.4-local.1 — official 0.2.13 integration
 
 [Release and assets](https://github.com/zapabob/Strata/releases/tag/v0.5.4-local.1) ·

@@ -1,18 +1,17 @@
 # Strata · Hakua
 
-Development candidate `0.5.5-local.1`: `Strata-0.5.5-local.1-windows-x64-setup.exe`
-is pending source-bound build/installed checks. Published downloads below remain `0.5.4-local.1`.
+[Instalación rápida](INSTALL.md) · [Búsqueda y navegador](docs/BROWSER_SEARCH.md)
 
-## Vista previa 0.5.4-local.1 — fuentes oficiales 0.2.13
+## Vista previa 0.5.5-local.1 — fuentes oficiales 0.2.13
 
-[Instalador Windows](https://github.com/zapabob/Strata/releases/download/v0.5.4-local.1/Strata-0.5.4-local.1-windows-x64-setup.exe) ·
-[Paquete tar.7z completo](https://github.com/zapabob/Strata/releases/download/v0.5.4-local.1/Strata-0.5.4-local.1-windows-x64.tar.7z) ·
-[Sumas y publicación](https://github.com/zapabob/Strata/releases/tag/v0.5.4-local.1).
+[Instalador Windows](https://github.com/zapabob/Strata/releases/download/v0.5.5-local.1/Strata-0.5.5-local.1-windows-x64-setup.exe) ·
+[Paquete tar.7z completo](https://github.com/zapabob/Strata/releases/download/v0.5.5-local.1/Strata-0.5.5-local.1-windows-x64.tar.7z) ·
+[Sumas y publicación](https://github.com/zapabob/Strata/releases/tag/v0.5.5-local.1).
 Windows x64 / CUDA sm_120; probado con RTX 5060 Ti de 16 GB y 32 GB RAM.
-Quedan doce infracciones de recursos CUDA: **releaseQualified=false**.
-Prism pasó al repetir sin cambios tras un timeout de calentamiento.
+La prueba de recursos CUDA pasa sin infracciones, junto con las pruebas instaladas de chat, agente y carpetas.
+La calidad amplia sigue sin certificar: **releaseQualified=false**. Se conserva el timeout histórico de Prism054.
 Importa el tar.gz firmado del motor de esta vista previa en la pantalla de preparación.
-[Guía actual](docs/HAKUA_INSTALL.md) · [Alcance de pruebas](docs/UPSTREAM_0213.md).
+[Guía actual](docs/HAKUA_INSTALL.md) · [Alcance de pruebas](docs/HAKUA_RELEASE.md).
 
 ## Estable 0.5.1 — guía y mediciones anteriores
 

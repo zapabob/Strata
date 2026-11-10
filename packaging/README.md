@@ -1,12 +1,13 @@
 # Strata packaging: targets, recipes and locks
 
 This page is for developers who build the desktop app, the Terminal archive and the engine packages. To install this Hakua
-Windows fork, use [docs/HAKUA_INSTALL.md](../docs/HAKUA_INSTALL.md). The published
-0.5.4-local.1 preview integrates official0.2.13 while preserving Hakua memory,
+Windows fork, use [INSTALL.md](../INSTALL.md) or [docs/HAKUA_INSTALL.md](../docs/HAKUA_INSTALL.md). The
+0.5.5-local.1 preview integrates official0.2.13 while preserving Hakua memory,
 workspace CRUD and the fork's native cache/model-reuse paths. Its exact measured
-app/Control source is85a78234 and native source7bb24974. Product0.5.4-local.1,
-Control0.5.5, native0.5.4, PrismML0.4.1 and TurboQuant0.4.0 remain independently
-versioned. Twelve resource violations remain; releaseQualified=false. Stable
+app/Control source is35863dea and native sourceb995af13. Product0.5.5-local.1,
+Control0.5.6, native0.5.5, PrismML0.4.1 and TurboQuant0.4.0 remain independently
+versioned. The unchanged resource guard passes with zero violations; broader
+quality remains unqualified and releaseQualified=false. Stable
 0.5.1 and GitHub Latest are retained. Windows distribution uses an NSIS installer
 and a tar.7z bundle containing
 the same installer plus signed components, feed and checksums. Component signing
@@ -19,11 +20,12 @@ Release assets show what was published; the platform guides and retained reports
 qualify every GPU, model or feature on its platform.
 
 The preview's tar.7z uses Copy mode for already-compressed EXE/gzip/ZIP inputs.
-Its entire streamed member set was compared by size/SHA256. The first LZMA attempt
-stopped at the existing3GiB RAM floor and remains preserved; the low-memory
-continuation passed without changing payloads or resource floors. See
-[_docs/release-054-20261110](../_docs/release-054-20261110) and the
-[publication log](../_docs/2026-11-10_preview-release_OpenCode.md).
+Its entire streamed member set was compared by size/SHA256. The initial055
+readback stopped at the existing3GiB RAM floor during a running user model;
+the drained failure remains. User-approved normal unload preceded the complete
+passing readback, without changing payloads/floors. The earlier054 LZMA failure
+also stays separate. See [_docs/release-055-20261111](../_docs/release-055-20261111)
+and the [publication log](../_docs/2026-11-11_preview-055-release_OpenCode.md).
 
 ## Quick start
 

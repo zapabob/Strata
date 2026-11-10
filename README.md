@@ -2,9 +2,9 @@
 
 **[Install the Windows app / Windows版をインストール](INSTALL.md)** · [Search and browser tools](docs/BROWSER_SEARCH.md)
 
-Development candidate: `0.5.5-local.1` / native `0.5.5` / Control `0.5.6`.
-`Strata-0.5.5-local.1-windows-x64-setup.exe` is pending source-bound build and
-installed acceptance. Downloads below remain the measured `0.5.4-local.1` preview.
+Windows preview: `0.5.5-local.1` / native `0.5.5` / Control `0.5.6`.
+Source-bound builds and actual installed checks passed, including folder chat
+cleanup, Prism agent responses and the unchanged native resource guard.
 
 Run local language models from a Windows desktop app: chat, reuse your GGUFs,
 manage workspace files and choose what Hakua memory may read or save.
@@ -16,18 +16,19 @@ This is the [zapabob fork](https://github.com/zapabob/Strata) of
 
 ## Download the Windows preview
 
-**[0.5.4-local.1 prerelease](https://github.com/zapabob/Strata/releases/tag/v0.5.4-local.1)**
+**[0.5.5-local.1 prerelease](https://github.com/zapabob/Strata/releases/tag/v0.5.5-local.1)**
 targets Windows x64 / CUDA `sm_120`. Checks used an RTX 5060 Ti with 16 GB VRAM
-and 32 GB RAM. **Twelve CUDA resource-guard violations remain;
-`releaseQualified=false`.** Prism passed an unchanged rerun after one restart
-warm-up timeout. Read the [measured scope and limits](docs/HAKUA_RELEASE.md).
+and 32 GB RAM, driver621.14. **The unchanged CUDA resource guard passes with
+zero violations; `releaseQualified=false` retains the broader quality limits.**
+The historical0.5.4 Prism timeout remains recorded with unconfirmed backend cause.
+Read the [measured scope and limits](docs/HAKUA_RELEASE.md).
 
 | Download | Contents |
 | --- | --- |
-| [Windows installer](https://github.com/zapabob/Strata/releases/download/v0.5.4-local.1/Strata-0.5.4-local.1-windows-x64-setup.exe) · 112 MB | Tauri NSIS app, private Node/Python and Control. GPU engine is separate. |
-| [One-download tar.7z bundle](https://github.com/zapabob/Strata/releases/download/v0.5.4-local.1/Strata-0.5.4-local.1-windows-x64.tar.7z) · 1.65 GB | Same installer, signed engine, Control, signed feed, checksums and bilingual instructions. |
-| [Signed CUDA engine](https://github.com/zapabob/Strata/releases/download/v0.5.4-local.1/strata-engine-0.5.4-windows-x86_64-cuda-cuda13.tar.gz) · 1.47 GB | Import this compressed file from the app's preparation screen. |
-| [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.5.4-local.1/SHA256SUMS.txt) | Verify downloads before running or extracting them. |
+| [Windows installer](https://github.com/zapabob/Strata/releases/download/v0.5.5-local.1/Strata-0.5.5-local.1-windows-x64-setup.exe) · 112 MB | Tauri NSIS app, private Node/Python and Control. GPU engine is separate. |
+| [One-download tar.7z bundle](https://github.com/zapabob/Strata/releases/download/v0.5.5-local.1/Strata-0.5.5-local.1-windows-x64.tar.7z) · 1.65 GB | Same installer, signed engine, Control, signed feed, checksums and bilingual instructions. |
+| [Signed CUDA engine](https://github.com/zapabob/Strata/releases/download/v0.5.5-local.1/strata-engine-0.5.5-windows-x86_64-cuda-cuda13.tar.gz) · 1.47 GB | Import this compressed file from the app's preparation screen. |
+| [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.5.5-local.1/SHA256SUMS.txt) | Verify downloads before running or extracting them. |
 
 The installer follows upstream's Windows layout. It is a fork distribution,
 with fork-signed components; the EXE has no Windows code signature or Tauri
@@ -40,9 +41,9 @@ GitHub Latest and the default stable feed.
 1. Download the bundle and checksums. Extract the **7z, then the tar**; check
    `BUNDLE-SHA256SUMS.txt` inside. Full model weights and personal data are excluded.
 2. Finish requests, unload models, back up app data and quit Strata, including
-   its tray icon. Run `Strata-0.5.4-local.1-windows-x64-setup.exe` once.
+   its tray icon. Run `Strata-0.5.5-local.1-windows-x64-setup.exe` once.
 3. On the preparation screen choose **I already have the file** and select this
-   release's `strata-engine-0.5.4-windows-x86_64-cuda-cuda13.tar.gz`, still compressed.
+   release's `strata-engine-0.5.5-windows-x86_64-cuda-cuda13.tar.gz`, still compressed.
    The app verifies the fork signature and payload hashes before activation.
 4. Select a model that fits the PC, or **Use a local GGUF**, then press **Load**.
    Startup leaves models unloaded. System Python, Node, pip and compilers are unnecessary.
@@ -59,6 +60,11 @@ data locations. See [installation and rollback](docs/HAKUA_INSTALL.md).
 - **Workspace files.** An on-demand sidebar editor can read, edit, create and
   rename files/folders in registered workspaces. Delete uses reversible trash;
   stale edits are rejected. [Workspace guide](docs/WORKSPACE_FILES.md).
+- **Folder chat cleanup.** The folder menu can delete its confirmed conversation
+  history in one action, including archived chats. Files and other folders stay.
+- **Proactive search and browser use.** Local agents prefer available search for
+  current/uncertain facts. An enabled isolated browser supports snapshots and
+  coordinate actions, retaining Manual/Plan permissions. [Browser guide](docs/BROWSER_SEARCH.md).
 - **Private conversation caches.** Supported Qwen3.6 engines reuse a prefix only
   within its authenticated conversation. Owner changes, cancellation, errors
   and idle expiry clear private state. Shared caches remain disabled.
@@ -87,15 +93,15 @@ engine clears the loading indicator. See [local backends](docs/LOCAL_LLAMA_BACKE
 
 | Component | Version / distribution |
 | --- | --- |
-| Desktop GUI / Host | `0.5.4-local.1` |
-| Native CUDA engine | `0.5.4` |
-| Control / Terminal | `0.5.5` |
+| Desktop GUI / Host | `0.5.5-local.1` |
+| Native CUDA engine | `0.5.5` |
+| Control / Terminal | `0.5.6` |
 | PrismML / TurboQuant | `0.4.1` / `0.4.0` |
 | Private runtimes | Node `24.22.2`, CPython `3.12.15` |
 | Hakua-memory | `0.3.5` |
 | Upstream integration | `v0.2.13` / `f33c8c30` |
-| App / Control build source | `85a78234` |
-| Separately frozen native source | `7bb24974` |
+| App / Control build source | `35863dea` |
+| Separately frozen native source | `b995af13` |
 
 Product, Control and engine versions are independent. `SOURCE.json` in the
 release records their full commit and artifact identities. See the
@@ -106,14 +112,15 @@ release records their full commit and artifact identities. See the
 Five-job incremental builds, CPU/GPU/sanitizer checks and short native requests
 passed: 7 bounded, 7 legacy and 2 restart requests, using 4096 capacity. The
 installer passed 13 startup self-tests, matched 29,544 payload files and preserved
-4,028 backed-up user files during the measured overwrite. Actual installed
-WebView2 Qwen3.6, Prism and workspace checks passed, with the retained Prism timeout.
+4,078 backed-up user files during the measured overwrite. Actual installed
+WebView2 Qwen3.6, Prism plain/agent replies, restart and26-chat folder cleanup passed.
 
-The resource guard remains **FAIL (12 violations)**. Full-window generation,
+The resource guard and21 final numerical checks passed. Full-window generation,
 general/low-precision model quality, other GPUs/backends and positive Qwen3.8
-projection remain unqualified. Full server discovery timed out, six language
-catalogs have pre-existing missing keys and a supplemental memory-browser fixture
-failed to launch. [Results, failed attempts and limits](docs/UPSTREAM_0213.md).
+projection remain unqualified. Browser input/submit/coordinate checks passed;
+public search sites remain unqualified (Bing result links unconfirmed, DuckDuckGo
+human verification). Older full-discovery/localization/memory-UI failures are
+retained separately. [Results, failed attempts and limits](docs/HAKUA_RELEASE.md).
 
 Native image input and a separate native DeepSeek engine are not included in
 this Windows package. Mapped expert packs require a recognized executable;

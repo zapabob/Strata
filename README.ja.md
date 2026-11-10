@@ -2,9 +2,9 @@
 
 **[Windows版をインストールする](INSTALL.md)** · [Web検索・ブラウザー操作](docs/BROWSER_SEARCH.md)
 
-開発候補は `0.5.5-local.1`／native `0.5.5`／Control `0.5.6` です。
-`Strata-0.5.5-local.1-windows-x64-setup.exe` はソース固定ビルドと実installed検証待ちです。
-以下の公開リンクは、検証済みプレビュー `0.5.4-local.1` を示します。
+Windowsプレビューは `0.5.5-local.1`／native `0.5.5`／Control `0.5.6` です。
+ソース固定ビルドと実installed検証が通過しました。会話の一括削除、Prismの
+エージェント応答、変更していないCUDA資源検査を含みます。
 
 ローカルの言語モデルをWindowsのデスクトップ画面から使うアプリです。
 チャット、手元のGGUFの再利用、ワークスペースのファイル編集、同意に基づくHakuaメモリーを利用できます。
@@ -15,18 +15,19 @@
 
 ## Windowsプレビューをダウンロード
 
-**[0.5.4-local.1 プレリリース](https://github.com/zapabob/Strata/releases/tag/v0.5.4-local.1)** は
+**[0.5.5-local.1 プレリリース](https://github.com/zapabob/Strata/releases/tag/v0.5.5-local.1)** は
 Windows x64／CUDA `sm_120` 向けです。RTX 5060 Ti（VRAM 16 GB）・RAM 32 GBで確認しました。
-**CUDA資源検査の違反12件が残り、`releaseQualified=false` です。**
-Prismは再起動時のwarm-up timeoutが1回あり、同じ設定の再検証で通過しました。
+driver621.14で、**変更していないCUDA資源検査が違反0件で通過しました。**
+全文入力などの未認定範囲があるため、`releaseQualified=false` は維持します。
+旧0.5.4のPrism timeoutは原因未確定の記録として保持します。
 [検証範囲と残る制限](docs/HAKUA_RELEASE.md)をご確認ください。
 
 | ダウンロード | 内容 |
 | --- | --- |
-| [Windowsインストーラー](https://github.com/zapabob/Strata/releases/download/v0.5.4-local.1/Strata-0.5.4-local.1-windows-x64-setup.exe)・112 MB | Tauri NSISアプリ、専用Node・Python、Control。GPUエンジンは別配布です。 |
-| [tar.7z一括パッケージ](https://github.com/zapabob/Strata/releases/download/v0.5.4-local.1/Strata-0.5.4-local.1-windows-x64.tar.7z)・1.65 GB | 同じEXE、署名付きエンジン、Control、署名付き配信情報、チェックサム、日英の手順。 |
-| [署名付きCUDAエンジン](https://github.com/zapabob/Strata/releases/download/v0.5.4-local.1/strata-engine-0.5.4-windows-x86_64-cuda-cuda13.tar.gz)・1.47 GB | 圧縮したままアプリの準備画面で読み込みます。 |
-| [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.5.4-local.1/SHA256SUMS.txt) | 実行・展開前の照合用です。 |
+| [Windowsインストーラー](https://github.com/zapabob/Strata/releases/download/v0.5.5-local.1/Strata-0.5.5-local.1-windows-x64-setup.exe)・112 MB | Tauri NSISアプリ、専用Node・Python、Control。GPUエンジンは別配布です。 |
+| [tar.7z一括パッケージ](https://github.com/zapabob/Strata/releases/download/v0.5.5-local.1/Strata-0.5.5-local.1-windows-x64.tar.7z)・1.65 GB | 同じEXE、署名付きエンジン、Control、署名付き配信情報、チェックサム、日英の手順。 |
+| [署名付きCUDAエンジン](https://github.com/zapabob/Strata/releases/download/v0.5.5-local.1/strata-engine-0.5.5-windows-x86_64-cuda-cuda13.tar.gz)・1.47 GB | 圧縮したままアプリの準備画面で読み込みます。 |
+| [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.5.5-local.1/SHA256SUMS.txt) | 実行・展開前の照合用です。 |
 
 公式と同じWindows配布構成を使ったフォーク版です。コンポーネントはフォークの鍵で署名します。
 EXEのWindowsコード署名とTauri更新署名はなく、更新は手動です。
@@ -38,9 +39,9 @@ GitHub Latestと既定のstable配信に残ります。
 1. 一括パッケージとチェックサムを取得し、**7z、tarの順に展開**します。
    内側の `BUNDLE-SHA256SUMS.txt` も照合します。モデル本体や個人データは含みません。
 2. 応答を終了し、モデルをアンロード、アプリデータをバックアップして、トレイも含めStrataを終了します。
-   `Strata-0.5.4-local.1-windows-x64-setup.exe` を一度実行します。
+   `Strata-0.5.5-local.1-windows-x64-setup.exe` を一度実行します。
 3. 準備画面で既存エンジンファイルの選択肢を開き、同じリリースの
-   `strata-engine-0.5.4-windows-x86_64-cuda-cuda13.tar.gz` を圧縮したまま選びます。
+   `strata-engine-0.5.5-windows-x86_64-cuda-cuda13.tar.gz` を圧縮したまま選びます。
    署名と全ファイルのハッシュ確認後に有効化します。
 4. PCに収まるモデル、または「ローカルGGUFを使用」を選び、**読み込み**を開始します。
    起動時のモデル読み込みは手動です。システムのPython・Node・pip・コンパイラーは不要です。
@@ -55,6 +56,10 @@ GitHub Latestと既定のstable配信に残ります。
   モデル、表示名、検証済みexpert packは保持します。
 - **ワークスペースファイル。** 必要時だけ開くサイドバーで、登録済みフォルダーの読取・編集・作成・名前変更ができます。
   削除は復元可能なゴミ箱を使い、古い内容からの上書きは拒否します。[操作ガイド](docs/WORKSPACE_FILES.md)
+- **会話履歴の一括削除。** 左フォルダーの「…」から対象件数を確認して一度に削除できます。
+  アーカイブも対象です。ファイル・他のフォルダー・確認後に作られた会話は保持します。
+- **積極的なWeb検索とブラウザー操作。** ローカルエージェントは最新情報や不確かな事実を検索で確認する方針です。
+  有効にした隔離ブラウザーでページ情報・座標操作を使い、確認設定を維持します。[検索ガイド](docs/BROWSER_SEARCH.md)
 - **会話単位のプライベートキャッシュ。** 対応Qwen3.6では認証された同じ会話だけがprefixを再利用します。
   所有者変更・中断・エラー・待機期限で消去し、共有キャッシュは無効のままです。
 - **Hakuaメモリー。** 各発言で読取と保存を別々に許可できます。
@@ -80,15 +85,15 @@ GitHub Latestと既定のstable配信に残ります。
 
 | 構成 | バージョン・配布先 |
 | --- | --- |
-| GUI / Host | `0.5.4-local.1` |
-| ネイティブCUDAエンジン | `0.5.4` |
-| Control / Terminal | `0.5.5` |
+| GUI / Host | `0.5.5-local.1` |
+| ネイティブCUDAエンジン | `0.5.5` |
+| Control / Terminal | `0.5.6` |
 | PrismML / TurboQuant | `0.4.1` / `0.4.0` |
 | 専用ランタイム | Node `24.22.2`、CPython `3.12.15` |
 | Hakua-memory | `0.3.5` |
 | 公式統合元 | `v0.2.13` / `f33c8c30` |
-| アプリ・Controlのビルド元 | `85a78234` |
-| 別途固定したnativeソース | `7bb24974` |
+| アプリ・Controlのビルド元 | `35863dea` |
+| 別途固定したnativeソース | `b995af13` |
 
 製品・Control・エンジンのバージョンは独立しています。
 配布物の `SOURCE.json` に完全なコミットIDと成果物の識別情報を記録します。
@@ -99,13 +104,14 @@ GitHub Latestと既定のstable配信に残ります。
 5並列の差分ビルド、CPU・GPU・sanitizer検査、4096容量での短いネイティブ要求
 （bounded 7件、legacy 7件、restart 2件）が通過しました。
 インストーラーは起動検査13件、成果物29,544ファイルの一致、上書き時のバックアップ済み
-ユーザーファイル4,028件の保持を確認しました。実installed WebView2でQwen3.6・Prism・
-ワークスペース操作が通過し、Prismのtimeoutも失敗記録として残しています。
+ユーザーファイル4,078件の保持を確認しました。実installed WebView2でQwen3.6・Prism・
+エージェント応答・再起動・26件の会話一括削除が通過しました。
 
-資源検査は **FAIL・12件** のままです。全文生成、一般品質・低精度品質、他GPU・backend、
-Qwen3.8への実projectionは未認定です。サーバー全件探索は時間切れ、6言語の辞書には既存の
-不足キーがあり、追加メモリーUI試験はブラウザー起動に失敗しました。
-[通過・失敗・未実施の詳細](docs/UPSTREAM_0213.md)
+資源検査と21件の最終数値検証が通過しました。全文生成、一般品質・低精度品質、他GPU・backend、
+Qwen3.8への実projectionは未認定です。ブラウザーの入力・送信・座標操作は通過しましたが、
+公開検索サイトは未認定です（Bingの結果リンク未確認、DuckDuckGoの認証チャレンジ）。
+旧版の全件探索・翻訳・追加メモリーUIの失敗記録も保持します。
+[通過・失敗・未実施の詳細](docs/HAKUA_RELEASE.md)
 
 このWindows配布物にネイティブ画像入力と独立したネイティブDeepSeekエンジンは含みません。
 mapped expert packは実行ファイルの識別検査を維持し、品質試験で失敗したTurboQuant K設定は無効です。

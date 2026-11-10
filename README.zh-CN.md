@@ -1,17 +1,17 @@
 # Strata · Hakua
 
-开发候选版为 `0.5.5-local.1`。`Strata-0.5.5-local.1-windows-x64-setup.exe`
-仍待源码绑定构建和实际安装验证。以下公开链接仍属于 `0.5.4-local.1`。
+[快速安装](INSTALL.md) · [网页搜索与浏览器操作](docs/BROWSER_SEARCH.md)
 
-## 0.5.4-local.1 预览版 — 集成官方0.2.13
+## 0.5.5-local.1 预览版 — 集成官方0.2.13
 
-[Windows安装程序](https://github.com/zapabob/Strata/releases/download/v0.5.4-local.1/Strata-0.5.4-local.1-windows-x64-setup.exe) ·
-[tar.7z完整包](https://github.com/zapabob/Strata/releases/download/v0.5.4-local.1/Strata-0.5.4-local.1-windows-x64.tar.7z) ·
-[校验值和发布页](https://github.com/zapabob/Strata/releases/tag/v0.5.4-local.1)。
+[Windows安装程序](https://github.com/zapabob/Strata/releases/download/v0.5.5-local.1/Strata-0.5.5-local.1-windows-x64-setup.exe) ·
+[tar.7z完整包](https://github.com/zapabob/Strata/releases/download/v0.5.5-local.1/Strata-0.5.5-local.1-windows-x64.tar.7z) ·
+[校验值和发布页](https://github.com/zapabob/Strata/releases/tag/v0.5.5-local.1)。
 面向Windows x64／CUDA sm_120，在RTX 5060 Ti16 GB／RAM32 GB上验证。
-仍有12项CUDA资源违规：**releaseQualified=false**。Prism重启时有一次预热超时，同配置重试通过。
+CUDA资源检查以0项违规通过，实际安装的聊天、代理、重启和文件夹批量删除均通过。
+更广泛的质量仍未认证：**releaseQualified=false**。旧054的Prism超时及原因未确定的记录保留。
 请在准备界面导入本预览版的签名引擎tar.gz，保持压缩状态。
-[当前安装说明](docs/HAKUA_INSTALL.md) · [验证范围](docs/UPSTREAM_0213.md)。
+[当前安装说明](docs/HAKUA_INSTALL.md) · [验证范围](docs/HAKUA_RELEASE.md)。
 
 ## 稳定版0.5.1 — 旧版说明与测量
 

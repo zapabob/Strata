@@ -3,18 +3,20 @@
 [Quick installation entry point / かんたん導入](../INSTALL.md) ·
 [Web search and browser use / Web検索・ブラウザー操作](BROWSER_SEARCH.md)
 
-The [0.5.4-local.1 preview](https://github.com/zapabob/Strata/releases/tag/v0.5.4-local.1)
-integrates official 0.2.13. It includes Control 0.5.5 and uses native 0.5.4,
+The [0.5.5-local.1 preview](https://github.com/zapabob/Strata/releases/tag/v0.5.5-local.1)
+integrates official 0.2.13. It includes Control 0.5.6 and uses native 0.5.5,
 PrismML 0.4.1, TurboQuant 0.4.0 and Hakua-memory 0.3.5. Checks used Windows x64,
-CUDA sm_120, RTX 5060 Ti 16 GB and 32 GB RAM. **Twelve CUDA resource violations
-remain; releaseQualified=false.** Prism passed on rerun after one restart warm-up
-timeout. Full-window/general/low-precision quality and positive Qwen3.8 projection
-remain unqualified. See [the exact measured scope](UPSTREAM_0213.md).
+CUDA sm_120, RTX 5060 Ti 16 GB,32GB RAM and driver621.14. **The unchanged CUDA
+resource guard passes with zero violations; releaseQualified=false retains the
+broader quality limits.** Installed Q36/Prism/agent/restart/bulk-delete checks passed.
+The historical054 Prism timeout cause remains unconfirmed. Full-window/general/
+low-precision quality, public search sites and positive Qwen3.8 projection remain
+unqualified. See [the exact measured scope](HAKUA_RELEASE.md).
 
 ## Install or update
 
-Download the [Windows setup EXE](https://github.com/zapabob/Strata/releases/download/v0.5.4-local.1/Strata-0.5.4-local.1-windows-x64-setup.exe)
-and compare it with [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.5.4-local.1/SHA256SUMS.txt).
+Download the [Windows setup EXE](https://github.com/zapabob/Strata/releases/download/v0.5.5-local.1/Strata-0.5.5-local.1-windows-x64-setup.exe)
+and compare it with [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.5.5-local.1/SHA256SUMS.txt).
 The desktop installer has no Windows code signature. Component signatures and checksums
 are separate checks; they are not Windows executable signing.
 
@@ -30,13 +32,13 @@ folder does not move them. Leave existing model files where they are and select
 that model folder in Strata. System Node, Python, pip and compilers are not required.
 
 GPU runtimes are separate from the NSIS app, following upstream's Windows layout.
-Download this preview's [signed engine tar.gz](https://github.com/zapabob/Strata/releases/download/v0.5.4-local.1/strata-engine-0.5.4-windows-x86_64-cuda-cuda13.tar.gz).
+Download this preview's [signed engine tar.gz](https://github.com/zapabob/Strata/releases/download/v0.5.5-local.1/strata-engine-0.5.5-windows-x86_64-cuda-cuda13.tar.gz).
 On the preparation screen choose **I already have the file** and select the tar.gz
 without extracting it. The app checks the fork signature and file hashes before
-activation. Use this preview's file to obtain measured native 0.5.4: the default
+activation. Use this preview's file to obtain measured native 0.5.5: the default
 stable feed and GitHub Latest still select 0.5.1. Model loading is manual.
 
-For one download, use [Strata-0.5.4-local.1-windows-x64.tar.7z](https://github.com/zapabob/Strata/releases/download/v0.5.4-local.1/Strata-0.5.4-local.1-windows-x64.tar.7z).
+For one download, use [Strata-0.5.5-local.1-windows-x64.tar.7z](https://github.com/zapabob/Strata/releases/download/v0.5.5-local.1/Strata-0.5.5-local.1-windows-x64.tar.7z).
 Extract the 7z, then the tar. The folder contains the same setup EXE, signed CUDA
 component, Control ZIP, feed, install scripts and INSTALL.md. Check the outer
 SHA256SUMS.txt before extraction, and BUNDLE-SHA256SUMS.txt inside. Models and
@@ -55,11 +57,11 @@ Installed component rollback selects a retained component; it does not require
 fetching an older feed. A desktop downgrade uses the older installer and its
 documented compatibility limits; do not delete model folders to downgrade.
 
-The optional Terminal scripts in the bundle install Control 0.5.5. To opt into
+The optional Terminal scripts in the bundle install Control 0.5.6. To opt into
 the preview feed for this PowerShell session:
 
 ```powershell
-$env:STRATA_FEED='https://github.com/zapabob/Strata/releases/download/v0.5.4-local.1'
+$env:STRATA_FEED='https://github.com/zapabob/Strata/releases/download/v0.5.5-local.1'
 irm "$env:STRATA_FEED/install.ps1" | iex
 ```
 
@@ -121,23 +123,23 @@ Windows release. Other GPUs, HIP, SYCL, Linux and Metal need their own builds an
 
 ## 日本語の導入手順
 
-プレビュー0.5.4-local.1は短いQwen3.6・Prism要求と実installed操作を確認しています。
-CUDA資源違反12件、Prismのwarm-up timeout1回を残し、releaseQualified=falseです。
+プレビュー0.5.5-local.1は短いQwen3.6・Prism要求、エージェント応答、会話一括削除を実installedで確認しています。
+CUDA資源違反は0件です。旧054のPrism timeoutは原因未確定の記録として保持し、releaseQualified=falseです。
 全文入力・一般品質・低精度品質を保証する結果ではありません。
 起動時にはモデルを自動読み込みせず、利用者が読み込みを開始します。
 
-`0.5.4-local.1`のsetup EXEとチェックサムを取得します。更新前にモデルをアンロードし、
+`0.5.5-local.1`のsetup EXEとチェックサムを取得します。更新前にモデルをアンロードし、
 トレイのStrataも終了してから、一度だけインストーラーを実行してください。
 Cドライブに入れる場合は、導入先を`%LOCALAPPDATA%\Programs\Strata`に指定します。
 以前Hドライブを選んだ環境では、その場所が引き継がれることがあります。
 モデル・会話・記憶の保存先は別なので、モデルを移したり消したりする必要はありません。
 
 専用Node・Pythonは同梱されています。GPUエンジンは別配布です。同じプレビューから
-`strata-engine-0.5.4-windows-x86_64-cuda-cuda13.tar.gz`を取得し、圧縮したまま
+`strata-engine-0.5.5-windows-x86_64-cuda-cuda13.tar.gz`を取得し、圧縮したまま
 準備画面で読み込みます。署名と全ファイルのハッシュを
 確認してから有効化します。旧コンポーネントはロールバック用に残します。
 
-一括で取得する場合は`Strata-0.5.4-local.1-windows-x64.tar.7z`を使います。7z、tarの順で展開すると、
+一括で取得する場合は`Strata-0.5.5-local.1-windows-x64.tar.7z`を使います。7z、tarの順で展開すると、
 同じNSISインストーラー、署名付きエンジン、Control、配信情報、導入スクリプト、説明書が
 入っています。モデルや個人データは含まれません。検証済みの範囲と既知の制限は
 [リリース記録](HAKUA_RELEASE.md)で確認してください。

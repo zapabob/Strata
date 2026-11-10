@@ -28,6 +28,13 @@ attempt label. No test is skipped or treated as passing because a rerun succeeds
   imports must refer to the actual helper exports. Keep failed preparation receipts.
 - Final numerical checks must bind the completed frozen-source build and compare
   tested library/executable hashes before and after; diagnostic success is insufficient.
+- Read the browser MCP's actual tool schema (`target` in the staged0.0.80 build).
+  Request a current explicit snapshot; action responses may link a saved snapshot.
+  A page title or search-box echo is not search-result evidence: require actual
+  result links/content. Record a provider challenge without bypassing it.
+- Capture an actually observed QA runtime config while its child is alive. Normal
+  teardown removes ephemeral JSON; activation must require the hash-bound capture
+  and full test-start, not synthesize a previously tested configuration.
 
 Self-review trigger: five local browser-fixture corrections/failed verification
 gates. Evidence: sidebar red/green receipts and gpu-numerical-r1. Decision: narrow

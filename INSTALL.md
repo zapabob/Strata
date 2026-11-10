@@ -7,12 +7,12 @@ Windowsアプリを使う場合は、GitHubの配布インストーラーから�
 
 | 配布版 | 入手先 |
 | --- | --- |
-| 安定版 `0.5.1` | **[Windowsインストーラーをダウンロード](https://github.com/zapabob/Strata/releases/download/v0.5.1/Strata-0.5.1-windows-x64-setup.exe)** · [リリースとチェックサム](https://github.com/zapabob/Strata/releases/tag/v0.5.1) |
-| 公開プレビュー `0.5.4-local.1` | [インストーラー・エンジン・手順の一括パッケージ](https://github.com/zapabob/Strata/releases/download/v0.5.4-local.1/Strata-0.5.4-local.1-windows-x64.tar.7z) · [確認済みの範囲](docs/HAKUA_RELEASE.md) |
+| 新しいプレビュー `0.5.5-local.1` | **[Windowsインストーラーをダウンロード](https://github.com/zapabob/Strata/releases/download/v0.5.5-local.1/Strata-0.5.5-local.1-windows-x64-setup.exe)** · [エンジン・手順も入った一括パッケージ](https://github.com/zapabob/Strata/releases/download/v0.5.5-local.1/Strata-0.5.5-local.1-windows-x64.tar.7z) · [チェックサム](https://github.com/zapabob/Strata/releases/download/v0.5.5-local.1/SHA256SUMS.txt) |
+| 安定版 `0.5.1` | [Windowsインストーラー](https://github.com/zapabob/Strata/releases/download/v0.5.1/Strata-0.5.1-windows-x64-setup.exe) · [リリースとチェックサム](https://github.com/zapabob/Strata/releases/tag/v0.5.1) |
 
-開発中の `0.5.5-local.1` には会話履歴の一括削除とブラウザー検索の変更を
-追加しています。これらの変更を含むインストーラーは再ビルド・実機検証待ちです。
-上の公開版に新機能が含まれているという意味ではありません。
+`0.5.5-local.1` は会話履歴の一括削除とブラウザー操作を含み、ビルドと実installed検証が通過しました。
+CUDA資源違反は0件です。全文入力・一般品質・公開検索サイトなどは未認定で、
+`releaseQualified=false` を維持します。[確認済みの範囲](docs/HAKUA_RELEASE.md)
 
 ## 使い始めるまで
 
@@ -47,7 +47,7 @@ EXE自体のWindowsコード署名はなく、エンジンのコンポーネン�
 ## English
 
 Use the [stable Windows installer](https://github.com/zapabob/Strata/releases/tag/v0.5.1)
-or the explicitly labelled [published preview](https://github.com/zapabob/Strata/releases/tag/v0.5.4-local.1).
+or the explicitly labelled [preview](https://github.com/zapabob/Strata/releases/tag/v0.5.5-local.1).
 Verify checksums, unload models and quit the tray app before updating. Run the EXE,
 then select the engine and model in the app. See the [full installation guide](docs/HAKUA_INSTALL.md).
-The new bulk-delete/browser-search changes are still awaiting a rebuilt and tested installer.
+The055 installer includes the measured bulk-delete/browser-tool changes; broader model/public-search quality remains unqualified.

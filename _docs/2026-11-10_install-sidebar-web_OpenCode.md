@@ -173,3 +173,20 @@ The user explicitly approved committing these additional features and continuing
 the installer rebuild/actual-machine checks. The checkpoint includes only the
 reviewed UI/prompt/docs/QA files; secret/payload scanning and staged diff checks
 precede the commit. This approval does not authorize a Git push or PR creation.
+
+## Installed closeout
+
+Fresh app/Control35863dea and nativeb995af13 passed candidate then actual installed
+Q36/Prism/agent/restart/bulk-delete acceptance. The C:payload matched29544files.
+Backup4078files includes three exact size/SHA-reviewed large non-weight files;
+unknown large files still fail. Initial backup refusal and missing-temp-config
+activation failure remain. Fresh captured-live-config Q36 acceptance and required
+signature/full test-start passed afterward. Normal startup is open/no-debug/
+unloaded. Browser/search is enabled through the actual verified Host; provider/
+key/approval/other-tool choices remain. No new installer rebuild followed QA.
+
+The user subsequently approved push to main and055prerelease publication, plus
+normal model unload to finish publication after resource-floor pressure. Prepared
+hashes/publication/anonymous readback are tracked separately in
+2026-11-11_preview-055-release_OpenCode.md. The earlier local-only approval note
+above describes its time, not that later publication approval.
