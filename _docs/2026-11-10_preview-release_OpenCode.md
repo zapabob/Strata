@@ -1,6 +1,7 @@
 # 0.5.4-local.1 preview publication
 
-Status: IN_PROGRESS. Agent: OpenCode. User requested the official-style installer,
+Status: COMPLETED — preview published and all14 anonymous downloads verified.
+Agent: OpenCode. User requested the official-style installer,
 a 7z distribution, a release tag and a rewritten README despite the retained
 twelve resource violations. Objective: publish the exact tested binaries with
 clear limits and independently verified distribution archives.
@@ -62,12 +63,14 @@ ae05518656ee5afdf92665f5dd71a06a69425ae1957a9ac31468d8a4a1790750.
 Signed native manifest52e8674bf1dec83df9d972ec4fd5dfa5607bc9b1d30ec3eb99ade499de116ab3.
 Build/install/model evidence remains in the preceding integration log and
 H:/Strata/releases/upstream-0213-20261109-opencode/app-native054.
-The app is left running normally; publication work does not alter user profiles.
+The earlier integration handoff checked normal unloaded startup. Publication
+operated on distribution copies and isolated validation roots; it did not repeat
+that model/UI handoff or claim a fresh unloaded state during later user activity.
 
 ## Verification and publication
 
 Packaging, complete archive verification and README/version checks passed.
-Tag creation, publication and anonymous readback remain pending.
+Tag creation, publication and anonymous readback also passed (details below).
 Failed/NOT_RUN checks will not become PASS.
 Known residuals remain twelve native resource violations, one observed Prism
 warm-up timeout before passing rerun, incomplete full-suite/browser-fixture
@@ -156,6 +159,61 @@ deadlines, outputs and resource/Job evidence are in the immutable H: receipts.
 `gh release create/edit --help`, `git diff --check` and status/log were inspected.
 No global dependencies, runtime sources or instruction baselines were changed.
 
-Recommended next action: commit the reviewed release docs/recipes; create/push the
-immutable annotated tag; run publish.py then verify.py public; record actual
-publication and anonymous-download outcomes before completion.
+## Publication and public readback — passed
+
+Release: https://github.com/zapabob/Strata/releases/tag/v0.5.4-local.1
+GitHub release ID439895291, prerelease=true, draft=false, latest=false.
+Reviewed docs/packaging commit and annotated tag target:
+cff2f050991e09c079934e5ea4dbda4173bba49d.
+Tag object3eb250a563920880da012af9a633fa50b332e0d0 was read back through GitHub's
+ref/tag APIs and matched the local peeled target. Main was pushed before the tag.
+The subsequent closeout is documentation/evidence only; the tag remains fixed.
+
+`publish.py --execute` used gh to create a draft, upload exactly14 prepared
+assets, compare every GitHub digest/size, and publish a prerelease with
+latest=false. Owned publication passed429.276s, native exit0, contained/drained,
+zero active descendants. No old asset was replaced. `published.json` and its
+receipt preserve the notes/recipe hash and release identity.
+
+`verify.py public --execute` passed526.172s. All14 assets were downloaded in full
+over anonymous HTTPS streams and matched prepared size/SHA256, including the
+entire112415417-byte installer,1470009352-byte engine and1654599858-byte7z.
+This was not a HEAD-only or partial-range check. Public feed signature and URL
+selection passed with builtin keys. Source/tag checks passed. Native exit0,
+owned before resume, drained, zero active children, no dropped output.
+
+Stable release ID435932958/v0.5.1, the latest annotated ref object and all12
+stable asset IDs/sizes/digests matched the pre-publication snapshot exactly.
+GitHub Latest still returned v0.5.1 after publication. Earlier assets, failed
+attempts and frozen native checkout remain preserved. The original signed
+manifest retains privateCandidate=true/releaseQualified=false as build provenance;
+public preview packaging does not rewrite its qualification disposition.
+
+Evidence root: H:/Strata/releases/public-054-20261110-opencode.
+`prepared.json`, `stable-before.json`, `published.json`, `verified-local.json`,
+`verified-public.json` and receipts/{finish-release-copy-r1,verify-release-local-r1,
+publish-release-r1,verify-release-public-r1}.{json,txt} are retained. Sanitized
+public results are mirrored in release-054-20261110/PUBLIC_VERIFICATION.json.
+An offline Python assertion compared that sanitized mirror's complete14
+size/hash records and publication outcomes to verified-public.json: passed.
+The initial prepare-release failed receipt and partial archive are also retained.
+
+Additional commands: git commit/push main; git tag -a v0.5.4-local.1; git push
+origin refs/tags/v0.5.4-local.1; publish.py --execute; verify.py public --execute;
+git rev-parse HEAD origin/main/tag/peeled-tag; gh API latest readback; native
+frozen checkout status (clean detached). The21-file staged credential/payload
+scan found0 findings and staged diff-check passed before the release commit.
+
+Self-review-event: ticket_completed — REL-1 through REL-4 satisfied. Review-only:
+source/binary boundaries, failed resource/model/browser outcomes and older stable
+identity remain explicit; no governance weakening or new performance claim.
+Full builds/model E2E were not rerun for documentation/packaging-only changes;
+the exact original bytes and archived installed receipts are the acceptance basis.
+The installed Terminal one-line script was not re-executed against the user's
+normal data: the real packaged CLI/feed path ran in isolated H: scratch instead.
+
+Residual risks remain those listed above, including twelve native resource
+violations, the retained Prism timeout and unqualified quality/other backends.
+Recommended next action: use this immutable preview's EXE/engine and installation
+guide; resource-guard repair and wider model/context qualification require a new
+separately measured candidate. No further publication gate remains pending.

@@ -1,0 +1,74 @@
+{
+  "ok": true,
+  "checkedDate": "2026-11-10",
+  "tag": "v0.5.4-local.1",
+  "tagTarget": "cff2f050991e09c079934e5ea4dbda4173bba49d",
+  "annotatedTagObject": "3eb250a563920880da012af9a633fa50b332e0d0",
+  "url": "https://github.com/zapabob/Strata/releases/tag/v0.5.4-local.1",
+  "releaseID": 439895291,
+  "prerelease": true,
+  "releaseQualified": false,
+  "stableReleaseAliasAssetsUnchanged": true,
+  "stableReleaseID": 435932958,
+  "stableTag": "v0.5.1",
+  "builtinFeedSignatureVerified": true,
+  "githubAssetDigestsMatched": 14,
+  "anonymousDownloads": {
+    "Strata-0.5.4-local.1-windows-x64-setup.exe": {
+      "bytes": 112415417,
+      "sha256": "ae05518656ee5afdf92665f5dd71a06a69425ae1957a9ac31468d8a4a1790750"
+    },
+    "strata-engine-0.5.4-windows-x86_64-cuda-cuda13.tar.gz": {
+      "bytes": 1470009352,
+      "sha256": "e6aa4f95c67092c48a328e3296c9b3d9b4b0d2eaf478efe978458f96b9299f6d"
+    },
+    "strata-control-0.5.5-windows-x86_64.zip": {
+      "bytes": 72127572,
+      "sha256": "890c3c485dd66dc4cabf92a4565cfb8e997e18948eca810dc511dc88a848ecf3"
+    },
+    "strata-feed.json": {
+      "bytes": 1428,
+      "sha256": "d011d29ffba5a7ca8b24768fd2e89c6c4f8501206c601ecfc0ba682893a6c205"
+    },
+    "strata-feed.json.sig": {
+      "bytes": 151,
+      "sha256": "23a08f057647bd99fb7fa88ef381320da5875cea6ae561e7f2e4bae35cc0619c"
+    },
+    "install-manifest.txt": {
+      "bytes": 202,
+      "sha256": "76553ebbeddc8ab7b7dedba95ae04c343ed83ea2142d6791f556df0f25b5e5a9"
+    },
+    "install.ps1": {
+      "bytes": 12659,
+      "sha256": "019a08857cd07c3ce55b4fd41262d34065db8495e94c90044d6e6e22f8eb42b5"
+    },
+    "install.sh": {
+      "bytes": 8644,
+      "sha256": "9bb331755d740ad4d069293f965f7843035829d025b83447323ce53b15cc21d2"
+    },
+    "INSTALL.md": {
+      "bytes": 3951,
+      "sha256": "4d4ce0f946b86e533587e914e49cd2bff5e3e7b747c5389f1cc25cdc6aea5eed"
+    },
+    "QUALITY.json": {
+      "bytes": 4074,
+      "sha256": "4b1590fa67d813041eab1ca33b727c6d3b0c1131adf968ad7c7b947ba12f0692"
+    },
+    "SOURCE.json": {
+      "bytes": 682,
+      "sha256": "2a8c75a72e4bbdf331a9fd6b8b1adc27bc7de36a83f83d7f9abc942c3d6d4e32"
+    },
+    "BUNDLE-SHA256SUMS.txt": {
+      "bytes": 981,
+      "sha256": "935acaf084aa945cfe7dd23dc1de4feacaf2c3372c9e733a0e303ea2eec2c6dd"
+    },
+    "Strata-0.5.4-local.1-windows-x64.tar.7z": {
+      "bytes": 1654599858,
+      "sha256": "018dc44f6393f939b14c21c2a863e8e2813c46a8f25dd6929ce75c228d49a340"
+    },
+    "SHA256SUMS.txt": {
+      "bytes": 1175,
+      "sha256": "21fbc568258979abc09c8962cdb3ccf35cbb10c41064b76272752d819f28b3dd"
+    }
+  }
+}
