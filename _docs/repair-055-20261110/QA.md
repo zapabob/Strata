@@ -21,6 +21,13 @@ attempt label. No test is skipped or treated as passing because a rerun succeeds
   pair is not a general speedup claim. Pointer-table MMQ is absent in this build.
 - Source diagnostics, current-driver repetitions, final source-bound binaries and
   actual installed acceptance are distinct. Never transfer one layer's pass to another.
+- Packaged supervisor-agent acceptance must observe `start` with `agent=true`,
+  a completed real response and no unavailable/skipped fallback. Plain chat alone
+  missed the reported undefined.map branch. Preserve plain-chat checks too.
+- Check generated recipe syntax and all read-only plans before runtime execution;
+  imports must refer to the actual helper exports. Keep failed preparation receipts.
+- Final numerical checks must bind the completed frozen-source build and compare
+  tested library/executable hashes before and after; diagnostic success is insufficient.
 
 Self-review trigger: five local browser-fixture corrections/failed verification
 gates. Evidence: sidebar red/green receipts and gpu-numerical-r1. Decision: narrow

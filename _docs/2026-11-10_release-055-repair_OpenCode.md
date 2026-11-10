@@ -248,3 +248,89 @@ groups so task-tree rows keep their own layout, and removed an unreachable
 unused-workspace expression introduced by boolean action results. Script flake8
 E9/F found one unused sys import; removed, recheck required. Candidate version6
 tests, product consistency and typecheck passed. These remain source checks.
+
+## Final native source-bound acceptance
+
+Checkpoint b995af139cc823537489b886bc1e8602cf10301c was frozen clean at
+H:/Strata/worktrees/native-055-source-20261110. Every tracked physical file was
+compared with the primary checkout; newline normalization preserved the Git tree.
+The diagnostic cache was retained independently before final-version compilation.
+The production native helper completed the incremental five-job build in
+1233.308 seconds, including source binding. The outer owned Job finished with
+zero active children, zero dropped output and unchanged resource floors. Its
+minimum sampled available RAM was15625838592 bytes. Copied-cache MSB8028 and
+CUDA-header codepage warnings remain in the complete build log; no clean was run.
+
+Final native version0.5.5 binds779 native sources, portable sm_120, Spin8 ON and
+ggml3cf03257. No explicit CUDA spill baseline was configured. Artifact identities:
+
+- strata.exe:659607ec2d7c19c65633e4b0e3bad5e0bdf30448f2092ca33cb2d4e1413b6256
+- strata-q36.exe:1af1cd06e4158bcf1b6048ea8f4c6dbae29247355f42e30a4330fc6ca638b16c
+- native-build.json:80fc22aba3238227505a4253bbfc3ee22222eebd2b5597f2c1c03b26fa49f0b1
+
+Explicit native adapter phases stage/cpu/gpu/sanitizer/spill/model-bounded/
+model-legacy7/model-restart/compare/audit all passed and drained. The unchanged
+cuda_spill_guard passed on final libraries: the earlier12 findings are absent.
+Both memchecks require their actual ERROR SUMMARY:0 errors. Protected real Q36
+model/pack/tokenizer snapshots matched before and after all three model phases.
+Seven bounded and seven legacy requests matched token/protocol results, including
+owner separation, missing owner, cancellation and clearing; two restart requests
+also passed. These are short requests with4096-cell capacity, not a full-window
+or general-quality benchmark. Phase elapsed times include complete input hashing
+and must not be presented as startup or generation timings.
+
+gpu.py gained explicit --final-source-commit admission: successful frozen build
+receipt, production binary/source binding, and before/after hashes of tested
+libraries and executables are required. Its fresh final-r1 passed all21 numerical
+checks, retaining same-day old/new W4A8 timings and DFlash byte equality. This
+result is gpu-final-results-final-r1.json; earlier diagnostic reports stay intact.
+The final qualification summary still carries releaseQualified=false because
+app/installer/installed acceptance and broader quality scope remain separate.
+
+## Delivery preparation and app admission checkpoint
+
+delivery.py prepares version/path-adjusted adapters in fresh revision roots and
+records every template/output SHA. Older054 templates, delivery revisions and
+artifacts are retained. The new component validator requires a genuinely passing
+unchanged resource guard plus all21 source-bound final numerical checks; it still
+validates the full protected model/functional/Job contracts. No historical PASS
+receipt is copied into a new attempt, and no releaseQualified flag is promoted.
+
+repair-qa.py extends the packaged Prism recipe without removing its two plain
+answers: two additional UI messages must emit actual Harness agent start/done
+frames, have no fallback/error/demo and return a real answer. Both shell cycles
+require normal close and process-absence checks. upgrade acceptance requires this
+positive agent/teardown evidence. Workspace selectors follow the visible action
+menus and folder auto-entry behavior. Generated recipe syntax, four candidate/
+installed QA recipes and eleven read-only phase plans passed. The component
+validator independently accepted the completed final native reports in
+validate-delivery-r3. Actual packaged/installed GUI execution remains pending.
+
+The exact final strata.exe digest was added to q36-run-contract.mjs only after
+the native checks. Expected allowlist test RED reproduced the missing digest;
+GREEN passed the13 contract and5 local-agent tests, retaining unknown-digest
+rejection and legacy default behavior. The next app/Control build needs a clean
+reviewed source checkpoint containing this admission and its QA recipes.
+
+Commands used uv/offline Python3.12 with the owned run.py wrapper, explicit native
+adapter run phases, gpu.py --attempt final-r1 --final-source-commit b995af13(full),
+delivery.py --execute, validate-delivery.py --native and node --test for the two
+focused Host files. All commands and process/resource receipts are under the055
+H: root. validate-delivery-r1 failed an incorrect NODE import before any recipe
+ran; r2 fixed the helper import and passed. r3 additionally validates final native
+evidence. The failing attempt is preserved; expectations were not weakened.
+
+Self-review-event:qa_defect. Evidence: old installer QA bypassed the agent branch,
+and the new validation helper had an import error. Response: positive agent-frame
+and teardown assertions, generated-plan/syntax checks, explicit final-binary
+admission, and narrow QA notes. Rejected alternatives: treating plain chat as
+agent evidence, reusing diagnostic PASS, accepting resource failure for055, or
+changing global governance. Residual risks: new installer/installed flows not yet
+run; old Prism timeout cause remains unconfirmed; W4A8 slower cases and absent
+pointer-table/HIP/full-window/general-quality coverage remain as documented.
+
+User explicitly approved creating the local app-source checkpoint and continuing
+the installer build. Fresh git diff --check and helper flake8 --select=E9,F
+passed. Commit scope is the two admission files, final GPU binding helper, three
+delivery/QA preparation scripts, QA notes and this log. Push/publication is not
+part of that local-commit approval. The native055 frozen source stays unchanged.
