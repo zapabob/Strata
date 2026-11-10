@@ -182,6 +182,33 @@ export function trashWorkspaceFile(root, { path, revision: expected }) {
   return { ok: true, trashId: id, path: item.name, retained: true };
 }
 
+/** Retained deletions and edit backups remain recoverable after the UI reloads. */
+export function listWorkspaceTrash(root, offset = 0) {
+  if (!Number.isSafeInteger(offset) || offset < 0) fail(400, 'Choose a valid file-list page.');
+  const { base } = locate(root, '', { allowRoot: true }), trash = join(base, TRASH);
+  if (!existsSync(trash)) return { entries: [], nextOffset: null };
+  if (lstatSync(trash).isSymbolicLink() || !lstatSync(trash).isDirectory() || !isInside(base, realpathSync(trash))) fail(403, 'Workspace trash is unavailable.');
+  const candidates = readdirSync(trash, { withFileTypes: true }).filter(item => item.isFile() && /^[0-9a-f-]{36}\.json$/.test(item.name));
+  const entries = [];
+  for (const item of candidates) {
+    try {
+      const metadata = join(trash, item.name), retained = join(trash, item.name.slice(0, -5));
+      if (lstatSync(metadata).size > 8192 || !existsSync(retained)) continue;
+      const info = JSON.parse(readFileSync(metadata, 'utf8')), st = lstatSync(retained);
+      if (!info || typeof info !== 'object' || typeof info.path !== 'string') continue;
+      if (st.isSymbolicLink() || !st.isFile() && !st.isDirectory()) continue;
+      parts(info.path);
+      entries.push({ trashId: item.name.slice(0, -5), path: info.path,
+        kind: info.kind === 'edit-backup' ? 'edit-backup' : st.isDirectory() ? 'dir' : 'file',
+        deletedAt: typeof info.deletedAt === 'string' ? info.deletedAt : '' });
+    } catch (error) {
+      if (error.code !== 'ENOENT' && !(error instanceof SyntaxError) && error.status !== 400) throw error;
+    }
+  }
+  entries.sort((a, b) => b.deletedAt.localeCompare(a.deletedAt) || a.trashId.localeCompare(b.trashId));
+  return { entries: entries.slice(offset, offset + 200), nextOffset: offset + 200 < entries.length ? offset + 200 : null };
+}
+
 export function restoreWorkspaceFile(root, id) {
   if (typeof id !== 'string' || !/^[0-9a-f-]{36}$/.test(id)) fail(400, 'Choose a valid trash item.');
   const base = realpathSync(root), trash = trashDirectory(base), metadata = join(trash, `${id}.json`), retained = join(trash, id);

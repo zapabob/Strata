@@ -30,6 +30,17 @@ test('supervisorLocalInstance builds an agent route for Hikari-style GGUF', () =
   assert.equal(supervisorLocalInstance({ status: 'stopped', modelId: 'x', port: 8080 }), null);
 });
 
+test('a supervisor-backed agent can open its serving request without native GPU fields', () => {
+  const row = supervisorLocalInstance(
+    { status: 'running', modelId: 'local-prism', port: 8080 },
+    { authenticationKey: () => 'fixture-owner-key', label: 'Prism' },
+  );
+  // runAgentTurn uses the same serving metadata contract for either local route.
+  const request = { model: row.apiModelId, instanceId: row.id, gpuIds: row.gpus.map(String) };
+  assert.deepEqual(request, { model: 'local', instanceId: 'supervisor:local-prism', gpuIds: [] });
+  assert.ok(!JSON.stringify(request).includes('fixture-owner-key'));
+});
+
 test('merge prefers native ids and still adds supervisor Hikari', () => {
   const native = [{ id: 'n1', label: 'Native' }];
   const hikari = supervisorLocalInstance(

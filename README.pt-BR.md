@@ -1,5 +1,8 @@
 # Strata · Hakua
 
+Development candidate `0.5.5-local.1`: `Strata-0.5.5-local.1-windows-x64-setup.exe`
+is pending source-bound build/installed checks. Published downloads below remain `0.5.4-local.1`.
+
 ## Prévia 0.5.4-local.1 — fontes oficiais 0.2.13
 
 [Instalador Windows](https://github.com/zapabob/Strata/releases/download/v0.5.4-local.1/Strata-0.5.4-local.1-windows-x64-setup.exe) ·

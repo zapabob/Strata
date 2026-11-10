@@ -25,6 +25,10 @@ export function supervisorLocalInstance(engine, opts = {}) {
     baseUrl: `http://127.0.0.1:${engine.port}/v1`,
     // llama-server accepts any model id; inference uses "local" for this path.
     modelId: 'local',
+    // Serving/unload accounting consumes the native instance shape too. A
+    // supervisor route has no measured per-GPU attribution; do not invent one.
+    apiModelId: 'local',
+    gpus: [],
     context: Number.isFinite(opts.context) ? opts.context : undefined,
     key,
     vision: opts.vision === true,

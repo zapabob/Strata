@@ -1,5 +1,8 @@
 # Strata · Hakua
 
+开发候选版为 `0.5.5-local.1`。`Strata-0.5.5-local.1-windows-x64-setup.exe`
+仍待源码绑定构建和实际安装验证。以下公开链接仍属于 `0.5.4-local.1`。
+
 ## 0.5.4-local.1 预览版 — 集成官方0.2.13
 
 [Windows安装程序](https://github.com/zapabob/Strata/releases/download/v0.5.4-local.1/Strata-0.5.4-local.1-windows-x64-setup.exe) ·

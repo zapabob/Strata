@@ -93,7 +93,7 @@ import { apiPath } from './api-paths.mjs';
 import { findFreePort, listenProblem } from './ports.mjs';
 import { validateChatImages } from './chat-images.mjs';
 import { createTimeSkip, measureFolder, timeskipRevisionMessage, imageTypeOf } from './timeskip.mjs';
-import { listWorkspaceFiles, readWorkspaceFile, createWorkspaceFile, updateWorkspaceFile, renameWorkspaceFile, trashWorkspaceFile, restoreWorkspaceFile, openWorkspaceFile, workspaceFileError } from './workspace-files.mjs';
+import { listWorkspaceFiles, listWorkspaceTrash, readWorkspaceFile, createWorkspaceFile, updateWorkspaceFile, renameWorkspaceFile, trashWorkspaceFile, restoreWorkspaceFile, openWorkspaceFile, workspaceFileError } from './workspace-files.mjs';
 
 const HERE = fileURLToPath(new URL('.', import.meta.url));
 const ROOT = resolve(HERE, '..');
@@ -1877,6 +1877,7 @@ async function api(req, res, path, method, url) {
         if (method === 'PATCH') return json(res, 200, renameWorkspaceFile(workspace.path, body));
         if (method === 'DELETE') return json(res, 200, trashWorkspaceFile(workspace.path, { path: relativePath, revision: url.searchParams.get('revision') }));
       }
+      if (path === '/api/workspace/trash' && method === 'GET') return json(res, 200, listWorkspaceTrash(workspace.path, Number(url.searchParams.get('offset') ?? 0)));
       if (path === '/api/workspace/trash' && method === 'POST') return json(res, 200, restoreWorkspaceFile(workspace.path, body.trashId));
       if (path === '/api/workspace/open' && method === 'POST') return json(res, 200, openWorkspaceFile(workspace.path, relativePath));
       return error(res, 405, 'That operation is unavailable.');

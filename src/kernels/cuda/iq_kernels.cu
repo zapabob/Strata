@@ -2792,21 +2792,39 @@ __global__ void __launch_bounds__(256, STRATA_EXPDEC_MINB) expdec_down_kernel(co
             for (int p = 0; p * RPP < rb; ++p) {
                 const int row0 = row_base + p * RPP + sw * R;
                 if (row0 >= nrow) break;   // uniform over the block
-                const uint8_t* wr[R];
-#pragma unroll
-                for (int r = 0; r < R; ++r) wr[r] = blob + (size_t) (row0 + r) * L.d_row;
                 auto run = [&](auto nc) {
                     constexpr int NC = decltype(nc)::value;
-                    float s[R][NC];
-                    if constexpr (TD == 20) ed_d20_rows<R, NC>(wr, (const int2*) s_u, s_ds, t, s);
-                    else ed_d42_rows<R, NC>(wr, s_u, s_ds, t, s);
+                    if constexpr (TD == 20 && R == 4) {
+                        // Bound decoded weights and completed sums to two rows.
+                        // A non-unrolled pair loop prevents PTXAS from retaining
+                        // both pairs across the 64-register launch-bound budget.
+#pragma unroll 1
+                        for (int pair = 0; pair < 2; ++pair) {
+                            const int first = row0 + pair * 2;
+                            const uint8_t* rows[2] = {blob + (size_t) first * L.d_row,
+                                                      blob + (size_t) (first + 1) * L.d_row};
+                            float s[2][NC];
+                            ed_d20_rows<2, NC>(rows, (const int2*) s_u, s_ds, t, s);
 #pragma unroll
-                    for (int c = 0; c < NC; ++c)
-                        if (t == c) {
+                            for (int c = 0; c < NC; ++c) if (t == c) {
+                                const size_t o = (size_t) ent_dst[e + c] * L.n_embd + first;
+                                out[o] = s[0][c]; out[o + 1] = s[1][c];
+                            }
+                        }
+                    } else {
+                        const uint8_t* wr[R];
+#pragma unroll
+                        for (int r = 0; r < R; ++r) wr[r] = blob + (size_t) (row0 + r) * L.d_row;
+                        float s[R][NC];
+                        if constexpr (TD == 20) ed_d20_rows<R, NC>(wr, (const int2*) s_u, s_ds, t, s);
+                        else ed_d42_rows<R, NC>(wr, s_u, s_ds, t, s);
+#pragma unroll
+                        for (int c = 0; c < NC; ++c) if (t == c) {
                             const size_t o = (size_t) ent_dst[e + c] * L.n_embd + row0;
 #pragma unroll
                             for (int r = 0; r < R; ++r) out[o + r] = s[r][c];
                         }
+                    }
                 };
                 switch (n) {
                     case 1: run(std::integral_constant<int, 1>{}); break;

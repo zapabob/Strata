@@ -768,6 +768,18 @@ html[data-motion='reduced'] .ws__session .navsession__working svg {
   opacity: 1;
   pointer-events: auto;
 }
+/* Workspace CRUD must also be discoverable without hover or a mouse. */
+.ws__row > .workspace-menu-trigger.st-btn--icon {
+  position: static;
+  translate: none;
+  opacity: 1;
+  pointer-events: auto;
+  flex: none;
+  width: var(--st-s-8);
+  height: var(--st-s-8);
+}
+.ws__group .ws__session .session-overflow { opacity: 1; pointer-events: auto; }
+.ws__group .ws__session .navsession { padding-right: var(--st-s-8); }
 .ws__session:hover .navsession__time,
 .ws__session:hover .navsession__unread {
   opacity: 0;

@@ -1,5 +1,9 @@
 # Hakua / Strata
 
+開発候補は `0.5.5-local.1`／native `0.5.5`／Control `0.5.6` です。
+`Strata-0.5.5-local.1-windows-x64-setup.exe` はソース固定ビルドと実installed検証待ちです。
+以下の公開リンクは、検証済みプレビュー `0.5.4-local.1` を示します。
+
 ローカルの言語モデルをWindowsのデスクトップ画面から使うアプリです。
 チャット、手元のGGUFの再利用、ワークスペースのファイル編集、同意に基づくHakuaメモリーを利用できます。
 [Niko1221/Strata](https://github.com/Niko1221/Strata)を基にした

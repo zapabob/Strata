@@ -145,7 +145,7 @@ __device__ __forceinline__ float sel4(const float4& v, int i) {
 
 // one CTA tile: weight rows row0..row0+127 of expert matrix w, the tile's tokens = activation rows yrow0..yrow0+nv-1
 template <bool XS, class C, int NT>
-__device__ __forceinline__ void tile(const char* __restrict__ w, const char* __restrict__ y,
+__device__ __forceinline__ void tile_part(const char* __restrict__ w, const char* __restrict__ y,
                                      const int32_t* __restrict__ ids, float* __restrict__ dst, int64_t ld_dst,
                                      int row0, int nk, int64_t row_bytes, int64_t ncols_y, int yrow0, int nv,
                                      unsigned char* smem) {
@@ -336,6 +336,24 @@ __device__ __forceinline__ void tile(const char* __restrict__ w, const char* __r
             o[0] = acc[n][1];
             o[8] = acc[n][3];
         }
+    }
+}
+
+// Keep at most64 token outputs live per warp pass. Each output retains the
+// original complete K traversal and epilogue order; large CTA configurations
+// cover their remaining tokens in a second pass without changing dispatch.
+template <bool XS, class C, int NT>
+__device__ __forceinline__ void tile(const char* __restrict__ w, const char* __restrict__ y,
+                                    const int32_t* __restrict__ ids, float* __restrict__ dst, int64_t ld_dst,
+                                    int row0, int nk, int64_t row_bytes, int64_t ncols_y, int yrow0, int nv,
+                                    unsigned char* smem) {
+    if constexpr (NT <= 8) {
+        tile_part<XS, C, NT>(w, y, ids, dst, ld_dst, row0, nk, row_bytes, ncols_y, yrow0, nv, smem);
+    } else {
+        tile_part<XS, C, 8>(w, y, ids, dst, ld_dst, row0, nk, row_bytes, ncols_y, yrow0, 64, smem);
+        // All warps must finish reading the previous shared stage before reuse.
+        __syncthreads();
+        tile_part<XS, C, NT - 8>(w, y, ids, dst, ld_dst, row0, nk, row_bytes, ncols_y, yrow0 + 64, nv - 64, smem);
     }
 }
 

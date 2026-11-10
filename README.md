@@ -1,5 +1,9 @@
 # Hakua / Strata
 
+Development candidate: `0.5.5-local.1` / native `0.5.5` / Control `0.5.6`.
+`Strata-0.5.5-local.1-windows-x64-setup.exe` is pending source-bound build and
+installed acceptance. Downloads below remain the measured `0.5.4-local.1` preview.
+
 Run local language models from a Windows desktop app: chat, reuse your GGUFs,
 manage workspace files and choose what Hakua memory may read or save.
 This is the [zapabob fork](https://github.com/zapabob/Strata) of

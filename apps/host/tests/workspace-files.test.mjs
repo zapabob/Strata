@@ -157,6 +157,11 @@ test('actual Host routes enforce registered scope, browser origin, CRUD conflict
   const removed = await request('DELETE', `/api/workspace/file?root=${root}&path=old.txt&revision=${file.revision}`);
   assert.equal(removed.status, 200);
   assert.equal((await h.call(`/api/workspace/file?root=${root}&path=old.txt`)).status, 404);
+  const history = await request('GET', `/api/workspace/trash?root=${root}`);
+  assert.equal(history.status, 200, 'a newly opened trash view must find retained deletions');
+  assert.ok(history.data.entries.some(item => item.trashId === removed.data.trashId && item.path === 'old.txt'));
+  assert.equal((await request('GET', '/api/workspace/trash?root=unregistered')).status, 404);
   assert.equal((await request('POST', '/api/workspace/trash', { root, trashId: removed.data.trashId })).status, 200);
   assert.equal((await h.call(`/api/workspace/file?root=${root}&path=old.txt`)).data.text, 'edited');
+  assert.ok(!(await request('GET', `/api/workspace/trash?root=${root}`)).data.entries.some(item => item.trashId === removed.data.trashId), 'restored rows disappear without removing other retained copies');
 });

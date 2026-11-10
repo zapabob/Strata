@@ -1,0 +1,36 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import childProcess from 'node:child_process';
+import {syncBuiltinESMExports} from 'node:module';
+import {EventEmitter} from 'node:events';
+import {PassThrough} from 'node:stream';
+import {mkdtempSync,rmSync,writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+
+test('forced unload waits for actual child exit before publishing stopped', async t => {
+  const home=mkdtempSync(join(tmpdir(),'strata-stop-owned-'));
+  const before={home:process.env.STRATA_HOME,binary:process.env.STRATA_LLAMA_SERVER};
+  process.env.STRATA_HOME=home;process.env.STRATA_LLAMA_SERVER=process.execPath;
+  const proc=Object.assign(new EventEmitter(),{pid:424242,exitCode:null,signalCode:null,stdout:new PassThrough(),stderr:new PassThrough()});
+  const signals=[];
+  proc.kill=signal=>{signals.push(signal);if(signal==='SIGKILL')setTimeout(()=>{proc.signalCode='SIGKILL';proc.emit('exit',null,'SIGKILL');},50);return true;};
+  t.mock.method(childProcess,'spawn',()=>proc);syncBuiltinESMExports();
+  t.mock.method(globalThis,'fetch',async url=>String(url).endsWith('/health')?Response.json({status:'ok'}):new Response(''));
+  const supervisor=await import('../server/supervisor.mjs');
+  t.after(async()=>{proc.exitCode=0;proc.emit('exit',0,null);await supervisor.stop();t.mock.timers.reset();t.mock.restoreAll();syncBuiltinESMExports();
+    if(before.home===undefined)delete process.env.STRATA_HOME;else process.env.STRATA_HOME=before.home;
+    if(before.binary===undefined)delete process.env.STRATA_LLAMA_SERVER;else process.env.STRATA_LLAMA_SERVER=before.binary;
+    proc.stdout.destroy();proc.stderr.destroy();rmSync(home,{recursive:true,force:true});});
+  const model=join(home,'fixture.gguf');writeFileSync(model,'fixture');
+  await supervisor.start({modelId:'fixture',modelPath:model,config:{beginner:{contextLength:'2k'},expert:[]},hardware:{cpu:{cores:4}}});
+  t.mock.timers.enable({apis:['setTimeout']});
+  let settled=false;const stopped=supervisor.stop().then(value=>{settled=true;return value;});
+  t.mock.timers.tick(4001);await new Promise(setImmediate);
+  assert.deepEqual(signals,['SIGTERM','SIGKILL']);
+  assert.equal(settled,false,'SIGKILL being requested is not evidence of process exit');
+  assert.equal(supervisor.status().status,'stopping');
+  assert.equal(supervisor.status().pid,424242);
+  t.mock.timers.tick(50);await new Promise(setImmediate);
+  const result=await stopped;assert.equal(result.status,'stopped');assert.equal(result.pid,null);
+});

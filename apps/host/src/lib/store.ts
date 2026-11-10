@@ -753,10 +753,13 @@ export async function pickWorkspace(): Promise<string | null> {
 export async function addWorkspace(path: string) {
   try {
     const ws = await api.post<Workspace>('/api/workspaces', { path });
-    set({ workspaces: [...state.workspaces, ws] });
+    set({ workspaces: [...state.workspaces.filter(w => w.id !== ws.id), ws], activeWorkspace: ws.id });
+    void loadWorkspaceFiles();
     pushToast('success', 'Workspace added', `Strata can now read files in ${ws.name}.`);
+    return ws;
   } catch (err) {
     pushToast('error', "Couldn't add that folder", err instanceof Error ? err.message : String(err));
+    return null;
   }
 }
 
@@ -765,21 +768,23 @@ export async function renameWorkspace(id: string, name: string) {
   try {
     const ws = await api.patch<Workspace>(`/api/workspaces/${id}`, { name });
     set({ workspaces: state.workspaces.map(w => (w.id === id ? { ...w, name: ws.name } : w)) });
+    return true;
   } catch (err) {
     pushToast('error', "Couldn't rename that workspace", err instanceof Error ? err.message : String(err));
+    return false;
   }
 }
 
 export async function removeWorkspace(id: string) {
-  const ws = state.workspaces.find((w) => w.id === id);
   try {
     await api.del(`/api/workspaces/${id}`);
     set({ workspaces: state.workspaces.filter((w) => w.id !== id) });
     if (state.activeWorkspace === id) set({ activeWorkspace: state.workspaces[0]?.id ?? null });
+    return true;
   } catch (err) {
     pushToast('error', "Couldn't remove that workspace", err instanceof Error ? err.message : String(err));
+    return false;
   }
-  void ws;
 }
 
 /**
@@ -1516,6 +1521,22 @@ export function renameSession(id: string, title: string) {
   const sessions = state.sessions.map((s) => (s.id === id ? { ...s, title, defaultTitle: false } : s));
   persistSessions(sessions);
   set({ sessions });
+}
+
+/** Moving a chat also changes its explicit agent working folder, never its files. */
+export async function moveSession(id: string, workspaceId: string): Promise<boolean> {
+  const workspace = state.workspaces.find(w => w.id === workspaceId);
+  if (!workspace || !state.sessions.some(s => s.id === id) || liveTurns.has(id)) return false;
+  try {
+    await api.post('/api/chat/folder', { sessionId: id, path: workspace.path });
+    const sessions = state.sessions.map(s => s.id === id ? { ...s, workspace: workspace.path } : s);
+    persistSessions(sessions);
+    set({ sessions, activeWorkspace: workspace.id });
+    return true;
+  } catch (error) {
+    pushToast('error', "Couldn't move that chat", error instanceof Error ? error.message : String(error));
+    return false;
+  }
 }
 
 function patchSession(id: string, fn: (s: Session) => Session) {

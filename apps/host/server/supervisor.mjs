@@ -261,22 +261,29 @@ function earlyExitError(proc, spawnError, diagnostics) {
 
 async function waitForHealth(port, timeoutMs = 90_000, proc, getSpawnError = () => null, diagnostics) {
   const deadline = Date.now() + timeoutMs;
+  let attempts = 0, lastProbe = 'no response', reported = '';
   while (Date.now() < deadline) {
     const stopped = earlyExitError(proc, getSpawnError(), diagnostics);
     if (stopped) throw stopped;
+    let healthy = false;
     try {
+      attempts++;
       const res = await fetch(`http://127.0.0.1:${port}/health`, { signal: AbortSignal.timeout(1500) });
       const body = await res.json().catch(() => ({}));
-      if (res.ok && body.status === 'ok') return true;
-      if (body.status) log('supervisor', `engine reports: ${body.status}`);
-    } catch {
-      /* not up yet */
+      healthy = res.ok && body.status === 'ok';
+      // Whitelist phase labels, not arbitrary backend response/error text.
+      const loading = body.status === 'loading' || body.error?.message === 'Loading model';
+      lastProbe = `HTTP ${res.status} ${healthy ? 'ready' : loading ? 'loading model' : 'not ready'}`;
+    } catch (error) {
+      lastProbe = error?.name === 'TimeoutError' ? 'health probe timed out' : 'connection unavailable';
     }
     const stoppedAfterProbe = earlyExitError(proc, getSpawnError(), diagnostics);
     if (stoppedAfterProbe) throw stoppedAfterProbe;
+    if (healthy) return true;
+    if (lastProbe !== reported) { log('supervisor', `engine health: ${lastProbe}`); reported = lastProbe; }
     await new Promise((r) => setTimeout(r, 700));
   }
-  throw new Error('Engine did not become healthy in time');
+  throw new Error(`Engine did not become healthy in time (budget ${timeoutMs} ms; ${attempts} probes; last: ${lastProbe})`);
 }
 
 /** Validate a selected runtime before an already loaded model is stopped. */
@@ -411,15 +418,22 @@ export async function stop() {
   state.status = 'stopping';
   hubRef?.send('engine-status', status());
   const proc = child;
+  let exited = waitForExit(proc, 4000);
   proc.kill('SIGTERM');
-  const exited = await Promise.race([
-    new Promise((r) => proc.once('exit', () => r(true))),
-    new Promise((r) => setTimeout(() => r(false), 4000)),
-  ]);
-  if (!exited) {
+  if (!await exited) {
     log('supervisor', 'engine ignored SIGTERM — killing');
+    // Requesting a forced kill does not establish that the child has exited.
+    // Keep its ownership/PID until the exit event, including the failure path.
+    exited = waitForExit(proc, 4000);
     proc.kill('SIGKILL');
+    if (!await exited) {
+      state.status = 'error';
+      state.error = 'The engine did not exit after stopping. Retry unload before loading another model.';
+      hubRef?.send('engine-status', status());
+      throw new Error(state.error);
+    }
   }
+  if (child && child !== proc) return status();
   child = null;
   state.status = 'stopped';
   state.pid = null;
@@ -427,6 +441,15 @@ export async function stop() {
   stopPolling();
   hubRef?.send('engine-status', status());
   return status();
+}
+
+function waitForExit(proc, timeoutMs) {
+  if (proc.exitCode !== null || proc.signalCode !== null) return Promise.resolve(true);
+  return new Promise(resolve => {
+    const finished = () => { clearTimeout(timer); proc.removeListener('exit', finished); resolve(true); };
+    const timer = setTimeout(() => { proc.removeListener('exit', finished); resolve(false); }, timeoutMs);
+    proc.once('exit', finished);
+  });
 }
 
 export async function restart(opts) {

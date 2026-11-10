@@ -501,6 +501,9 @@ __global__ void __launch_bounds__(WARPS * 32) gemm4_kernel(Df2Segs segs, const i
 // the same.  The activations' per-column sum is recomputed by each of the group's warps (4 dp4a a column and step).
 template <int WARPS, int R, int UNR>
 __global__ void __launch_bounds__(WARPS * 32) gemm4_rows_kernel(Df2Segs segs, const int8_t* __restrict__ xq, const float* __restrict__ xd, int n_in, int ncols) {
+    // These long-unroll instances spill selected weight pointers when all eight
+    // activation scales remain live. Keep the other schedules unchanged.
+    constexpr bool scoped_scale = WARPS == 8 && R == 1 && (UNR == 4 || UNR == 8);
     constexpr int SUBS = 8 / R;
     const int warp = threadIdx.x >> 5, lane = threadIdx.x & 31;
     const int wi = blockIdx.x * WARPS + warp;
@@ -528,9 +531,11 @@ __global__ void __launch_bounds__(WARPS * 32) gemm4_rows_kernel(Df2Segs segs, co
         }
         float xs[8];
 #pragma unroll
-        for (int c = 0; c < 8; ++c) xs[c] = xd[(size_t) c * nb + st * 16 + (lane >> 1)];
+        for (int c = 0; c < 8; ++c)
+            if constexpr (!scoped_scale) xs[c] = xd[(size_t) c * nb + st * 16 + (lane >> 1)];
 #pragma unroll
         for (int c = 0; c < 8; ++c) {
+            const float scale = scoped_scale ? xd[(size_t) c * nb + st * 16 + (lane >> 1)] : xs[c];
             const int4 x = xv[(size_t) c * (n_in / 16) + st * 32];
             int xsum = STRATA_DP4A(0x01010101, x.x, 0);
             xsum = STRATA_DP4A(0x01010101, x.y, xsum);
@@ -542,7 +547,7 @@ __global__ void __launch_bounds__(WARPS * 32) gemm4_rows_kernel(Df2Segs segs, co
                 isum = STRATA_DP4A(w[r].y, x.y, isum);
                 isum = STRATA_DP4A(w[r].z, x.z, isum);
                 isum = STRATA_DP4A(w[r].w, x.w, isum);
-                acc[r][c] = fmaf(dw[r] * xs[c], (float) (isum - 8 * xsum), acc[r][c]);
+                acc[r][c] = fmaf(dw[r] * scale, (float) (isum - 8 * xsum), acc[r][c]);
             }
         }
     }

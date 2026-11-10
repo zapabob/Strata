@@ -1,0 +1,47 @@
+diff --git a/src/kernels/cuda/dflash2.cu b/src/kernels/cuda/dflash2.cu
+--- a/src/kernels/cuda/dflash2.cu
++++ b/src/kernels/cuda/dflash2.cu
+@@ -501,6 +501,9 @@
+ // the same.  The activations' per-column sum is recomputed by each of the group's warps (4 dp4a a column and step).
+ template <int WARPS, int R, int UNR>
+ __global__ void __launch_bounds__(WARPS * 32) gemm4_rows_kernel(Df2Segs segs, const int8_t* __restrict__ xq, const float* __restrict__ xd, int n_in, int ncols) {
++    // These long-unroll instances spill selected weight pointers when all eight
++    // activation scales remain live. Keep the other schedules unchanged.
++    constexpr bool scoped_scale = WARPS == 8 && R == 1 && (UNR == 4 || UNR == 8);
+     constexpr int SUBS = 8 / R;
+     const int warp = threadIdx.x >> 5, lane = threadIdx.x & 31;
+     const int wi = blockIdx.x * WARPS + warp;
+@@ -528,9 +531,11 @@
+         }
+         float xs[8];
+ #pragma unroll
+-        for (int c = 0; c < 8; ++c) xs[c] = xd[(size_t) c * nb + st * 16 + (lane >> 1)];
++        for (int c = 0; c < 8; ++c)
++            if constexpr (!scoped_scale) xs[c] = xd[(size_t) c * nb + st * 16 + (lane >> 1)];
+ #pragma unroll
+         for (int c = 0; c < 8; ++c) {
++            const float scale = scoped_scale ? xd[(size_t) c * nb + st * 16 + (lane >> 1)] : xs[c];
+             const int4 x = xv[(size_t) c * (n_in / 16) + st * 32];
+             int xsum = STRATA_DP4A(0x01010101, x.x, 0);
+             xsum = STRATA_DP4A(0x01010101, x.y, xsum);
+@@ -542,7 +547,7 @@
+                 isum = STRATA_DP4A(w[r].y, x.y, isum);
+                 isum = STRATA_DP4A(w[r].z, x.z, isum);
+                 isum = STRATA_DP4A(w[r].w, x.w, isum);
+-                acc[r][c] = fmaf(dw[r] * xs[c], (float) (isum - 8 * xsum), acc[r][c]);
++                acc[r][c] = fmaf(dw[r] * scale, (float) (isum - 8 * xsum), acc[r][c]);
+             }
+         }
+     }
+diff --git a/src/core/dflash2_q4_parity.cpp b/src/core/dflash2_q4_parity.cpp
+--- a/src/core/dflash2_q4_parity.cpp
++++ b/src/core/dflash2_q4_parity.cpp
+@@ -123,7 +123,7 @@
+         std::vector<float> xd((size_t) 8 * nb);
+         cudaMemcpy(xq.data(), dxq, xq.size(), cudaMemcpyDeviceToHost);
+         cudaMemcpy(xd.data(), dxd, xd.size() * 4, cudaMemcpyDeviceToHost);
+-        for (int ncols : {1, 2, 3, 5, 8}) {
++        for (int ncols : {1, 2, 3, 4, 5, 6, 7, 8}) {
+             strata::kernels::Df2Mat mats[3];
+             for (int m = 0; m < nm; ++m) mats[m] = strata::kernels::Df2Mat{dev_w[m], dev_y[m], cs.n_out[m], true};
+             strata::kernels::df2_gemm(mats, nm, dxq, dxd, n_in, ncols, nullptr);

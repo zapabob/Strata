@@ -759,8 +759,28 @@ __global__ void __launch_bounds__(TK_T) block_topk_reg_kernel(const float* __res
     const int64_t per = (nb + TK_T - 1) / TK_T;       // <= PER (the caller checks)
     const int64_t b0 = (int64_t) t * per, b1 = (b0 + per < nb) ? b0 + per : nb;
     uint32_t key[PER];
+#if !defined(__HIPCC__)
+    // Three tail keys fit beside the 32 KiB histogram below the default48 KiB
+    // shared-memory limit. Each thread owns its slots; volatile keeps these
+    // values out of the already saturated register allocation across barriers.
+    static_assert(PER >= 3);
+    __shared__ volatile uint32_t tail_key[3][TK_T];
+#endif
 #pragma unroll
-    for (int j = 0; j < PER; ++j) key[j] = (b0 + j < b1) ? order_key(sc[b0 + j]) : 0u;
+    for (int j = 0; j < PER; ++j) {
+        const uint32_t value = (b0 + j < b1) ? order_key(sc[b0 + j]) : 0u;
+#if !defined(__HIPCC__)
+        if (j >= PER - 3) tail_key[j - (PER - 3)][t] = value;
+        else
+#endif
+        key[j] = value;
+    }
+    auto key_at = [&](int j) -> uint32_t {
+#if !defined(__HIPCC__)
+        if (j >= PER - 3) return tail_key[j - (PER - 3)][t];
+#endif
+        return key[j];
+    };
     auto weight = [&](int64_t b) -> int { return b < n_bid ? R : (int) (n_kv - n_bid * R); };
     uint32_t prefix = 0;
     int above = 0;
@@ -774,7 +794,8 @@ __global__ void __launch_bounds__(TK_T) block_topk_reg_kernel(const float* __res
             if (b >= b1) break;
             const int w = weight(b);
             if (w == 0) continue;
-            if ((key[j] & hi_mask) == (prefix & hi_mask)) atomicAdd(&hist[warp][(key[j] >> shift) & 255], w);
+            const uint32_t k = key_at(j);
+            if ((k & hi_mask) == (prefix & hi_mask)) atomicAdd(&hist[warp][(k >> shift) & 255], w);
         }
         __syncthreads();
         if (t < 256) {                                // fold the warps' histograms into warp 0's
@@ -821,8 +842,9 @@ __global__ void __launch_bounds__(TK_T) block_topk_reg_kernel(const float* __res
         if (b >= b1) break;
         const int w = weight(b);
         if (w == 0) continue;
-        if (key[j] > thr) gt += w;
-        else if (key[j] == thr) eq += w;
+        const uint32_t k = key_at(j);
+        if (k > thr) gt += w;
+        else if (k == thr) eq += w;
     }
     int tot;
     const int eq_before = block_excl_scan(eq, s_warp, tot);
@@ -838,9 +860,10 @@ __global__ void __launch_bounds__(TK_T) block_topk_reg_kernel(const float* __res
         if (b >= b1) break;
         const int w = weight(b);
         if (w == 0) continue;
-        if (key[j] > thr) {
+        const uint32_t k = key_at(j);
+        if (k > thr) {
             for (int c = 0; c < w; ++c) out[wpos++] = (int32_t) (b * R + c);
-        } else if (key[j] == thr) {
+        } else if (k == thr) {
             for (int c = 0; c < w && eq_left > 0; ++c, --eq_left) out[wpos++] = (int32_t) (b * R + c);
         }
     }

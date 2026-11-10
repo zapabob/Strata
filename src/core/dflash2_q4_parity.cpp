@@ -83,7 +83,12 @@ struct Case { int n_in; std::vector<int> n_out; };
 
 }  // namespace
 
-int main() {
+int main(int argc, char** argv) {
+    std::FILE* output = nullptr;
+    if (argc == 3 && std::strcmp(argv[1], "--output") == 0) {
+        output = std::fopen(argv[2], "wbx");
+        if (!output) { std::perror("exclusive parity output"); return 2; }
+    } else if (argc != 1) return 2;
     std::mt19937 rng(20261031);
     std::normal_distribution<float> nd(0.0f, 0.1f);
     const Case cases[] = {{2560, {64}}, {2560, {64, 32}}, {2560, {4096, 1024, 1024}}, {4096, {2560}}, {7680, {2560}}, {12800, {2560}}, {2560, {7680, 7680}}, {2560, {16}}};
@@ -123,7 +128,7 @@ int main() {
         std::vector<float> xd((size_t) 8 * nb);
         cudaMemcpy(xq.data(), dxq, xq.size(), cudaMemcpyDeviceToHost);
         cudaMemcpy(xd.data(), dxd, xd.size() * 4, cudaMemcpyDeviceToHost);
-        for (int ncols : {1, 2, 3, 5, 8}) {
+        for (int ncols : {1, 2, 3, 4, 5, 6, 7, 8}) {
             strata::kernels::Df2Mat mats[3];
             for (int m = 0; m < nm; ++m) mats[m] = strata::kernels::Df2Mat{dev_w[m], dev_y[m], cs.n_out[m], true};
             strata::kernels::df2_gemm(mats, nm, dxq, dxd, n_in, ncols, nullptr);
@@ -133,6 +138,9 @@ int main() {
                 const int n_out = cs.n_out[m];
                 std::vector<float> y((size_t) 8 * n_out);
                 cudaMemcpy(y.data(), dev_y[m], y.size() * 4, cudaMemcpyDeviceToHost);
+                // Only initialized outputs participate in the cross-schedule
+                // byte comparison; the remaining columns are intentionally idle.
+                if (output && std::fwrite(y.data(), sizeof(float), (size_t) ncols * n_out, output) != (size_t) ncols * n_out) return 2;
                 for (int c = 0; c < ncols; ++c)
                     for (int r = 0; r < n_out; ++r) {
                         double ref = 0;
@@ -160,5 +168,6 @@ int main() {
         cudaFree(dx); cudaFree(dxq); cudaFree(dxd);
     }
     std::printf("%s: %d of %d cases match the CPU reference\n", bad == 0 ? "PASS" : "FAIL", total - bad, total);
+    if (output && std::fclose(output) != 0) return 2;
     return bad == 0 ? 0 : 1;
 }

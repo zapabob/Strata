@@ -4,7 +4,7 @@ import { useNative } from '../lib/native';
 import { projectedModelState } from '../lib/native-monitor';
 import { modelFamilyIcon } from '../lib/model-icons';
 import { TaskTree } from './TaskTree';
-import { WorkspaceFiles } from './WorkspaceFiles';
+import { WorkspaceFiles, type WorkspaceFileCommand } from './WorkspaceFiles';
 /** Quiet navigation, with the same destinations at every window size. */
 import { useEffect, useId, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
@@ -24,7 +24,7 @@ import { Brand } from '../components/Brand';
 import { HakuaLlamaChat, type LlamaMemoryAccess } from '../components/HakuaLlamaChat';
 import { api } from '../lib/client';
 import { useCopy } from '../lib/use-copy';
-import { addWorkspace, deleteSession, go, isUnread, liveChatIds, pickWorkspace, pushToast, renameSession, removeWorkspace, renameWorkspace, selectSession, setActiveWorkspace, setNavOpen, togglePin, toggleRail, setTheme, useStore } from '../lib/store';
+import { addWorkspace, deleteSession, go, isUnread, liveChatIds, moveSession, newSession, pickWorkspace, pushToast, renameSession, removeWorkspace, renameWorkspace, selectSession, setActiveWorkspace, setNavOpen, toggleArchive, togglePin, toggleRail, setTheme, useStore } from '../lib/store';
 export function Sidebar({ containerRef }: {
     containerRef: RefObject<HTMLElement | null>;
 }) {
@@ -68,6 +68,11 @@ export function Sidebar({ containerRef }: {
     const [name, setName] = useState('');
     const [deleteId, setDeleteId] = useState<string | null>(null);
     const [folders, setFolders] = useState<Record<string, boolean>>({});
+    const [workspaceMenu, setWorkspaceMenu] = useState<{ id: string; anchor: HTMLElement } | null>(null);
+    const [fileCommands, setFileCommands] = useState<Record<string, WorkspaceFileCommand>>({});
+    const [archivedOpen, setArchivedOpen] = useState(false);
+    const [moveChat, setMoveChat] = useState<string | null>(null), [destination, setDestination] = useState('');
+    const [workspaceBusy, setWorkspaceBusy] = useState(false);
     const menuTrigger = useRef<HTMLElement | null>(null);
     const current = library?.variants.find(v => v.id === library.loaded);
     const native = useNative(), nativeCurrent = native?.instances.find(i => i.id === native.defaultId);
@@ -84,10 +89,15 @@ export function Sidebar({ containerRef }: {
     const workingLine = awayChats.length === 1 && awayTitle ? tr("Working · {0}", [sessionTitle(awayTitle)]) : awayChats.length > 1 ? tr("{0} chats working", [awayChats.length]) : null;
     const modelLine = modelState.loaded ? workingLine ?? modelQuant : tr(status);
     const menuSession = sessions.find(s => s.id === menuId);
+    const menuWorkspace = workspaces.find(w => w.id === workspaceMenu?.id);
     const q = query.trim().toLowerCase();
     const matching = sessions.filter(s => (!s.archived || q || includeArchived) && (!q || `${sessionTitle(s)} ${s.messages.map(m => m.content).join(' ')}`.toLowerCase().includes(q))).sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || b.updatedAt.localeCompare(a.updatedAt));
     function openMenu(id: string, trigger: HTMLElement) { menuTrigger.current = trigger; setMenuId(id); }
     function closeMenu() { setMenuId(null); menuTrigger.current?.focus(); }
+    function showFiles(id: string, kind: WorkspaceFileCommand['kind']) {
+        setActiveWorkspace(id); setFolders(f => ({ ...f, [id]: true })); setWorkspaceMenu(null);
+        setFileCommands(commands => ({ ...commands, [id]: { id: (commands[id]?.id ?? 0) + 1, kind } }));
+    }
     return <>
     <aside className="nav" ref={containerRef} aria-label={tr("Main navigation")} aria-modal={navOpen && compact ? true : undefined} role={navOpen && compact ? 'dialog' : undefined} tabIndex={-1}>
       <div className="nav__top">{tr(!collapsed ? <a className="nav__brand" href={href('chat')} aria-label={tr("Strata — open chat")}><Brand variant="lockup" height={28} decorative className="nav__brand-lockup"/></a> : null)}<button type="button" className="nav__collapse" aria-label={tr(collapsed ? 'Show sidebar' : 'Hide sidebar')} title={tr(collapsed ? 'Show sidebar' : 'Hide sidebar')} onClick={() => compact ? setNavOpen(!navOpen) : toggleRail()}><Icon name="panel" size={20}/></button></div>
@@ -101,13 +111,13 @@ export function Sidebar({ containerRef }: {
                         e.preventDefault();
                         closeSearch();
                     }
-                }}/><IconBtn name="x" title={tr("Close chat search")} onClick={closeSearch}/></div> : <><span className="navgroup__label">{tr("Workspaces")}</span><div className="ws__tools"><button ref={searchTrigger} type="button" className="st-btn st-btn--icon" aria-label={tr("Search chats")} title={tr("Search chats")} onClick={() => setSearchOpen(true)}><Icon name="search" size={18}/></button><IconBtn name="folder-plus" title={tr("Add a workspace folder")} onClick={() => { void pickWorkspace().then(path => path ? addWorkspace(path) : undefined); }}/></div></>)}</div>
+                }}/><IconBtn name="x" title={tr("Close chat search")} onClick={closeSearch}/></div> : <><span className="navgroup__label">{tr("Workspaces")}</span><div className="ws__tools"><button ref={searchTrigger} type="button" className="st-btn st-btn--icon" aria-label={tr("Search chats")} title={tr("Search chats")} onClick={() => setSearchOpen(true)}><Icon name="search" size={18}/></button><IconBtn name="clock" title={tr('Archived chats')} onClick={() => setArchivedOpen(true)}/><IconBtn name="folder-plus" title={tr("Add a workspace folder")} onClick={() => { void pickWorkspace().then(path => path ? addWorkspace(path) : undefined); }}/></div></>)}</div>
           {workspaces.map(w => {
                 const expanded = folders[w.id] !== false || !!q;
                 const rows = matching.filter(s => s.workspace === w.path || !!w.aliases?.includes(s.workspace));
                 const shown = q ? rows : rows.slice(0, 20);
                 return <div className="ws__group" key={w.id}>
-              <div className={cx('ws__row', activeWorkspace === w.id && 'is-active')}><button className="ws__name" aria-expanded={expanded} onClick={() => { setActiveWorkspace(w.id); setFolders(f => ({ ...f, [w.id]: !expanded })); }}><Icon name="chevron" size={14} className={cx('ws__chev', expanded && 'is-open')}/><Icon name="folder" size={17}/><span>{w.name}</span></button><IconBtn name="pencil" title={tr("Rename {0}", [w.name])} onClick={() => { setWsName(w.name); setNavOpen(false); setRenameWsId(w.id); }}/>{tr(w.id !== 'root' ? <IconBtn name="x" title={tr("Remove {0} from sidebar", [w.name])} onClick={() => { setNavOpen(false); setRemoveWorkspaceId(w.id); }}/> : null)}</div>
+              <div className={cx('ws__row', activeWorkspace === w.id && 'is-active')}><button className="ws__name" title={w.path} aria-expanded={expanded} onClick={() => { setActiveWorkspace(w.id); setFolders(f => ({ ...f, [w.id]: !expanded })); }} onContextMenu={event => { event.preventDefault(); setWorkspaceMenu({ id: w.id, anchor: event.currentTarget }); }}><Icon name="chevron" size={14} className={cx('ws__chev', expanded && 'is-open')}/><Icon name="folder" size={17}/><span>{w.name}</span></button><button type="button" className="st-btn st-btn--icon workspace-menu-trigger" aria-label={tr('Workspace actions for {0}', [w.name])} title={tr('Workspace actions for {0}', [w.name])} aria-haspopup="menu" aria-expanded={workspaceMenu?.id === w.id} onClick={event => setWorkspaceMenu({ id: w.id, anchor: event.currentTarget })}><Icon name="ellipsis" size={16}/></button></div>
               {tr(expanded ? <div className="navsessions">
                 {tr(shown.map(s => <div key={s.id}>
                   <div className="ws__session row"><a className="navsession" href={href('chat', s.id)} data-working={working.has(s.id) || undefined} aria-current={activeSession === s.id && location.route === 'chat' ? 'page' : undefined} onClick={() => selectSession(s.id)} onContextMenu={e => { e.preventDefault(); openMenu(s.id, e.currentTarget); }} title={sessionTitle(s)}>{tr(working.has(s.id) ? <span className="navsession__working" role="img" aria-label={tr("Working")} title={tr("Working")}><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><circle className="navsession__track" cx="8" cy="8" r="6"/><circle className="navsession__arc" cx="8" cy="8" r="6" pathLength="100"/></svg></span> : null)}<span className="navsession__title">{sessionTitle(s)}</span>{tr(s.pinned ? <span aria-label={tr("Pinned")}><Icon name="pin" size={12}/></span> : <span className="navsession__time">{relTimeShort(s.updatedAt)}</span>)}{tr(!working.has(s.id) && isUnread(s, activeSession) ? <span className="navsession__unread" aria-label={tr("Unread")}/> : null)}{tr(s.archived ? <span className="xs muted">{tr("Archived")}</span> : null)}</a><button className="st-btn st-btn--icon session-overflow" aria-label={tr("Actions for {0}", [sessionTitle(s)])} onClick={e => openMenu(s.id, e.currentTarget)}><Icon name="ellipsis" size={16}/></button></div>
@@ -115,7 +125,7 @@ export function Sidebar({ containerRef }: {
                 {tr(!shown.length ? <p className="small muted ws__empty">{tr(q ? 'No matching chats' : 'No chats yet')}</p> : null)}
                 {tr(!q && rows.length > shown.length ? <button className="ws-view small" onClick={() => { setNavOpen(false); setRecentOpen(true); }}>{tr("View all chats")}</button> : null)}
               </div> : null)}
-              <WorkspaceFiles workspace={w} hidden={!expanded}/>
+              <WorkspaceFiles workspace={w} hidden={!expanded} command={fileCommands[w.id]}/>
             </div>;
             })}
         </div>
@@ -129,9 +139,21 @@ export function Sidebar({ containerRef }: {
         <div className="nav__bottom"><MoreMenu current={location.route}/><button className="st-btn st-btn--icon theme-switch" aria-label={tr(dark ? 'Switch to light mode' : 'Switch to dark mode')} title={tr(dark ? 'Switch to light mode' : 'Switch to dark mode')} onClick={() => setTheme(dark ? 'light' : 'dark')}><span key={String(dark)} className="theme-switch__icon"><Icon name={dark ? 'sun' : 'moon'} size={19}/></span></button></div>
       </div>
     </aside>
+    {workspaceMenu && menuWorkspace ? <FloatingMenu anchor={workspaceMenu.anchor} title={tr('Workspace actions for {0}', [menuWorkspace.name])} onClose={() => setWorkspaceMenu(null)}>
+      <button role="menuitem" className="menu__item" onClick={() => { setActiveWorkspace(menuWorkspace.id); setFolders(f => ({ ...f, [menuWorkspace.id]: true })); const chat = newSession(); go('chat', chat.id); setWorkspaceMenu(null); }}><Icon name="new-chat"/>{tr('New chat')}</button>
+      <button role="menuitem" className="menu__item" onClick={() => showFiles(menuWorkspace.id, 'files')}><Icon name="file"/>{tr('Show files')}</button>
+      <button role="menuitem" className="menu__item" onClick={() => showFiles(menuWorkspace.id, 'create-file')}><Icon name="file"/>{tr('New file')}</button>
+      <button role="menuitem" className="menu__item" onClick={() => showFiles(menuWorkspace.id, 'create-dir')}><Icon name="folder-plus"/>{tr('New folder')}</button>
+      <button role="menuitem" className="menu__item" onClick={() => showFiles(menuWorkspace.id, 'recovery')}><Icon name="trash"/>{tr('Workspace trash')}</button>
+      <button role="menuitem" className="menu__item" onClick={() => { setWsName(menuWorkspace.name); setRenameWsId(menuWorkspace.id); setWorkspaceMenu(null); setNavOpen(false); }}><Icon name="pencil"/>{tr('Rename workspace')}</button>
+      <button role="menuitem" className="menu__item" onClick={() => { void api.post('/api/workspace/open', { root: menuWorkspace.id, path: '' }).catch(error => pushToast('error', 'Could not open folder', String(error))); setWorkspaceMenu(null); }}><Icon name="folder"/>{tr('Open in app')}</button>
+      {menuWorkspace.id !== 'root' ? <button role="menuitem" className="menu__item" onClick={() => { setRemoveWorkspaceId(menuWorkspace.id); setWorkspaceMenu(null); setNavOpen(false); }}><Icon name="x"/>{tr('Remove from sidebar')}</button> : null}
+    </FloatingMenu> : null}
     {tr(menuId && menuSession ? <FloatingMenu anchor={menuTrigger.current} title={tr("Actions for {0}", [sessionTitle(menuSession)])} onClose={closeMenu}>
       <button role="menuitem" className="menu__item" onClick={() => { setName(sessionTitle(menuSession)); setNavOpen(false); setRenameId(menuId); setMenuId(null); }}><Icon name="pencil"/>{tr("Rename")}</button>
       <button role="menuitem" className="menu__item" onClick={() => { togglePin(menuId); closeMenu(); }}><Icon name="pin"/>{tr(menuSession.pinned ? 'Unpin' : 'Pin')}</button>
+      <button role="menuitem" className="menu__item" disabled={working.has(menuId)} onClick={() => { setMoveChat(menuId); setDestination(workspaces.find(w => w.path === menuSession.workspace)?.id ?? workspaces[0]?.id ?? ''); closeMenu(); }}><Icon name="folder"/>{tr('Move chat')}</button>
+      <button role="menuitem" className="menu__item" disabled={working.has(menuId)} onClick={() => { toggleArchive(menuId); closeMenu(); }}><Icon name="clock"/>{tr(menuSession.archived ? 'Restore chat' : 'Archive chat')}</button>
       <button role="menuitem" className="menu__item menu__item--danger" onClick={() => { setNavOpen(false); setDeleteId(menuId); setMenuId(null); }}><Icon name="trash"/>{tr("Delete chat")}</button>
     </FloatingMenu> : null)}
     {llamaAccess?<HakuaLlamaChat access={llamaAccess} onClose={()=>setLlamaAccess(null)}/>:null}
@@ -146,21 +168,27 @@ export function Sidebar({ containerRef }: {
                     renameSession(renameId, name.trim());
                 setRenameId(null);
             }}>{tr("Save name")}</Btn></>}><label className="input-field" htmlFor="chat-name"><span>{tr("Chat name")}</span><input className="st-input" id="chat-name" value={name} onFocus={e => e.currentTarget.select()} onChange={e => setName(e.target.value)}/></label></Dialog>
-    <Dialog open={!!renameWsId} compact title={tr("Rename workspace")} onClose={() => setRenameWsId(null)} actions={<><Btn onClick={() => setRenameWsId(null)}>{tr("Cancel")}</Btn><Btn variant="primary" disabled={!wsName.trim()} onClick={() => {
-                if (renameWsId)
-                    void renameWorkspace(renameWsId, wsName.trim());
-                setRenameWsId(null);
+    <Dialog open={!!renameWsId} compact title={tr("Rename workspace")} noClose={workspaceBusy} onClose={() => setRenameWsId(null)} actions={<><Btn disabled={workspaceBusy} onClick={() => setRenameWsId(null)}>{tr("Cancel")}</Btn><Btn variant="primary" disabled={workspaceBusy || !wsName.trim()} onClick={() => {
+                if (renameWsId) { setWorkspaceBusy(true); void renameWorkspace(renameWsId, wsName.trim()).then(saved => { if (saved) setRenameWsId(null); }).finally(() => setWorkspaceBusy(false)); }
             }}>{tr("Save name")}</Btn></>}><label className="input-field" htmlFor="workspace-name"><span>{tr("Workspace name")}</span><input className="st-input" id="workspace-name" value={wsName} onFocus={e => e.currentTarget.select()} onChange={e => setWsName(e.target.value)}/></label><p className="small muted">{tr("Only the name changes. The folder stays where it is.")}</p></Dialog>
     <Dialog open={!!deleteId} compact title={tr("Delete this chat?")} onClose={() => setDeleteId(null)} actions={<><Btn onClick={() => setDeleteId(null)}>{tr("Keep chat")}</Btn><Btn variant="danger" onClick={() => {
                 if (deleteId)
                     deleteSession(deleteId);
                 setDeleteId(null);
             }}>{tr("Delete chat")}</Btn></>}><p>{tr("This chat will be permanently deleted.")}</p></Dialog>
-    <Dialog open={!!removeWorkspaceId} title={tr("Remove workspace from sidebar?")} onClose={() => setRemoveWorkspaceId(null)} actions={<><Btn onClick={() => setRemoveWorkspaceId(null)}>{tr("Keep workspace")}</Btn><Btn onClick={() => {
-                if (removeWorkspaceId)
-                    void removeWorkspace(removeWorkspaceId).then(() => setRemoveWorkspaceId(null));
+    <Dialog open={!!removeWorkspaceId} title={tr("Remove workspace from sidebar?")} noClose={workspaceBusy} onClose={() => setRemoveWorkspaceId(null)} actions={<><Btn disabled={workspaceBusy} onClick={() => setRemoveWorkspaceId(null)}>{tr("Keep workspace")}</Btn><Btn disabled={workspaceBusy} onClick={() => {
+                if (removeWorkspaceId) { setWorkspaceBusy(true); void removeWorkspace(removeWorkspaceId).then(removed => { if (removed) setRemoveWorkspaceId(null); }).finally(() => setWorkspaceBusy(false)); }
             }}>{tr("Remove from sidebar")}</Btn></>}><p>{tr("Files stay on your computer. Add this folder again to reopen its chats.")}</p></Dialog>
     <Dialog open={recentOpen} title={tr("All chats")} onClose={() => setRecentOpen(false)}><div className="stack"><label className="row small"><input type="checkbox" checked={includeArchived} onChange={e => setIncludeArchived(e.target.checked)}/>{tr("Include archived chats")}</label><input type="search" className="st-input" placeholder={tr("Search chats…")} aria-label={tr("Search all chats")} value={query} onChange={e => setQuery(e.target.value)}/>{tr(matching.map(s => <button className="recent-chat" key={s.id} onClick={() => { selectSession(s.id); go('chat', s.id); setRecentOpen(false); }}><span>{sessionTitle(s)}</span><span className="xs muted">{tr(relTime(s.updatedAt))}</span></button>))}{tr(!matching.length ? <p className="small muted">{tr("No matching chats. Try another search.")}</p> : null)}</div></Dialog>
+    <Dialog open={archivedOpen} title={tr('Archived chats')} onClose={() => setArchivedOpen(false)} actions={<Btn onClick={() => setArchivedOpen(false)}>{tr('Close')}</Btn>}>
+      <p className="small muted">{tr('Archived chats keep their messages and can be restored.')}</p>
+      <div className="stack">{sessions.filter(s => s.archived).map(s => <div className="row" key={s.id}><span className="workspace-files__path">{sessionTitle(s)}</span><Btn size="sm" aria-label={tr('Restore chat {0}', [sessionTitle(s)])} onClick={() => toggleArchive(s.id)}>{tr('Restore chat')}</Btn></div>)}</div>
+      {!sessions.some(s => s.archived) ? <p>{tr('No archived chats.')}</p> : null}
+    </Dialog>
+    <Dialog open={!!moveChat} compact title={tr('Move chat')} noClose={workspaceBusy} onClose={() => setMoveChat(null)} actions={<><Btn disabled={workspaceBusy} onClick={() => setMoveChat(null)}>{tr('Cancel')}</Btn><Btn variant="primary" disabled={workspaceBusy || !destination} onClick={() => { if (moveChat) { setWorkspaceBusy(true); void moveSession(moveChat, destination).then(moved => { if (moved) { setFolders(f => ({ ...f, [destination]: true })); setMoveChat(null); } }).finally(() => setWorkspaceBusy(false)); } }}>{tr('Move chat')}</Btn></>}>
+      <label className="input-field"><span>{tr('Workspace')}</span><select className="st-input" value={destination} disabled={workspaceBusy} onChange={event => setDestination(event.target.value)}>{workspaces.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}</select></label>
+      <p className="small muted">{tr('The chat and its working folder change together. Files stay where they are.')}</p>
+    </Dialog>
   </>;
 }
 function RecentChatLink({ session, active, slot }: {

@@ -15,3 +15,6 @@
 .workspace-files__error { color: var(--st-danger-text); overflow-wrap: anywhere; }
 .workspace-files__editor.st-input { width: 100%; min-height: 45vh; resize: vertical; font-family: var(--st-font-mono); font-size: var(--st-fs-sm); line-height: var(--st-lh-body); tab-size: 4; }
 .workspace-files__undo { flex-wrap: wrap; margin-top: var(--st-s-2); }
+.workspace-files__toolbar { flex-wrap: wrap; }
+.workspace-files__toolbar .workspace-files__path { flex-basis: 100%; }
+.workspace-files__item[aria-current='true'] { background: var(--st-surface-2); color: var(--st-accent-text); }
