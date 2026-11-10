@@ -1,7 +1,6 @@
 # 0.5.5-local.1 preview publication and readback
 
-Agent: OpenCode. Status: LOCAL_GATE_PASS. Publication and public
-readback are pending at this checkpoint. User approved push to main and a new
+Agent: OpenCode. Status: PUBLISHED_AND_ANONYMOUSLY_VERIFIED. User approved push to main and a new
 prerelease while retaining stable0.5.1/Latest and all historical assets.
 
 ## Bound sources and installed acceptance
@@ -106,8 +105,8 @@ passed, but Bing result links were unconfirmed and DuckDuckGo required human
 verification. The earlier title-only assertion is invalidated in the feature
 log; no challenge was bypassed.
 
-Next: finish local gate, reviewed doc/release commit, annotated tag, normal push,
-draft upload/digest gate, publish and anonymous readback. User approval of normal
+The closeout below records local gate, doc/release commit, annotated tag, normal
+push, draft upload/digest gate, publish and anonymous readback. Approval of normal
 unload does not authorize stopping an absent model or unrelated process.
 Self-review-event:qa_defect. Corrected backup/capture/PATH/parser boundaries with
 fresh attempts/evidence; rejected weakened floors, test-start or quality claims.
@@ -131,3 +130,41 @@ latest9222189e152fc98d85294f03ef3527fdd49542e6 and12asset identities/digests.
 git fetch origin main --no-tags confirmed origin/main atc1ceee69 and the intended
 three new local source commits. No remote commit was overwritten. AGENTS changes
 only measured artifact/source status and preserve all operating rules/floors.
+
+## Publication and complete anonymous readback
+
+Release checkpoint400f79d01e30c194ca7f152487cbf2e3f28a2bdc was committed after
+staged diff/credential/payload checks:26files,0findings. Immutable annotated
+v0.5.5-local.1 object2b65fe59f5ef8dc712c9daccaf630189448ada02 targets that commit.
+An atomic non-force push advanced origin/main and this new tag only.
+
+publish-release-r1 passed: fresh draft, all14uploaded sizes/GitHub SHA digests
+matched, then prerelease published with latest=false. Actual release440683045:
+https://github.com/zapabob/Strata/releases/tag/v0.5.5-local.1.
+verify-release-public-r1 passed: full anonymous HTTPS downloads of all14assets,
+exact complete sizes/hashes, public built-in feed signature/sequence, annotated
+tag/commit and stable release/alias/12asset snapshot equality. No authentication
+was sent in those download requests. Both owned Jobs finished/drained, active0,
+dropped output0, resource floors intact. Public evidence is summarized in
+release-055-20261111/PUBLIC_VERIFICATION.json; original H:receipts stay immutable.
+
+Read-only verify-history-r1 separately passed the old054 release439895291,
+all14old asset sizes/digests and annotated tag3eb250a563920880da012af9a633fa50b332e0d0,
+alongside stable/Latest snapshot equality. No older release/tag/asset was replaced.
+The closeout commit records readback only; it does not amend the release tag or
+rebuild any published payload. The installer and root/main installation links now
+refer to the actual published055 assets. No upstream PR was created.
+
+Self-review-event:ticket_completed. Evidence: installed/native/public receipts,
+scope-separated source/packaged/installed checks and stable/history readback.
+Decision: preserve narrow QA fixes/metadata and known failed attempts; no further
+governance change. Residual limits remain exactly as recorded above; publication
+does not turn broad model/search quality into a passing qualification.
+
+The tracked PUBLIC_VERIFICATION.json was compared semantically with the immutable
+H:anonymous readback/history receipts by history.py --record: all14asset records
+match. The new history helper's flake8 E9/F and final diff checks passed. A final
+read-only process inspection found the normal shell and a llama-server again;
+normal use had resumed. No additional stop was performed. The earlier unloaded
+normal-startup measurement is time-bounded, not a claim that a later user-started
+model is absent. Final handoff preserves the running app/user state.

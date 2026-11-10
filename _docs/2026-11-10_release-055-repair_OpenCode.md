@@ -1,6 +1,6 @@
 # Release repair: CUDA resources, Prism lifecycle, agent chat and sidebar CRUD
 
-Status: IN_PROGRESS. Agent: OpenCode. User requests resolution of the published
+Status: INSTALLED_PREVIEW_PUBLISHED_AND_VERIFIED. Agent: OpenCode. User requests resolution of the published
 preview's12 resource violations/releaseQualified=false/Prism timeout and a new
 distribution installer. The supplied screenshot adds actual interrupted local
 agent chat. User subsequently selected all four sidebar improvements: chat/folder

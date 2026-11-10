@@ -1,6 +1,6 @@
 # Installation entry points, folder chat deletion and proactive browser search
 
-Agent: OpenCode. Status: IN_PROGRESS.
+Agent: OpenCode. Status: IMPLEMENTED_INSTALLED_AND_PUBLISHED; measured limits below remain.
 
 ## Requests and scope
 
