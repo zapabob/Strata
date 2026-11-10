@@ -4,11 +4,14 @@ The installed personal build (product0.5.4-local.1, Control0.5.5, native0.5.4) c
 [`f33c8c30`](https://github.com/Niko1221/Strata/commit/f33c8c30588ff00e24b6b63bad0bf6a14da19081)
 and [v0.2.13](https://github.com/Niko1221/Strata/releases/tag/v0.2.13) with the
 Hakua fork. Checked on 2026-11-10. It was built and installed locally, with
-artifact-bound checks and remaining limits below. It is not a public release.
+artifact-bound checks and remaining limits below. The same tested binaries are
+distributed as [v0.5.4-local.1 prerelease](https://github.com/zapabob/Strata/releases/tag/v0.5.4-local.1),
+using an NSIS installer and a verified tar.7z bundle. Publication is not qualification.
 
 App/Control source is85a78234; native source is separately frozen at7bb24974.
 The earlier personal0.5.3-local.1 artifacts from1f666144/ded724a4 remain preserved.
-Their results are not used as new checks. Public downloads remain0.5.1.
+Their results are not used as new checks. Public stable/Latest remains0.5.1;
+the preview uses its own immutable download URL and engine import.
 
 ## Combined APIs
 

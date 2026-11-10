@@ -1,77 +1,71 @@
 # Hakua / Strata
 
-Installed personal build: `0.5.4-local.1` (Control `0.5.5`, native `0.5.4`),
-including opt-in refusal-direction GUI controls for compatible Qwen3.8 engines.
-Installer name: `Strata-0.5.4-local.1-windows-x64-setup.exe`. Build/overwrite and
-actual installed WebView2 checks passed for its short Qwen3.6/Prism and workspace paths;
-this is not a public download. Twelve measured CUDA resource violations remain;
-`releaseQualified=false`. Prism passed on rerun after one restart warm-up timeout.
-
-**Source integration:** official `v0.2.13` / main at `f33c8c30`, with Hakua and
-the fork's runtime/state contracts retained. App/Control source `85a78234` and
-native source `7bb24974` have separate artifact-bound checks. The app is open
-normally without debugging and starts with models unloaded. See
-[the integration record](docs/UPSTREAM_0213.md) for evidence and limits.
-
-The installed personal `0.5.2-local.2` build
-(`Strata-0.5.2-local.2-windows-x64-setup.exe`, Control `0.5.3`, native `0.5.2`,
-PrismML `0.4.1`) was measured **before** this source merge. Its four resource-guard
-failures remain open; `releaseQualified=false`. The download links below describe
-published `0.5.1`, not a new installer for this integration.
-
-Version 0.5.1 adds manual model loading and fixes native Qwen3.6 startup. Existing models and verified expert packs are retained.
-
-Run local language models in a Windows desktop app, with chat, model controls,
-tools and optional Hakua memory. This is the [zapabob fork](https://github.com/zapabob/Strata)
-of [Niko1221/Strata](https://github.com/Niko1221/Strata).
+Run local language models from a Windows desktop app: chat, reuse your GGUFs,
+manage workspace files and choose what Hakua memory may read or save.
+This is the [zapabob fork](https://github.com/zapabob/Strata) of
+[Niko1221/Strata](https://github.com/Niko1221/Strata), integrating official
+**0.2.13** while retaining the fork's memory, model and cache controls.
 
 [English](README.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [Deutsch](README.de.md) · [Français](README.fr.md) · [Español](README.es.md) · [Português](README.pt-BR.md) · [Polski](README.pl.md)
 
-## Windows release
+## Download the Windows preview
 
-Native Qwen3.6 reached READY in 41.250 seconds with a 4096-cell configuration and passed six short private-cache checks. A full 98K/131K input and FP16/NVFP4 model quality are not qualified. Read the [test results and limits](docs/HAKUA_RELEASE.md).
+**[0.5.4-local.1 prerelease](https://github.com/zapabob/Strata/releases/tag/v0.5.4-local.1)**
+targets Windows x64 / CUDA `sm_120`. Checks used an RTX 5060 Ti with 16 GB VRAM
+and 32 GB RAM. **Twelve CUDA resource-guard violations remain;
+`releaseQualified=false`.** Prism passed an unchanged rerun after one restart
+warm-up timeout. Read the [measured scope and limits](docs/HAKUA_RELEASE.md).
 
-This release targets Windows x64 CUDA sm_120. Local checks used an RTX 5060 Ti with 16 GB VRAM and 32 GB RAM. Read the [release checks and remaining limits](docs/HAKUA_RELEASE.md) before installing.
+| Download | Contents |
+| --- | --- |
+| [Windows installer](https://github.com/zapabob/Strata/releases/download/v0.5.4-local.1/Strata-0.5.4-local.1-windows-x64-setup.exe) · 112 MB | Tauri NSIS app, private Node/Python and Control. GPU engine is separate. |
+| [One-download tar.7z bundle](https://github.com/zapabob/Strata/releases/download/v0.5.4-local.1/Strata-0.5.4-local.1-windows-x64.tar.7z) · 1.65 GB | Same installer, signed engine, Control, signed feed, checksums and bilingual instructions. |
+| [Signed CUDA engine](https://github.com/zapabob/Strata/releases/download/v0.5.4-local.1/strata-engine-0.5.4-windows-x86_64-cuda-cuda13.tar.gz) · 1.47 GB | Import this compressed file from the app's preparation screen. |
+| [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.5.4-local.1/SHA256SUMS.txt) | Verify downloads before running or extracting them. |
 
-Product version: **0.5.1**. The release contains the setup EXE
-and its checksums. It uses manual updates and has no Windows code signature.
+The installer follows upstream's Windows layout. It is a fork distribution,
+with fork-signed components; the EXE has no Windows code signature or Tauri
+updater signature. Updates are manual. The previous stable
+[0.5.1 release](https://github.com/zapabob/Strata/releases/tag/v0.5.1) remains
+GitHub Latest and the default stable feed.
 
-1. Get the [Windows installer](https://github.com/zapabob/Strata/releases/download/v0.5.1/Strata-0.5.1-windows-x64-setup.exe)
-   and compare it with [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.5.1/SHA256SUMS.txt).
-2. Quit an existing Strata instance, including the tray app, then run the installer.
-   Keep models and personal data outside the application folder.
-3. Install the signed CUDA component from the preparation screen, using the latest feed or the included `strata-engine-0.5.1-windows-x86_64-cuda-cuda13.tar.gz`. Node and Python are included; no system interpreter, pip or compiler is needed.
-4. Choose a model that fits the computer, or select **Use a local GGUF** for
-   files already on disk.
+### Install in four steps
 
-See [installation](docs/HAKUA_INSTALL.md), [release checks and limits](docs/HAKUA_RELEASE.md)
-and the [release page](https://github.com/zapabob/Strata/releases/tag/v0.5.1).
-The fork uses its own installer and component feed.
+1. Download the bundle and checksums. Extract the **7z, then the tar**; check
+   `BUNDLE-SHA256SUMS.txt` inside. Full model weights and personal data are excluded.
+2. Finish requests, unload models, back up app data and quit Strata, including
+   its tray icon. Run `Strata-0.5.4-local.1-windows-x64-setup.exe` once.
+3. On the preparation screen choose **I already have the file** and select this
+   release's `strata-engine-0.5.4-windows-x86_64-cuda-cuda13.tar.gz`, still compressed.
+   The app verifies the fork signature and payload hashes before activation.
+4. Select a model that fits the PC, or **Use a local GGUF**, then press **Load**.
+   Startup leaves models unloaded. System Python, Node, pip and compilers are unnecessary.
 
-Versions follow [SemVer 2.0.0](https://semver.org/): app `0.5.1`, native engine `0.5.1`, Control `0.5.1`; unchanged PrismML/TurboQuant runtimes stay `0.4.0`. The default app location is `%LOCALAPPDATA%\Programs\Strata` on C:, independently of the model folder. Existing installs may remember another drive.
+The normal app location is `%LOCALAPPDATA%\Programs\Strata`; an older install
+may remember another folder. Models, chats and memory retain their separate
+data locations. See [installation and rollback](docs/HAKUA_INSTALL.md).
 
-The NSIS installer is also included in the [tar.7z bundle](https://github.com/zapabob/Strata/releases/download/v0.5.1/Strata-0.5.1-windows-x64.tar.7z), together with the signed CUDA component, Control, checksums and installation instructions. Model weights and personal data are excluded. The release uses `v0.5.1`, the `latest` tag alias and GitHub Latest.
+## What the fork adds
 
-## Use the files you already have
+- **Existing model reuse.** Select one shard of a split GGUF; the complete set
+  is checked in place. Catalog setup reuses a unique valid local match and asks
+  when several match. Model files, custom names and verified expert packs remain on disk.
+- **Workspace files.** An on-demand sidebar editor can read, edit, create and
+  rename files/folders in registered workspaces. Delete uses reversible trash;
+  stale edits are rejected. [Workspace guide](docs/WORKSPACE_FILES.md).
+- **Private conversation caches.** Supported Qwen3.6 engines reuse a prefix only
+  within its authenticated conversation. Owner changes, cancellation, errors
+  and idle expiry clear private state. Shared caches remain disabled.
+- **Hakua memory.** Reading and saving have separate consent controls for each
+  turn. Open the sidebar after loading a supported model; enabling memory for
+  PrismML/TurboQuant can restart its owned server. [Memory guide](serve/MEMORY_HARNESS.md).
+- **Optional model controls.** Spin(8), Triality, TurboQuant cache settings and
+  compatible Qwen3.8 refusal-direction controls remain opt-in. The licensed small
+  control vector is off by default; positive Qwen3.8 projection is unqualified.
 
-For a split GGUF, choose one shard; Strata checks the complete set. Imported
-weights stay in their original location. A generic metadata name such as `Hf`
-is displayed using the filename. A name you choose is preserved when inspected
-again or after a restart.
-
-Settings for a registered local model open while the other model lists are still loading.
-
-Before preparing a catalog model, Strata checks the selected model folder for a
-matching local set, including nested repository folders. A single valid match
-is reused. Multiple matches require a file choice so a different fine-tune is
-not selected silently. An existing canonical download keeps its usual integrity
-checks and partial-download recovery.
-
-Native models may need a one-time pack conversion after the GGUF is available.
-That stage shows completed layers when the packer supplies them. An interrupted
-low-memory pack counts the disk space already allocated to its temporary file
-when checking room to resume. Engine and optional draft-layer downloads are
-separate from reuse of the model's own GGUF files.
+Native models may need a one-time expert-pack conversion. Progress and resume
+reuse existing files where supported. Engine and optional draft-layer downloads
+are separate from reuse of the model's GGUF.
 
 | Model path | How to load |
 | --- | --- |
@@ -83,53 +77,43 @@ File validation checks structure and compatibility metadata; the engine still
 checks actual allocation and model support at load time. A failed or stopped
 engine clears the loading indicator. See [local backends](docs/LOCAL_LLAMA_BACKENDS.md).
 
-## Components and memory
+## Versions and source
 
 | Component | Version / distribution |
 | --- | --- |
-| Desktop GUI / Host | `0.5.1`, this app release |
-| Native engine | `0.5.1` |
-| Control | `0.5.1` |
+| Desktop GUI / Host | `0.5.4-local.1` |
+| Native CUDA engine | `0.5.4` |
+| Control / Terminal | `0.5.5` |
+| PrismML / TurboQuant | `0.4.1` / `0.4.0` |
 | Private runtimes | Node `24.22.2`, CPython `3.12.15` |
 | Hakua-memory | `0.3.5` |
-| CUDA / PrismML / TurboQuant component candidate | [release status](docs/HAKUA_RELEASE.md) |
-| Upstream source reference | `5d37280d`, upstream `0.2.11` |
+| Upstream integration | `v0.2.13` / `f33c8c30` |
+| App / Control build source | `85a78234` |
+| Separately frozen native source | `7bb24974` |
 
-Version 0.5.1 integrates upstream 0.2.11 and main fixes through `5d37280d`: per-chat files, active-turn reattachment, IME input fixes, renderer recovery, updated model sets, stream ownership fixes and Pillow 13. Hakua memory, local GGUF reuse and Qwen3.6 private caches remain available. The new CUDA build needs its own qualification; historical 0.4.1 results do not qualify its new defaults. Native full-window generation remains unqualified. See [release checks and publication status](docs/HAKUA_RELEASE.md).
+Product, Control and engine versions are independent. `SOURCE.json` in the
+release records their full commit and artifact identities. See the
+[0.2.13 integration record](docs/UPSTREAM_0213.md) for API changes and tests.
 
-After loading a supported model, open **Hakua memory** in the sidebar. Reading
-and saving memory have separate consent controls for each turn. Opening memory
-for PrismML / TurboQuant restarts the owned server with authentication and
-private caches; finish an active request first. See [the memory guide](serve/MEMORY_HARNESS.md).
+## What was checked
 
-## Supported limits
+Five-job incremental builds, CPU/GPU/sanitizer checks and short native requests
+passed: 7 bounded, 7 legacy and 2 restart requests, using 4096 capacity. The
+installer passed 13 startup self-tests, matched 29,544 payload files and preserved
+4,028 backed-up user files during the measured overwrite. Actual installed
+WebView2 Qwen3.6, Prism and workspace checks passed, with the retained Prism timeout.
 
-This Windows x64 preview is checked on an RTX 5060 Ti, CUDA sm_120, with 32 GB
-system RAM. It does not qualify other GPUs, operating systems, native image
-input or a separate native DeepSeek engine. RAM, VRAM, disk speed and available
-disk space affect which models can run and how long preparation takes.
+The resource guard remains **FAIL (12 violations)**. Full-window generation,
+general/low-precision model quality, other GPUs/backends and positive Qwen3.8
+projection remain unqualified. Full server discovery timed out, six language
+catalogs have pre-existing missing keys and a supplemental memory-browser fixture
+failed to launch. [Results, failed attempts and limits](docs/UPSTREAM_0213.md).
 
-The new Qwen3.6 private-cache path retains state within the same authenticated
-conversation. Another conversation or user cannot reuse it. Switching owners,
-cancellation, errors or five idle minutes clear the private cache. Requests
-without a conversation ID do not reuse cached state. The Host’s two pre-start refusal branches have been removed. The server checks
-the running engine’s INFO capability before accepting private-cache requests,
-including compatible local builds. Initially it serves one request at a time, with
-shared prompt and conversation caches disabled. Its mapped expert pack remains
-opt-in and checks an executable-digest allowlist. Experimental kernel switches
-are separately opt-in. The legacy host
-arena can need about 18.7 GiB plus a reserve; 32 GB total RAM does not guarantee
-a successful start. Consult the release record for measurements and open checks.
-TurboQuant K modes remain unavailable after failed real-model quality checks.
-
-A successful short response with a 131,072 context setting is not full-window
-generation or quality qualification. Measured conditions, failures and tests
-not run are recorded separately in [HAKUA_RELEASE.md](docs/HAKUA_RELEASE.md).
-Spin(8), Triality, Query-v3 and Bonsai remain opt-in experiments.
-
-## 96K–128K on a 16 GB GPU
-
-The editor offers 96K (98,304) and 128K (131,072). On the tested RTX 5060 Ti 16 GB / 32 GB RAM PC, Qwen3.6 UD-Q4_K_XL with PrismML, Q8 K/V and 28 CPU MoE layers evaluated 130,792 input tokens without truncation and recovered all three distant lookup codes. This single request took about 29 minutes; it does not establish general quality or speed for other models. See the [settings and full-window results](docs/WINDOWS_16GB_CONTEXT.md).
+Native image input and a separate native DeepSeek engine are not included in
+this Windows package. Mapped expert packs require a recognized executable;
+TurboQuant K modes with failed quality checks remain unavailable. Available RAM,
+VRAM and disk space still constrain each model. The [historical 96K–128K results](docs/WINDOWS_16GB_CONTEXT.md)
+describe their original artifacts and do not qualify this preview.
 
 ## Development
 

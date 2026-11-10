@@ -1,5 +1,11 @@
 # Security
 
+For the Hakua fork's Windows preview, component/feed signatures use the fork's
+key. The NSIS app has no Authenticode or Tauri updater signature and updates
+manually. See [actual release status and limits](docs/HAKUA_RELEASE.md) and
+[installation](docs/HAKUA_INSTALL.md). Upstream's app-signing architecture below
+does not claim a signature for this fork's EXE.
+
 ## Reporting a vulnerability
 
 Please report anything that should not be public until it is fixed **privately**, through GitHub's private

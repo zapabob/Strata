@@ -7,21 +7,29 @@ It covers the three updated parts, the feed format, what a PC checks, and the re
 
 Hakua product releases follow [Semantic Versioning 2.0.0](https://semver.org/).
 Use `MAJOR.MINOR.PATCH`, with `-alpha.N`, `-beta.N` or `-rc.N` for prereleases.
-The product is `0.5.0`, tagged `v0.5.0`; `latest` is an additional alias, and
-GitHub Latest selects this release. The NSIS asset follows the upstream filename
-style: `Strata-0.5.0-windows-x64-setup.exe`. Tauri's generated underscore filename
-is renamed without changing bytes. `Strata-0.5.0-windows-x64.tar.7z` holds that EXE,
+The preview product is `0.5.4-local.1`, tagged `v0.5.4-local.1`, a GitHub prerelease.
+Its existing tested internal version is retained. GitHub Latest and the `latest`
+alias continue to select stable0.5.1. The NSIS asset follows upstream's filename
+style: `Strata-0.5.4-local.1-windows-x64-setup.exe`. Tauri's generated underscore filename
+is renamed without changing bytes. `Strata-0.5.4-local.1-windows-x64.tar.7z` holds that EXE,
 the signed engine and Control packages, feed, checksums and installation instructions.
 Keep release dates in notes. Never replace older published assets.
 
 `VERSION` owns the product version. Run `python tools/bump_hakua_product_version.py
---set 0.5.0` to sync it; run `--check` before building. `CONTROL_VERSION` owns the
-independent Control package version (`0.5.0`). Native engine `0.5.0` is owned by
+--set 0.5.4-local.1` to sync it; run `--check` before building. `CONTROL_VERSION` owns the
+independent Control package version (`0.5.5`). Native engine `0.5.4` is owned by
 CMake and is rebuilt for this upstream integration. A Control-only change
-must not relabel or rebuild an unchanged native engine. PrismML/TurboQuant remain
-`0.4.0`; Metal source stays independently versioned until built and qualified.
+must not relabel or rebuild an unchanged native engine. PrismML/TurboQuant retain
+`0.4.1`/`0.4.0`; Metal source stays independently versioned until built and qualified.
 The signed stable feed has engine and Control entries. App updates remain manual;
 there is no app updater entry or `latest.json` without the matching signing key.
+
+The preview's immutable URL uses the unchanged clients' stable transport channel,
+with preview/false warnings in signed notes. Never copy that feed over stable or
+promote Latest as a side effect. A component folder remembers its last accepted
+sequence across sources: accepting the preview can reject an older stable feed.
+Installed-component rollback remains distinct. Document explicit feed selection
+and separate data/component roots for users keeping both update states.
 
 Everything that downloads software on a user's PC sits behind one explicit step: `strata update` in the Terminal, or
 "Update engine" or "Update Strata" in the app's Settings. Starting a model and serving never download anything
@@ -36,7 +44,7 @@ without the engine. An engine update downloads only the package for that PC's GP
 |---|---|---|
 | Engine package (per platform / backend / variant) | Control's component updater: download with resume, verify, install beside the old one, test-start, switch | the feed key (Ed25519) |
 | Control (Python runtime, `strata_control`, CLI, server) | the same updater: staged beside the running one, run once, then `components/control/active.json` points at it | the feed key |
-| The Hakua Windows desktop app | Download the NSIS installer from the release and run it manually | No app signature is claimed for 0.5.0 |
+| The Hakua Windows desktop app | Download the NSIS installer from the release and run it manually | No app signature is claimed for 0.5.4-local.1 |
 | Optional signed desktop updater (reference architecture) | Tauri's signed updater in the shell, reached by the host through a token-protected loopback bridge | a separate Tauri updater key (minisign) |
 
 The signed desktop-updater examples below describe the optional reference architecture.

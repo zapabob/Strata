@@ -1,65 +1,65 @@
 # Hakua / Strata
 
-導入済み個人版は `0.5.4-local.1`（Control `0.5.5`、native `0.5.4`）です。
-対応Qwen3.8向けの任意の拒否方向ベクトルGUIを含みます。
-`Strata-0.5.4-local.1-windows-x64-setup.exe` の上書きと実WebView2での短いQwen3.6・Prism・ワークスペース検証は完了しました。CUDA資源違反12件を保持し、`releaseQualified=false` です。Prismは再起動時のwarm-up timeoutが1回あり、同じ設定の再検証で通過しました。
-公開ダウンロードを示すものではありません。
-
-**ソース統合:** 公式 `v0.2.13`／mainの `f33c8c30` を取り込み、Hakuaと独自機能の契約を維持しています。
-アプリとControlは `85a78234`、nativeは `7bb24974` のソースに対応する成果物で個別に検証しました。
-通常アプリはデバッグなし・モデル未読み込みの状態で開いています。[統合記録](docs/UPSTREAM_0213.md)に実測結果と未認定範囲を記録しています。
-導入済み個人版 `Strata-0.5.2-local.2-windows-x64-setup.exe` の検証は、このソース統合前の実行ファイルに対するものです。
-以下の公開配布リンクは引き続き安定版0.5.1を示します。
-
-0.5.1では起動時のモデル自動読み込みを停止し、ネイティブQwen3.6の起動処理を修正しました。既存モデルと検証済みexpert packは保持します。
-
 ローカルの言語モデルをWindowsのデスクトップ画面から使うアプリです。
-チャット、モデルの準備と読み込み、ツール、任意のHakuaメモリーを利用できます。
+チャット、手元のGGUFの再利用、ワークスペースのファイル編集、同意に基づくHakuaメモリーを利用できます。
 [Niko1221/Strata](https://github.com/Niko1221/Strata)を基にした
-[zapabobフォーク](https://github.com/zapabob/Strata)です。
+[zapabobフォーク](https://github.com/zapabob/Strata)で、公式 **0.2.13** と独自機能を統合しています。
 
 [English](README.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [Deutsch](README.de.md) · [Français](README.fr.md) · [Español](README.es.md) · [Português](README.pt-BR.md) · [Polski](README.pl.md)
 
-## Windows版の導入
+## Windowsプレビューをダウンロード
 
-ネイティブQwen3.6は4096セル設定で41.250秒でREADYに到達し、短い会話キャッシュ分離試験6件を通過しました。98K／131Kの全文入力、FP16／NVFP4での実モデル品質は未検証です。[検証結果と制限](docs/HAKUA_RELEASE.md)をご確認ください。
+**[0.5.4-local.1 プレリリース](https://github.com/zapabob/Strata/releases/tag/v0.5.4-local.1)** は
+Windows x64／CUDA `sm_120` 向けです。RTX 5060 Ti（VRAM 16 GB）・RAM 32 GBで確認しました。
+**CUDA資源検査の違反12件が残り、`releaseQualified=false` です。**
+Prismは再起動時のwarm-up timeoutが1回あり、同じ設定の再検証で通過しました。
+[検証範囲と残る制限](docs/HAKUA_RELEASE.md)をご確認ください。
 
-Windows x64 CUDA sm_120向けのリリースです。RTX 5060 Ti（VRAM 16GB）・RAM 32GBの実機で確認しました。導入前に[検証結果と残っている制限](docs/HAKUA_RELEASE.md)をご覧ください。
+| ダウンロード | 内容 |
+| --- | --- |
+| [Windowsインストーラー](https://github.com/zapabob/Strata/releases/download/v0.5.4-local.1/Strata-0.5.4-local.1-windows-x64-setup.exe)・112 MB | Tauri NSISアプリ、専用Node・Python、Control。GPUエンジンは別配布です。 |
+| [tar.7z一括パッケージ](https://github.com/zapabob/Strata/releases/download/v0.5.4-local.1/Strata-0.5.4-local.1-windows-x64.tar.7z)・1.65 GB | 同じEXE、署名付きエンジン、Control、署名付き配信情報、チェックサム、日英の手順。 |
+| [署名付きCUDAエンジン](https://github.com/zapabob/Strata/releases/download/v0.5.4-local.1/strata-engine-0.5.4-windows-x86_64-cuda-cuda13.tar.gz)・1.47 GB | 圧縮したままアプリの準備画面で読み込みます。 |
+| [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.5.4-local.1/SHA256SUMS.txt) | 実行・展開前の照合用です。 |
 
-製品バージョンは **0.5.1** です。配布物はsetup EXEとチェックサムです。
-Windowsコード署名のない、手動更新用のリリースです。
+公式と同じWindows配布構成を使ったフォーク版です。コンポーネントはフォークの鍵で署名します。
+EXEのWindowsコード署名とTauri更新署名はなく、更新は手動です。
+従来の安定版 [0.5.1](https://github.com/zapabob/Strata/releases/tag/v0.5.1) が
+GitHub Latestと既定のstable配信に残ります。
 
-1. [Windowsインストーラー](https://github.com/zapabob/Strata/releases/download/v0.5.1/Strata-0.5.1-windows-x64-setup.exe)を取得し、
-   [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.5.1/SHA256SUMS.txt)と照合します。
-2. 導入済みの場合はトレイも含めてStrataを終了してから実行します。
-   モデルと個人データはアプリのインストール先とは別の場所に保存してください。
-3. 準備画面から署名済みCUDAコンポーネントを導入します。latest配信先、または同梱の`strata-engine-0.5.1-windows-x86_64-cuda-cuda13.tar.gz`を使用できます。専用Node・Pythonを同梱しているため、別途の導入やpip、コンパイラーは不要です。
-4. PCに収まるモデルを選びます。手元のGGUFは「ローカルGGUFを使用」から選択できます。
+### 4ステップで導入
 
-詳しい手順は[導入ガイド](docs/HAKUA_INSTALL.md)、検証条件は[リリース記録](docs/HAKUA_RELEASE.md)、
-配布物は[リリースページ](https://github.com/zapabob/Strata/releases/tag/v0.5.1)をご覧ください。
-このフォーク専用のインストーラーとコンポーネント配信先を使用します。
+1. 一括パッケージとチェックサムを取得し、**7z、tarの順に展開**します。
+   内側の `BUNDLE-SHA256SUMS.txt` も照合します。モデル本体や個人データは含みません。
+2. 応答を終了し、モデルをアンロード、アプリデータをバックアップして、トレイも含めStrataを終了します。
+   `Strata-0.5.4-local.1-windows-x64-setup.exe` を一度実行します。
+3. 準備画面で既存エンジンファイルの選択肢を開き、同じリリースの
+   `strata-engine-0.5.4-windows-x86_64-cuda-cuda13.tar.gz` を圧縮したまま選びます。
+   署名と全ファイルのハッシュ確認後に有効化します。
+4. PCに収まるモデル、または「ローカルGGUFを使用」を選び、**読み込み**を開始します。
+   起動時のモデル読み込みは手動です。システムのPython・Node・pip・コンパイラーは不要です。
 
-バージョンは[SemVer 2.0.0](https://semver.org/)に従い、アプリが`0.5.1`、ネイティブエンジンが`0.5.1`、Controlが`0.5.1`です。変更のないPrismML／TurboQuantは`0.4.0`のままです。通常のアプリ導入先はCドライブの`%LOCALAPPDATA%\Programs\Strata`で、モデルの保存先とは別です。既存環境では以前の導入先を引き継ぐ場合があります。
+通常の導入先は `%LOCALAPPDATA%\Programs\Strata` で、以前の場所を引き継ぐ場合があります。
+モデル・会話・記憶の保存先は別に保持します。[導入とロールバック](docs/HAKUA_INSTALL.md)
 
-NSISインストーラーは、署名済みCUDAコンポーネント、Control、チェックサム、導入手順と一緒に[tar.7z一括パッケージ](https://github.com/zapabob/Strata/releases/download/v0.5.1/Strata-0.5.1-windows-x64.tar.7z)にも収録します。モデルの重みや個人データは含みません。公開には`v0.5.1`、同じコミットを指す`latest`タグ、GitHubのLatest指定を使用します。
+## このフォークの機能
 
-## すでにあるモデルを使う
+- **手元のモデルを再利用。** 分割GGUFは一つを選ぶと一式を確認します。
+  カタログ準備でも一意の有効なローカルファイルを再利用し、複数候補なら選択を求めます。
+  モデル、表示名、検証済みexpert packは保持します。
+- **ワークスペースファイル。** 必要時だけ開くサイドバーで、登録済みフォルダーの読取・編集・作成・名前変更ができます。
+  削除は復元可能なゴミ箱を使い、古い内容からの上書きは拒否します。[操作ガイド](docs/WORKSPACE_FILES.md)
+- **会話単位のプライベートキャッシュ。** 対応Qwen3.6では認証された同じ会話だけがprefixを再利用します。
+  所有者変更・中断・エラー・待機期限で消去し、共有キャッシュは無効のままです。
+- **Hakuaメモリー。** 各発言で読取と保存を別々に許可できます。
+  対応モデルの読み込み後に開きます。PrismML／TurboQuantでは認証付きサーバーの再起動を伴う場合があります。
+  [メモリーガイド](serve/MEMORY_HARNESS.md)
+- **任意のモデル制御。** Spin(8)、Triality、TurboQuantキャッシュ、対応Qwen3.8の拒否方向制御は選択式です。
+  小容量のライセンス付き制御ベクトルは既定で無効です。Qwen3.8への実適用は未認定です。
 
-分割GGUFは、そのうち1ファイルを選択すると一式を確認します。モデルの重みファイルは元の場所に置いたまま使います。
-GGUF内の名前が`Hf`などの一般的な値なら、識別できるようファイル名を表示します。
-自分で付けた表示名は、再確認やアプリの再起動後も保持します。
-
-登録済みのローカルモデルの設定画面は、別のモデル一覧を取得している間も開けます。
-
-カタログからモデルを準備するときも、選択したモデルフォルダー内のサブフォルダーまで既存GGUFを確認します。
-選択したモデルと一致する有効な一式が1つあれば再利用します。複数ある場合はファイルの選択を求め、
-異なる追加学習モデルを自動で選ぶことはありません。標準のダウンロード先では従来の整合性検査と途中再開を行います。
-
-ネイティブモデルには、GGUFを取得した後に初回のパック変換が必要な場合があります。
-パック作成処理が進捗を報告する場合は、完了した層数を表示します。
-省メモリーパックの変換を再開するときは、一時ファイルがすでに使用しているディスク容量を考慮します。
-エンジンや任意のドラフト層の取得は、モデル本体のGGUF再利用とは別に扱います。
+ネイティブモデルは初回のexpert pack変換が必要な場合があります。
+対応する変換では進捗表示と既存ファイルの再利用を行います。
+エンジンや任意ドラフト層の取得は、GGUF本体の再利用とは別です。
 
 | モデルの種類 | 読み込み方法 |
 | --- | --- |
@@ -70,47 +70,41 @@ GGUF内の名前が`Hf`などの一般的な値なら、識別できるようフ
 ファイル検査は構造と対応情報の確認です。実際のメモリー確保とモデル対応は、エンジンの起動時にも確認します。
 エンジンが失敗・停止した場合は読み込み中の表示を解除します。[追加エンジンの詳細](docs/LOCAL_LLAMA_BACKENDS.md)
 
-## 構成とHakuaメモリー
+## バージョンとソース
 
 | 構成 | バージョン・配布先 |
 | --- | --- |
-| GUI / Host | `0.5.1` |
-| ネイティブエンジン | `0.5.1` |
-| Control | `0.5.1` |
+| GUI / Host | `0.5.4-local.1` |
+| ネイティブCUDAエンジン | `0.5.4` |
+| Control / Terminal | `0.5.5` |
+| PrismML / TurboQuant | `0.4.1` / `0.4.0` |
 | 専用ランタイム | Node `24.22.2`、CPython `3.12.15` |
 | Hakua-memory | `0.3.5` |
-| CUDA / PrismML / TurboQuantの配布候補 | [リリース状況](docs/HAKUA_RELEASE.md) |
-| 参照した上流ソース | `5d37280d`、上流`0.2.11` |
+| 公式統合元 | `v0.2.13` / `f33c8c30` |
+| アプリ・Controlのビルド元 | `85a78234` |
+| 別途固定したnativeソース | `7bb24974` |
 
-0.5.1は公式0.2.11と`5d37280d`までの修正を取り込みます。チャットごとのファイル保存、生成中の再接続、IME入力と画面復旧、モデル一覧、ストリーム分離、Pillow 13の更新を含みます。Hakuaメモリ、既存GGUFの再利用、Qwen3.6のプライベートキャッシュは維持します。新しいCUDAビルドは個別に検証し、過去の0.4.1の測定値を新しい既定値の実績として扱いません。ネイティブでの全文入力は未検証です。[検証・公開状況](docs/HAKUA_RELEASE.md)をご覧ください。
+製品・Control・エンジンのバージョンは独立しています。
+配布物の `SOURCE.json` に完全なコミットIDと成果物の識別情報を記録します。
+[0.2.13統合記録](docs/UPSTREAM_0213.md)にAPI変更と検証をまとめています。
 
-対応モデルを読み込んだ後、サイドバーのHakuaメモリーを開きます。
-記憶の読み取りと保存は、それぞれの発言で個別に選択します。
-PrismML / TurboQuantでメモリーを開くと、認証とプライベートキャッシュ設定を適用して所有サーバーを再起動します。
-実行中の応答を終えてから開いてください。[メモリーガイド](serve/MEMORY_HARNESS.md)
+## 検証した範囲
 
-## 対応範囲と制限
+5並列の差分ビルド、CPU・GPU・sanitizer検査、4096容量での短いネイティブ要求
+（bounded 7件、legacy 7件、restart 2件）が通過しました。
+インストーラーは起動検査13件、成果物29,544ファイルの一致、上書き時のバックアップ済み
+ユーザーファイル4,028件の保持を確認しました。実installed WebView2でQwen3.6・Prism・
+ワークスペース操作が通過し、Prismのtimeoutも失敗記録として残しています。
 
-Windows x64、RTX 5060 Ti、CUDA sm_120、システムRAM 32 GBで確認しているプレビューです。
-他のGPU・OS、ネイティブ画像入力、独立したネイティブDeepSeekエンジンの動作保証は含みません。
-使用できるモデルや準備時間は、RAM、VRAM、ディスクの速度と空き容量によって変わります。
+資源検査は **FAIL・12件** のままです。全文生成、一般品質・低精度品質、他GPU・backend、
+Qwen3.8への実projectionは未認定です。サーバー全件探索は時間切れ、6言語の辞書には既存の
+不足キーがあり、追加メモリーUI試験はブラウザー起動に失敗しました。
+[通過・失敗・未実施の詳細](docs/UPSTREAM_0213.md)
 
-新しいQwen3.6のプライベートキャッシュ経路では、同じ認証済み会話の中で状態を保持し、続きの要求で再利用します。
-別の会話や別ユーザーには引き継ぎません。会話の切り替え、中断、エラー、5分間の無操作で消去します。
-会話の識別子がない要求では再利用しません。Hostにあった起動前の拒否分岐2か所を削除しました。
-サーバーは起動したエンジンのINFO応答で機能を確認し、互換性のあるローカルビルドも扱います。初期対応は一度に1件の要求で、共有のプロンプト・会話キャッシュは無効のままです。
-mapped expert packや実験用カーネルは任意設定とし、実行ファイルのハッシュ検査も維持しています。
-従来のホストメモリー確保方式は約18.7 GiBと予備領域を必要とする場合があり、総RAMが32 GBでも起動できるとは限りません。
-実測値と未完了の確認項目はリリース記録を参照してください。
-実モデルの品質検査に失敗したTurboQuantのKモードは利用できません。
-
-コンテキスト設定131,072で短い応答が成功しても、全長の入力・生成・品質を検証したことにはなりません。
-実測条件、失敗、未実施の項目は[HAKUA_RELEASE.md](docs/HAKUA_RELEASE.md)で区別しています。
-Spin(8)、Triality、Query-v3、Bonsaiは任意の実験機能です。
-
-## 16GB GPUで96K〜128Kを使う
-
-画面から96K（98,304）と128K（131,072）を選べます。RTX 5060 Ti 16GB・RAM 32GBの実機では、Qwen3.6 UD-Q4_K_XLをPrismML、Q8 K/V、CPU側のMoE 28層で動かし、130,792トークンを省略せず処理して、離れた3か所のコードをすべて取得できました。この1回の要求は約29分かかりました。他のモデルの品質や速度を保証する結果ではありません。[設定と全長入力の検証結果](docs/WINDOWS_16GB_CONTEXT.md)をご覧ください。
+このWindows配布物にネイティブ画像入力と独立したネイティブDeepSeekエンジンは含みません。
+mapped expert packは実行ファイルの識別検査を維持し、品質試験で失敗したTurboQuant K設定は無効です。
+各モデルはRAM・VRAM・ディスク容量にも制約されます。
+[過去の96K〜128K結果](docs/WINDOWS_16GB_CONTEXT.md)は当時の成果物に対するもので、今回の認定ではありません。
 
 ## 開発
 

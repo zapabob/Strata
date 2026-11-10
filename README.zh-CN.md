@@ -1,11 +1,18 @@
 # Strata · Hakua
 
-已安装个人版 `Strata-0.5.4-local.1-windows-x64-setup.exe`，集成官方 v0.2.13/f33c8c30。编译、覆盖安装、短请求与工作区 WebView2 检查已通过。
-仍有12项实测 CUDA 资源违规，releaseQualified=false。Prism重启时出现过一次预热超时，同配置重新验证已通过。[当前记录](docs/UPSTREAM_0213.md)。
+## 0.5.4-local.1 预览版 — 集成官方0.2.13
 
-**之前的源码集成：** 官方 `v0.2.12`／main `146df3c4` 的[集成记录](docs/UPSTREAM_0212.md)保持独立。
-已测试的个人安装包 `Strata-0.5.2-local.2-windows-x64-setup.exe` 早于此次源码合并。
-以下公开下载链接仍属于0.5.1。
+[Windows安装程序](https://github.com/zapabob/Strata/releases/download/v0.5.4-local.1/Strata-0.5.4-local.1-windows-x64-setup.exe) ·
+[tar.7z完整包](https://github.com/zapabob/Strata/releases/download/v0.5.4-local.1/Strata-0.5.4-local.1-windows-x64.tar.7z) ·
+[校验值和发布页](https://github.com/zapabob/Strata/releases/tag/v0.5.4-local.1)。
+面向Windows x64／CUDA sm_120，在RTX 5060 Ti16 GB／RAM32 GB上验证。
+仍有12项CUDA资源违规：**releaseQualified=false**。Prism重启时有一次预热超时，同配置重试通过。
+请在准备界面导入本预览版的签名引擎tar.gz，保持压缩状态。
+[当前安装说明](docs/HAKUA_INSTALL.md) · [验证范围](docs/UPSTREAM_0213.md)。
+
+## 稳定版0.5.1 — 旧版说明与测量
+
+以下版本、下载和测量属于0.5.1。GitHub Latest和默认stable源仍选择该稳定版。
 
 0.5.1改为手动加载模型，并修复原生Qwen3.6的启动流程。现有模型和已验证的专家包均予以保留。
 

@@ -2,10 +2,13 @@
 
 This page is for developers who build the desktop app, the Terminal archive and the engine packages. To install this Hakua
 Windows fork, use [docs/HAKUA_INSTALL.md](../docs/HAKUA_INSTALL.md). The published
-0.5.1 release integrates official 0.2.11 and subsequent fixes while preserving Hakua
-memory and the fork's native cache and model-reuse paths. Product, Control and
-native CUDA engine each use 0.5.1; unchanged PrismML/TurboQuant packages remain
-0.4.0. Windows distribution uses an NSIS installer and a tar.7z bundle containing
+0.5.4-local.1 preview integrates official0.2.13 while preserving Hakua memory,
+workspace CRUD and the fork's native cache/model-reuse paths. Its exact measured
+app/Control source is85a78234 and native source7bb24974. Product0.5.4-local.1,
+Control0.5.5, native0.5.4, PrismML0.4.1 and TurboQuant0.4.0 remain independently
+versioned. Twelve resource violations remain; releaseQualified=false. Stable
+0.5.1 and GitHub Latest are retained. Windows distribution uses an NSIS installer
+and a tar.7z bundle containing
 the same installer plus signed components, feed and checksums. Component signing
 does not provide a Windows code signature for the installer. The
 actual qualification and publication status are in [HAKUA_RELEASE.md](../docs/HAKUA_RELEASE.md). The cross-platform recipes below
@@ -14,6 +17,13 @@ How packages are signed and published is in [UPDATES.md](UPDATES.md), and the pa
 
 Release assets show what was published; the platform guides and retained reports show what was tested. A published package does not
 qualify every GPU, model or feature on its platform.
+
+The preview's tar.7z uses Copy mode for already-compressed EXE/gzip/ZIP inputs.
+Its entire streamed member set was compared by size/SHA256. The first LZMA attempt
+stopped at the existing3GiB RAM floor and remains preserved; the low-memory
+continuation passed without changing payloads or resource floors. See
+[_docs/release-054-20261110](../_docs/release-054-20261110) and the
+[publication log](../_docs/2026-11-10_preview-release_OpenCode.md).
 
 ## Quick start
 

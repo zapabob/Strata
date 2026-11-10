@@ -1,13 +1,20 @@
 # Strata · Hakua
 
-Installed personal build: `Strata-0.5.4-local.1-windows-x64-setup.exe`, official
-v0.2.13/f33c8c30. Build, overwrite and short-model/workspace WebView2 checks passed.
-Twelve CUDA resource violations remain; releaseQualified=false. Prism passed on
-rerun after one restart warm-up timeout. [Current record](docs/UPSTREAM_0213.md).
+## Aperçu 0.5.4-local.1 — sources officielles 0.2.13
 
-**Code précédent :** upstream `v0.2.12` / `146df3c4` ; ses résultats restent séparés.
-L’installeur personnel testé avant cette intégration est `Strata-0.5.2-local.2-windows-x64-setup.exe`.
-Les liens ci-dessous restent ceux de 0.5.1. [État de l’intégration](docs/UPSTREAM_0212.md).
+[Installeur Windows](https://github.com/zapabob/Strata/releases/download/v0.5.4-local.1/Strata-0.5.4-local.1-windows-x64-setup.exe) ·
+[Paquet tar.7z complet](https://github.com/zapabob/Strata/releases/download/v0.5.4-local.1/Strata-0.5.4-local.1-windows-x64.tar.7z) ·
+[Sommes et publication](https://github.com/zapabob/Strata/releases/tag/v0.5.4-local.1).
+Windows x64 / CUDA sm_120 ; testé sur RTX 5060 Ti 16 Go / RAM 32 Go.
+Douze violations de ressources CUDA restent ouvertes : **releaseQualified=false**.
+Prism a réussi l’essai inchangé après un délai de préchauffage dépassé.
+Importez le tar.gz signé du moteur de cet aperçu depuis l’écran de préparation.
+[Guide actuel](docs/HAKUA_INSTALL.md) · [Périmètre des essais](docs/UPSTREAM_0213.md).
+
+## Version stable 0.5.1 — ancien guide et mesures
+
+Les versions, téléchargements et mesures ci-dessous concernent 0.5.1.
+GitHub Latest et le flux par défaut restent sur cette version stable.
 
 La version 0.5.1 charge les modèles sur demande et corrige le démarrage de Qwen3.6 natif. Les modèles existants et les paquets d’experts vérifiés sont conservés.
 

@@ -1,6 +1,23 @@
 # Hakua Windows release qualification
 
-## Installed personal build — official 0.2.13 integration
+## Preview 0.5.4-local.1 — official 0.2.13 integration
+
+[Release and assets](https://github.com/zapabob/Strata/releases/tag/v0.5.4-local.1) ·
+[Installation](HAKUA_INSTALL.md). This GitHub prerelease distributes the exact
+locally tested installer and component bytes. The Windows app follows upstream's
+Tauri NSIS layout with a separate signed engine. A real tar.7z bundle contains
+the same EXE, engine/Control packages, signed feed, checksums, SOURCE.json,
+QUALITY.json and bilingual INSTALL.md. The EXE has no Authenticode or Tauri app
+updater signature. Stable0.5.1/Latest and older published assets remain separate.
+
+Installer112415417 bytes, SHA256
+`ae05518656ee5afdf92665f5dd71a06a69425ae1957a9ac31468d8a4a1790750`.
+Bundle1654599858 bytes, SHA256
+`018dc44f6393f939b14c21c2a863e8e2813c46a8f25dd6929ce75c228d49a340`.
+Seven-Zip Copy mode avoids recompressing already compressed inner files; complete
+streamed extraction matched every member's bytes/hash. Initial LZMA packaging
+stopped at the unchanged3GiB RAM floor; that failed attempt remains recorded.
+The low-memory owned continuation passed with zero remaining child processes.
 
 The source worktree contains upstream `f33c8c30` / `v0.2.13` with the fork's
 API adaptations. Personal versions: product0.5.4-local.1, Control0.5.5,
@@ -10,11 +27,15 @@ requests, CPU/GPU/sanitizer checks, signed component test-start, backed-up
 overwrite and actual installed WebView2 Q36/Prism/workspace checks passed.
 Prism passed on rerun after one retained restart warm-up timeout. The installed
 payload matched29544 files and preserved4028 backed-up user files. Normal startup
-is open without debugging, unloaded, with settings retained.
+was checked open without debugging, unloaded, with settings retained.
 The fresh native resource guard still measured12 violations; releaseQualified=false.
 Full-window generation and general/low-precision quality remain unqualified.
 See [the integration record](UPSTREAM_0213.md). Earlier0.5.3 and local.2 results
 retain their original source/artifact identities. Public stable remains0.5.1.
+Full server discovery timed out; six language catalogs retain pre-existing
+missing keys; a supplemental source-memory browser fixture did not launch.
+These are not marked passing by publication. Public package preparation and
+download readback are tracked in the [publication log](../_docs/2026-11-10_preview-release_OpenCode.md).
 
 ## Windows release: 0.5.1
 
