@@ -1,4 +1,13 @@
 {
+  "wc5521": "Supprimer toutes les conversations du dossier",
+  "wc5522": "Supprimer toutes les conversations du dossier ?",
+  "wc5523": "Supprimer {0} conversations",
+  "wc5524": "Supprimer définitivement {0} conversations de {1} ?",
+  "wc5525": "Les conversations archivées sont incluses. Les fichiers du dossier sont conservés.",
+  "wc5526": "Terminez ou arrêtez les réponses dans ce dossier avant de supprimer ses conversations.",
+  "wc5527": "Impossible de supprimer ces conversations",
+  "wc5528": "Attendez le chargement de l’historique enregistré, puis réessayez.",
+  "wc5529": "Impossible de supprimer {0} conversations. Elles sont conservées dans ce dossier.",
   "wc5501": "Actions de l’espace de travail {0}",
   "wc5502": "Afficher les fichiers",
   "wc5503": "Corbeille de l’espace de travail",

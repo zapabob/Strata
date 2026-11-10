@@ -1517,6 +1517,39 @@ export function deleteSession(id: string) {
   set({ sessions, activeSession: state.activeSession === id ? (sessions[0]?.id ?? null) : state.activeSession });
 }
 
+/** Delete only the chats shown in the confirmation, including archived/aliased rows. */
+export async function deleteWorkspaceSessions(workspaceId: string, confirmedIds: string[]): Promise<boolean> {
+  const ids = new Set(confirmedIds);
+  const targets = state.sessions.filter(s => ids.has(s.id) && workspaceIdForSession(state.workspaces, s) === workspaceId);
+  if (!targets.length) return true;
+  if (!chatsRead) {
+    pushToast('warn', "Couldn't delete these chats", 'Wait for the saved chat history to load, then try again.');
+    return false;
+  }
+  if (targets.some(s => liveTurns.has(s.id))) {
+    pushToast('warn', "Couldn't delete these chats", 'Finish or stop the replies in this folder before deleting its chats.');
+    return false;
+  }
+  const removing = new Set(targets.map(s => s.id));
+  const sessions = state.sessions.filter(s => !removing.has(s.id));
+  sessionWriter.schedule(sessions);
+  set({ sessions, activeSession: removing.has(state.activeSession ?? '') ? null : state.activeSession });
+  const result = await sessionWriter.flush();
+  const failed = new Set(result.failed.map(f => f.id));
+  const refused = targets.filter(s => failed.has(s.id));
+  if (refused.length) {
+    const restored = refused.filter(s => !state.sessions.some(current => current.id === s.id));
+    const kept = [...state.sessions, ...restored];
+    // Cancel the writer's pending delete retry by restoring the refused rows.
+    sessionWriter.schedule(kept);
+    set({ sessions: kept });
+    await sessionWriter.flush();
+    pushToast('error', "Couldn't delete these chats", tr('{0} chats could not be deleted. They are still in this folder.', [refused.length]));
+    return false;
+  }
+  return true;
+}
+
 export function renameSession(id: string, title: string) {
   const sessions = state.sessions.map((s) => (s.id === id ? { ...s, title, defaultTitle: false } : s));
   persistSessions(sessions);

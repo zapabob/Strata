@@ -1,4 +1,13 @@
 {
+  "wc5521": "Alle Chats im Ordner löschen",
+  "wc5522": "Alle Chats im Ordner löschen?",
+  "wc5523": "{0} Chats löschen",
+  "wc5524": "{0} Chats aus {1} endgültig löschen?",
+  "wc5525": "Archivierte Chats sind eingeschlossen. Dateien im Ordner bleiben erhalten.",
+  "wc5526": "Beenden oder stoppen Sie die Antworten in diesem Ordner, bevor Sie seine Chats löschen.",
+  "wc5527": "Diese Chats konnten nicht gelöscht werden",
+  "wc5528": "Warten Sie, bis der gespeicherte Chatverlauf geladen ist, und versuchen Sie es erneut.",
+  "wc5529": "{0} Chats konnten nicht gelöscht werden. Sie bleiben in diesem Ordner.",
   "wc5501": "Arbeitsbereich-Aktionen für {0}",
   "wc5502": "Dateien anzeigen",
   "wc5503": "Arbeitsbereich-Papierkorb",

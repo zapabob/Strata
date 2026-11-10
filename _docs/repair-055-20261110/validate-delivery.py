@@ -8,7 +8,7 @@ from pathlib import Path
 import subprocess
 import sys
 
-from delivery import DEST, OUT, ROOT, outputs
+from delivery import APP_NAME, DEST, OUT, ROOT, outputs
 from native import require
 
 NODE = Path('C:/Users/downl/AppData/Local/Programs/Strata/node/node.exe')
@@ -39,7 +39,7 @@ def main() -> int:
     checks = []
     for target in ('candidate', 'installed'):
         for kind in ('q36', 'prism'):
-            work = OUT / 'app-native055/qa' / f'{target}-{kind}-r1'
+            work = OUT / APP_NAME / 'qa' / f'{target}-{kind}-r1'
             text = recipes.qa(kind, target, 'r1', work)
             node_check(text)
             require('upstream-0213-20261109-opencode' not in text, 'Historical output in fresh QA')

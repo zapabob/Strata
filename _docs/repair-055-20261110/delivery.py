@@ -16,7 +16,8 @@ from native import OUT, ROOT, require, sha
 
 NATIVE_COMMIT = 'b995af139cc823537489b886bc1e8602cf10301c'
 OLD_COMMIT = '7bb2497400b8ea40d5d07f5244f010d3aa5eacc0'
-DEST = OUT / 'adapters/delivery-r3'
+DEST = OUT / 'adapters/delivery-ui-search-r1'
+APP_NAME = 'app-native055-ui-search'
 GROUPS = {
     'component': ('core.py', 'quality.py', 'compose.py', 'deps.py', 'verify.mjs'),
     'app': ('common.py', 'adapter.py', 'build.py', 'recipes.py', 'upgrade.py',
@@ -32,6 +33,9 @@ def transform(group: str, name: str, text: str) -> str:
         text = checked_replace(text,
             "PRODUCT, CONTROL, ENGINE = '0.5.4-local.1', '0.5.5', '0.5.4'",
             "PRODUCT, CONTROL, ENGINE = '__PRODUCT__', '__CONTROL__', '__ENGINE__'")
+        text = checked_replace(text,
+            "PATH=str(NODE.parent) + ';C:/Users/downl/.cargo/bin;' + env['PATH']",
+            "PATH=str(NODE.parent) + ';C:/Users/downl/.cargo/bin;C:/Windows/System32/WindowsPowerShell/v1.0;' + env['PATH']")
     if group == 'app' and name == 'recipes.py':
         text = checked_replace(text, '"controlVersion=\'0.5.5\'"', '"controlVersion=\'__CONTROL__\'"')
     if group == 'component' and name == 'compose.py':
@@ -44,8 +48,8 @@ def transform(group: str, name: str, text: str) -> str:
     text = text.replace((OUT / 'adapters/app').as_posix(), (DEST / 'app').as_posix())
     text = text.replace(OLD_COMMIT, NATIVE_COMMIT)
     text = text.replace('native-054-source-20261110', FROZEN.name)
-    text = text.replace('app-native054', 'app-native055').replace('component-054', 'component-055')
-    text = text.replace('component-staging-054', 'component-staging-055').replace('control-staging-054', 'control-staging-055')
+    text = text.replace('app-native054', APP_NAME).replace('component-054', 'component-055-ui-search')
+    text = text.replace('component-staging-054', 'component-staging-055-ui-search').replace('control-staging-054', 'control-staging-055-ui-search')
     if group == 'component' and name == 'quality.py':
         text = text.replace('/adapters/native-r2', '/adapters/native')
         # This candidate must repair the old findings. The historical validator's
@@ -93,6 +97,10 @@ def transform(group: str, name: str, text: str) -> str:
             "            require(result.get('actualSupervisorAgent') is True and result.get('agentCycles') == 2\n"
             "                    and result.get('actualTeardownChecks') == 2, 'Actual supervisor agent/restart/exit evidence required')\n"
             "        if kind == 'q36':")
+        text = checked_replace(text,
+            "            projection = result.get('projectionAcceptance', {})",
+            "            require(files.get('bulkDelete', {}).get('ok') is True, 'Actual packaged bulk-delete acceptance required')\n"
+            "            projection = result.get('projectionAcceptance', {})")
         text = checked_replace(text, 'private-backups/local-054-20261110-opencode', 'private-backups/local-055-20261110-opencode')
         text = checked_replace(text,
             "OLD_COMPONENT = LOCAL / 'components/engine/0.5.3-windows-x86_64-cuda-cuda13'",
@@ -100,6 +108,7 @@ def transform(group: str, name: str, text: str) -> str:
     if group == 'app' and name == 'isolate-host-home.mjs':
         text = checked_replace(text, 'upstream-0213-20261109-opencode', OUT.name)
     if group == 'app' and name == 'workspace-files-acceptance.mjs':
+        text = "import {packagedBulkDelete} from './packaged-bulk-delete.mjs';\n" + text
         text = checked_replace(text,
             'await section.getByRole(\'button\',{name:`Rename ${created}`,exact:true}).click();',
             'await section.getByRole(\'button\',{name:`Actions for ${created}`,exact:true}).click();await page.getByRole(\'menuitem\',{name:\'Rename item\',exact:true}).click();')
@@ -109,6 +118,11 @@ def transform(group: str, name: str, text: str) -> str:
         text = checked_replace(text,
             "await section.getByRole('button',{name:'qa-old-folder',exact:true}).click();await section.getByText('This folder is empty.',{exact:true}).waitFor();",
             "await section.getByText('This folder is empty.',{exact:true}).waitFor();")
+        text = checked_replace(text,
+            "await page.setViewportSize({width:1600,height:1000});await language('en');await modelScreen();",
+            "await page.setViewportSize({width:1600,height:1000});await language('en');const bulkDelete=await packagedBulkDelete({page,request,home,workspace});await modelScreen();")
+        text = checked_replace(text, 'return {ok:true,noMocks:true,isolatedWorkspace:true,checks};',
+            'return {ok:true,noMocks:true,isolatedWorkspace:true,checks:[...checks,...bulkDelete.checks],bulkDelete};')
     require(OLD_COMMIT not in text and HISTORY.as_posix() not in text, 'Stale delivery source/output identity')
     return text
 
@@ -133,8 +147,14 @@ def outputs() -> tuple[dict[str, str], dict]:
     result['app/repair_qa.py'] = text
     records['app/repair_qa.py'] = {'template': str(helper), 'templateSHA256': hashlib.sha256(raw).hexdigest(),
                                  'sha256': hashlib.sha256(text.encode()).hexdigest()}
+    helper = Path(__file__).with_name('packaged-bulk-delete.mjs')
+    raw = helper.read_bytes()
+    text = raw.decode('utf-8').replace('\r\n', '\n')
+    result['app/packaged-bulk-delete.mjs'] = text
+    records['app/packaged-bulk-delete.mjs'] = {'template': str(helper), 'templateSHA256': hashlib.sha256(raw).hexdigest(),
+                                           'sha256': hashlib.sha256(text.encode()).hexdigest()}
     return result, {'nativeCommit': NATIVE_COMMIT, 'nativeRoot': str(FROZEN),
-        'appOutput': str(OUT / 'app-native055'), 'files': records,
+        'appOutput': str(OUT / APP_NAME), 'files': records,
         'releaseQualified': False, 'requiresFreshResourcePass': True,
         'historicalPassesCopied': False, 'runtimeActions': False}
 
@@ -161,7 +181,7 @@ def main() -> int:
     for name, text in files.items():
         with (DEST / name).open('x', encoding='utf-8', newline='\n') as stream:
             stream.write(text)
-    guard.save(OUT / 'delivery-adapter-provenance-r3.json', report, fresh=True)
+    guard.save(OUT / 'delivery-adapter-provenance-ui-search-r1.json', report, fresh=True)
     return 0
 
 

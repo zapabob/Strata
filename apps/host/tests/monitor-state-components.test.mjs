@@ -11,7 +11,7 @@ globalThis.localStorage = {getItem: () => null};
 const boundary = {
   store: `const c=globalThis.__monitorUI; export const useStore=fn=>fn(c.store),liveChatIds=()=>c.working;
     export const bootstrap=()=>{c.retries++;return Promise.resolve()};
-    export const bootOnce=()=>{},setNavOpen=()=>{},setFocus=()=>{},addWorkspace=()=>{},deleteSession=()=>{},go=()=>{},isUnread=()=>false,pickWorkspace=()=>{},pushToast=()=>{},renameSession=()=>{},removeWorkspace=()=>{},renameWorkspace=()=>{},selectSession=()=>{},setActiveWorkspace=()=>{},togglePin=()=>{},toggleRail=()=>{},setTheme=()=>{};`,
+    export const bootOnce=()=>{},setNavOpen=()=>{},setFocus=()=>{},addWorkspace=()=>{},deleteSession=()=>{},deleteWorkspaceSessions=()=>{},moveSession=()=>{},newSession=()=>{},toggleArchive=()=>{},go=()=>{},isUnread=()=>false,pickWorkspace=()=>{},pushToast=()=>{},renameSession=()=>{},removeWorkspace=()=>{},renameWorkspace=()=>{},selectSession=()=>{},setActiveWorkspace=()=>{},togglePin=()=>{},toggleRail=()=>{},setTheme=()=>{};`,
   native: `export const useNative=()=>globalThis.__monitorUI.native;export const nativeRouting=()=>null;`,
   router: `export const useLocation=()=>({route:'monitor',query:new URLSearchParams()}),href=()=> '#/models',closeSettings=()=>{};`,
   ui: `import React from 'react'; export const Btn=props=>{globalThis.__monitorUI.buttons.push(props);return React.createElement('button',{disabled:props.disabled},props.children)};

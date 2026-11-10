@@ -1,4 +1,13 @@
 {
+  "wc5521": "Excluir todas as conversas da pasta",
+  "wc5522": "Excluir todas as conversas da pasta?",
+  "wc5523": "Excluir {0} conversas",
+  "wc5524": "Excluir permanentemente {0} conversas de {1}?",
+  "wc5525": "As conversas arquivadas estão incluídas. Os arquivos da pasta serão mantidos.",
+  "wc5526": "Conclua ou interrompa as respostas nesta pasta antes de excluir as conversas.",
+  "wc5527": "Não foi possível excluir estas conversas",
+  "wc5528": "Aguarde o carregamento do histórico salvo e tente novamente.",
+  "wc5529": "Não foi possível excluir {0} conversas. Elas permanecem nesta pasta.",
   "wc5501": "Ações do espaço de trabalho {0}",
   "wc5502": "Mostrar arquivos",
   "wc5503": "Lixeira do espaço de trabalho",

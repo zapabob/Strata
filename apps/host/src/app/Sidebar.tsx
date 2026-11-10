@@ -1,4 +1,5 @@
 import {sessionTitle} from '../lib/session-title';
+import { workspaceIdForSession } from '../lib/session-workspace';
 import { tr } from '../lib/i18n';
 import { useNative } from '../lib/native';
 import { projectedModelState } from '../lib/native-monitor';
@@ -24,7 +25,7 @@ import { Brand } from '../components/Brand';
 import { HakuaLlamaChat, type LlamaMemoryAccess } from '../components/HakuaLlamaChat';
 import { api } from '../lib/client';
 import { useCopy } from '../lib/use-copy';
-import { addWorkspace, deleteSession, go, isUnread, liveChatIds, moveSession, newSession, pickWorkspace, pushToast, renameSession, removeWorkspace, renameWorkspace, selectSession, setActiveWorkspace, setNavOpen, toggleArchive, togglePin, toggleRail, setTheme, useStore } from '../lib/store';
+import { addWorkspace, deleteSession, deleteWorkspaceSessions, go, isUnread, liveChatIds, moveSession, newSession, pickWorkspace, pushToast, renameSession, removeWorkspace, renameWorkspace, selectSession, setActiveWorkspace, setNavOpen, toggleArchive, togglePin, toggleRail, setTheme, useStore } from '../lib/store';
 export function Sidebar({ containerRef }: {
     containerRef: RefObject<HTMLElement | null>;
 }) {
@@ -73,6 +74,7 @@ export function Sidebar({ containerRef }: {
     const [archivedOpen, setArchivedOpen] = useState(false);
     const [moveChat, setMoveChat] = useState<string | null>(null), [destination, setDestination] = useState('');
     const [workspaceBusy, setWorkspaceBusy] = useState(false);
+    const [clearChats, setClearChats] = useState<{ workspaceId: string; ids: string[] } | null>(null);
     const menuTrigger = useRef<HTMLElement | null>(null);
     const current = library?.variants.find(v => v.id === library.loaded);
     const native = useNative(), nativeCurrent = native?.instances.find(i => i.id === native.defaultId);
@@ -90,6 +92,10 @@ export function Sidebar({ containerRef }: {
     const modelLine = modelState.loaded ? workingLine ?? modelQuant : tr(status);
     const menuSession = sessions.find(s => s.id === menuId);
     const menuWorkspace = workspaces.find(w => w.id === workspaceMenu?.id);
+    const clearingWorkspace = workspaces.find(w => w.id === clearChats?.workspaceId);
+    const confirmedChatIds = new Set(clearChats?.ids ?? []);
+    const clearingChats = sessions.filter(s => confirmedChatIds.has(s.id) && workspaceIdForSession(workspaces, s) === clearChats?.workspaceId);
+    const clearingLive = clearingChats.some(s => working.has(s.id));
     const q = query.trim().toLowerCase();
     const matching = sessions.filter(s => (!s.archived || q || includeArchived) && (!q || `${sessionTitle(s)} ${s.messages.map(m => m.content).join(' ')}`.toLowerCase().includes(q))).sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || b.updatedAt.localeCompare(a.updatedAt));
     function openMenu(id: string, trigger: HTMLElement) { menuTrigger.current = trigger; setMenuId(id); }
@@ -147,6 +153,7 @@ export function Sidebar({ containerRef }: {
       <button role="menuitem" className="menu__item" onClick={() => showFiles(menuWorkspace.id, 'recovery')}><Icon name="trash"/>{tr('Workspace trash')}</button>
       <button role="menuitem" className="menu__item" onClick={() => { setWsName(menuWorkspace.name); setRenameWsId(menuWorkspace.id); setWorkspaceMenu(null); setNavOpen(false); }}><Icon name="pencil"/>{tr('Rename workspace')}</button>
       <button role="menuitem" className="menu__item" onClick={() => { void api.post('/api/workspace/open', { root: menuWorkspace.id, path: '' }).catch(error => pushToast('error', 'Could not open folder', String(error))); setWorkspaceMenu(null); }}><Icon name="folder"/>{tr('Open in app')}</button>
+      <button role="menuitem" className="menu__item menu__item--danger" disabled={!sessions.some(s => workspaceIdForSession(workspaces, s) === menuWorkspace.id)} onClick={() => { setClearChats({ workspaceId: menuWorkspace.id, ids: sessions.filter(s => workspaceIdForSession(workspaces, s) === menuWorkspace.id).map(s => s.id) }); setWorkspaceMenu(null); setNavOpen(false); }}><Icon name="trash"/>{tr('Delete all chats in folder')}</button>
       {menuWorkspace.id !== 'root' ? <button role="menuitem" className="menu__item" onClick={() => { setRemoveWorkspaceId(menuWorkspace.id); setWorkspaceMenu(null); setNavOpen(false); }}><Icon name="x"/>{tr('Remove from sidebar')}</button> : null}
     </FloatingMenu> : null}
     {tr(menuId && menuSession ? <FloatingMenu anchor={menuTrigger.current} title={tr("Actions for {0}", [sessionTitle(menuSession)])} onClose={closeMenu}>
@@ -176,6 +183,13 @@ export function Sidebar({ containerRef }: {
                     deleteSession(deleteId);
                 setDeleteId(null);
             }}>{tr("Delete chat")}</Btn></>}><p>{tr("This chat will be permanently deleted.")}</p></Dialog>
+    <Dialog open={!!clearChats && !!clearingWorkspace} compact title={tr('Delete all chats in folder?')} noClose={workspaceBusy} onClose={() => setClearChats(null)} actions={<><Btn disabled={workspaceBusy} onClick={() => setClearChats(null)}>{tr('Cancel')}</Btn><Btn variant="danger" disabled={workspaceBusy || clearingLive || !clearingChats.length} onClick={() => {
+                if (clearChats) { setWorkspaceBusy(true); void deleteWorkspaceSessions(clearChats.workspaceId, clearChats.ids).then(deleted => { if (deleted) { setClearChats(null); if (!activeSession || confirmedChatIds.has(activeSession)) go('chat'); } }).finally(() => setWorkspaceBusy(false)); }
+            }}>{tr('Delete {0} chats', [clearingChats.length])}</Btn></>}>
+      <p>{tr('Permanently delete {0} chats from {1}?', [clearingChats.length, clearingWorkspace?.name ?? ''])}</p>
+      <p className="small muted">{tr('Archived chats are included. Files in the folder stay on your computer.')}</p>
+      {clearingLive ? <p role="status">{tr('Finish or stop the replies in this folder before deleting its chats.')}</p> : null}
+    </Dialog>
     <Dialog open={!!removeWorkspaceId} title={tr("Remove workspace from sidebar?")} noClose={workspaceBusy} onClose={() => setRemoveWorkspaceId(null)} actions={<><Btn disabled={workspaceBusy} onClick={() => setRemoveWorkspaceId(null)}>{tr("Keep workspace")}</Btn><Btn disabled={workspaceBusy} onClick={() => {
                 if (removeWorkspaceId) { setWorkspaceBusy(true); void removeWorkspace(removeWorkspaceId).then(removed => { if (removed) setRemoveWorkspaceId(null); }).finally(() => setWorkspaceBusy(false)); }
             }}>{tr("Remove from sidebar")}</Btn></>}><p>{tr("Files stay on your computer. Add this folder again to reopen its chats.")}</p></Dialog>

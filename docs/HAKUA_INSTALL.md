@@ -1,5 +1,8 @@
 # Install Hakua / Strata on Windows
 
+[Quick installation entry point / かんたん導入](../INSTALL.md) ·
+[Web search and browser use / Web検索・ブラウザー操作](BROWSER_SEARCH.md)
+
 The [0.5.4-local.1 preview](https://github.com/zapabob/Strata/releases/tag/v0.5.4-local.1)
 integrates official 0.2.13. It includes Control 0.5.5 and uses native 0.5.4,
 PrismML 0.4.1, TurboQuant 0.4.0 and Hakua-memory 0.3.5. Checks used Windows x64,

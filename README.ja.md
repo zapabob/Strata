@@ -1,5 +1,7 @@
 # Hakua / Strata
 
+**[Windows版をインストールする](INSTALL.md)** · [Web検索・ブラウザー操作](docs/BROWSER_SEARCH.md)
+
 開発候補は `0.5.5-local.1`／native `0.5.5`／Control `0.5.6` です。
 `Strata-0.5.5-local.1-windows-x64-setup.exe` はソース固定ビルドと実installed検証待ちです。
 以下の公開リンクは、検証済みプレビュー `0.5.4-local.1` を示します。

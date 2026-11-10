@@ -1,4 +1,13 @@
 {
+  "wc5521": "Eliminar todos los chats de la carpeta",
+  "wc5522": "¿Eliminar todos los chats de la carpeta?",
+  "wc5523": "Eliminar {0} chats",
+  "wc5524": "¿Eliminar permanentemente {0} chats de {1}?",
+  "wc5525": "Se incluyen los chats archivados. Los archivos de la carpeta se conservan.",
+  "wc5526": "Finaliza o detén las respuestas de esta carpeta antes de eliminar sus chats.",
+  "wc5527": "No se pudieron eliminar estos chats",
+  "wc5528": "Espera a que se cargue el historial guardado y vuelve a intentarlo.",
+  "wc5529": "No se pudieron eliminar {0} chats. Permanecen en esta carpeta.",
   "wc5501": "Acciones del espacio de trabajo {0}",
   "wc5502": "Mostrar archivos",
   "wc5503": "Papelera del espacio de trabajo",

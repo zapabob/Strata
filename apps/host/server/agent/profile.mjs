@@ -299,8 +299,11 @@ export function buildProfile({ local = [], connections = [], gate = true, tools 
   // The person's own instruction and command tools come from the app's tool server; a command tool asks in Manual like any connected tool.
   const own = (kind, on) => on && tools.toolFile ? [{ id: `mcp-strata-${kind}`, name: '@deepseek-ai/dsh-mcp-client', config: { serverName: `strata-${kind}`, transport: 'stdio', command: process.execPath, args: [CUSTOM_TOOLS_SCRIPT, kind, tools.toolFile] } }] : [];
   // The browser: Playwright's tool server on the person's own Chrome or Edge, in a separate empty profile (what the Harness's own browser provider does). Every action asks in Manual.
+  // Coordinate tools can use snapshot boxes without vision. Do not send image
+  // results to the default text-only local model or pretend it can read pixels.
+  const browserImages = defaultInstance ? defaultInstance.vision === true : Object.values(providers).some(p => p.models.some(m => m.input.includes('image')));
   const browserRows = tools.browserEnabled && tools.browserPath && tools.browserCli
-    ? [{ id: 'mcp-browser', name: '@deepseek-ai/dsh-mcp-client', config: { serverName: 'browser', transport: 'stdio', command: process.execPath, args: [tools.browserCli, '--browser', 'chromium', '--isolated', ...(process.env.STRATA_BROWSER_HEADLESS === '1' ? ['--headless'] : []), '--executable-path', tools.browserPath] } }] : [];
+    ? [{ id: 'mcp-browser', name: '@deepseek-ai/dsh-mcp-client', config: { serverName: 'browser', transport: 'stdio', command: process.execPath, args: [tools.browserCli, '--browser', 'chromium', '--isolated', '--caps', 'vision', '--snapshot-boxes', '--image-responses', browserImages ? 'allow' : 'omit', ...(process.env.STRATA_BROWSER_HEADLESS === '1' ? ['--headless'] : []), '--executable-path', tools.browserPath] } }] : [];
   const ownRows = [...own('instructions', tools.hasInstructionTools), ...own('commands', tools.hasCommandTools), ...browserRows];
   // Web search: DuckDuckGo with no key unless the person chose a keyed service AND saved its key (then that one; never a half-set-up one).
   const searchOn = !tools.off.has('search');
@@ -329,7 +332,7 @@ export function buildProfile({ local = [], connections = [], gate = true, tools 
     ...(mcp.length || ownRows.length ? [{ insert: [...mcp, ...ownRows] }] : []),
     ...webRows,
     // The reminder tools would be a second scheduler beside the app's Tasks. The tool groups the person switched off in Settings -> Tools are left out.
-    { id: 'preset-standard', name: '@deepseek-ai/dsh-agent-preset', config: standardPreset({ off: tools.off, search: searchOn, skillsDir, compaction }) },
+    { id: 'preset-standard', name: '@deepseek-ai/dsh-agent-preset', config: standardPreset({ off: tools.off, search: searchOn, proactiveSearch: routes.some(r => r.kind === 'local'), browser: browserRows.length > 0, skillsDir, compaction }) },
     // Strata names its chats itself; the Harness's own title request would be an extra model call on
     // every first prompt (and, for an API route, an unrequested one).
     { id: 'session-title-llm', disabled: true },

@@ -365,7 +365,7 @@ test('browser: the tool server is found in the agent component; the screen can s
     assert.equal(ready.view().browser.found, true);
     const rows = entriesOf(buildProfile({ local: [], connections: [], tools: ready.profileView() })).flatMap(x => x.insert ?? []).filter(r => r.config?.serverName === 'browser');
     assert.equal(rows.length, 1);
-    assert.deepEqual(rows[0].config.args, ['C:/pw/cli.js', '--browser', 'chromium', '--isolated', '--executable-path', 'C:/chrome.exe']);
+    assert.deepEqual(rows[0].config.args, ['C:/pw/cli.js', '--browser', 'chromium', '--isolated', '--caps', 'vision', '--snapshot-boxes', '--image-responses', 'omit', '--executable-path', 'C:/chrome.exe']);
     const off = createAgentTools({ read: () => ({ browser: { enabled: false } }), write: () => {}, dataDir: dir, browser: () => ({ found: true, name: 'x', path: 'p', cli: 'c' }) });
     assert.equal(entriesOf(buildProfile({ local: [], connections: [], tools: off.profileView() })).flatMap(x => x.insert ?? []).some(r => r.config?.serverName === 'browser'), false);
   } finally { cleanup(dir); }

@@ -1,4 +1,13 @@
 {
+  "wc5521": "Delete all chats in folder",
+  "wc5522": "Delete all chats in folder?",
+  "wc5523": "Delete {0} chats",
+  "wc5524": "Permanently delete {0} chats from {1}?",
+  "wc5525": "Archived chats are included. Files in the folder stay on your computer.",
+  "wc5526": "Finish or stop the replies in this folder before deleting its chats.",
+  "wc5527": "Couldn't delete these chats",
+  "wc5528": "Wait for the saved chat history to load, then try again.",
+  "wc5529": "{0} chats could not be deleted. They are still in this folder.",
   "wc5501": "Workspace actions for {0}",
   "wc5502": "Show files",
   "wc5503": "Workspace trash",
