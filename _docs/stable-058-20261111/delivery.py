@@ -224,19 +224,22 @@ def bundle() -> None:
     component_assets = OUT / 'component-assets'
     verified = load(OUT / 'components-verified.json')
     require(verified['ok'] and verified['sourceCommit'] == build['sourceCommit'], 'Fresh coordinated signed components required')
+    ci = load(OUT / 'ci-verified.json')
+    equivalence = ci.get('runtimeSourceEquivalence', {})
+    require(ci['ok'] and ci['appSourceCommit'] == build['sourceCommit']
+            and equivalence.get('ok') is True and equivalence['distributedRuntimeSourcesUnchanged']
+            and equivalence['installerSHA256'] == build['installerSHA256'], 'CI must qualify unchanged exact distributed runtime sources')
     for name in [ENGINE, CONTROL, 'strata-feed.json', 'strata-feed.json.sig', 'install-manifest.txt', 'install.ps1', 'install.sh']:
         require(sha(component_assets / name) == verified['assets'][name]['sha256'] and (component_assets / name).stat().st_size == verified['assets'][name]['bytes'], 'Fresh component differs: ' + name)
         shutil.copy2(component_assets / name, ASSETS / name)
     shutil.copy2(Path(build['installer']), ASSETS / INSTALLER)
     for source, target in [('corresponding-source.tar.gz', 'RustXNG-0.31.1-source.tar.gz'), ('LICENSE', 'RustXNG-LICENSE.txt'), ('NOTICE', 'RustXNG-NOTICE.txt')]:
         shutil.copy2(EXTRACTED / 'harness/rustxng' / source, ASSETS / target)
-    save(ASSETS / 'SOURCE.json', {**build, 'unbundledShellSHA256': build['shellSHA256'], 'nsisShellBinding': load(OUT / 'nsis-shell-binding.json'), 'releaseTag': 'v' + PRODUCT, 'upstreamCommit': 'f33c8c30588ff00e24b6b63bad0bf6a14da19081', 'rustxng': load(EXTRACTED / 'harness/rustxng/SOURCE.json')})
+    save(ASSETS / 'SOURCE.json', {**build, 'validatedSourceCommit': ci['sourceCommit'], 'runtimeSourceEquivalence': equivalence, 'unbundledShellSHA256': build['shellSHA256'], 'nsisShellBinding': load(OUT / 'nsis-shell-binding.json'), 'releaseTag': 'v' + PRODUCT, 'upstreamCommit': 'f33c8c30588ff00e24b6b63bad0bf6a14da19081', 'rustxng': load(EXTRACTED / 'harness/rustxng/SOURCE.json')})
     ui = load(OUT / 'installed-ui-verified.json')
     require(ui['ok'] and ui['actualInstalledExe'] and ui['mockModelOnly'], 'Installed WebView2 checks required')
     require(load(OUT / 'receipts' / ('installed-ui-' + ui['attempt'] + '.json'))['passed'], 'Contained UI run required')
     require(load(OUT / 'receipts/nsis-cleanup-final-r2.json')['passed'], 'NSIS cleanup scenarios required')
-    ci = load(OUT / 'ci-verified.json')
-    require(ci['ok'] and ci['sourceCommit'] == load(OUT / 'app-build.json')['sourceCommit'], 'CI must qualify the exact app build source')
     final_native = load(OUT / 'native-final-verified.json')
     require(final_native['ok'] and final_native['engineSHA256'] == verified['native']['engineSHA256']
             and final_native['signedManifestSHA256'] == verified['native']['signedManifestSHA256'],

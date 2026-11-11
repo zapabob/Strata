@@ -253,3 +253,54 @@ MCP fixture selects a private PC sys object. The scoped Windows run passed all
 99 tests, including a regression for later CLI argument replacement. No new
 runtime change or Control rebuild is needed; all 401 packaged Control source
 files still match. Docs now supports manual exact-source workflow dispatch.
+
+App build source 91107e48 completed with five compiler jobs. The standard NSIS
+installer is 127,118,039 bytes, SHA256
+300252511099ed1a7b42d6a5c82bf6c6bc399da01e51933205a2365e15a9c384.
+Packaged self-test passed. The overwrite matched 29,555 managed files and kept
+all 3,727 backed-up user files unchanged. Shipped bundled installation/selection
+code authenticated and installed the new native component with bundled trust
+keys; actual app ProductVersion, global Terminal, embedded Control and both
+native executable versions report 0.5.8. Previous engine manifests and entrypoints
+remain unchanged. Normal startup passed unloaded, without debug arguments, with
+RustXNG Full and both requested workflow options enabled; other tool/key/approval
+choices stayed identical.
+
+The actual installed WebView2 follow-up passed all 16 feature checks and emitted
+zero console errors. Model API replies were explicitly synthetic; RustXNG made
+a real query with results. The retained first attempt exceeded its response timer
+during cold Harness startup. The second observed startup, then a closed page of
+unknown origin. A synthetic Windows USERPROFILE prevented WebView CDP startup in
+the third. The successful fourth keeps the real Windows account profile for OS
+token lookup while isolating app/profile data and HOME, separates bounded cold
+startup from the unchanged 30-second response deadline, and records its complete
+normal cleanup lifecycle. The native model audit independently passed all three
+protected protocols (7+7+2 requests), bounded/legacy parity and restart comparison,
+with unchanged model hashes and all 21 numerical checks against the same binary.
+
+Full Windows Python CI then exposed 15 H-volume fixture/owned-stdin mismatches
+and one impossible full-line assertion on a narrow Windows footer. The developer
+guard now names its unchanged H default as a module constant, so both fixture
+layers use the same private test volume. Negative checks still reject the wrong
+production volume. The footer test checks the nonempty visible prefix after
+help closes; every help key is still required in full. The scoped run passed
+33 tests. The related host fixtures passed 11 with two explicit Harness skips.
+Mac host CI timed out after 1800 seconds and reported canonical-path cleanup
+failures. The suite scratch root now resolves the /tmp alias before all private
+environment paths are constructed. Mac suites are required and request one
+runner at a time; logs are retained on every result.
+
+These follow-ups change only unshipped tests, CI and developer validation tooling.
+The app retains its actual 91107e48 build commit. Release binding compares every
+later Git change against an explicit unshipped allowlist, expands the guard's
+default constant back to byte-identical prior code, rejects any distributed
+source change, rechecks Native/Control/installed Host source bindings and the
+exact installer hash. The public records keep the actual CI and build commits
+separate. All eight workflows and the complete named 13-job Checks matrix must
+still pass before publication; no failed job is waived.
+
+The same scoped Windows group also passed all 33 tests on C:, independently of
+the real H: build drive. Its first C: attempt retained one owner-death fixture
+failure: the separately spawned production CLI correctly reloaded its H default.
+That fixture now configures its separate CPU-only interpreter explicitly before
+calling the real runner, while production CLI admission remains unchanged.

@@ -33,5 +33,11 @@ MODES['install-followup'] = ['-m', 'pytest', '-q', '-p', 'no:cacheprovider',
     'tools/test_setup_pins.py', 'tools/test_setup_rerun_size.py']
 MODES['mac-fixture-final'] = ['-m', 'pytest', '-q', '-p', 'no:cacheprovider',
     'tools/test_setup_choices.py', 'tools/test_setup_feed_models.py']
+MODES['windows-ci-final'] = ['-m', 'pytest', '-q', '-p', 'no:cacheprovider',
+    'tests/qwen36/test_bounded_run.py', 'tests/terminal/test_monitor_help_0213_qafix.py']
+MODES['windows-ci-other-volume'] = [*MODES['windows-ci-final'], '--basetemp',
+    str(ROOT / '_docs/local-archive/2026-11-09-pre-main/windows-ci-scratch-r1')]
+MODES['windows-ci-other-volume-r2'] = [*MODES['windows-ci-final'], '--basetemp',
+    str(ROOT / '_docs/local-archive/2026-11-09-pre-main/windows-ci-scratch-r2')]
 environment = dict(os.environ, STRATA_TEST_NODE_EXE=str(ROOT / 'apps/desktop/src-tauri/resources/node/node.exe'), PYTEST_DISABLE_PLUGIN_AUTOLOAD='1')
 raise SystemExit(subprocess.call([sys.executable, '-X', 'utf8', '-B', *MODES[sys.argv[1]]], cwd=ROOT, env=environment))

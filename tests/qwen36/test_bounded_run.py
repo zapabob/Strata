@@ -23,6 +23,15 @@ def fixture_volume(tmp_path, monkeypatch):
     # These CPU processes exercise the real Windows Job guard in pytest's
     # private scratch volume. Production keeps the explicit H: admission rule.
     monkeypatch.setattr(runner, 'OUTPUT_VOLUME', tmp_path.resolve().drive.upper())
+    from perf131k import windows_job
+    monkeypatch.setattr(windows_job, 'BOUNDED_STDIN_VOLUME', tmp_path.resolve().drive.upper())
+
+
+def test_owned_stdin_volume_policy_is_still_enforced(tmp_path, monkeypatch):
+    from perf131k import windows_job
+    monkeypatch.setattr(windows_job, 'BOUNDED_STDIN_VOLUME', 'Z:' if tmp_path.drive.upper() != 'Z:' else 'Y:')
+    with pytest.raises(ValueError, match='bounded stdin file inside owned H run directory required'):
+        runner.run_bounded(spec_for(tmp_path))
 
 
 def test_production_volume_policy_is_still_enforced(tmp_path, monkeypatch):
@@ -258,11 +267,23 @@ def test_owned_tree_cleanup_and_unrelated_sentinel(tmp_path, parent_exit):
         if parent_exit:
             specpath = tmp_path / "input.json"
             specpath.write_text(json.dumps(spec))
+            # This interpreter needs the same explicit CPU-fixture volume as
+            # the pytest process; the production CLI correctly keeps H:.
+            launcher = (
+                "import json,sys; from pathlib import Path; "
+                "sys.path.insert(0,sys.argv[1]); "
+                "from tools.qwen35 import q36_bounded_run as r; "
+                "from perf131k import windows_job as w; "
+                "s=json.loads(Path(sys.argv[2]).read_text()); "
+                "v=Path(s['output_root']).resolve().drive.upper(); "
+                "r.OUTPUT_VOLUME=v; w.BOUNDED_STDIN_VOLUME=v; r.run_bounded(s)"
+            )
             owner = subprocess.Popen(
                 [
                     sys.executable,
-                    str(ROOT / "tools/qwen35/q36_bounded_run.py"),
-                    "--spec",
+                    "-c",
+                    launcher,
+                    str(ROOT),
                     str(specpath),
                 ],
                 stdout=subprocess.DEVNULL,

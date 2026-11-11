@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /** Enumerate test files explicitly so npm test works without shell glob expansion. */
-import {readdirSync} from 'node:fs';
+import {readdirSync,realpathSync} from 'node:fs';
 import {spawn} from 'node:child_process';
 import {resolve} from 'node:path';
 import {isolatedTestEnvironment} from './test-environment.mjs';
@@ -14,7 +14,7 @@ import {join} from 'node:path';
 // Chrome's POSIX singleton socket has a small path limit. CI's nested TMPDIR
 // leaves too little space for even a fresh browser profile; keep our private
 // suite root short while retaining the same filesystem isolation guard.
-const scratch=mkdtempSync(join(process.platform==='win32'?tmpdir():'/tmp','sh-'));
+const scratch=realpathSync(mkdtempSync(join(process.platform==='win32'?tmpdir():'/tmp','sh-')));
 const testTemp=join(scratch,'tmp');mkdirSync(testTemp);
 // Default command cwd is os.homedir(); make the private profile before any
 // parallel test starts rather than relying on another fixture to create it.

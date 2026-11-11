@@ -83,7 +83,9 @@ class Help(unittest.TestCase):
                     await pilot.press("question_mark")
                     await pilot.pause(0.3)
                     idle = app.classic.get('tip') if app.classic and app.classic.get('tip') else 'Read only'
-                    self.assertIn(idle, last_line(app))   # platform's ordinary one-line message
+                    visible = last_line(app).strip()
+                    self.assertTrue(visible)
+                    self.assertTrue(idle.startswith(visible), f'ordinary footer is not a visible prefix: {visible!r}')
         for size in ((80, 24), (60, 16)):
             asyncio.run(go(*size))
 

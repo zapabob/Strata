@@ -176,6 +176,11 @@ def record_memory(aggregate, reader, handle, resources):
     aggregate["status"] = "AVAILABLE" if failures == 0 else "UNKNOWN" if failures == aggregate["samples"] else "PARTIAL"
 
 
+# Production storage policy. CPU fixtures may select their own private scratch
+# volume through monkeypatch without changing the default H: admission rule.
+BOUNDED_STDIN_VOLUME = "H:"
+
+
 def run_owned(command, root, env, raw, budget, sample, *, stdin_path=None, memory_diagnostics=False,
               on_output=None, on_tick=None):
     """Create contained and suspended, verify membership, then resume; drain job on every exit."""
@@ -184,7 +189,7 @@ def run_owned(command, root, env, raw, budget, sample, *, stdin_path=None, memor
     if stdin_path is not None:
         stdin_path = Path(stdin_path).resolve()
         owned_root = Path(root).resolve()
-        if (owned_root.drive.upper() != "H:" or not stdin_path.is_relative_to(owned_root)
+        if (owned_root.drive.upper() != BOUNDED_STDIN_VOLUME or not stdin_path.is_relative_to(owned_root)
                 or not stdin_path.is_file() or stdin_path.stat().st_size > 2 * 1024**2):
             raise ValueError("bounded stdin file inside owned H run directory required")
     kernel = api()

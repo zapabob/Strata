@@ -202,14 +202,13 @@ jobs:
           retention-days: 7
 
   macos:
-    # Cheap and useful (the audit found the host and Python fixtures reading the Mac's own paths), but this job has not run on a
-    # Mac runner yet: it reports and does not block until its first green run.
+    # Keep both Mac suites required and request one runner at a time.
     name: macOS / ${{ matrix.name }}
     runs-on: macos-15
     timeout-minutes: 60
-    continue-on-error: true
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         include:
           - { name: Python tools/, only: py-tools }
@@ -234,7 +233,7 @@ jobs:
       - name: tools/check
         run: python tools/check --strict --only "${{ matrix.only }}" --keep --scratch "$RUNNER_TEMP/check" --json "$RUNNER_TEMP/check/result.json"
       - name: Logs
-        if: ${{ failure() }}
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: check-macos-${{ strategy.job-index }}
