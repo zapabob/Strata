@@ -237,9 +237,13 @@ def bundle() -> None:
     require(load(OUT / 'receipts/nsis-cleanup-final.json')['passed'], 'NSIS cleanup scenarios required')
     ci = load(OUT / 'ci-verified.json')
     require(ci['ok'] and ci['sourceCommit'] == load(OUT / 'app-build.json')['sourceCommit'], 'CI must qualify the exact app build source')
+    final_native = load(OUT / 'native-final-verified.json')
+    require(final_native['ok'] and final_native['engineSHA256'] == verified['native']['engineSHA256']
+            and final_native['signedManifestSHA256'] == verified['native']['signedManifestSHA256'],
+            'Complete native audit must qualify the exact locally installed component before publication')
     require(load(OUT / 'receipts/harness-group-r1.json')['passed'], 'The actual Harness regression group must pass')
     quality = {'releaseQualified': False, 'coordinatedSemVer': '0.5.8', 'components': verified,
-               'cloudCIObservation': ci,
+               'cloudCIObservation': ci, 'completeNativeAuditAfterLocalInstallPreparation': final_native,
                'nativePriorEvidence': 'https://github.com/zapabob/Strata/releases/tag/v0.5.5-local.1',
                'expandedProfileContextGuard': {'passed': 43, 'failed': 0, 'skipped': 0,
                    'note': 'Actual pinned Harness, synthetic model API and isolated fixture profiles. Native model quality is not qualified by these tests.'},

@@ -227,3 +227,14 @@ runtime was normally unloaded through the app API to recover GPU headroom; no
 force termination was used. Eight obsolete build caches were archived privately,
 decoded and checked against every source file before removal. Published assets,
 dirty worktrees, active native/Cargo caches, models and evidence remain intact.
+
+To honor installation first, a separate preinstall composition adapter requires
+the completed source binding, stage, CPU, GPU, sanitizer, resource guard and all
+21 final numerical cases. It records the protected-model protocols as pending,
+never passed. The original strict native validator is unchanged. Publication
+additionally requires finalize-native.py to validate the complete actual audit
+against the identical signed manifest and engine bytes installed locally. This
+changes the order of installation and qualification, not the final release gates.
+The second Control build completed from 42ca8ebd, with actual source and pinned
+runtime verified. Its earlier rejected wrong-commit invocation did not build or
+stage anything; that invocation log remains retained separately.
