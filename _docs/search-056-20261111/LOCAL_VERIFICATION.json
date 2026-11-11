@@ -1,0 +1,725 @@
+{
+  "releaseQualified": false,
+  "appBuild": {
+    "sourceCommit": "6da4a421eeddade8cab74c7e6b80c9746031c721",
+    "productVersion": "0.5.6-local.1",
+    "compilerJobs": 5,
+    "nativeVersion": "0.5.5",
+    "nativeSourceCommit": "b995af139cc823537489b886bc1e8602cf10301c",
+    "nativeManifestSHA256": "a6622f894ee81b8f753bb8f62b49520839c052d4fed3be9370719564bd0c171b",
+    "controlVersion": "0.5.6",
+    "controlSourceCommit": "35863deadec1bfa0fc7f250c111d219bb3344b57",
+    "installer": "H:\\Strata\\releases\\search-056-20261111-codex\\Strata-0.5.6-local.1-windows-x64-setup.exe",
+    "installerSHA256": "fb91cd8866895645fb30880160e31a35c814b22c2be1c6b2551fceefe94f80ed",
+    "installerBytes": 127079626,
+    "shell": "H:\\Strata\\releases\\search-056-20261111-codex\\strata-desktop.exe",
+    "shellSHA256": "71454776a0e6c9c5af087b4aa25e1baa00daad8f93cb799af5c570c19259abde",
+    "releaseQualified": false
+  },
+  "nsisShellBinding": {
+    "ok": true,
+    "unbundledSHA256": "71454776a0e6c9c5af087b4aa25e1baa00daad8f93cb799af5c570c19259abde",
+    "nsisSHA256": "e987fde14ebab4ab27b8a10482c1972f22f6a36906287bf2b83dacc6724592ff",
+    "onlyDifference": "__TAURI_BUNDLE_TYPE_VAR_UNK -> __TAURI_BUNDLE_TYPE_VAR_NSS",
+    "allOtherBytesIdentical": true,
+    "source": "https://docs.rs/crate/tauri-utils/2.10.2/source/src/platform.rs",
+    "installerSHA256": "fb91cd8866895645fb30880160e31a35c814b22c2be1c6b2551fceefe94f80ed"
+  },
+  "installed": {
+    "ok": true,
+    "product": "0.5.6-local.1",
+    "files": 29552,
+    "installerSHA256": "fb91cd8866895645fb30880160e31a35c814b22c2be1c6b2551fceefe94f80ed",
+    "userFilesUnchanged": 3719,
+    "exactPayloadMatch": true
+  },
+  "installedWebView2": {
+    "ok": true,
+    "target": "installed",
+    "actualInstalledExe": true,
+    "actualWebView2": true,
+    "isolatedHome": true,
+    "mockModelOnly": true,
+    "realRustxng": true,
+    "checks": [
+      "installed-host-shell-renderer-identity",
+      "btw-typed-during-main-stream",
+      "main-not-cancelled-or-queued",
+      "btw-tool-free-api",
+      "separate-durable-aside",
+      "deepresearch-slash-menu",
+      "installed-rustxng-full-real-search",
+      "aside-survives-page-reload",
+      "mobile-no-horizontal-overflow"
+    ],
+    "rustxngSources": [
+      {
+        "title": "Windows Installer",
+        "url": "https://v2.tauri.app/distribute/windows-installer/"
+      },
+      {
+        "title": "tauri-docs/src/content/docs/distribute/windows-installer.mdx at v2 · tauri-apps/tauri-docs",
+        "url": "https://github.com/tauri-apps/tauri-docs/blob/v2/src/content/docs/distribute/windows-installer.mdx"
+      },
+      {
+        "title": "Windows Installers (NSIS and MSI) | tauri-apps/tauri | DeepWiki",
+        "url": "https://deepwiki.com/tauri-apps/tauri/7.4.1-windows-installers-(nsis-and-msi)"
+      },
+      {
+        "title": "Windows Installer | Tauri v1",
+        "url": "https://tauri.app/v1/guides/building/windows"
+      },
+      {
+        "title": "Windows Installer - The Tauri Documentation WIP - GitHub Pages",
+        "url": "https://jonaskruckenberg.github.io/tauri-docs-wip/building/windows-installer.html"
+      }
+    ],
+    "consoleErrors": 0,
+    "errors": []
+  },
+  "normalStartup": {
+    "ok": true,
+    "identity": {
+      "host": "0.5.6-local.1",
+      "shell": "0.5.6-local.1"
+    },
+    "normalStartup": true,
+    "debugArguments": false,
+    "modelUnloaded": true,
+    "searchProvider": "rustxng",
+    "rustxngProfile": "full",
+    "otherToolAndApprovalChoicesUnchanged": true,
+    "savedSearchKeyUnchanged": true,
+    "note": "Real search and lifecycle checks used a separately isolated installed-app QA profile."
+  },
+  "readmeLanguagesChecked": 8,
+  "packagedSelfTestsPassed": 13,
+  "nsisCleanupScenariosPassed": 6,
+  "quality": {
+    "releaseQualified": false,
+    "nativeComponentUnchanged": true,
+    "nativePriorEvidence": "https://github.com/zapabob/Strata/releases/tag/v0.5.5-local.1",
+    "focusedHostTests": {
+      "passed": 37,
+      "failed": 0,
+      "optionalSkipped": 3
+    },
+    "realHarnessResearchTests": {
+      "passed": 2,
+      "failed": 0
+    },
+    "packagedSelfTest": {
+      "passed": 13,
+      "failed": 0
+    },
+    "nsisCleanupScenarios": {
+      "passed": 6,
+      "failed": 0
+    },
+    "installedWebView2": {
+      "passed": 9,
+      "checks": [
+        "installed-host-shell-renderer-identity",
+        "btw-typed-during-main-stream",
+        "main-not-cancelled-or-queued",
+        "btw-tool-free-api",
+        "separate-durable-aside",
+        "deepresearch-slash-menu",
+        "installed-rustxng-full-real-search",
+        "aside-survives-page-reload",
+        "mobile-no-horizontal-overflow"
+      ],
+      "consoleErrors": 0,
+      "modelAPI": "explicit local test fixture; does not qualify real-model or GPU performance",
+      "realRustXNG": true
+    },
+    "broadHostSuite": {
+      "passed": 2013,
+      "failed": 29,
+      "skipped": 117,
+      "note": "All 28 pre-existing failure titles reproduced on baseline; new locale collision subsequently fixed. Broad suite does not pass."
+    },
+    "rustxng": {
+      "version": "0.31.1",
+      "profile": "full",
+      "realQueriesWithResults": 2
+    },
+    "installed": {
+      "ok": true,
+      "product": "0.5.6-local.1",
+      "files": 29552,
+      "installerSHA256": "fb91cd8866895645fb30880160e31a35c814b22c2be1c6b2551fceefe94f80ed",
+      "userFilesUnchanged": 3719,
+      "exactPayloadMatch": true
+    }
+  },
+  "signedFeed": {
+    "ok": true,
+    "engine": 1,
+    "control": 1,
+    "trust": "bundled public keys only"
+  },
+  "bundle": {
+    "ok": true,
+    "method": "tar + 7z Copy mode",
+    "allMemberHashesMatched": true,
+    "members": {
+      "install-manifest.txt": {
+        "bytes": 202,
+        "sha256": "937d43d5f02a4bb725dd633e05b044d86c226319134b3c1bb6e85dabe9988ce0"
+      },
+      "INSTALL.md": {
+        "bytes": 2316,
+        "sha256": "e8d3d171dd787cde3a3fabab6336930af2ce9021178b7f050b26554e962b8800"
+      },
+      "install.ps1": {
+        "bytes": 12659,
+        "sha256": "019a08857cd07c3ce55b4fd41262d34065db8495e94c90044d6e6e22f8eb42b5"
+      },
+      "install.sh": {
+        "bytes": 8644,
+        "sha256": "9bb331755d740ad4d069293f965f7843035829d025b83447323ce53b15cc21d2"
+      },
+      "QUALITY.json": {
+        "bytes": 1562,
+        "sha256": "0fdeb82c6b4423ce37a51ed15274829ee51ec431871a2f079c6d37ecc98050a6"
+      },
+      "RustXNG-0.31.1-source.tar.gz": {
+        "bytes": 5174381,
+        "sha256": "927abe258fe2257a90b8a7467cc8b547ecb816d352ce493a0d646fc95960ba61"
+      },
+      "RustXNG-LICENSE.txt": {
+        "bytes": 34520,
+        "sha256": "57c8ff33c9c0cfc3ef00e650a1cc910d7ee479a8bc509f6c9209a7c2a11399d6"
+      },
+      "RustXNG-NOTICE.txt": {
+        "bytes": 2890,
+        "sha256": "0740830f4a7b153429270002eee52506fbc1fefcd55e1aad27d76ef3262853b6"
+      },
+      "SOURCE.json": {
+        "bytes": 2748,
+        "sha256": "a191bdc74663797496d31df8817f2b4f0d5eb46e82e9d7865b7fda734f87f559"
+      },
+      "Strata-0.5.6-local.1-windows-x64-setup.exe": {
+        "bytes": 127079626,
+        "sha256": "fb91cd8866895645fb30880160e31a35c814b22c2be1c6b2551fceefe94f80ed"
+      },
+      "strata-control-0.5.6-windows-x86_64.zip": {
+        "bytes": 72127550,
+        "sha256": "78105223b37d05f06ddf29a0ff28993213c929149be2c3d8b27d12c9d53b9703"
+      },
+      "strata-engine-0.5.5-windows-x86_64-cuda-cuda13.tar.gz": {
+        "bytes": 1469920887,
+        "sha256": "883261c000051ca3b645967cd6e51d7b0538b4294520f9638d3ac7017fc5e8a3"
+      },
+      "strata-feed.json": {
+        "bytes": 1438,
+        "sha256": "b059cfb1cffbe0e49a5a392aa041f07a6f0197f4b289b6d2caa8b7939fdd5acb"
+      },
+      "strata-feed.json.sig": {
+        "bytes": 151,
+        "sha256": "67cec058ef2006146ec096c14af13a4efb89330b6ba5f3049feaf9131953a54e"
+      },
+      "BUNDLE-SHA256SUMS.txt": {
+        "bytes": 1247,
+        "sha256": "cc7cdbb11d3c20d12cf941b41104b0b99d52b3a123ae97aca7e0f11fa077a1a3"
+      }
+    },
+    "assets": {
+      "BUNDLE-SHA256SUMS.txt": {
+        "bytes": 1247,
+        "sha256": "cc7cdbb11d3c20d12cf941b41104b0b99d52b3a123ae97aca7e0f11fa077a1a3"
+      },
+      "install-manifest.txt": {
+        "bytes": 202,
+        "sha256": "937d43d5f02a4bb725dd633e05b044d86c226319134b3c1bb6e85dabe9988ce0"
+      },
+      "INSTALL.md": {
+        "bytes": 2316,
+        "sha256": "e8d3d171dd787cde3a3fabab6336930af2ce9021178b7f050b26554e962b8800"
+      },
+      "install.ps1": {
+        "bytes": 12659,
+        "sha256": "019a08857cd07c3ce55b4fd41262d34065db8495e94c90044d6e6e22f8eb42b5"
+      },
+      "install.sh": {
+        "bytes": 8644,
+        "sha256": "9bb331755d740ad4d069293f965f7843035829d025b83447323ce53b15cc21d2"
+      },
+      "QUALITY.json": {
+        "bytes": 1562,
+        "sha256": "0fdeb82c6b4423ce37a51ed15274829ee51ec431871a2f079c6d37ecc98050a6"
+      },
+      "RustXNG-0.31.1-source.tar.gz": {
+        "bytes": 5174381,
+        "sha256": "927abe258fe2257a90b8a7467cc8b547ecb816d352ce493a0d646fc95960ba61"
+      },
+      "RustXNG-LICENSE.txt": {
+        "bytes": 34520,
+        "sha256": "57c8ff33c9c0cfc3ef00e650a1cc910d7ee479a8bc509f6c9209a7c2a11399d6"
+      },
+      "RustXNG-NOTICE.txt": {
+        "bytes": 2890,
+        "sha256": "0740830f4a7b153429270002eee52506fbc1fefcd55e1aad27d76ef3262853b6"
+      },
+      "SHA256SUMS.txt": {
+        "bytes": 1441,
+        "sha256": "b7ff65b82e9d9b7626d249df12a97c56ab303f43ccd94eb1615cc7622fff6f1e"
+      },
+      "SOURCE.json": {
+        "bytes": 2748,
+        "sha256": "a191bdc74663797496d31df8817f2b4f0d5eb46e82e9d7865b7fda734f87f559"
+      },
+      "Strata-0.5.6-local.1-windows-x64-setup.exe": {
+        "bytes": 127079626,
+        "sha256": "fb91cd8866895645fb30880160e31a35c814b22c2be1c6b2551fceefe94f80ed"
+      },
+      "Strata-0.5.6-local.1-windows-x64.tar.7z": {
+        "bytes": 1674393778,
+        "sha256": "14568efc35d53d8e0ab50b226ae6cf93a256780d470b0ab9a3f0cc598efbb60e"
+      },
+      "strata-control-0.5.6-windows-x86_64.zip": {
+        "bytes": 72127550,
+        "sha256": "78105223b37d05f06ddf29a0ff28993213c929149be2c3d8b27d12c9d53b9703"
+      },
+      "strata-engine-0.5.5-windows-x86_64-cuda-cuda13.tar.gz": {
+        "bytes": 1469920887,
+        "sha256": "883261c000051ca3b645967cd6e51d7b0538b4294520f9638d3ac7017fc5e8a3"
+      },
+      "strata-feed.json": {
+        "bytes": 1438,
+        "sha256": "b059cfb1cffbe0e49a5a392aa041f07a6f0197f4b289b6d2caa8b7939fdd5acb"
+      },
+      "strata-feed.json.sig": {
+        "bytes": 151,
+        "sha256": "67cec058ef2006146ec096c14af13a4efb89330b6ba5f3049feaf9131953a54e"
+      }
+    }
+  },
+  "public": {
+    "ok": true,
+    "url": "https://github.com/zapabob/Strata/releases/tag/v0.5.6-local.1",
+    "tag": "v0.5.6-local.1",
+    "anonymousDownloads": {
+      "BUNDLE-SHA256SUMS.txt": {
+        "bytes": 1247,
+        "sha256": "cc7cdbb11d3c20d12cf941b41104b0b99d52b3a123ae97aca7e0f11fa077a1a3"
+      },
+      "install-manifest.txt": {
+        "bytes": 202,
+        "sha256": "937d43d5f02a4bb725dd633e05b044d86c226319134b3c1bb6e85dabe9988ce0"
+      },
+      "INSTALL.md": {
+        "bytes": 2316,
+        "sha256": "e8d3d171dd787cde3a3fabab6336930af2ce9021178b7f050b26554e962b8800"
+      },
+      "install.ps1": {
+        "bytes": 12659,
+        "sha256": "019a08857cd07c3ce55b4fd41262d34065db8495e94c90044d6e6e22f8eb42b5"
+      },
+      "install.sh": {
+        "bytes": 8644,
+        "sha256": "9bb331755d740ad4d069293f965f7843035829d025b83447323ce53b15cc21d2"
+      },
+      "QUALITY.json": {
+        "bytes": 1562,
+        "sha256": "0fdeb82c6b4423ce37a51ed15274829ee51ec431871a2f079c6d37ecc98050a6"
+      },
+      "RustXNG-0.31.1-source.tar.gz": {
+        "bytes": 5174381,
+        "sha256": "927abe258fe2257a90b8a7467cc8b547ecb816d352ce493a0d646fc95960ba61"
+      },
+      "RustXNG-LICENSE.txt": {
+        "bytes": 34520,
+        "sha256": "57c8ff33c9c0cfc3ef00e650a1cc910d7ee479a8bc509f6c9209a7c2a11399d6"
+      },
+      "RustXNG-NOTICE.txt": {
+        "bytes": 2890,
+        "sha256": "0740830f4a7b153429270002eee52506fbc1fefcd55e1aad27d76ef3262853b6"
+      },
+      "SHA256SUMS.txt": {
+        "bytes": 1441,
+        "sha256": "b7ff65b82e9d9b7626d249df12a97c56ab303f43ccd94eb1615cc7622fff6f1e"
+      },
+      "SOURCE.json": {
+        "bytes": 2748,
+        "sha256": "a191bdc74663797496d31df8817f2b4f0d5eb46e82e9d7865b7fda734f87f559"
+      },
+      "Strata-0.5.6-local.1-windows-x64-setup.exe": {
+        "bytes": 127079626,
+        "sha256": "fb91cd8866895645fb30880160e31a35c814b22c2be1c6b2551fceefe94f80ed"
+      },
+      "Strata-0.5.6-local.1-windows-x64.tar.7z": {
+        "bytes": 1674393778,
+        "sha256": "14568efc35d53d8e0ab50b226ae6cf93a256780d470b0ab9a3f0cc598efbb60e"
+      },
+      "strata-control-0.5.6-windows-x86_64.zip": {
+        "bytes": 72127550,
+        "sha256": "78105223b37d05f06ddf29a0ff28993213c929149be2c3d8b27d12c9d53b9703"
+      },
+      "strata-engine-0.5.5-windows-x86_64-cuda-cuda13.tar.gz": {
+        "bytes": 1469920887,
+        "sha256": "883261c000051ca3b645967cd6e51d7b0538b4294520f9638d3ac7017fc5e8a3"
+      },
+      "strata-feed.json": {
+        "bytes": 1438,
+        "sha256": "b059cfb1cffbe0e49a5a392aa041f07a6f0197f4b289b6d2caa8b7939fdd5acb"
+      },
+      "strata-feed.json.sig": {
+        "bytes": 151,
+        "sha256": "67cec058ef2006146ec096c14af13a4efb89330b6ba5f3049feaf9131953a54e"
+      }
+    },
+    "stableLatestAnonymousDownloads": {
+      "strata-feed.json": {
+        "bytes": 1304,
+        "sha256": "5d18643a6b28d55c18b5c426e49de3056294b432e2a925b82ad98541af176607"
+      },
+      "strata-feed.json.sig": {
+        "bytes": 151,
+        "sha256": "cc3c5f82686d87728a147f23e10d825cea15002d21c5582ebd7e998e9dda43a9"
+      }
+    },
+    "serverDigestsMatched": true,
+    "priorReleasesUnchanged": 24,
+    "priorTagsUnchanged": 25,
+    "latest": "v0.5.1",
+    "stableAssetsUnchanged": true
+  },
+  "receipts": {
+    "app-build": {
+      "passed": true,
+      "receiptSHA256": "aa8ac3a656a6ce5c6c0d2d685bf7f211fa9b5162f19659ac63d754dc23146077",
+      "ownedProcessesAfter": 0,
+      "resourceDiagnostics": {
+        "scope": "owned_root_process_sampled_not_job_peak",
+        "status": "AVAILABLE",
+        "samples": 28166,
+        "failed_samples": 0,
+        "last_error_code": null,
+        "max_private_bytes": 14225408,
+        "max_working_set_bytes": 22749184,
+        "min_available_ram": 9355669504,
+        "min_commit_headroom": 20598464512,
+        "min_H_free": 136962846720
+      }
+    },
+    "focused-checks": {
+      "passed": true,
+      "receiptSHA256": "12cb704fde74cc433378fbf7691d8aa84c393b276783a742d59399101b8f2955",
+      "ownedProcessesAfter": 0,
+      "resourceDiagnostics": {
+        "scope": "owned_root_process_sampled_not_job_peak",
+        "status": "AVAILABLE",
+        "samples": 739,
+        "failed_samples": 0,
+        "last_error_code": null,
+        "max_private_bytes": 21073920,
+        "max_working_set_bytes": 37441536,
+        "min_available_ram": 8010407936,
+        "min_commit_headroom": 21736812544,
+        "min_H_free": 141014810624
+      }
+    },
+    "harness-research": {
+      "passed": true,
+      "receiptSHA256": "d1bd88141c313d1743466f1de47ef41b9313192a308e772c5b02a8197a11c3f3",
+      "ownedProcessesAfter": 0,
+      "resourceDiagnostics": {
+        "scope": "owned_root_process_sampled_not_job_peak",
+        "status": "AVAILABLE",
+        "samples": 1024,
+        "failed_samples": 0,
+        "last_error_code": null,
+        "max_private_bytes": 20508672,
+        "max_working_set_bytes": 37543936,
+        "min_available_ram": 7420772352,
+        "min_commit_headroom": 22313230336,
+        "min_H_free": 141017305088
+      }
+    },
+    "rustxng-live-r2": {
+      "passed": true,
+      "receiptSHA256": "dcc930e580b006f36d26971ee032549522a314eff1da4945e6949bf1c0675532",
+      "ownedProcessesAfter": 0,
+      "resourceDiagnostics": {
+        "scope": "owned_root_process_sampled_not_job_peak",
+        "status": "AVAILABLE",
+        "samples": 240,
+        "failed_samples": 0,
+        "last_error_code": null,
+        "max_private_bytes": 57221120,
+        "max_working_set_bytes": 90779648,
+        "min_available_ram": 11257602048,
+        "min_commit_headroom": 22803546112,
+        "min_H_free": 142137221120
+      }
+    },
+    "extract-self-test-r3": {
+      "passed": true,
+      "receiptSHA256": "5f5d2a979eac08d9420217f5c80c90058d0d906c0c307ad9d948882bfec8a34a",
+      "ownedProcessesAfter": 0,
+      "resourceDiagnostics": {
+        "scope": "owned_root_process_sampled_not_job_peak",
+        "status": "AVAILABLE",
+        "samples": 1140,
+        "failed_samples": 0,
+        "last_error_code": null,
+        "max_private_bytes": 100102144,
+        "max_working_set_bytes": 100519936,
+        "min_available_ram": 15528243200,
+        "min_commit_headroom": 21231493120,
+        "min_H_free": 131232923648
+      }
+    },
+    "private-backup-r3": {
+      "passed": true,
+      "receiptSHA256": "cc84573b0e430acf0d8b66c2beeacfe523d3088bed67eef0b5bcfa4bb2fa380b",
+      "ownedProcessesAfter": 0,
+      "resourceDiagnostics": {
+        "scope": "owned_root_process_sampled_not_job_peak",
+        "status": "AVAILABLE",
+        "samples": 5777,
+        "failed_samples": 0,
+        "last_error_code": null,
+        "max_private_bytes": 104931328,
+        "max_working_set_bytes": 114278400,
+        "min_available_ram": 14678630400,
+        "min_commit_headroom": 21272866816,
+        "min_H_free": 130781896704
+      }
+    },
+    "nsis-cleanup-r3": {
+      "passed": true,
+      "receiptSHA256": "18a07c5016b5293aa13580192074d6a60a636e1008765ad1e998f00257130605",
+      "ownedProcessesAfter": 0,
+      "resourceDiagnostics": {
+        "scope": "owned_root_process_sampled_not_job_peak",
+        "status": "AVAILABLE",
+        "samples": 510,
+        "failed_samples": 0,
+        "last_error_code": null,
+        "max_private_bytes": 20430848,
+        "max_working_set_bytes": 37322752,
+        "min_available_ram": 16165134336,
+        "min_commit_headroom": 21429534720,
+        "min_H_free": 132094496768
+      }
+    },
+    "candidate-ui-r2": {
+      "passed": true,
+      "receiptSHA256": "5d41e3747101f69d1a7e9c0017abdecaddecc0b0cec042b9bbf5a129b9bfb0d0",
+      "ownedProcessesAfter": 0,
+      "resourceDiagnostics": {
+        "scope": "owned_root_process_sampled_not_job_peak",
+        "status": "AVAILABLE",
+        "samples": 759,
+        "failed_samples": 0,
+        "last_error_code": null,
+        "max_private_bytes": 116600832,
+        "max_working_set_bytes": 112787456,
+        "min_available_ram": 15760666624,
+        "min_commit_headroom": 20742811648,
+        "min_H_free": 132096950272
+      }
+    },
+    "installed-ui-r1": {
+      "passed": true,
+      "receiptSHA256": "93f4fbd31b8d6d2853e246dbd17b8ae7db76237e958576f32f116b8148c6f630",
+      "ownedProcessesAfter": 0,
+      "resourceDiagnostics": {
+        "scope": "owned_root_process_sampled_not_job_peak",
+        "status": "AVAILABLE",
+        "samples": 743,
+        "failed_samples": 0,
+        "last_error_code": null,
+        "max_private_bytes": 130600960,
+        "max_working_set_bytes": 119283712,
+        "min_available_ram": 15671537664,
+        "min_commit_headroom": 20645199872,
+        "min_H_free": 132548300800
+      }
+    },
+    "install-r1": {
+      "passed": true,
+      "receiptSHA256": "3a11d55f19cb0fc06a8d7d203ad738809a66a0b4defe1acddf2e6f0477a620eb",
+      "ownedProcessesAfter": 0,
+      "resourceDiagnostics": {
+        "scope": "owned_root_process_sampled_not_job_peak",
+        "status": "AVAILABLE",
+        "samples": 8974,
+        "failed_samples": 0,
+        "last_error_code": null,
+        "max_private_bytes": 106983424,
+        "max_working_set_bytes": 117379072,
+        "min_available_ram": 15280844800,
+        "min_commit_headroom": 20652269568,
+        "min_H_free": 131206201344
+      }
+    },
+    "bundle-r1": {
+      "passed": true,
+      "receiptSHA256": "26927a3a27a379a346b2d471e8ca184eadd6b5867779842d4cfad0c793d52f76",
+      "ownedProcessesAfter": 0,
+      "resourceDiagnostics": {
+        "scope": "owned_root_process_sampled_not_job_peak",
+        "status": "AVAILABLE",
+        "samples": 5994,
+        "failed_samples": 0,
+        "last_error_code": null,
+        "max_private_bytes": 22487040,
+        "max_working_set_bytes": 32063488,
+        "min_available_ram": 12788924416,
+        "min_commit_headroom": 17804984320,
+        "min_H_free": 124120764416
+      }
+    },
+    "normal-start": {
+      "passed": true,
+      "receiptSHA256": "4d57058f6b6847f13a8ca26ecc259d6265c2fa090909d20aa47910bacbdd293e",
+      "ownedProcessesAfter": 0,
+      "resourceDiagnostics": {
+        "scope": "owned_root_process_sampled_not_job_peak",
+        "status": "AVAILABLE",
+        "samples": 26,
+        "failed_samples": 0,
+        "last_error_code": null,
+        "max_private_bytes": 19755008,
+        "max_working_set_bytes": 31457280,
+        "min_available_ram": 15744102400,
+        "min_commit_headroom": 20652642304,
+        "min_H_free": 126009278464
+      }
+    },
+    "publication-snapshot": {
+      "passed": true,
+      "receiptSHA256": "017a7c5957072fe372d1905ad349674be1f5eac9201bb00aef6ccd709b01099b",
+      "ownedProcessesAfter": 0,
+      "resourceDiagnostics": {
+        "scope": "owned_root_process_sampled_not_job_peak",
+        "status": "AVAILABLE",
+        "samples": 145,
+        "failed_samples": 0,
+        "last_error_code": null,
+        "max_private_bytes": 18161664,
+        "max_working_set_bytes": 26640384,
+        "min_available_ram": 15778897920,
+        "min_commit_headroom": 21472206848,
+        "min_H_free": 132573831168
+      }
+    },
+    "draft-verification": {
+      "passed": true,
+      "receiptSHA256": "50e6d9961816173cbe115c94be56834d10cac29c1b1e1852e89fb469ef08384c",
+      "ownedProcessesAfter": 0,
+      "resourceDiagnostics": {
+        "scope": "owned_root_process_sampled_not_job_peak",
+        "status": "AVAILABLE",
+        "samples": 214,
+        "failed_samples": 0,
+        "last_error_code": null,
+        "max_private_bytes": 19816448,
+        "max_working_set_bytes": 28221440,
+        "min_available_ram": 5950259200,
+        "min_commit_headroom": 10338934784,
+        "min_H_free": 130237952000
+      }
+    },
+    "release-publish": {
+      "passed": true,
+      "receiptSHA256": "8d127b61ba2c776e18e97ddab4e72ec2139f64d505a41ae970471bf56ec39a11",
+      "ownedProcessesAfter": 0,
+      "resourceDiagnostics": {
+        "scope": "owned_root_process_sampled_not_job_peak",
+        "status": "AVAILABLE",
+        "samples": 352,
+        "failed_samples": 0,
+        "last_error_code": null,
+        "max_private_bytes": 20856832,
+        "max_working_set_bytes": 28704768,
+        "min_available_ram": 5989228544,
+        "min_commit_headroom": 10310619136,
+        "min_H_free": 130237882368
+      }
+    },
+    "release-readback-r2": {
+      "passed": true,
+      "receiptSHA256": "9596bd8eb348db49d72f0bb00a84e7ad587675b814a807a0c1d8d0dca816015a",
+      "ownedProcessesAfter": 0,
+      "resourceDiagnostics": {
+        "scope": "owned_root_process_sampled_not_job_peak",
+        "status": "AVAILABLE",
+        "samples": 17296,
+        "failed_samples": 0,
+        "last_error_code": null,
+        "max_private_bytes": 21737472,
+        "max_working_set_bytes": 34762752,
+        "min_available_ram": 4341047296,
+        "min_commit_headroom": 9267437568,
+        "min_H_free": 122206367744
+      }
+    }
+  },
+  "preservedFailedAttempts": {
+    "host-suite": {
+      "passed": false,
+      "receiptSHA256": "ecbf9756c63ac1031f553bc58a9c43c8902b8dbc27dcbfada1cc2f6f173a11e6",
+      "status": "FINISHED"
+    },
+    "baseline-failures": {
+      "passed": false,
+      "receiptSHA256": "4bd9a51963b1a64e40e993b6c65d1371fcbc6b64b829049d673a2ad1499078e4",
+      "status": "FINISHED"
+    },
+    "rustxng-live": {
+      "passed": false,
+      "receiptSHA256": "ce493a91ac7da6d034db35b78c5b298f3cf42d48f3cae7b8fcacf065dbf3c337",
+      "status": "ADMISSION_REFUSED"
+    },
+    "extract-self-test": {
+      "passed": false,
+      "receiptSHA256": "abadf0ab7f428679adc9754a171d46128c0e989187c0d1d63d659f1179e206c6",
+      "status": "TIMEOUT"
+    },
+    "extract-self-test-r2": {
+      "passed": false,
+      "receiptSHA256": "0f6e8e622cc68a8345e6fef01d65b117e22ed8ffd6bce1b4b0a92ef90b81fc7d",
+      "status": "FINISHED"
+    },
+    "private-backup": {
+      "passed": false,
+      "receiptSHA256": "5256b6ab5b76eadb1b268a3c880a394decea68f0d81e92363b2483dc16e7b6f3",
+      "status": "FINISHED"
+    },
+    "private-backup-r2": {
+      "passed": false,
+      "receiptSHA256": "5a0ab7f18712b31db22bd7bcf8588d27d36380122f27f551146b13fd6b7df325",
+      "status": "TIMEOUT"
+    },
+    "nsis-cleanup": {
+      "passed": false,
+      "receiptSHA256": "660964dcd2a4e35e44e550f29b5952a9e586996c12c82c2a17edb690bea3b3d5",
+      "status": "FINISHED"
+    },
+    "nsis-cleanup-r2": {
+      "passed": false,
+      "receiptSHA256": "3361a6ea5c1aba8c6752773a13bfc3ac1a0faf92715074a898493beb94569407",
+      "status": "FINISHED"
+    },
+    "candidate-ui": {
+      "passed": false,
+      "receiptSHA256": "838097cd9d015d18b8a388f9766314ef086dd754a77bb88207d502c144fe0e50",
+      "status": "FINISHED"
+    },
+    "release-upload": {
+      "passed": false,
+      "receiptSHA256": "93574833e4ce817ec9337b47a9c487e6c5ba589e29620aea0ff967ef8c2ce24a",
+      "status": "FINISHED"
+    },
+    "release-readback": {
+      "passed": false,
+      "receiptSHA256": "41a4785e031937a8e768a11aa4c3ff48b71c64e42bcc15874fd422b9b388572e",
+      "status": "RESOURCE_PRESSURE"
+    }
+  }
+}

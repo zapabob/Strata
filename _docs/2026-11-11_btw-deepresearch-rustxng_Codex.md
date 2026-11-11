@@ -234,3 +234,29 @@ explicit NSIS compiler exit observation, official Tauri marker binding, exact
 draft lookup and serialized readback with verified-cache reuse. The production
 feature bytes and resource/security defaults were not weakened. Preserve all
 failed receipts; no PC-wide skills, policy or global instructions were edited.
+
+## Final public readback
+
+release-readback-r2 passed. All 17 public assets were fetched without auth and
+matched their frozen whole-file SHA-256 and size, including both complete large
+files. Thirteen complete r1 files were rehashed and reused; incomplete r1 files
+were retained and downloaded afresh into r2. The single-worker full GET briefly
+showed no file growth. A bounded anonymous 1 MiB range probe returned HTTP 206
+with the correct total size in 1.89 seconds. Before a proposed owned-worker
+cancellation could proceed, the progress check detected resumed file growth
+and refused cancellation; r2 completed normally. No user app or r2 worker was
+terminated by those diagnostic attempts. The unused range-transfer prototype
+was discarded; the committed driver matches the successful full-GET recipe.
+
+The successful r2 guard observed at least 4341047296 available RAM bytes and
+confirmed zero active owned processes after cleanup. Stable latest/download
+feed and signature were also anonymously fetched and matched the old v0.5.1
+digests. All 24 previous releases and 25 previous tags remain unchanged.
+Structured evidence: [PUBLIC_VERIFICATION.json](search-056-20261111/PUBLIC_VERIFICATION.json)
+and [LOCAL_VERIFICATION.json](search-056-20261111/LOCAL_VERIFICATION.json).
+The latter checks all eight README languages and preserves failed-attempt
+receipt hashes alongside the passing evidence. Full qualification remains false.
+
+The user subsequently requested Hermes-style workflow-to-skill learning. That
+addition is a separate source/version increment; this published preview, tag,
+artifacts and measurements remain frozen.
