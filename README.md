@@ -20,8 +20,8 @@ separate. The complete tar.7z includes the identical installer.
 | Download verification | [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.5.6-local.1/SHA256SUMS.txt) |
 | Previous preview / stable | [0.5.5-local.1](https://github.com/zapabob/Strata/releases/tag/v0.5.5-local.1) / [0.5.1](https://github.com/zapabob/Strata/releases/tag/v0.5.1) |
 
-The links above name the intended release locations. The [delivery record](_docs/2026-11-11_btw-deepresearch-rustxng_Codex.md)
-records actual publication and verification status. Stable GitHub Latest and the
+The preview is [published](https://github.com/zapabob/Strata/releases/tag/v0.5.6-local.1). The [delivery record](_docs/2026-11-11_btw-deepresearch-rustxng_Codex.md)
+records installation, archive and public-download verification. Stable GitHub Latest and the
 stable feed stay unchanged. This is a fork distribution; it is not endorsed by
 upstream. The EXE has no Windows code signature; component signatures are separate.
 

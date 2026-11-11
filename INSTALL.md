@@ -14,7 +14,7 @@ RustXNG Fullを追加しています。[インストーラー](https://github.co
 
 | 配布版 | 入手先 |
 | --- | --- |
-| 新しいプレビュー `0.5.5-local.1` | **[Windowsインストーラーをダウンロード](https://github.com/zapabob/Strata/releases/download/v0.5.5-local.1/Strata-0.5.5-local.1-windows-x64-setup.exe)** · [エンジン・手順も入った一括パッケージ](https://github.com/zapabob/Strata/releases/download/v0.5.5-local.1/Strata-0.5.5-local.1-windows-x64.tar.7z) · [チェックサム](https://github.com/zapabob/Strata/releases/download/v0.5.5-local.1/SHA256SUMS.txt) |
+| 前のプレビュー `0.5.5-local.1` | [Windowsインストーラー](https://github.com/zapabob/Strata/releases/download/v0.5.5-local.1/Strata-0.5.5-local.1-windows-x64-setup.exe) · [エンジン・手順も入った一括パッケージ](https://github.com/zapabob/Strata/releases/download/v0.5.5-local.1/Strata-0.5.5-local.1-windows-x64.tar.7z) · [チェックサム](https://github.com/zapabob/Strata/releases/download/v0.5.5-local.1/SHA256SUMS.txt) |
 | 安定版 `0.5.1` | [Windowsインストーラー](https://github.com/zapabob/Strata/releases/download/v0.5.1/Strata-0.5.1-windows-x64-setup.exe) · [リリースとチェックサム](https://github.com/zapabob/Strata/releases/tag/v0.5.1) |
 
 `0.5.5-local.1` は会話履歴の一括削除とブラウザー操作を含み、ビルドと実installed検証が通過しました。
@@ -54,7 +54,7 @@ EXE自体のWindowsコード署名はなく、エンジンのコンポーネン�
 ## English
 
 Use the [stable Windows installer](https://github.com/zapabob/Strata/releases/tag/v0.5.1)
-or the explicitly labelled [preview](https://github.com/zapabob/Strata/releases/tag/v0.5.5-local.1).
+or the explicitly labelled [preview](https://github.com/zapabob/Strata/releases/tag/v0.5.6-local.1).
 Verify checksums, unload models and quit the tray app before updating. Run the EXE,
 then select the engine and model in the app. See the [full installation guide](docs/HAKUA_INSTALL.md).
 The055 installer includes the measured bulk-delete/browser-tool changes; broader model/public-search quality remains unqualified.

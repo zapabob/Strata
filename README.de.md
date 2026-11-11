@@ -1,5 +1,13 @@
 # Strata · Hakua
 
+## Aktuelle Vorschau 0.5.6-local.1
+
+`/btw <Frage>` öffnet eine separate Antwort neben dem laufenden Chat. `/deepresearch <Thema>` verbindet mehrere Suchanfragen und gelesene Seiten; unvollständige Belege werden kenntlich gemacht. Unter Einstellungen → Werkzeuge → Websuche lässt sich **RustXNG Full** ohne Schlüssel auswählen.
+
+[Windows-Installer](https://github.com/zapabob/Strata/releases/download/v0.5.6-local.1/Strata-0.5.6-local.1-windows-x64-setup.exe) · [tar.7z-Komplettpaket](https://github.com/zapabob/Strata/releases/download/v0.5.6-local.1/Strata-0.5.6-local.1-windows-x64.tar.7z) · [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.5.6-local.1/SHA256SUMS.txt).
+
+Native Engine 0.5.5 und Control 0.5.6 bleiben unverändert. Installation, WebView2 und echte RustXNG-Suchen wurden geprüft; die Modellantworten der Oberflächentests stammen aus einer isolierten Test-API. Modellqualität und gleichzeitige GPU-Ausführung sind nicht qualifiziert. Der Installer hat keine Windows-Codesignatur; die stabile Version bleibt 0.5.1. [Aktuelle Nachweise](_docs/2026-11-11_btw-deepresearch-rustxng_Codex.md). Die folgenden Pakete und Messwerte für 0.5.5 und 0.5.1 gehören zu den früheren Versionen.
+
 [Kurze Installation](INSTALL.md) · [Browser und Suche](docs/BROWSER_SEARCH.md)
 
 ## Vorschau 0.5.5-local.1 — offizieller Quellstand 0.2.13

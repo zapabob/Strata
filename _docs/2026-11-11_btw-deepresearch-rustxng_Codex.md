@@ -165,6 +165,13 @@ the app API, as explicitly requested. The entire other tools view, key-set
 state and approval choices compare unchanged. RustXNG uses the pinned Full
 profile. The normal window is available with its model unloaded.
 
+A later read-only status check during public readback found one ready legacy
+runtime and a running supervisor, with zero native instances. No new unload
+or interruption was performed: the upgrade's authorized stop/unload was already
+complete. The no-model result above describes the measured initial normal
+startup, not a permanent promise about subsequent app use. Windows uninstall
+registration also reports 0.5.6-local.1 in the same existing install folder.
+
 The unchanged signed feed was freshly verified using only the packaged
 Control's bundled public keys; exactly one native and one Control package
 verified. No signing private key was accessed. Archive and public download
@@ -188,3 +195,42 @@ before publication. GitHub connector capabilities are read-only for release
 assets here, so the authenticated GitHub CLI performs this authorized upload.
 Publication and anonymous readback have not been claimed by this prepublication
 source tag; the following main-branch receipt records their actual result.
+
+## Publication
+
+Published preview:
+https://github.com/zapabob/Strata/releases/tag/v0.5.6-local.1
+Release ID 441271899, published 2026-11-11T05:34:02Z (14:34:02 JST).
+The immutable annotated tag points to the prepublication recipe/evidence commit;
+the packaged app source remains 6da4a421. Source, runtime and publication
+identities are intentionally recorded separately.
+
+All 17 assets uploaded without clobber. The first upload driver's final lookup
+used the tag endpoint, which returned HTTP 404 for the draft despite a complete
+upload. That failed receipt remains intact. The corrected driver finds the exact
+draft through the authenticated release inventory and runs a separate read-only
+verification action. It matched every server SHA-256 and size, then checked the
+pushed immutable tag before publishing the same draft. No asset was replaced or
+uploaded a second time. Postpublication metadata comparison confirmed all prior
+24 releases, 25 tags, asset IDs/digests and stable v0.5.1 Latest unchanged.
+
+The main-branch documentation now gives current 0.5.6 downloads and command
+guidance in all eight README languages. The previous 0.5.5/0.5.1 measurements
+remain labelled historical. These documentation and publication-helper fixes
+do not rebuild or alter the frozen app or distribution bytes.
+
+The first anonymous readback was stopped by the unchanged resource guard when
+available RAM reached 3218317312 bytes, just below the 3 GiB floor. Its process
+tree was confirmed absent; the user app was not stopped. Thirteen completed
+public downloads already matched their frozen hashes. The two partial large
+files and failed receipt are preserved. After available RAM recovered above
+5 GiB, r2 started with one download worker. It reuses only fully size/hash-checked
+public files from r1 and writes new large downloads to a fresh directory. The
+resource floors are unchanged. Anonymous completion is recorded below only
+after the final result exists.
+
+Self-review-event: qa_defect. Fixes applied to verification drivers include
+explicit NSIS compiler exit observation, official Tauri marker binding, exact
+draft lookup and serialized readback with verified-cache reuse. The production
+feature bytes and resource/security defaults were not weakened. Preserve all
+failed receipts; no PC-wide skills, policy or global instructions were edited.

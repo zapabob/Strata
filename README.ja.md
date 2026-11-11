@@ -1,5 +1,15 @@
 # Hakua / Strata
 
+## 現行プレビュー 0.5.6-local.1
+
+`/btw 質問` で本題と別の回答を開き、`/deepresearch 調査内容` で検索とページ閲覧を伴う調査を始められます。調査に必要な資料が集まらなかった場合は、その制限を回答に明記します。設定 → ツール → Web検索で **RustXNG Full（キー不要）** を選択できます。
+
+[Windowsインストーラー・127 MB](https://github.com/zapabob/Strata/releases/download/v0.5.6-local.1/Strata-0.5.6-local.1-windows-x64-setup.exe) · [tar.7z一括パッケージ・1.67 GB](https://github.com/zapabob/Strata/releases/download/v0.5.6-local.1/Strata-0.5.6-local.1-windows-x64.tar.7z) · [チェックサム](https://github.com/zapabob/Strata/releases/download/v0.5.6-local.1/SHA256SUMS.txt)
+
+この版はアプリの更新です。署名付きnative 0.5.5とControl 0.5.6は変更していません。上書きインストールと実アプリの画面・実検索を確認しました。画面の生成テストには専用APIを用いており、実モデルの品質やGPU同時処理性能の認定は行っていません。EXEはWindowsコード未署名で、安定版は引き続き0.5.1です。[今回の検証記録](_docs/2026-11-11_btw-deepresearch-rustxng_Codex.md)。
+
+以下の0.5.5・0.5.1の配布物と測定値は、それぞれの旧版の記録として保持しています。
+
 **[Windows版をインストールする](INSTALL.md)** · [Web検索・ブラウザー操作](docs/BROWSER_SEARCH.md)
 
 Windowsプレビューは `0.5.5-local.1`／native `0.5.5`／Control `0.5.6` です。

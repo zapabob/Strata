@@ -1,5 +1,13 @@
 # Strata · Hakua
 
+## 当前预览版 0.5.6-local.1
+
+使用 `/btw <问题>` 可在主对话继续运行时打开独立回答；使用 `/deepresearch <主题>` 可结合多次搜索和页面阅读开展调查，并明确说明证据不足的情况。在设置 → 工具 → 网页搜索中选择 **RustXNG Full**，无需密钥。
+
+[Windows 安装程序](https://github.com/zapabob/Strata/releases/download/v0.5.6-local.1/Strata-0.5.6-local.1-windows-x64-setup.exe) · [tar.7z 完整包](https://github.com/zapabob/Strata/releases/download/v0.5.6-local.1/Strata-0.5.6-local.1-windows-x64.tar.7z) · [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.5.6-local.1/SHA256SUMS.txt)。
+
+原生引擎 0.5.5 和 Control 0.5.6 保持不变。已验证覆盖安装、WebView2 界面和真实 RustXNG 搜索；界面测试中的模型回答来自隔离的测试 API，不能证明真实模型质量或 GPU 并发性能。EXE 没有 Windows 代码签名，稳定版仍为 0.5.1。[当前验证记录](_docs/2026-11-11_btw-deepresearch-rustxng_Codex.md)。下方 0.5.5 和 0.5.1 的安装包与测量数据均属于先前版本。
+
 [快速安装](INSTALL.md) · [网页搜索与浏览器操作](docs/BROWSER_SEARCH.md)
 
 ## 0.5.5-local.1 预览版 — 集成官方0.2.13

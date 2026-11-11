@@ -6,6 +6,8 @@ from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import json
 from pathlib import Path
+import re
+import shutil
 import subprocess
 import urllib.request
 
@@ -51,6 +53,15 @@ def release_identity(row: dict) -> dict:
     return {key: row[key] for key in ('id', 'tag_name', 'draft', 'prerelease')} | {
         'assets': {asset['name']: {key: asset.get(key) for key in ('id', 'size', 'digest')}
                    for asset in row['assets']}}
+
+
+def get_release() -> dict:
+    # GitHub's tag endpoint omits drafts, even for this authenticated owner.
+    rows = api('releases?per_page=100')
+    require(len(rows) < 100, 'Bounded release inventory required')
+    matches = [row for row in rows if row['tag_name'] == TAG]
+    require(len(matches) == 1, 'Exactly one release for the immutable tag required')
+    return matches[0]
 
 
 def snapshot() -> None:
@@ -103,9 +114,17 @@ def upload() -> None:
     for name in sorted(records, key=lambda name: records[name]['bytes']):
         print('Uploading ' + name, flush=True)
         gh('release', 'upload', TAG, str(ASSETS / name), '--repo', REPO)
-    release = api('releases/tags/' + TAG)
+    verify_draft()
+
+
+def verify_draft() -> None:
+    records = local_assets()
+    release = get_release()
     require(release['draft'] and release['prerelease'], 'Expected unpublished prerelease')
     verify_remote(release, records)
+    source = subprocess.check_output(['git', 'rev-parse', TAG + '^{commit}'], cwd=ROOT, text=True).strip()
+    remote = subprocess.check_output(['git', 'ls-remote', '--tags', 'origin', 'refs/tags/' + TAG + '^{}'], cwd=ROOT, text=True)
+    require(remote.split()[0] == source, 'Remote annotated tag must still match')
     save('draft-verified.json', {'ok': True, 'id': release['id'], 'tagCommit': source, 'assets': records,
                                  'unchanged': unchanged()})
     print('Draft asset sizes and server SHA-256 digests matched.', flush=True)
@@ -115,19 +134,20 @@ def verify_remote(release: dict, records: dict) -> None:
     observed = {row['name']: row for row in release['assets']}
     require(set(observed) == set(records), 'Remote asset membership differs')
     for name, row in records.items():
-        require(observed[name]['size'] == row['bytes'] and observed[name]['digest'] == 'sha256:' + row['sha256'],
+        require(observed[name]['state'] == 'uploaded' and observed[name]['size'] == row['bytes']
+                and observed[name]['digest'] == 'sha256:' + row['sha256'],
                 'Remote size or SHA-256 mismatch: ' + name)
 
 
 def publish() -> None:
     draft = load('draft-verified.json')
     records = local_assets()
-    release = api('releases/tags/' + TAG)
+    release = get_release()
     require(release['id'] == draft['id'] and release['draft'], 'Expected exact verified draft')
     verify_remote(release, records)
     unchanged()
     gh('release', 'edit', TAG, '--repo', REPO, '--draft=false', '--prerelease', '--latest=false')
-    release = api('releases/tags/' + TAG)
+    release = get_release()
     require(not release['draft'] and release['prerelease'], 'Prerelease publication did not complete')
     verify_remote(release, records)
     save('published.json', {'ok': True, 'url': release['html_url'], 'id': release['id'],
@@ -135,17 +155,25 @@ def publish() -> None:
     print(release['html_url'], flush=True)
 
 
-def readback() -> None:
+def readback(attempt: str = 'r1') -> None:
     require(load('published.json')['ok'], 'Published prerelease required')
     records = local_assets()
-    release = api('releases/tags/' + TAG)
+    release = get_release()
     verify_remote(release, records)
-    target = OUT / 'anonymous-readback'
+    require(re.fullmatch(r'r[1-9][0-9]*', attempt), 'Explicit readback attempt required')
+    target = OUT / ('anonymous-readback' if attempt == 'r1' else 'anonymous-readback-' + attempt)
     target.mkdir()
 
     def download(asset: dict) -> tuple:
         name = asset['name']
         path = target / name
+        prior = OUT / 'anonymous-readback' / name
+        if attempt != 'r1' and prior.is_file() and prior.stat().st_size == records[name]['bytes'] and sha(prior) == records[name]['sha256']:
+            # Preserve the resource-stopped attempt. Reuse only completely read-back,
+            # size/hash-verified public files; partial files remain untouched there.
+            shutil.copy2(prior, path)
+            print('Reused complete anonymous readback ' + name, flush=True)
+            return name, records[name]
         request = urllib.request.Request(asset['browser_download_url'], headers={'User-Agent': 'Strata-release-readback/0.5.6'})
         digest = hashlib.sha256()
         size = 0
@@ -161,23 +189,41 @@ def readback() -> None:
         print('Read back ' + name, flush=True)
         return name, observed
 
-    with ThreadPoolExecutor(max_workers=2) as pool:
+    with ThreadPoolExecutor(max_workers=1) as pool:
         observed = dict(pool.map(download, release['assets']))
+    stable = {}
+    stable_dir = target / 'stable-latest'
+    stable_dir.mkdir()
+    for name in ('strata-feed.json', 'strata-feed.json.sig'):
+        expected = load('publication-before.json')['latest']['assets'][name]
+        request = urllib.request.Request(f'https://github.com/{REPO}/releases/latest/download/{name}',
+                                         headers={'User-Agent': 'Strata-release-readback/0.5.6'})
+        with urllib.request.urlopen(request, timeout=60) as source:
+            data = source.read(1024 * 1024 + 1)
+        require(len(data) == expected['size'] and 'sha256:' + hashlib.sha256(data).hexdigest() == expected['digest'],
+                'Stable latest/download bytes changed')
+        (stable_dir / name).write_bytes(data)
+        stable[name] = {'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()}
     check = unchanged()
     save('PUBLIC_VERIFICATION.json', {'ok': True, 'url': release['html_url'], 'tag': TAG,
-                                     'anonymousDownloads': observed, 'serverDigestsMatched': True, **check})
+                                     'anonymousDownloads': observed, 'stableLatestAnonymousDownloads': stable,
+                                     'serverDigestsMatched': True, **check})
     print('Every public download matched the frozen local SHA-256.', flush=True)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=['snapshot', 'upload', 'publish', 'readback'])
+    parser.add_argument('action', choices=['snapshot', 'upload', 'verify-draft', 'publish', 'readback'])
     parser.add_argument('--execute', action='store_true')
+    parser.add_argument('--attempt', default='r1')
     args = parser.parse_args()
     if not args.execute:
         print(json.dumps({'execute': False, 'action': args.action, 'tag': TAG}))
         return
-    globals()[args.action]()
+    if args.action == 'readback':
+        readback(args.attempt)
+    else:
+        globals()[args.action.replace('-', '_')]()
 
 
 if __name__ == '__main__':
