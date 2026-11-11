@@ -5,6 +5,8 @@ The golden files are the data; `test_entry_points_agree.py` applies this list to
 
 #: Run-config keys that differ between the Terminal and the app by design (app vs launch).
 BY_DESIGN = {
+    "arch": "the app records the validated serving architecture explicitly; the Terminal infers Qwen3.8 from its model arguments",
+    "hakua_harness": "the Hakua desktop fork creates its own local principal and private memory root; the unconfigured Terminal has none",
     "api_key": "the app generates its own key; the Terminal asks for none unless --api-key",
     "aliases": "the app lists the API model names clients may use",
     "port": "the app's engine listens on 18500, the Terminal's on 8080 (or --port)",
@@ -15,6 +17,11 @@ BY_DESIGN = {
     "args_derived": "launch's own bookkeeping stamp of the arguments it derived (a copy of args)",
     "args_written": "launch's own bookkeeping stamp of the arguments it wrote (a copy of args)",
 }
+
+# Only these exact disabled values differ for the fork's isolated principal.
+# test_entry_points_agree validates the complete principal and rejects changed
+# values or duplicate flags before comparing the remaining engine arguments.
+HAKUA_PRIVATE_CACHE = {"--prompt-cache": "0", "--conversation-cache-mib": "0"}
 
 #: Environment variables the engine start adds, which differ by design.
 ENV_BY_DESIGN = {

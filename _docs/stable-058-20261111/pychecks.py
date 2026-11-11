@@ -23,5 +23,8 @@ MODES['terminal-first'] = [*MODES['terminal'], '-x']
 MODES['repair-final'] = ['-m', 'pytest', '-q', '-p', 'no:cacheprovider',
     'tools/test_capability_table.py', 'tools/test_bench_results_index.py', 'tools/test_release_manifest.py',
     'tests/test_strata_memory.py', 'tests/terminal/test_install_scripts_env.py', 'serve/test_q36_memory_contract.py']
+MODES['ci-followup'] = ['-m', 'pytest', '-q', '-p', 'no:cacheprovider',
+    'tests/snapshot/test_entry_points_agree.py',
+    'tools/test_strata_mcp.py::MixedGraphics::test_windows_lists_an_amd_card_and_not_the_integrated_radeon']
 environment = dict(os.environ, STRATA_TEST_NODE_EXE=str(ROOT / 'apps/desktop/src-tauri/resources/node/node.exe'), PYTEST_DISABLE_PLUGIN_AUTOLOAD='1')
 raise SystemExit(subprocess.call([sys.executable, '-X', 'utf8', '-B', *MODES[sys.argv[1]]], cwd=ROOT, env=environment))

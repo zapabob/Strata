@@ -29,6 +29,7 @@ def main() -> None:
     frozen = json.loads((OUT / 'frozen-source.json').read_text())
     node = RES / 'node/node.exe'
     subprocess.run([str(node), str(Path(__file__).with_name('source-binding.mjs')), frozen['sourceRoot'], frozen['sourceCommit']], check=True, timeout=90)
+    subprocess.run([str(node), str(Path(__file__).with_name('control-binding.mjs'))], check=True, timeout=90)
     prior = OUT / 'prior-cargo-artifacts'
     prior.mkdir()
     preserved = []

@@ -39,8 +39,9 @@ control = load(OUT / 'app-058-components/control-build.json')
 frozen = load(OUT / 'frozen-source.json')
 subprocess.run([str(RES / 'node/node.exe'), str(Path(__file__).with_name('source-binding.mjs')), frozen['sourceRoot'], frozen['sourceCommit']], check=True, timeout=90)
 assert native['ok'] and native['signatureVerified'] and native['nativeSourceCommit'] == frozen['sourceCommit']
-assert control['ok'] and control['sourceCommit'] == commit and control['controlVersion'] == PRODUCT
-assert (RES / 'control/COMMIT').read_text().strip() == commit
+assert control['ok'] and control['controlVersion'] == PRODUCT
+assert (RES / 'control/COMMIT').read_text().strip() == control['sourceCommit']
+subprocess.run([str(RES / 'node/node.exe'), str(Path(__file__).with_name('control-binding.mjs'))], check=True, timeout=90)
 assert (RES / 'control/VERSION').read_text().strip() == PRODUCT
 signed = RES / f'engine-bundle/{PRODUCT}-windows-x86_64-cuda-cuda13'
 assert sha(signed / 'engine-component.json') == native['signedManifestSHA256']

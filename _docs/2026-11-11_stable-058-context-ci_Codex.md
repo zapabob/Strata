@@ -176,3 +176,31 @@ frozen CUDA source maps match all 779 files. One generated PowerShell analysis
 cache was retained outside the checkout and removed from the source tree after
 hash verification; direct test profiles now create all declared user directories.
 No runtime cache or personal profile content is committed or packaged.
+
+Main 7912cf72 includes the unrelated incoming issue-template update 5e406c14;
+the first non-fast-forward push was resolved by rebasing the unpublished change
+and pushing normally. CI reproduced all 32 regenerated snapshot cells, but its
+separate entry-point parity gate exposed the fork's existing private-principal
+differences. The explicit allowlist now validates the complete synthetic local
+principal, requires exactly disabled prompt/conversation cache values in both
+saved and executed arguments, and still compares every other engine argument.
+A negative regression rejects enabling that cache. The app's explicit validated
+architecture is checked separately. A simulated Windows hardware test now uses
+its own sys object rather than changing the interpreter platform and breaking
+Linux shutil.which. The focused follow-up passed six tests.
+
+Native 0.5.8 build completed with five jobs. Stage, CPU, GPU, Compute Sanitizer
+and unchanged CUDA spill/resource guard all passed. During the first model
+attempt, another Strata Prism runtime had been loaded, leaving 7320 MiB free;
+the model admission correctly refused its unchanged 14336 MiB floor. Normal
+0.5.7 APIs unloaded one observed runtime instance; zero turns needed stopping by
+then, no native instance was present, and no force kill occurred. The original
+attempt remains retained. A fresh r2 evidence namespace repeats authoritative
+binding, staging and every functional gate without changing the resource floors.
+
+Fresh Control 0.5.8 was built from 7912cf72 with pinned Python 3.12.15 and the
+locked runtime; its actual version and installer catalog check passed. It retains
+that actual source commit. Current packaged Control source matches all 401 files
+and its data verifier, independently of subsequent test-only/app changes. The
+native freeze remains c629ee37 with all 779 CUDA source files identical. These
+separate source identities are carried through the final package metadata.

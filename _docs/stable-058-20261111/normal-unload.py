@@ -18,8 +18,9 @@ def call(path, body=None):
     with urllib.request.urlopen(request, timeout=180) as response:
         return json.load(response)
 
-def main():
-    assert call('/api/app/build') == {'host': '0.5.8', 'shell': '0.5.8'}
+def main(*, expected_version='0.5.8', receipt_name='normal-unload.json',
+         authorization='User explicitly approved normal stop/unload after two upload resource interruptions.'):
+    assert call('/api/app/build') == {'host': expected_version, 'shell': expected_version}
     tools_before = call('/api/agent/tools')
     turns = call('/api/chat/active')['turns']
     for turn in turns:
@@ -43,8 +44,8 @@ def main():
     report = {'ok': True, 'stoppedActiveTurns': len(turns), 'unloadedNativeInstances': len(native),
               'unloadedRuntimeInstances': len(runtime), 'modelsUnloaded': True,
               'normalAppAPIsOnly': True, 'forceKills': False, 'otherToolAndApprovalChoicesUnchanged': True,
-              'authorization': 'User explicitly approved normal stop/unload after two upload resource interruptions.'}
-    with (OUT / 'normal-unload.json').open('x', encoding='utf-8') as stream:
+              'authorization': authorization, 'observedAppVersion': expected_version}
+    with (OUT / receipt_name).open('x', encoding='utf-8') as stream:
         json.dump(report, stream, indent=2); stream.write('\n')
     print(json.dumps(report))
 
