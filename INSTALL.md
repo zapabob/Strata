@@ -1,19 +1,19 @@
 # Strataをインストールする
 
-0.5.7 adds real /btw subagents, private workflow skill learning and automatic skill application. [Settings, data and undo](docs/WORKFLOW_SKILLS.md).
-
-
-Windowsアプリを使う場合は、GitHubの配布インストーラーから導入できます。
-ソースのビルドや、システムへのPython・Nodeの追加は不要です。
+正式版 0.5.8 はアプリ・Terminal・Control・ネイティブエンジンのバージョンを揃え、
+残っていた拡張テストを修正した Windows 配布版です。`/btw` のサブエージェント、
+`/deepresearch`、ワークフローからのスキル学習と自動適用、RustXNG 0.31.1 Full を含みます。
+ソースのビルドや、システムへの Python・Node の追加は不要です。
 
 ## ダウンロード先
 
-正式版 `0.5.7`では `/btw`、`/deepresearch` と
-RustXNG Fullを追加しています。[インストーラー](https://github.com/zapabob/Strata/releases/download/v0.5.7/Strata-0.5.7-windows-x64-setup.exe)、
-[tar.7z一括パッケージ](https://github.com/zapabob/Strata/releases/download/v0.5.7/Strata-0.5.7-windows-x64.tar.7z)、
-[チェックサム](https://github.com/zapabob/Strata/releases/download/v0.5.7/SHA256SUMS.txt)が配布先です。
-公開・上書き検証の実際の状態は[今回の配布記録](_docs/2026-11-11_stable-057-release_Codex.md)をご確認ください。
-下表は保持している前版と安定版です。GPUエンジン0.5.5とControl0.5.6は前版の署名付き配布物を引き継ぎます。
+[インストーラー](https://github.com/zapabob/Strata/releases/download/v0.5.8/Strata-0.5.8-windows-x64-setup.exe) ·
+[tar.7z 一括パッケージ](https://github.com/zapabob/Strata/releases/download/v0.5.8/Strata-0.5.8-windows-x64.tar.7z) ·
+[チェックサム](https://github.com/zapabob/Strata/releases/download/v0.5.8/SHA256SUMS.txt)。
+GitHub Latest と latest タグはこの正式版を示します。同梱のエンジンと Control も
+新しくビルド・署名・検証した 0.5.8 です。公開・上書き・実モデル検証の範囲は
+[今回の配布記録](_docs/2026-11-11_stable-058-context-ci_Codex.md)をご確認ください。
+下表の旧版は、当時の配布物と測定結果を保持しています。
 
 | 配布版 | 入手先 |
 | --- | --- |
@@ -32,7 +32,7 @@ CUDA資源違反は0件です。全文入力・一般品質・公開検索サイ
 3. アプリの準備画面でPCに合うエンジンとモデルを選び、**読み込み**を押します。
    既存のGGUFは「ローカルGGUFを使用」から選べます。
 
-プレビューの一括パッケージは **7z → tar** の順に展開します。
+一括パッケージは **7z → tar** の順に展開します。
 同梱の署名付きエンジン `tar.gz` は展開せず、準備画面の
 **既存のファイルを使用する** から読み込みます。
 モデル・会話・メモリーの保存先はアプリ本体と別に保持します。
@@ -56,8 +56,12 @@ EXE自体のWindowsコード署名はなく、エンジンのコンポーネン�
 
 ## English
 
-Use the [stable Windows installer](https://github.com/zapabob/Strata/releases/tag/v0.5.1)
-or the explicitly labelled [preview](https://github.com/zapabob/Strata/releases/tag/v0.5.7).
-Verify checksums, unload models and quit the tray app before updating. Run the EXE,
-then select the engine and model in the app. See the [full installation guide](docs/HAKUA_INSTALL.md).
-The055 installer includes the measured bulk-delete/browser-tool changes; broader model/public-search quality remains unqualified.
+Use the [formal 0.5.8 Windows release](https://github.com/zapabob/Strata/releases/tag/v0.5.8).
+App, Terminal, Control and the freshly built signed native component are 0.5.8.
+Verify checksums, finish requests, unload models and quit the tray app before
+running the EXE in the existing installation folder. For tar.7z, extract 7z then
+tar; import the compressed engine package in the app. See the
+[installation guide](docs/HAKUA_INSTALL.md) for data paths and rollback. Native
+model verification covers sixteen short requests at 4096 capacity; full-window
+and general quality remain unqualified. The installer has no Windows
+Authenticode signature; component/feed signatures are independent.

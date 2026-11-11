@@ -1,6 +1,45 @@
 # Hakua Windows release qualification
 
-## Stable app 0.5.7 — subagents and workflow skills
+## Stable 0.5.8 — coordinated versions and repaired CI
+
+App, Terminal, Control and native engine are all 0.5.8, with newly built Control
+and native signed payloads. The four retained extended context/compaction/search
+guard failures are repaired. The actual pinned Harness regression group passed
+43 tests with no failures or skips, using private fixture profiles and a
+synthetic model API. Existing `/btw` subagents, `/deepresearch`, workflow skill
+learning/application and RustXNG 0.31.1 Full remain available.
+
+All eight [exact-source workflows](https://github.com/zapabob/Strata/actions?query=head_sha%3Abb4c57d4a2a2ed0b8d269f120760892ed9f7038a)
+passed, including all thirteen [Checks jobs](https://github.com/zapabob/Strata/actions/runs/43069304339)
+and all five backend compile jobs. Metal builds genuine arm64 strata/strata_ds4
+on an Intel macOS 26 runner and verifies their Mach-O architectures. This is
+compile/link evidence; Mac inference was not tested. No required gate was waived.
+
+The standard per-user NSIS overwrite verified 29,555 managed files and preserved
+all 3,727 inventoried user files. Models were not copied; selected original model
+hashes were checked. Thirteen packaged self-tests, six NSIS cleanup cases and
+sixteen actual installed WebView2 cases passed with no console errors. WebView2
+workflow checks use synthetic model replies and real RustXNG Full search.
+
+Fresh native verification passed twenty-one numerical cases and sixteen actual
+short model requests at 4096 capacity, including bounded/legacy comparison and
+restart. The measured machine is RTX 5060 Ti 16 GB / 32 GB RAM, CUDA 13.3.73,
+sm_120. Full-window generation, general/low-precision model quality, autonomous
+research quality and GPU concurrency remain unqualified. `releaseQualified=false`
+is explicit. The installer has no Windows Authenticode signature; authenticated
+component/feed signatures are independent.
+
+[Formal v0.5.8](https://github.com/zapabob/Strata/releases/tag/v0.5.8) is GitHub
+Latest and the mutable latest alias. All seventeen public assets were downloaded
+anonymously and matched their frozen sizes and SHA-256 values. The tar.7z contains
+the same installer, signed components, instructions, source/quality records,
+RustXNG corresponding source and checksums. Models and personal data are excluded.
+Read the [delivery record](../_docs/2026-11-11_stable-058-context-ci_Codex.md) and its public-safe verification receipts for
+exact source commits, byte identities, cleanup and retained failed attempts.
+Historical releases, immutable tags and assets remain unchanged. Earlier
+measurements and publication statements below retain their original dates.
+
+## Historical stable app 0.5.7 — subagents and workflow skills
 
 The stable zapabob fork app adds real tool-free `/btw` child agents, private
 learning from completed workflows and automatic application of matching skills.

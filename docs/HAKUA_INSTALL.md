@@ -1,6 +1,40 @@
 # Install Hakua / Strata on Windows
 
-## Stable 0.5.7
+## Stable 0.5.8
+
+Use the [0.5.8 setup EXE](https://github.com/zapabob/Strata/releases/download/v0.5.8/Strata-0.5.8-windows-x64-setup.exe)
+or [complete tar.7z](https://github.com/zapabob/Strata/releases/download/v0.5.8/Strata-0.5.8-windows-x64.tar.7z),
+and compare [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.5.8/SHA256SUMS.txt).
+This formal fork release is GitHub Latest and the mutable latest alias. App,
+Terminal, Control and freshly built native engine are all 0.5.8. RustXNG stays
+0.31.1 Full; third-party packages keep their independent versions.
+
+Finish requests, unload models, back up app data and quit Strata including its
+tray icon. Run the EXE in the existing per-user installation folder, usually
+`%LOCALAPPDATA%\Programs\Strata`. Models, chats and memory stay in separate
+data locations. Do not delete model folders to update or roll back.
+
+Extract 7z first, then tar, and verify the internal BUNDLE-SHA256SUMS.txt. The
+bundle contains the identical Tauri NSIS installer, signed native 0.5.8 CUDA
+component and Control 0.5.8. Import the engine tar.gz with **I already have the
+file**, keeping it compressed. Choose a compatible model or local GGUF and Load.
+No system Python, Node or compiler is needed. Models start unloaded.
+
+In Skills, learning and automatic application are independent options. Existing
+local choices were preserved; both remain off for new profiles. `/btw` uses a
+real tool-free subagent; `/deepresearch` gathers sources. RustXNG Full remains in
+Settings → Tools → Web search. [Skills and undo](WORKFLOW_SKILLS.md).
+
+The app installer has no Windows Authenticode signature; engine/Control feed
+signatures are independent. All eight exact-source CI workflows passed. Native
+measurement covers twenty-one numerical cases and sixteen short model requests
+at 4096 capacity on RTX 5060 Ti 16 GB / 32 GB RAM. Full-window/general model
+quality and GPU concurrency remain unqualified; `releaseQualified=false`.
+See the [delivery record](../_docs/2026-11-11_stable-058-context-ci_Codex.md) and [measured limits](HAKUA_RELEASE.md).
+Older releases and backups remain available for rollback; their original
+instructions and measurements follow below.
+
+## Historical stable 0.5.7
 
 Use the [0.5.7 setup EXE](https://github.com/zapabob/Strata/releases/download/v0.5.7/Strata-0.5.7-windows-x64-setup.exe)
 or [complete tar.7z](https://github.com/zapabob/Strata/releases/download/v0.5.7/Strata-0.5.7-windows-x64.tar.7z),

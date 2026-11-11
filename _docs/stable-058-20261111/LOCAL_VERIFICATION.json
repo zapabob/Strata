@@ -1,0 +1,622 @@
+{
+  "ok": true,
+  "productVersion": "0.5.8",
+  "observedUTC": "2026-11-11T18:23:31.953113+00:00",
+  "purpose": "Verified local overwrite, complete source-bound cloud CI and retained evidence. Public download verification is recorded independently.",
+  "sources": {
+    "sourceCommit": "91107e48367d934a02644bc7c61d5cb923d7f700",
+    "controlSourceCommit": "42ca8ebd70328788001695b4a7ffe67b444f10db",
+    "nativeSourceCommit": "c629ee37dde049b09bc42bdc00b076906f44fa27"
+  },
+  "installer": {
+    "sha256": "300252511099ed1a7b42d6a5c82bf6c6bc399da01e51933205a2365e15a9c384",
+    "bytes": 127118039
+  },
+  "freshBuilds": {
+    "compilerJobs": 5,
+    "app": "0.5.8",
+    "terminal": "0.5.8",
+    "control": "0.5.8",
+    "native": "0.5.8"
+  },
+  "installed": {
+    "managedFilesVerified": 29555,
+    "backedUpUserFilesUnchanged": 3727,
+    "userBackupBytes": 99920664,
+    "modelsCopied": false,
+    "exactPayloadMatch": true
+  },
+  "native": {
+    "engineSHA256": "ea42792f661b2ecbea48feac1a69b5d91238ea780f38d69a71f852bb81e649e5",
+    "signedManifestSHA256": "95d07d65da3ca0370f1aa1fdf242443abebd5453f6e6737319570c6cad0c4c67",
+    "signatureVerifiedWithBundledKeys": true,
+    "numericalChecksPassed": 21,
+    "actualModelChecks": {
+      "model-bounded": {
+        "passed": true,
+        "requests": 7,
+        "scope": "short requests, 4096 capacity"
+      },
+      "model-legacy7": {
+        "passed": true,
+        "requests": 7,
+        "scope": "short requests, 4096 capacity"
+      },
+      "model-restart": {
+        "passed": true,
+        "requests": 2,
+        "scope": "short requests, 4096 capacity"
+      }
+    },
+    "boundedLegacyComparisonPassed": true,
+    "restartPassed": true,
+    "olderEngineManifestsAndEntrypointsUnchanged": 5
+  },
+  "packagedSelfTestsPassed": 13,
+  "nsisCleanupScenariosPassed": 6,
+  "installedWebView2": {
+    "checksPassed": 16,
+    "consoleErrors": 0,
+    "modelAPI": "synthetic local fixture",
+    "realRustXNGQueryWithResults": true,
+    "attempt": "r4"
+  },
+  "normalStartupObservation": {
+    "ok": true,
+    "identity": {
+      "host": "0.5.8",
+      "shell": "0.5.8"
+    },
+    "normalStartup": true,
+    "debugArguments": false,
+    "modelUnloaded": true,
+    "searchProvider": "rustxng",
+    "rustxngProfile": "full",
+    "workflowLearning": true,
+    "automaticSkillApplication": true,
+    "priorLearningEnabled": true,
+    "priorAutoApplyEnabled": true,
+    "otherToolAndApprovalChoicesUnchanged": true,
+    "savedSearchKeyUnchanged": true,
+    "note": "Real search and workflow checks used an isolated installed-app QA profile and scripted model."
+  },
+  "readmes": [
+    {
+      "path": "README.de.md",
+      "sha256": "8559b5c77027adb976eb6aba70ec4f880951666f81c972dc2cdd70a0b2401da5"
+    },
+    {
+      "path": "README.es.md",
+      "sha256": "5df6de8d5146104e021808e594bc67df865d64fb65fb60149175ef7979033454"
+    },
+    {
+      "path": "README.fr.md",
+      "sha256": "cd1efcdd35fc4538d7bc4050d746e3128b3a9f63a811292b13fe7baa4983aa8c"
+    },
+    {
+      "path": "README.ja.md",
+      "sha256": "53543f7f03d15582a7b1d2d63e12f81d1621a94428f48a509468d1ace5ba63af"
+    },
+    {
+      "path": "README.md",
+      "sha256": "42b837dd29378de193d40fe4d9dda1f6358882ef60247b58e07da6a612d860fa"
+    },
+    {
+      "path": "README.pl.md",
+      "sha256": "f2ac8c132ed4f76f68670d7ff10b034590ad0a01fbd56c3c932605cc6c98db12"
+    },
+    {
+      "path": "README.pt-BR.md",
+      "sha256": "453d73b83e6e55bf9397f318694f1b0b123a8f74708a4083aba07009a6c3ab45"
+    },
+    {
+      "path": "README.zh-CN.md",
+      "sha256": "8e752ec6c50233b05716a9dd598bbee82df19e98bb5149281ba7b1798026f985"
+    }
+  ],
+  "cleanup": {
+    "inactiveCleanWorktreesRemoved": 8,
+    "obsoleteBuildCachesArchivedAndRemoved": 8,
+    "archivedSourceFiles": 18981,
+    "obsoleteCachedInstallersRemoved": 8,
+    "cachedInstallerBytesRemoved": 942428207,
+    "privateBackupsVerified": true,
+    "publishedAssetsUnchanged": true,
+    "activeIncrementalCachesRetained": true
+  },
+  "guardReceipts": {
+    "app-build-r1": {
+      "passed": true,
+      "ownedProcessesAfter": 0,
+      "receiptSHA256": "09bfcc4c7bba724825a5282bd15c479b847d4a4d900a6160382e0cf397d7ad56"
+    },
+    "backup-before-install-r1": {
+      "passed": true,
+      "ownedProcessesAfter": 0,
+      "receiptSHA256": "bce5493b1a45959ec12e1c4ee4d24df00a047f2de251fe4f71d68b501fb0f3bb"
+    },
+    "extract-self-test": {
+      "passed": true,
+      "ownedProcessesAfter": 0,
+      "receiptSHA256": "1c83c372c8b3147461ddb778bbc363134888866b3d985b0ccfe4e79705b8e51e"
+    },
+    "nsis-cleanup-final-r2": {
+      "passed": true,
+      "ownedProcessesAfter": 0,
+      "receiptSHA256": "ff16b80c143cec11253027ac0bc102f8723165860c89427acbabe19ba3e3cc4a"
+    },
+    "overwrite-install-r1": {
+      "passed": true,
+      "ownedProcessesAfter": 0,
+      "receiptSHA256": "cf2e4bc6764b696a8bc156b6e0dff7b03ca8d1983591426b7e3509a5c8d2d4f4"
+    },
+    "activate-local-r1": {
+      "passed": true,
+      "ownedProcessesAfter": 0,
+      "receiptSHA256": "4418557be1847c95a163a1cc40e476eba9147fe7035fb6e8bdb2e94834d0fd75"
+    },
+    "installed-ui-r4": {
+      "passed": true,
+      "ownedProcessesAfter": 0,
+      "receiptSHA256": "01a7d6738acd581016f3c567879c6ee52ffe616c14a7f9c1550b849c49001d33"
+    },
+    "native-final-verified-r1": {
+      "passed": true,
+      "ownedProcessesAfter": 0,
+      "receiptSHA256": "45e42efd2020a45594cc59810e3b930fe5a7acd5da787bb8e01fd816a3d0f732"
+    },
+    "signed-components-r1": {
+      "passed": true,
+      "ownedProcessesAfter": 0,
+      "receiptSHA256": "cf54954dc0e8d4e3986f1900167e9dc7d220c1b98a0a921eb97bd09a7b68cd88"
+    },
+    "normal-start-final": {
+      "passed": true,
+      "ownedProcessesAfter": 0,
+      "receiptSHA256": "37525ff24cd01e917fd48cda245c2f6eabaa5206655ca5f7b79a83ed8467716a"
+    },
+    "harness-group-r1": {
+      "passed": true,
+      "ownedProcessesAfter": 0,
+      "receiptSHA256": "4296d23bd299814a53fe6e2bce34ec8496853c6cc04fe094351152270d235577"
+    },
+    "gpu-final-numerical-r1": {
+      "passed": true,
+      "ownedProcessesAfter": 0,
+      "receiptSHA256": "4dd0286b63aa870b5d34d70b63ab59b6da5ced39f88d21c1426bf3bf77629a85"
+    },
+    "windows-ci-final-r1": {
+      "passed": true,
+      "ownedProcessesAfter": 0,
+      "receiptSHA256": "dd618f33048eb97011339f39439c83227415c0f875e6eb5e9627503bb7f4177a"
+    },
+    "windows-ci-other-volume-r2": {
+      "passed": true,
+      "ownedProcessesAfter": 0,
+      "receiptSHA256": "a88ac53c353cdc9d95f662e7b68b242fe88807d7a556ef4f08d9e57563853527"
+    },
+    "cleanup-cached-installers-r2": {
+      "passed": true,
+      "ownedProcessesAfter": 0,
+      "receiptSHA256": "8cfd702b0ccbb177bc8119e19fe3a0f2af3090cf120cde519c1a0953f8dfd704"
+    },
+    "runtime-equivalence-c2-r1": {
+      "passed": true,
+      "ownedProcessesAfter": 0,
+      "receiptSHA256": "cf4b09d4fc0f3d7c4ab98cdf5dfe37b149a91ea0b33ea05375504b690d9703dc"
+    },
+    "runtime-equivalence-intel-funding-r1": {
+      "passed": true,
+      "ownedProcessesAfter": 0,
+      "receiptSHA256": "2fe8b2821b726df06552ed064ad56fa7f3e18dadbe9e111f66ce123aafe14784"
+    },
+    "monitor-footer-both-styles-r1": {
+      "passed": true,
+      "ownedProcessesAfter": 0,
+      "receiptSHA256": "686f033bd4114643eb182532d5cd4481256999261805afe2741ff3d470aaeb57"
+    },
+    "mac-host-capacity-after-r3": {
+      "passed": true,
+      "ownedProcessesAfter": 0,
+      "receiptSHA256": "8b1a4cc1be993f0b4f4a9f7390d0bd470c288339f5b875789c8b76e8cfc989c6"
+    }
+  },
+  "cloudCI": {
+    "ok": true,
+    "sourceCommit": "bb4c57d4a2a2ed0b8d269f120760892ed9f7038a",
+    "observedUTC": "2026-11-11T18:22:57.899433+00:00",
+    "missingWorkflows": [],
+    "workflows": {
+      "Checks": {
+        "conclusion": "success",
+        "createdAt": "2026-11-11T17:33:24Z",
+        "databaseId": 43069304339,
+        "headSha": "bb4c57d4a2a2ed0b8d269f120760892ed9f7038a",
+        "status": "completed",
+        "url": "https://github.com/zapabob/Strata/actions/runs/43069304339",
+        "workflowName": "Checks",
+        "jobs": [
+          {
+            "databaseId": 130692566134,
+            "name": "Windows / pinned Harness context and guard integration",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/zapabob/Strata/actions/runs/43069304339/job/130692566134"
+          },
+          {
+            "databaseId": 130692566713,
+            "name": "Windows / host typecheck + test + build",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/zapabob/Strata/actions/runs/43069304339/job/130692566713"
+          },
+          {
+            "databaseId": 130692566721,
+            "name": "macOS / Python tools/",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/zapabob/Strata/actions/runs/43069304339/job/130692566721"
+          },
+          {
+            "databaseId": 130692566839,
+            "name": "Windows / Python tests/",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/zapabob/Strata/actions/runs/43069304339/job/130692566839"
+          },
+          {
+            "databaseId": 130692566856,
+            "name": "Linux / Python tests/",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/zapabob/Strata/actions/runs/43069304339/job/130692566856"
+          },
+          {
+            "databaseId": 130692566861,
+            "name": "Linux / host typecheck + test + build",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/zapabob/Strata/actions/runs/43069304339/job/130692566861"
+          },
+          {
+            "databaseId": 130692566864,
+            "name": "Windows / cpu CMake preset (MSVC)",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/zapabob/Strata/actions/runs/43069304339/job/130692566864"
+          },
+          {
+            "databaseId": 130692566880,
+            "name": "Linux / cpu CMake preset",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/zapabob/Strata/actions/runs/43069304339/job/130692566880"
+          },
+          {
+            "databaseId": 130692566890,
+            "name": "macOS / host typecheck + test + build",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/zapabob/Strata/actions/runs/43069304339/job/130692566890"
+          },
+          {
+            "databaseId": 130692566893,
+            "name": "Windows / Python tools/",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/zapabob/Strata/actions/runs/43069304339/job/130692566893"
+          },
+          {
+            "databaseId": 130692566899,
+            "name": "Linux / Python tools/",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/zapabob/Strata/actions/runs/43069304339/job/130692566899"
+          },
+          {
+            "databaseId": 130692566928,
+            "name": "Linux / Python serve/",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/zapabob/Strata/actions/runs/43069304339/job/130692566928"
+          },
+          {
+            "databaseId": 130692566970,
+            "name": "Windows / Python serve/",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/zapabob/Strata/actions/runs/43069304339/job/130692566970"
+          }
+        ]
+      },
+      "Portable monitor client": {
+        "conclusion": "success",
+        "createdAt": "2026-11-11T17:33:22Z",
+        "databaseId": 43069299109,
+        "headSha": "bb4c57d4a2a2ed0b8d269f120760892ed9f7038a",
+        "status": "completed",
+        "url": "https://github.com/zapabob/Strata/actions/runs/43069299109",
+        "workflowName": "Portable monitor client",
+        "jobs": [
+          {
+            "databaseId": 130692550327,
+            "name": "ubuntu-latest / Python 3.10",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/zapabob/Strata/actions/runs/43069299109/job/130692550327"
+          },
+          {
+            "databaseId": 130692550470,
+            "name": "windows-latest / Python 3.11",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/zapabob/Strata/actions/runs/43069299109/job/130692550470"
+          },
+          {
+            "databaseId": 130692550491,
+            "name": "ubuntu-latest / Python 3.11",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/zapabob/Strata/actions/runs/43069299109/job/130692550491"
+          },
+          {
+            "databaseId": 130692550507,
+            "name": "windows-latest / Python 3.10",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/zapabob/Strata/actions/runs/43069299109/job/130692550507"
+          }
+        ]
+      },
+      "Minimal serving runtime": {
+        "conclusion": "success",
+        "createdAt": "2026-11-11T17:33:20Z",
+        "databaseId": 43069293433,
+        "headSha": "bb4c57d4a2a2ed0b8d269f120760892ed9f7038a",
+        "status": "completed",
+        "url": "https://github.com/zapabob/Strata/actions/runs/43069293433",
+        "workflowName": "Minimal serving runtime",
+        "jobs": [
+          {
+            "databaseId": 130692530413,
+            "name": "Linux / runtime requirements only",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/zapabob/Strata/actions/runs/43069293433/job/130692530413"
+          }
+        ]
+      },
+      "Config snapshot": {
+        "conclusion": "success",
+        "createdAt": "2026-11-11T17:33:18Z",
+        "databaseId": 43069288718,
+        "headSha": "bb4c57d4a2a2ed0b8d269f120760892ed9f7038a",
+        "status": "completed",
+        "url": "https://github.com/zapabob/Strata/actions/runs/43069288718",
+        "workflowName": "Config snapshot",
+        "jobs": [
+          {
+            "databaseId": 130692513215,
+            "name": "windows-2022",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/zapabob/Strata/actions/runs/43069288718/job/130692513215"
+          },
+          {
+            "databaseId": 130692513614,
+            "name": "ubuntu-24.04",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/zapabob/Strata/actions/runs/43069288718/job/130692513614"
+          }
+        ]
+      },
+      "Deploy GitHub Pages": {
+        "conclusion": "success",
+        "createdAt": "2026-11-11T17:33:16Z",
+        "databaseId": 43069283522,
+        "headSha": "bb4c57d4a2a2ed0b8d269f120760892ed9f7038a",
+        "status": "completed",
+        "url": "https://github.com/zapabob/Strata/actions/runs/43069283522",
+        "workflowName": "Deploy GitHub Pages",
+        "jobs": [
+          {
+            "databaseId": 130692493701,
+            "name": "deploy",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/zapabob/Strata/actions/runs/43069283522/job/130692493701"
+          }
+        ]
+      },
+      "Native preview CPU checks": {
+        "conclusion": "success",
+        "createdAt": "2026-11-11T17:33:14Z",
+        "databaseId": 43069277739,
+        "headSha": "bb4c57d4a2a2ed0b8d269f120760892ed9f7038a",
+        "status": "completed",
+        "url": "https://github.com/zapabob/Strata/actions/runs/43069277739",
+        "workflowName": "Native preview CPU checks",
+        "jobs": [
+          {
+            "databaseId": 130692475979,
+            "name": "CPU contracts (ubuntu-latest)",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/zapabob/Strata/actions/runs/43069277739/job/130692475979"
+          },
+          {
+            "databaseId": 130692476692,
+            "name": "CPU contracts (windows-latest)",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/zapabob/Strata/actions/runs/43069277739/job/130692476692"
+          }
+        ]
+      },
+      "Backend compile checks": {
+        "conclusion": "success",
+        "createdAt": "2026-11-11T17:32:51Z",
+        "databaseId": 43069214348,
+        "headSha": "bb4c57d4a2a2ed0b8d269f120760892ed9f7038a",
+        "status": "completed",
+        "url": "https://github.com/zapabob/Strata/actions/runs/43069214348",
+        "workflowName": "Backend compile checks",
+        "jobs": [
+          {
+            "databaseId": 130692248209,
+            "name": "SYCL oneAPI 2026.1",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/zapabob/Strata/actions/runs/43069214348/job/130692248209"
+          },
+          {
+            "databaseId": 130692248713,
+            "name": "Metal strata + strata_ds4",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/zapabob/Strata/actions/runs/43069214348/job/130692248713"
+          },
+          {
+            "databaseId": 130692248735,
+            "name": "CUDA 12.9",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/zapabob/Strata/actions/runs/43069214348/job/130692248735"
+          },
+          {
+            "databaseId": 130692248780,
+            "name": "CUDA 13.0",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/zapabob/Strata/actions/runs/43069214348/job/130692248780"
+          },
+          {
+            "databaseId": 130692249168,
+            "name": "HIP ROCm 7.2",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/zapabob/Strata/actions/runs/43069214348/job/130692249168"
+          }
+        ]
+      },
+      "Docs": {
+        "conclusion": "success",
+        "createdAt": "2026-11-11T17:32:51Z",
+        "databaseId": 43069214345,
+        "headSha": "bb4c57d4a2a2ed0b8d269f120760892ed9f7038a",
+        "status": "completed",
+        "url": "https://github.com/zapabob/Strata/actions/runs/43069214345",
+        "workflowName": "Docs",
+        "jobs": [
+          {
+            "databaseId": 130692247844,
+            "name": "Links, release manifest, capability table",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/zapabob/Strata/actions/runs/43069214345/job/130692247844"
+          }
+        ]
+      }
+    },
+    "allJobsRequiredIncludingMacOS": true,
+    "appSourceCommit": "91107e48367d934a02644bc7c61d5cb923d7f700",
+    "runtimeSourceEquivalence": {
+      "ok": true,
+      "appSourceCommit": "91107e48367d934a02644bc7c61d5cb923d7f700",
+      "validatedSourceCommit": "bb4c57d4a2a2ed0b8d269f120760892ed9f7038a",
+      "distributedRuntimeSourcesUnchanged": true,
+      "installedHostSourcesMatch": true,
+      "nativeAndControlSourceBindingsPassed": true,
+      "installerSHA256": "300252511099ed1a7b42d6a5c82bf6c6bc399da01e51933205a2365e15a9c384",
+      "onlyUnshippedChanges": {
+        ".github/FUNDING.yml": {
+          "builtSourceSHA256": "ae3f207b1bbd29e2f87ff0a54eea7df4b5113ad69ba97952aa374ae4e5fcfb72",
+          "validatedSourceSHA256": "b7eade90fe066ac4216a94046053158f25bf97e0fc60b78e1e5a9dca0ca49571"
+        },
+        ".github/workflows/backends.yml": {
+          "builtSourceSHA256": "f0fd13e694937380106c8f25908264640978b06bc4ac9f3b5a92bae6e55a853f",
+          "validatedSourceSHA256": "77bd5d048984f2abab1b5b9f0d9eeaa2cd886ab574f0750490c5629636ce3342"
+        },
+        ".github/workflows/check.yml": {
+          "builtSourceSHA256": "e9678675de63ef545db21734aa6846e20943f92fef540a8da7bd8baed67e37a2",
+          "validatedSourceSHA256": "d502e01366f4337b1fa0b67075e1d7cc1cc5ed33029b04889893d590c71a411e"
+        },
+        "_docs/2026-11-11_stable-058-context-ci_Codex.md": {
+          "builtSourceSHA256": "47f3c5a3f2b94c1e98fb68177433637e15d5fc2ee107fbcec2d0d4be509dc60f",
+          "validatedSourceSHA256": "c693def108c6a10d507f191d697aeeaa943e2b3af9af67ef6478d24e038a36a2"
+        },
+        "_docs/stable-058-20261111/ci.py": {
+          "builtSourceSHA256": "c6ca6ee1462ca7b5d88a5a061c8bfe7fcf081b3b09a67b2aa8bb30755e0b6433",
+          "validatedSourceSHA256": "972c4ca74ff469f4bdb83cbf8a1461ad97b001d4a38670e703d10b97b76c1c00"
+        },
+        "_docs/stable-058-20261111/delivery.py": {
+          "builtSourceSHA256": "a37ca654683a835593f7e4d8a6dc643cde80f5b13693f4635fe7605a61ab582b",
+          "validatedSourceSHA256": "646fe6383be0339ab85d8ffce9f899b798fbaa72501fdfc4108e4397e55ce745"
+        },
+        "_docs/stable-058-20261111/pychecks.py": {
+          "builtSourceSHA256": "ec3115fe7d0f5a6e0978f55ed4d3702bd087e7c9f7945edaf5f117c34a1dcc05",
+          "validatedSourceSHA256": "c904217301a618e79f913ed77af671001b59eca0333bbf89e9e901eb7e07d271"
+        },
+        "_docs/stable-058-20261111/runtime-equivalence.py": {
+          "builtSourceSHA256": null,
+          "validatedSourceSHA256": "fb3d17f721a9780c214397d8495b3974812481c41abd1ca4913d05cedd3daa0b"
+        },
+        "apps/host/scripts/test.mjs": {
+          "builtSourceSHA256": "010e0f9dcdd92f59e628cf98a3d7931a25fed42873f878274d538edd6d3f4712",
+          "validatedSourceSHA256": "a4662bf84d55f23121339150afed981f9ed9463a37761c9df762effa248388b0"
+        },
+        "apps/host/tests/model-directory.test.mjs": {
+          "builtSourceSHA256": "a10d977f1f72ab157cf27e1bdb79c89f8f6601418c6fab6062df6c42719cb0d6",
+          "validatedSourceSHA256": "3964b496439b6238545d96fecb07e37fa60cbdee30f4bee34714d024a671cbd8"
+        },
+        "apps/host/tests/request-flow.test.mjs": {
+          "builtSourceSHA256": "9d5b3dd081f686f242450c459c5c7c010fc33f208e80f15cbd4ff431cc75ed1b",
+          "validatedSourceSHA256": "e5c65908cabab7aef1c3be07b1536bc5098ffc618ea54bac8783897368cd8897"
+        },
+        "tests/qwen36/test_bounded_run.py": {
+          "builtSourceSHA256": "b1d9afdb7fde3a1fe76e65bbcf5d092d183e38cb115a99eac998486850f85dcd",
+          "validatedSourceSHA256": "96b6d921454bcd4d46070e7ed19b7c58846c4b6ab8aa47b65e79c30fa6253405"
+        },
+        "tests/terminal/test_monitor_help_0213_qafix.py": {
+          "builtSourceSHA256": "22bb7f4591b60cd1b85d9cb4eb30a557482dd8a2f4f9db5b749078561219fe11",
+          "validatedSourceSHA256": "133a088d238c8070f2b96ae976db8a4878940683725e6675de8ecceb9b84b544"
+        },
+        "tools/perf131k/windows_job.py": {
+          "builtSourceSHA256": "429b26b82d1848af7e88d2387691e0de4f3700a0b2be91be7094a2d7482d8fb2",
+          "validatedSourceSHA256": "59adf49ccd893ae17f974311fa6b122941781e06a8cf621554386a4b92c86a9b"
+        }
+      },
+      "defaultGuardPolicyByteIdenticalAfterConstantExpansion": true
+    }
+  },
+  "postInstallTestRepairs": {
+    "narrowFooterBothStylesPassed": 4,
+    "lifecycleFixturesWith7GiBCallerPassed": 2,
+    "macHostPriorEquivalentSourcePassed": 2061,
+    "macHostPriorFailed": 0,
+    "note": "Only unshipped tests, CI and verified GitHub display metadata changed after the real app build; exact-head CI and all runtime bindings are independently checked."
+  },
+  "metalCompileOnly": {
+    "compilerHost": "standard Intel macOS 26",
+    "compiler": "AppleClang 21.0.0.21000101",
+    "xcode": "26.6",
+    "targetCPU": "Apple M1",
+    "targetArchitecture": "arm64",
+    "verifiedMachOTargets": [
+      "strata",
+      "strata_ds4"
+    ],
+    "bothArchitectureChecksPassed": true,
+    "macInferenceOrGPUQualified": false,
+    "logSHA256": "f6a3f1ba99fbdfb8cca1fb771babf8c4f08f18c3a779f6b2d004f3ed6d56665c"
+  },
+  "limits": {
+    "releaseQualified": false,
+    "fullWindowQualified": false,
+    "generalModelQualityQualified": false,
+    "nativeModelScope": "16 short requests, 4096 capacity; full-window generation not qualified",
+    "windowsAuthenticode": false,
+    "componentFeedSignaturesVerified": true
+  }
+}

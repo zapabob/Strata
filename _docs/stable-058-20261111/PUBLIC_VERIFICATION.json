@@ -1,0 +1,92 @@
+{
+  "ok": true,
+  "url": "https://github.com/zapabob/Strata/releases/tag/v0.5.8",
+  "tag": "v0.5.8",
+  "anonymousDownloads": {
+    "BUNDLE-SHA256SUMS.txt": {
+      "bytes": 1239,
+      "sha256": "8a925cdf4c248c97510e178d0f4a13d085181d1eb56cac47d08f3ddc2c19b176"
+    },
+    "install-manifest.txt": {
+      "bytes": 135,
+      "sha256": "cbb11ced32f74b66bf40a9375d42e01af30b553dead72d0686068974f028f15a"
+    },
+    "INSTALL.md": {
+      "bytes": 2775,
+      "sha256": "fea6adf640271974ee3892395d4f01dbddb553e9b09bcd3938cfddfb650f573f"
+    },
+    "install.ps1": {
+      "bytes": 12659,
+      "sha256": "019a08857cd07c3ce55b4fd41262d34065db8495e94c90044d6e6e22f8eb42b5"
+    },
+    "install.sh": {
+      "bytes": 8644,
+      "sha256": "9bb331755d740ad4d069293f965f7843035829d025b83447323ce53b15cc21d2"
+    },
+    "QUALITY.json": {
+      "bytes": 30964,
+      "sha256": "f163d2fefecb5a63828b75540a44aef74616f1d3f573374b83fda15afa81d25c"
+    },
+    "RustXNG-0.31.1-source.tar.gz": {
+      "bytes": 5174381,
+      "sha256": "927abe258fe2257a90b8a7467cc8b547ecb816d352ce493a0d646fc95960ba61"
+    },
+    "RustXNG-LICENSE.txt": {
+      "bytes": 34520,
+      "sha256": "57c8ff33c9c0cfc3ef00e650a1cc910d7ee479a8bc509f6c9209a7c2a11399d6"
+    },
+    "RustXNG-NOTICE.txt": {
+      "bytes": 2890,
+      "sha256": "0740830f4a7b153429270002eee52506fbc1fefcd55e1aad27d76ef3262853b6"
+    },
+    "SHA256SUMS.txt": {
+      "bytes": 1425,
+      "sha256": "d8772d30aac720d536c80fac0009b1a34ae539fe204add02588c6e87198dc533"
+    },
+    "SOURCE.json": {
+      "bytes": 6794,
+      "sha256": "1544236c62c2ce50b5283150932fbde5b595106ba49649efab8bae8a5535c6d6"
+    },
+    "Strata-0.5.8-windows-x64-setup.exe": {
+      "bytes": 127118039,
+      "sha256": "300252511099ed1a7b42d6a5c82bf6c6bc399da01e51933205a2365e15a9c384"
+    },
+    "Strata-0.5.8-windows-x64.tar.7z": {
+      "bytes": 1674455202,
+      "sha256": "d095edf7499b85935e0f5dda6f570a35ea33d6f31b3c70cdf705b2b653e828d5"
+    },
+    "strata-control-0.5.8-windows-x86_64.zip": {
+      "bytes": 72127989,
+      "sha256": "d688c93b07a611dc3c962c4b89858e36f99e5bae5313ad2f0e6ccce406873f3a"
+    },
+    "strata-engine-0.5.8-windows-x86_64-cuda-cuda13.tar.gz": {
+      "bytes": 1469919482,
+      "sha256": "5a60445a4a4321095815ec536af9a73cc88a07cde65f476c68eec09b27019777"
+    },
+    "strata-feed.json": {
+      "bytes": 1172,
+      "sha256": "6e5b2874bceae41096347d5405047ed1563010da4174a3021d2d0f5105a5a702"
+    },
+    "strata-feed.json.sig": {
+      "bytes": 151,
+      "sha256": "00d346ee7c25437b3231dacad4f94eabf3cfe11054ffe2b1c8a24f451045faae"
+    }
+  },
+  "stableLatestAnonymousDownloads": {
+    "strata-feed.json": {
+      "bytes": 1172,
+      "sha256": "6e5b2874bceae41096347d5405047ed1563010da4174a3021d2d0f5105a5a702"
+    },
+    "strata-feed.json.sig": {
+      "bytes": 151,
+      "sha256": "00d346ee7c25437b3231dacad4f94eabf3cfe11054ffe2b1c8a24f451045faae"
+    }
+  },
+  "serverDigestsMatched": true,
+  "prerelease": false,
+  "mutableLatestAliasMatches": true,
+  "priorReleasesUnchanged": 26,
+  "priorImmutableTagsUnchanged": 26,
+  "latest": "v0.5.8",
+  "historicalAssetsUnchanged": true
+}

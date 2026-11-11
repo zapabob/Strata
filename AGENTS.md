@@ -1,11 +1,52 @@
 # AGENTS.md
 
-Hakua product version 0.5.8 is the current candidate source; engine 0.5.8 and
-Control 0.5.8 require freshly built, signed and tested payloads. Publication and installation
+Hakua app, Terminal, Control and native engine 0.5.8 are installed and formally
+published. The components were freshly built, signed and tested; Windows
+Authenticode signing of the app installer remains absent. Publication and installation
 are recorded in _docs/2026-11-11_stable-058-context-ci_Codex.md. Historical
 measurements below retain their original product versions.
 
-## Current local app update (2026-11-11)
+## Current local app update (2026-11-12)
+
+Stable 0.5.8 is installed from `H:/Strata/releases/stable-058-20261111-codex`.
+Actual app source: `91107e48367d934a02644bc7c61d5cb923d7f700`;
+Control source: `42ca8ebd70328788001695b4a7ffe67b444f10db`;
+native source: `c629ee37dde049b09bc42bdc00b076906f44fa27`.
+All eight exact-source CI workflows and all thirteen Checks jobs passed at
+`bb4c57d4a2a2ed0b8d269f120760892ed9f7038a`, the immutable v0.5.8 tag target.
+Later changes before that CI head affect only unshipped tests, CI and verified
+GitHub display metadata; the recorded validator binds all distributed sources
+and the exact installer to their actual build commits.
+
+Standard per-user NSIS overwrite verified 29,555 managed files and preserved
+3,727 backed-up user files. Model weights were not copied; selected original
+model hashes were separately checked. Actual installed WebView2 passed sixteen
+cases with no console errors and real RustXNG Full search, using a synthetic
+model API. Packaged self-tests passed thirteen cases; NSIS cleanup passed six;
+the actual pinned Harness regression group passed all forty-three without skips.
+Fresh native checks passed twenty-one numerical cases and sixteen real short
+model requests at 4096 capacity, including bounded/legacy comparison and restart.
+Full-window generation, general model quality and GPU concurrency remain
+unqualified; `releaseQualified=false`. Metal CI cross-compiles both genuine
+arm64 targets on standard Intel macOS 26; it does not test Mac inference.
+
+Five-job builds and unchanged RAM/commit/disk floors remain required. RustXNG
+0.31.1 Full, existing tool/key/approval choices and enabled local workflow
+learning/application were preserved. Fresh profiles keep both skill options off.
+Initial normal startup passed without debug arguments, unloaded. That observation
+does not assert that the application remains open at a later time. No force kill
+was used. Eight inactive clean worktrees, eight obsolete build caches and eight
+old cached installers were removed only after exact-target/source or byte backup
+verification. Useful incremental caches, dirty work, models and older public
+assets remain preserved.
+
+Formal v0.5.8, GitHub Latest and the lease-guarded mutable latest alias are
+published. All seventeen public assets were downloaded anonymously and matched
+their frozen sizes and SHA-256 values. See the 0.5.8 delivery record and linked
+LOCAL_VERIFICATION.json / PUBLIC_VERIFICATION.json. Earlier records below retain
+their original versions and measurements.
+
+## Historical 0.5.7 local update (2026-11-11)
 
 Stable app 0.5.7 is installed from the five-job formal build in
 `H:/Strata/releases/stable-057-20261111-codex`; exact app build source is
@@ -42,8 +83,8 @@ For subsequent local candidate builds, request five compiler jobs (`CARGO_BUILD_
 Keep existing resource floors and frozen evidence intact. The completed native
 0.5.3 build used four jobs; record that result with its actual parallelism.
 
-The installed local build retains sidebar file CRUD and confirmed folder chat-history cleanup.
-Its fresh app output is `H:/Strata/releases/repair-055-20261110-opencode/app-native055-ui-search`;
+The historical 0.5.5 local build retained sidebar file CRUD and confirmed folder chat-history cleanup.
+Its original app output was `H:/Strata/releases/repair-055-20261110-opencode/app-native055-ui-search`;
 earlier0.5.4/0.5.3 outputs and all failed/passing evidence remain preserved.
 
 Hakua product version 0.5.5-local.1, engine 0.5.5 (Metal source 0.5.0-metal), Control 0.5.6.
@@ -78,7 +119,7 @@ existing executable defaults may differ, so inspect the plan and choose the fami
 
 ## Installing this Hakua fork
 
-For a Hakua Windows request, use [docs/HAKUA_INSTALL.md](docs/HAKUA_INSTALL.md) and the [stable fork release](https://github.com/zapabob/Strata/releases/tag/v0.5.7): `Strata-0.5.7-windows-x64-setup.exe`. The identical per-user Tauri NSIS installer, signed native 0.5.5 CUDA component, Control 0.5.6, instructions and checksums are also in `Strata-0.5.7-windows-x64.tar.7z`. The app carries private Node/Python; the GPU component remains separate and the EXE has no Windows code signature. Use immutable SemVer tag `v0.5.7`, the mutable `latest` alias and GitHub Latest. Preserve older published assets. Read [docs/HAKUA_RELEASE.md](docs/HAKUA_RELEASE.md) for independently measured native limits, retained broader test failures and actual publication status. The stable app designation does not qualify full-window generation or low-precision model quality; `releaseQualified=false` remains explicit.
+For a Hakua Windows request, use [docs/HAKUA_INSTALL.md](docs/HAKUA_INSTALL.md) and the [stable fork release](https://github.com/zapabob/Strata/releases/tag/v0.5.8): `Strata-0.5.8-windows-x64-setup.exe`. The identical per-user Tauri NSIS installer, signed native 0.5.8 CUDA component, Control 0.5.8, instructions and checksums are also in `Strata-0.5.8-windows-x64.tar.7z`. The app carries private Node/Python; the GPU component remains separate and the EXE has no Windows code signature. Use immutable SemVer tag `v0.5.8`, the mutable `latest` alias and GitHub Latest. Preserve older published assets. Read [docs/HAKUA_RELEASE.md](docs/HAKUA_RELEASE.md) for independently measured native limits, passing exact-source CI and retained historical failures and actual publication status. The stable app designation does not qualify full-window generation or low-precision model quality; `releaseQualified=false` remains explicit.
 
 The model-family overview above is upstream reference. This fork Windows release has no native image input or separate native DeepSeek engine. See docs/HAKUA_RELEASE.md for the measured paths and limits.
 

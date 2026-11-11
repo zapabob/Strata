@@ -376,3 +376,67 @@ Its cache namespace is separate from native-host builds. The same pinned ggml,
 metal-cpp, Metal SDK requirement and both targets remain. This is compile/link
 evidence, not a claim of Mac inference or GPU qualification. No distributed
 native/app/Control source or payload changes. Full exact-head CI remains required.
+
+
+## Completed installation and formal publication (2026-11-12 JST)
+
+App, Terminal, Control and native engine 0.5.8 are installed. Actual build sources
+remain app 91107e48367d934a02644bc7c61d5cb923d7f700, Control
+42ca8ebd70328788001695b4a7ffe67b444f10db, native
+c629ee37dde049b09bc42bdc00b076906f44fa27. All eight workflows and all thirteen
+Checks jobs passed at bb4c57d4a2a2ed0b8d269f120760892ed9f7038a, the annotated immutable v0.5.8 target. Later
+unshipped test/CI/display-metadata repairs do not change those runtime sources;
+the strict recorded source-equivalence and exact-installer checks passed.
+
+Local overwrite verified 29,555 managed files and preserved 3,727 backed-up user
+files. Models were not copied; selected protected model hashes were unchanged.
+The pinned Harness group passed 43/43 without skips, packaged checks 13/13,
+NSIS cleanup 6/6 and actual installed WebView2 16/16 with no console errors.
+WebView2 model responses are synthetic; RustXNG Full searches are real. Fresh
+native evidence passed 21 numerical cases and 16 actual short model requests
+(7 bounded, 7 legacy, 2 restart) at 4096 capacity. Full-window generation,
+general/low-precision model quality and GPU concurrency remain unqualified;
+releaseQualified=false. Metal CI builds and verifies actual arm64 Mach-O strata
+and strata_ds4 on Intel macOS 26; no Mac inference measurement is claimed.
+
+Eight clean inactive worktrees, eight obsolete build caches and eight old cached
+installers were removed after exact-target/source or byte verification. Their
+private backups and source refs, useful incremental caches, dirty work, models,
+all prior evidence and public assets remain. No force kill was used. Initial
+normal startup passed without debug arguments and with models unloaded; it does
+not assert that the application remains open at a later time.
+
+[Formal release](https://github.com/zapabob/Strata/releases/tag/v0.5.8) is public,
+not a draft or prerelease, and selected by GitHub Latest and the lease-guarded
+mutable latest alias. All seventeen public URLs were downloaded anonymously
+without authentication/cookies; every size and SHA-256 matched the frozen local
+file. The stable latest/download feed and signature also matched. Older releases,
+assets and immutable tags were verified unchanged. Windows Authenticode signing
+is absent; component/feed authentication uses the existing bundled trusted keys.
+
+[Local and CI evidence](stable-058-20261111/LOCAL_VERIFICATION.json) and
+[anonymous public readback](stable-058-20261111/PUBLIC_VERIFICATION.json) are
+public-safe exports; private inventories, credentials and model weights are
+excluded. Earlier failed attempts and capacity/resource refusals remain in local
+evidence. The following values are the final public assets, including the
+tar.7z whose fifteen decoded member hashes were verified independently.
+
+| Public asset | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `BUNDLE-SHA256SUMS.txt` | 1239 | `8a925cdf4c248c97510e178d0f4a13d085181d1eb56cac47d08f3ddc2c19b176` |
+| `INSTALL.md` | 2775 | `fea6adf640271974ee3892395d4f01dbddb553e9b09bcd3938cfddfb650f573f` |
+| `QUALITY.json` | 30964 | `f163d2fefecb5a63828b75540a44aef74616f1d3f573374b83fda15afa81d25c` |
+| `RustXNG-0.31.1-source.tar.gz` | 5174381 | `927abe258fe2257a90b8a7467cc8b547ecb816d352ce493a0d646fc95960ba61` |
+| `RustXNG-LICENSE.txt` | 34520 | `57c8ff33c9c0cfc3ef00e650a1cc910d7ee479a8bc509f6c9209a7c2a11399d6` |
+| `RustXNG-NOTICE.txt` | 2890 | `0740830f4a7b153429270002eee52506fbc1fefcd55e1aad27d76ef3262853b6` |
+| `SHA256SUMS.txt` | 1425 | `d8772d30aac720d536c80fac0009b1a34ae539fe204add02588c6e87198dc533` |
+| `SOURCE.json` | 6794 | `1544236c62c2ce50b5283150932fbde5b595106ba49649efab8bae8a5535c6d6` |
+| `Strata-0.5.8-windows-x64-setup.exe` | 127118039 | `300252511099ed1a7b42d6a5c82bf6c6bc399da01e51933205a2365e15a9c384` |
+| `Strata-0.5.8-windows-x64.tar.7z` | 1674455202 | `d095edf7499b85935e0f5dda6f570a35ea33d6f31b3c70cdf705b2b653e828d5` |
+| `install-manifest.txt` | 135 | `cbb11ced32f74b66bf40a9375d42e01af30b553dead72d0686068974f028f15a` |
+| `install.ps1` | 12659 | `019a08857cd07c3ce55b4fd41262d34065db8495e94c90044d6e6e22f8eb42b5` |
+| `install.sh` | 8644 | `9bb331755d740ad4d069293f965f7843035829d025b83447323ce53b15cc21d2` |
+| `strata-control-0.5.8-windows-x86_64.zip` | 72127989 | `d688c93b07a611dc3c962c4b89858e36f99e5bae5313ad2f0e6ccce406873f3a` |
+| `strata-engine-0.5.8-windows-x86_64-cuda-cuda13.tar.gz` | 1469919482 | `5a60445a4a4321095815ec536af9a73cc88a07cde65f476c68eec09b27019777` |
+| `strata-feed.json` | 1172 | `6e5b2874bceae41096347d5405047ed1563010da4174a3021d2d0f5105a5a702` |
+| `strata-feed.json.sig` | 151 | `00d346ee7c25437b3231dacad4f94eabf3cfe11054ffe2b1c8a24f451045faae` |
