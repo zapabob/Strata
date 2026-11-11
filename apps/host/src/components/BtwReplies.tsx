@@ -9,7 +9,7 @@ export function BtwReplies({ session }: { session: Session }) {
   return <section className="stack" aria-label={tr('Side questions')}>
     {session.asides?.map(side => <article key={side.id} className="st-card">
       <div className="st-card__body stack">
-        <div className="row"><strong>/btw</strong><span className="small muted">{tr('Separate answer · no tools')}</span>
+        <div className="row"><strong>/btw</strong><span className="small muted">{tr(side.agentId ? 'Subagent answer · no tools' : side.running ? 'Starting side-question subagent…' : 'Separate answer · no tools')}</span>
           {side.running ? <Btn size="sm" onClick={() => stopBtw(session.id)}>{tr('Stop side question')}</Btn> : <Btn size="sm" onClick={() => dismissBtw(session.id, side.id)}>{tr('Dismiss')}</Btn>}
         </div>
         <p className="small">{side.question}</p>

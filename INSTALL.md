@@ -1,15 +1,18 @@
 # Strataをインストールする
 
+0.5.7 adds real /btw subagents, private workflow skill learning and automatic skill application. [Settings, data and undo](docs/WORKFLOW_SKILLS.md).
+
+
 Windowsアプリを使う場合は、GitHubの配布インストーラーから導入できます。
 ソースのビルドや、システムへのPython・Nodeの追加は不要です。
 
 ## ダウンロード先
 
-新しい `0.5.6-local.1` プレビューでは `/btw`、`/deepresearch` と
-RustXNG Fullを追加しています。[インストーラー](https://github.com/zapabob/Strata/releases/download/v0.5.6-local.1/Strata-0.5.6-local.1-windows-x64-setup.exe)、
-[tar.7z一括パッケージ](https://github.com/zapabob/Strata/releases/download/v0.5.6-local.1/Strata-0.5.6-local.1-windows-x64.tar.7z)、
-[チェックサム](https://github.com/zapabob/Strata/releases/download/v0.5.6-local.1/SHA256SUMS.txt)が配布先です。
-公開・上書き検証の実際の状態は[今回の配布記録](_docs/2026-11-11_btw-deepresearch-rustxng_Codex.md)をご確認ください。
+新しい `0.5.7-local.1` プレビューでは `/btw`、`/deepresearch` と
+RustXNG Fullを追加しています。[インストーラー](https://github.com/zapabob/Strata/releases/download/v0.5.7-local.1/Strata-0.5.7-local.1-windows-x64-setup.exe)、
+[tar.7z一括パッケージ](https://github.com/zapabob/Strata/releases/download/v0.5.7-local.1/Strata-0.5.7-local.1-windows-x64.tar.7z)、
+[チェックサム](https://github.com/zapabob/Strata/releases/download/v0.5.7-local.1/SHA256SUMS.txt)が配布先です。
+公開・上書き検証の実際の状態は[今回の配布記録](_docs/2026-11-11_workflow-skill-learning_Codex.md)をご確認ください。
 下表は保持している前版と安定版です。GPUエンジン0.5.5とControl0.5.6は前版の署名付き配布物を引き継ぎます。
 
 | 配布版 | 入手先 |
@@ -54,7 +57,7 @@ EXE自体のWindowsコード署名はなく、エンジンのコンポーネン�
 ## English
 
 Use the [stable Windows installer](https://github.com/zapabob/Strata/releases/tag/v0.5.1)
-or the explicitly labelled [preview](https://github.com/zapabob/Strata/releases/tag/v0.5.6-local.1).
+or the explicitly labelled [preview](https://github.com/zapabob/Strata/releases/tag/v0.5.7-local.1).
 Verify checksums, unload models and quit the tray app before updating. Run the EXE,
 then select the engine and model in the app. See the [full installation guide](docs/HAKUA_INSTALL.md).
 The055 installer includes the measured bulk-delete/browser-tool changes; broader model/public-search quality remains unqualified.

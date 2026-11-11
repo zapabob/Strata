@@ -5619,6 +5619,10 @@ textarea.config-editor.st-input {
 .request-section > .st-tablewrap { margin-top: 20px; }
 .skills-page { display: grid; gap: 32px; }
 .skills-page .section-toolbar { flex-wrap: wrap; gap: 16px; }
+.workflow-learning { display: grid; gap: 16px; padding: 20px; border: 1px solid var(--st-line); border-radius: var(--st-r-lg); background: var(--st-surface); }
+.workflow-learning > p { margin: 0; }
+.workflow-learning-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 20px; }
+.workflow-learning-actions { display: flex; flex-wrap: wrap; gap: 12px; }
 .skill-group { display: grid; gap: 16px; }
 .skill-group > h2 { margin: 0; }
 .skill-group > h2 span { font-weight: 400; margin-left: 8px; }

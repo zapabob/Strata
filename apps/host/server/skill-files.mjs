@@ -38,7 +38,7 @@ export function parseSkillFile(text) {
 /** Stage outside the discovery root, commit preferences, then publish the file.
  * A crash or cleanup failure before publication cannot expose instructions with
  * default permissions. Rollback failure leaves only inert saved preferences. */
-export function writeCreatedSkill(root, { name, description, body }, { beforePublish = () => {}, rollback = () => {} } = {}) {
+export function writeCreatedSkill(root, { name, title = name, description, body }, { beforePublish = () => {}, rollback = () => {} } = {}) {
   const id = skillSlug(name);
   if (!id) throw new Error('Give the skill a name with letters or numbers in it.');
   const dir = join(root, id);
@@ -47,7 +47,7 @@ export function writeCreatedSkill(root, { name, description, body }, { beforePub
   const staged = mkdtempSync(join(dirname(root), '.skill-'));
   let prepared = false;
   try {
-    writeFileSync(join(staged, 'SKILL.md'), skillFileText({ name: id, title: String(name).trim(), description, body }), { mode: 0o600, flush: true });
+    writeFileSync(join(staged, 'SKILL.md'), skillFileText({ name: id, title: String(title).trim(), description, body }), { mode: 0o600, flush: true });
     beforePublish(id);
     prepared = true;
     if (existsSync(dir)) throw new Error(`You already have a skill called "${id}". Choose another name, or edit the one you have.`);

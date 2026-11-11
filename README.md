@@ -8,19 +8,20 @@ of [Niko1221/Strata](https://github.com/Niko1221/Strata), integrating upstream 0
 
 ## Download
 
-The **0.5.6-local.1 preview** adds `/btw`, `/deepresearch` and bundled
+The **0.5.7-local.1 preview** adds real `/btw` subagents, workflow skill learning
+and automatic skill application. It retains `/deepresearch` and bundled
 **RustXNG 0.31.1 Full**. It uses upstream's Windows app layout: a per-user Tauri
 NSIS installer with private Node/Python and Control. The signed GPU engine is
 separate. The complete tar.7z includes the identical installer.
 
 | Package | Download |
 | --- | --- |
-| Windows x64 installer | [Setup EXE](https://github.com/zapabob/Strata/releases/download/v0.5.6-local.1/Strata-0.5.6-local.1-windows-x64-setup.exe) |
-| Installer, engine and instructions together | [tar.7z bundle](https://github.com/zapabob/Strata/releases/download/v0.5.6-local.1/Strata-0.5.6-local.1-windows-x64.tar.7z) |
-| Download verification | [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.5.6-local.1/SHA256SUMS.txt) |
-| Previous preview / stable | [0.5.5-local.1](https://github.com/zapabob/Strata/releases/tag/v0.5.5-local.1) / [0.5.1](https://github.com/zapabob/Strata/releases/tag/v0.5.1) |
+| Windows x64 installer | [Setup EXE](https://github.com/zapabob/Strata/releases/download/v0.5.7-local.1/Strata-0.5.7-local.1-windows-x64-setup.exe) |
+| Installer, engine and instructions together | [tar.7z bundle](https://github.com/zapabob/Strata/releases/download/v0.5.7-local.1/Strata-0.5.7-local.1-windows-x64.tar.7z) |
+| Download verification | [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.5.7-local.1/SHA256SUMS.txt) |
+| Previous preview / stable | [0.5.6-local.1](https://github.com/zapabob/Strata/releases/tag/v0.5.6-local.1) / [0.5.1](https://github.com/zapabob/Strata/releases/tag/v0.5.1) |
 
-The preview is [published](https://github.com/zapabob/Strata/releases/tag/v0.5.6-local.1). The [delivery record](_docs/2026-11-11_btw-deepresearch-rustxng_Codex.md)
+The preview delivery is tracked at [the release](https://github.com/zapabob/Strata/releases/tag/v0.5.7-local.1). The [delivery record](_docs/2026-11-11_workflow-skill-learning_Codex.md)
 records installation, archive and public-download verification. Stable GitHub Latest and the
 stable feed stay unchanged. This is a fork distribution; it is not endorsed by
 upstream. The EXE has no Windows code signature; component signatures are separate.
@@ -46,8 +47,8 @@ models unloaded. [Installation, data paths and rollback](docs/HAKUA_INSTALL.md).
 /btw What does the last error mean?
 ```
 
-A separate answer appears below the conversation, using a snapshot of completed
-messages with no tools. It does not interrupt the main task or add its question
+A real subagent starts under a dedicated side-question parent and answers below
+the conversation. It receives a snapshot of completed messages and has no tools. It does not interrupt the main task or add its question
 or answer to the main agent's context. Stop and dismiss controls affect only the
 side question. Up to five answers are saved with the chat; unfinished answers
 are marked interrupted after reload. With one model request slot, inference can
@@ -77,6 +78,19 @@ to access. Paid sources need their own setup and are not activated by a Strata
 search key. Existing provider choices, saved keys and approval controls remain
 available. Search errors are visible; RustXNG is not silently replaced.
 
+## Learn and apply workflow skills
+
+Open **Skills** to enable learning from completed agent work and automatic
+application independently. The same task model reviews bounded, redacted tool
+metadata and may save a private, editable SKILL.md. Future matching workflows
+receive complete enabled instructions, with trigger phrases and workspace scope.
+Manual edits and approval choices are preserved; revision history and undo are
+available. New profiles keep both options off.
+[How it works and its limits](docs/WORKFLOW_SKILLS.md).
+
+We appreciate [Hermes Agent](https://github.com/NousResearch/hermes-agent) for
+its work on reusable procedural skills, which inspired this document-based loop.
+
 ## Existing capabilities
 
 Reuse compatible GGUF shards and validated expert packs. Supported PQ2_0 models
@@ -96,7 +110,7 @@ Triality and experimental projection remain opt-in.
 
 | Component | Version |
 | --- | --- |
-| Desktop / Host | 0.5.6-local.1 |
+| Desktop / Host | 0.5.7-local.1 |
 | Native CUDA engine | 0.5.5, frozen source b995af13 |
 | Control / Terminal | 0.5.6, retained from the previous preview |
 | RustXNG | 0.31.1 Full, official unmodified Windows executable |
@@ -107,7 +121,7 @@ Triality and experimental projection remain opt-in.
 On 2026-11-11, RustXNG Full returned five results each for two public documentation
 queries in 1783 ms and 902 ms on this PC/network. These are functional checks,
 not general search or generated-answer quality measurements. New installer and
-installed-app evidence is in this preview's [delivery record](_docs/2026-11-11_btw-deepresearch-rustxng_Codex.md).
+installed-app evidence is in this preview's [delivery record](_docs/2026-11-11_workflow-skill-learning_Codex.md).
 
 Native qualification remains tied to the existing 0.5.5 artifacts and their
 recorded RTX 5060 Ti 16 GB / 32 GB RAM conditions. Full-window generation, broad

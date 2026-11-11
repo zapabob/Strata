@@ -12,15 +12,24 @@ const root = resolve(import.meta.dirname, '..');
 async function startHost(home) {
   const socket = createServer(); await new Promise(r => socket.listen(0, '127.0.0.1', r));
   const port = socket.address().port; await new Promise(r => socket.close(r));
-  const child = spawn(process.execPath, ['server/index.mjs'], { cwd: root, env: { ...process.env, STRATA_HOME: home, STRATA_MODELS_DIR: join(home, 'models'), STRATA_PORT: String(port), STRATA_REAL_ENGINE: '0', STRATA_WORKSPACE: join(home, 'work') }, stdio: 'ignore', windowsHide: true });
+  const child = spawn(process.execPath, ['server/index.mjs'], { cwd: root, env: { ...process.env, STRATA_HOME: home, STRATA_MODELS_DIR: join(home, 'models'), STRATA_PORT: String(port), STRATA_REAL_ENGINE: '0', STRATA_WORKSPACE: join(home, 'work') }, stdio: 'pipe', windowsHide: true });
+  let output = '';
+  const record = bytes => { output = (output + bytes).slice(-4000); };
+  child.stdout.on('data', record); child.stderr.on('data', record);
+  const stopped = new Promise(r => child.once('exit', r));
   const base = `http://127.0.0.1:${port}`;
   const call = async (path, method = 'GET', body) => {
     const response = await fetch(base + path, { method, headers: body ? { 'Content-Type': 'application/json' } : undefined, body: body ? JSON.stringify(body) : undefined });
     return { status: response.status, data: await response.json() };
   };
-  for (let i = 0; i < 100; i++) { try { if ((await call('/api/skills')).status === 200) break; } catch { /* not up yet */ } await new Promise(r => setTimeout(r, 100)); }
-  const stopped = new Promise(r => child.once('exit', r));
-  return { call, stop: async () => { child.kill(); await stopped; } };
+  let ready = false;
+  for (let i = 0; i < 300; i++) {
+    if (child.exitCode !== null || child.signalCode !== null) break;
+    try { if ((await call('/api/skills')).status === 200) { ready = true; break; } } catch { /* not up yet */ }
+    await new Promise(r => setTimeout(r, 100));
+  }
+  if (!ready) { if (child.exitCode === null && child.signalCode === null) child.kill(); await stopped; throw new Error('Fixture host was not ready: ' + output); }
+  return { call, stop: async () => { if (child.exitCode === null && child.signalCode === null) child.kill(); await stopped; } };
 }
 
 test('a skill created with Skill enabled off is saved off, kept after a restart, and an enabled one stays on', { timeout: 60000 }, async () => {

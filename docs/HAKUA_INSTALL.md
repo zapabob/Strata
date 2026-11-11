@@ -1,9 +1,12 @@
 # Install Hakua / Strata on Windows
 
-The 0.5.6-local.1 preview adds `/btw`, `/deepresearch` and bundled RustXNG Full.
-Use the [new installer](https://github.com/zapabob/Strata/releases/download/v0.5.6-local.1/Strata-0.5.6-local.1-windows-x64-setup.exe)
-or [tar.7z bundle](https://github.com/zapabob/Strata/releases/download/v0.5.6-local.1/Strata-0.5.6-local.1-windows-x64.tar.7z).
-The [new delivery record](../_docs/2026-11-11_btw-deepresearch-rustxng_Codex.md)
+0.5.7 adds real /btw subagents, private workflow skill learning and automatic skill application. [Settings, data and undo](WORKFLOW_SKILLS.md).
+
+
+The 0.5.7-local.1 preview adds `/btw`, `/deepresearch` and bundled RustXNG Full.
+Use the [new installer](https://github.com/zapabob/Strata/releases/download/v0.5.7-local.1/Strata-0.5.7-local.1-windows-x64-setup.exe)
+or [tar.7z bundle](https://github.com/zapabob/Strata/releases/download/v0.5.7-local.1/Strata-0.5.7-local.1-windows-x64.tar.7z).
+The [new delivery record](../_docs/2026-11-11_workflow-skill-learning_Codex.md)
 separates actual publication/install checks from the previous preview's evidence.
 The native 0.5.5 engine and Control 0.5.6 are retained; the instructions below
 still apply to engine import, data preservation and rollback.

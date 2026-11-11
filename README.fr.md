@@ -1,5 +1,15 @@
 # Strata · Hakua
 
+<!-- skills-057 -->
+## Nouvelle préversion 0.5.7-local.1
+
+`/btw` délègue à un vrai sous-agent sans outils, sous une session parente distincte. La conversation principale et son arrêt restent indépendants. La page Compétences permet d’activer séparément l’apprentissage de SKILL.md à partir du travail terminé et l’application automatique des instructions correspondantes. Modifications manuelles, espace de travail et autorisations sont respectés.
+
+[Installateur](https://github.com/zapabob/Strata/releases/download/v0.5.7-local.1/Strata-0.5.7-local.1-windows-x64-setup.exe) · [Archive tar.7z](https://github.com/zapabob/Strata/releases/download/v0.5.7-local.1/Strata-0.5.7-local.1-windows-x64.tar.7z) · [Installation et utilisation](docs/WORKFLOW_SKILLS.md)
+
+RustXNG 0.31.1 Full / native 0.5.5 / Control 0.5.6. [0.5.7 delivery status](_docs/2026-11-11_workflow-skill-learning_Codex.md). Stable / GitHub Latest: 0.5.1.
+
+
 ## Aperçu actuel 0.5.6-local.1
 
 `/btw <question>` ouvre une réponse séparée pendant la discussion principale. `/deepresearch <sujet>` associe plusieurs recherches et lectures de pages, en signalant les preuves insuffisantes. Dans Paramètres → Outils → Recherche web, choisissez **RustXNG Full**, sans clé.

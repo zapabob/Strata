@@ -1,5 +1,15 @@
 # Strata · Hakua
 
+<!-- skills-057 -->
+## 新预览版 0.5.7-local.1
+
+`/btw` 现在将问题交给真正的子代理。独立父会话启动无工具子代理，主对话和停止操作保持分离。技能页面可分别启用从已完成工作学习 SKILL.md，以及在执行流程中自动应用匹配技能。手动编辑、工作区范围和审批设置受到尊重。
+
+[安装程序](https://github.com/zapabob/Strata/releases/download/v0.5.7-local.1/Strata-0.5.7-local.1-windows-x64-setup.exe) · [tar.7z 完整包](https://github.com/zapabob/Strata/releases/download/v0.5.7-local.1/Strata-0.5.7-local.1-windows-x64.tar.7z) · [安装与操作](docs/WORKFLOW_SKILLS.md)
+
+RustXNG 0.31.1 Full / native 0.5.5 / Control 0.5.6. [0.5.7 delivery status](_docs/2026-11-11_workflow-skill-learning_Codex.md). Stable / GitHub Latest: 0.5.1.
+
+
 ## 当前预览版 0.5.6-local.1
 
 使用 `/btw <问题>` 可在主对话继续运行时打开独立回答；使用 `/deepresearch <主题>` 可结合多次搜索和页面阅读开展调查，并明确说明证据不足的情况。在设置 → 工具 → 网页搜索中选择 **RustXNG Full**，无需密钥。

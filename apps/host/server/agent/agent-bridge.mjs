@@ -28,6 +28,7 @@ import { ChildProjector } from './children.mjs';
 import { nearestBudget } from './llm-shape.mjs';
 import { DeliverableTracker, ActivityGroups, FolderClaims } from './deliverables.mjs';
 import { SkillsUsed, skillInfoFrom } from './skills-used.mjs';
+import { workflowSkillContext, withoutSkillContext } from './skill-context.mjs';
 import { turnEngineSpeed } from './engine-speed.mjs';
 import { TurnGuard, guardNote, GUARD_NOTES } from './turn-guard.mjs';
 import { cutNotice, cutNudge } from './reply-cut.mjs';
@@ -136,7 +137,7 @@ export function turnStallLimit({ local, toolRunning, stallMs, localStallMs, stal
  * @param {string} [options.nodePath]                   the Node runtime that runs the Harness
  * @param {(line:string)=>void} [options.log]
  */
-export function createAgentBridge({ dataDir, componentsDir = null, bundledDir = null, gate = true, localInstances, connections, tools = () => undefined, defaultLocalId = () => null, skillsDir = () => null, onGoal = () => {}, onPlan = () => {}, onQueue = () => {}, proxyBase = null, searchMock = null, expertSampling = () => null, engineProgress = () => null, engineGraceMs = 30 * 60_000, stallMs = 4 * 60_000, localStallMs = 30 * 60_000, stallToolMs = 20 * 60_000, env = process.env, nodePath = process.execPath, log = () => {}, startTimeoutMs = 120_000, sessionReadyMs = 60_000, sessionRetryMs = 1_500 }) {
+export function createAgentBridge({ dataDir, componentsDir = null, bundledDir = null, gate = true, localInstances, connections, tools = () => undefined, defaultLocalId = () => null, skillsDir = () => null, selectSkillsForTurn = () => [], onTurnBegin = () => null, onGoal = () => {}, onPlan = () => {}, onQueue = () => {}, proxyBase = null, searchMock = null, expertSampling = () => null, engineProgress = () => null, engineGraceMs = 30 * 60_000, stallMs = 4 * 60_000, localStallMs = 30 * 60_000, stallToolMs = 20 * 60_000, env = process.env, nodePath = process.execPath, log = () => {}, startTimeoutMs = 120_000, sessionReadyMs = 60_000, sessionRetryMs = 1_500 }) {
   localStallMs = localSilenceLimit(env.STRATA_LOCAL_STALL_MS, localStallMs);
   const root = join(dataDir, 'agent');
   const home = join(root, 'home');
@@ -176,6 +177,8 @@ export function createAgentBridge({ dataDir, componentsDir = null, bundledDir = 
   let pendingRuntime = null;
   let closed = false;
   const chats = new Map();         // chatId -> { turn, route, routeGeneration }
+  const sideParents = [];         // dedicated reusable parents; never main-chat sessions
+  const sideRuns = new Set();
   const plans = new PlanStore(join(root, 'plans.json'));
   /** chatId -> messages the person typed while a goal ran: [{ id, text, at, deliverAt }]; delivered between steps or when the goal ends */
   const queues = new Map();
@@ -186,7 +189,7 @@ export function createAgentBridge({ dataDir, componentsDir = null, bundledDir = 
   const idleWaiters = new Set();
 
   const chat = id => { let c = chats.get(id); if (!c) { c = { id, turn: null, route: null, routeGeneration: -1 }; chats.set(id, c); } return c; };
-  const activeTurns = () => [...chats.values()].filter(c => c.turn).length;
+  const activeTurns = () => [...chats.values()].filter(c => c.turn).length + sideRuns.size;
   const notifyIdle = () => { if (activeTurns() === 0) { for (const w of idleWaiters) w(); idleWaiters.clear(); } };
   const waitIdle = (signal, ms) => new Promise((resolve, reject) => {
     if (activeTurns() === 0) return resolve();
@@ -394,6 +397,8 @@ export function createAgentBridge({ dataDir, componentsDir = null, bundledDir = 
   }
 
   async function runTurnInner(c, { chatId, message, workspacePath, choice = null, mode = null, history = [], onFrame, requestId = `req-${randomUUID()}`, signal, goal = null, thinking = null, thinkingBudget = 0, images = [], planTask = null, planRun = null, researchTopic = null, deepResearch = false }) {
+    let learning = null;
+    try { learning = onTurnBegin({ chatId, message, choice: choice ?? { instanceId: defaultLocalId() }, mode: planTask ? 'plan' : modeOf(mode) }); } catch { /* optional learning cannot block the person's task */ }
     let send = onFrame; let attached = true;
     // A research run gathers first; what the assistant writes while gathering is notes, not the answer, so it is not shown.
     let hideDeltas = !!researchTopic;
@@ -412,6 +417,7 @@ export function createAgentBridge({ dataDir, componentsDir = null, bundledDir = 
     const groups = new ActivityGroups({ emit: raw });
     const skills = new SkillsUsed({ emit: raw, info: skillInfoFrom(skillsDir()) });
     const emit = frame => {
+      try { learning?.frame(frame); } catch { /* optional observer; no changes to the frame */ }
       if (frame.type === 'reasoning' && frame.text && written.reasoning.length < 2_000_000) written.reasoning += frame.text;
       if (frame.type === 'delta' && !frame.own) { written.all += frame.text; written.step += frame.text; if (guard) trip(guard.text(frame.text)); if (hideDeltas) return; }
       if (frame.own) { const { own, ...rest } = frame; frame = rest; }
@@ -435,8 +441,23 @@ export function createAgentBridge({ dataDir, componentsDir = null, bundledDir = 
     emit({ type: 'queued', requestId });
     reporter.set({ phase: 'starting', code: 'starting', text: 'Starting…' });
     const { rt: runtime, route } = await ensureRuntime(choice, signal);
+    try { learning?.selectChoice(route.kind === 'api' ? { connectionId: route.connectionId, modelId: route.modelId } : { instanceId: route.instanceId }); } catch { /* optional observer */ }
     const made = await sessionFor(c, workspacePath, runtime, { onWait: () => reporter.set({ phase: 'starting', code: 'assistant-starting', text: 'Starting the assistant…' }) });
     const { sessionId, fresh } = made ?? {};
+    const prepareSkills = text => {
+      const candidates = selectSkillsForTurn({ message: withoutSkillContext(text), workspacePath });
+      return workflowSkillContext(candidates, route.contextWindow);
+    };
+    let matchingText = researchTopic ?? goal?.objective ?? planTask?.request ?? message;
+    if (goal && goal.action !== 'create') {
+      const saved = await runtime.gw.rpc('goals/get', { agentId: sessionId }).catch(() => null);
+      if (saved?.objective) matchingText = withoutSkillContext(saved.objective);
+    }
+    const automaticSkills = prepareSkills(matchingText);
+    const activateSkills = selection => {
+      skills.applied(selection.selected);
+      if (selection.skipped.length) emit({ type: 'delta', own: true, text: 'Some matching skills were left out because their complete instructions did not fit. Open Skills to narrow the matching procedures.\n\n', key: 'Some matching skills were left out because their complete instructions did not fit. Open Skills to narrow the matching procedures.', values: [] });
+    };
     const cancelled = () => { reporter.clear(); emit({ type: 'done', finishReason: 'aborted', cancelled: true, tokensIn: null, tokensOut: null, usageSource: 'unavailable', durationMs: 0, model: route.name, contextMax: route.contextWindow }); return { cancelled: true }; };
     if (c.cancelStart || !made) return cancelled();
 
@@ -469,7 +490,7 @@ export function createAgentBridge({ dataDir, componentsDir = null, bundledDir = 
     // that fits once the older messages are a summary is sent after a summary; one that can never fit is not sent, and the person is told
     // plainly and offered the two ways out. Whatever cannot be counted goes through: the Harness recovers from a refusal by itself.
     if (!goal && route.kind === 'local') {
-      const fit = await fitCheck({ runtime, route, sessionId, fresh, history, message }).catch(() => null);
+      const fit = await fitCheck({ runtime, route, sessionId, fresh, history, message: automaticSkills.wrap(message) }).catch(() => null);
       if (fit?.action === 'too-large') {
         reporter.clear();
         const values = [grouped(fit.tokens), grouped(fit.window)];
@@ -510,6 +531,7 @@ export function createAgentBridge({ dataDir, componentsDir = null, bundledDir = 
       raw({ type: 'start', model: route.name, contextMax: route.contextWindow, demo: false, remoteModel: route.kind === 'api', agent: true, mode: appliedMode, sessionId, requestId, skills: [], resumed: true, ...(planTask ? { planning: true } : {}) });
       raw({ type: 'resync', content: hideDeltas ? '' : written.all, reasoning: written.reasoning });
       for (const t of projector.tools.values()) if (t.card) raw({ type: 'agent-tool', tool: t.card });
+      if (skills.used.size) raw({ type: 'skills-used', skills: [...skills.used.values()] });
       for (const q of questions.values()) if (q.sessionId === sessionId) raw({ type: 'agent-question', callId: q.callId, questions: q.items });
     };
     /**
@@ -583,8 +605,9 @@ ${note.text}`, key: note.key, values: note.values, noteReason: 'cut' });
       }
       for (const f of frames.slice(-1)) emit(f);
       c.turn = null;
+      try { learning?.finish(!failure && !turn.guard && !turn.stopping && projector.ended?.kind === 'completed'); } catch { /* never holds up the main reply */ }
       // What a page that was away needs to show the end of this turn (attach, below).
-      c.last = { requestId, sessionId, mode: appliedMode, model: route.name, contextMax: route.contextWindow, remoteModel: route.kind === 'api', content: hideDeltas ? '' : written.all.slice(0, 4_000_000), reasoning: written.reasoning, cards: [...projector.tools.values()].filter(t => t.card).map(t => t.card), terminal };
+      c.last = { requestId, sessionId, mode: appliedMode, model: route.name, contextMax: route.contextWindow, remoteModel: route.kind === 'api', content: hideDeltas ? '' : written.all.slice(0, 4_000_000), reasoning: written.reasoning, cards: [...projector.tools.values()].filter(t => t.card).map(t => t.card), skills: [...skills.used.values()], terminal };
       turn.ended.resolve({ reason: projector.ended, failure: failure ?? null });
       notifyIdle();
       // A turn that filled the context, or that the guard stopped, leaves a long history behind: summarise the older part now so the next message has room.
@@ -770,7 +793,9 @@ ${note.text}`, key: note.key, values: note.values, noteReason: 'cut' });
     async function startStep(plan, index) {
       plans.update(chatId, p => { p.state = 'running'; p.goalStarted = true; p.steps[index].state = 'running'; });
       const now = plans.get(chatId);
-      await runtime.gw.rpc('goals/create', { agentId: sessionId, request: { objective: stepObjective(now, index) } });
+      const objective = stepObjective(now, index), selected = prepareSkills(objective);
+      await runtime.gw.rpc('goals/create', { agentId: sessionId, request: { objective: selected.wrap(objective) } });
+      activateSkills(selected);
       written.step = ''; written.stepAt = Date.now();
       emit(stepFrame(now, index));
       emit(publishPlan('step', now));
@@ -884,7 +909,7 @@ ${note.text}
             if (more && !turn.finished && !turn.stopping) { turn.settleTimer = after(700, armSettle); return; }
           }
 
-          if (turn.goalRun && current) { const line = goalEnding(current); if (line) emit({ type: 'delta', text: line }); }
+          if (turn.goalRun && current) { const line = goalEnding({ ...current, objective: withoutSkillContext(current.objective) }); if (line) emit({ type: 'delta', text: line }); }
           if (turn.goalRun) await announceGoal(true);
         }
         finishTurn(null);
@@ -923,20 +948,23 @@ ${note.text}
           if (at < 0) throw new AgentUnavailable('Every step of this plan is already done.', 'plan-done');
           if (goal.action === 'resume' && plan.goalStarted) {
             plans.update(chatId, p => { p.state = 'running'; p.steps[at].state = 'running'; });
-            await startGoal(runtime, sessionId, goal);
+            await startGoal(runtime, sessionId, goal, automaticSkills.context);
+            activateSkills(automaticSkills);
             emit(publishPlan('step', plans.get(chatId)));
           } else await startStep(plan, at);
         } else {
-          await startGoal(runtime, sessionId, goal);
+          await startGoal(runtime, sessionId, goal, automaticSkills.context);
+          activateSkills(automaticSkills);
         }
       } catch (e) { finishTurn(e instanceof AgentUnavailable ? e.message : plainGoalError(e)); return { error: true }; }
       reporter.set({ phase: 'waiting', code: 'reading-prompt', text: 'Reading your message…' });
       void announceGoal();
     } else {
-      let prompt = message;
-      if (fresh && history.length) prompt = withEarlierConversation(history, message);
+      let prompt = automaticSkills.wrap(message);
+      if (fresh && history.length) prompt = withEarlierConversation(history, prompt);
       try {
         await runtime.gw.rpc('session/prompt', { request: { requestId, sessionId, mode: 'queue', content: [{ type: 'text', text: prompt }, ...imageParts(images)] } });
+        activateSkills(automaticSkills);
       } catch (e) {
         finishTurn(`The agent did not accept the message: ${e.message}`);
         return { error: true };
@@ -961,14 +989,16 @@ ${note.text}
   // -- /goal -----------------------------------------------------------------------------------------------
 
   /** Create or resume the chat's goal; the Harness's goal driver then runs the rounds by itself. */
-  async function startGoal(runtime, sessionId, goal) {
+  async function startGoal(runtime, sessionId, goal, skillContext = '') {
     if (goal.action === 'create') {
-      const request = { objective: goal.objective, ...(goal.maxRounds ? { maxGoalRounds: goal.maxRounds } : {}) };
+      const request = { objective: skillContext + withoutSkillContext(goal.objective), ...(goal.maxRounds ? { maxGoalRounds: goal.maxRounds } : {}) };
       await runtime.gw.rpc('goals/create', { agentId: sessionId, request });
       return;
     }
-    const current = await runtime.gw.rpc('goals/get', { agentId: sessionId });
+    let current = await runtime.gw.rpc('goals/get', { agentId: sessionId });
     if (!current) throw new AgentUnavailable('There is no goal to continue. Start one with /goal followed by what you want done.', 'goal-none');
+    const objective = skillContext + withoutSkillContext(current.objective);
+    if (objective !== current.objective) current = await runtime.gw.rpc('goals/edit', { agentId: sessionId, ref: { id: current.id, revision: current.revision }, request: { objective } });
     await runtime.gw.rpc('goals/resume', { agentId: sessionId, ref: { id: current.id, revision: current.revision } });
   }
 
@@ -991,7 +1021,7 @@ ${note.text}
     const running = plan && plan.goalStarted && ['running', 'paused'].includes(plan.state) ? plan : null;
     const at = running ? running.steps.findIndex(x => x.state !== 'done' && x.state !== 'skipped') : -1;
     const step = running && at >= 0 ? { index: at + 1, total: running.steps.length, text: running.steps[at].text } : null;
-    return { objective: step ? running.title : String(view.objective ?? ''), ...(step ? { step } : {}), phase, round: view.roundsStarted ?? 0, maxRounds: view.maxGoalRounds ?? null, ...(phase === 'blocked' ? { blocked: plainBlocker(view.blockedReason) } : {}) };
+    return { objective: step ? running.title : withoutSkillContext(view.objective), ...(step ? { step } : {}), phase, round: view.roundsStarted ?? 0, maxRounds: view.maxGoalRounds ?? null, ...(phase === 'blocked' ? { blocked: plainBlocker(view.blockedReason) } : {}) };
   }
 
   /** The goal of a chat now, from the Harness (null: none, or the agent is not running). */
@@ -1026,7 +1056,7 @@ ${note.text}
   /** The goal's state in plain words. */
   function describeGoal(view) {
     if (!view) return 'No goal is set. Start one with /goal followed by what you want done.';
-    const what = `"${view.objective}"`;
+    const what = `"${withoutSkillContext(view.objective)}"`;
     if (view.phase === 'active') return `Working on the goal ${what}.`;
     if (view.phase === 'paused') return `The goal ${what} is paused. Type /goal resume to go on.`;
     if (view.phase === 'complete') return `The goal ${what} is complete.`;
@@ -1136,6 +1166,68 @@ ${note.text}
     if (!topic) return sayOnce(options, options.deep ? 'Type /deepresearch followed by what you want to investigate. I will compare search results and pages, then answer with sources and limits.' : 'Type /research followed by what you want to know, for example: /research how do heat pumps compare with gas boilers. I will search the web, read the pages and answer with sources.');
     if (tools()?.off?.has('search')) return sayOnce(options, 'Research needs web search, which is turned off. Turn it on in Settings, Tools (DuckDuckGo needs no key), then try again.');
     return runTurn({ ...options, message: researchPrompt(topic, options.deep === true), researchTopic: topic, deepResearch: options.deep === true });
+  }
+
+  /** A real child under an isolated parent: no parent inference or chat mutation. */
+  async function btw({ message, history = [], choice = null, signal, onFrame = () => {} }) {
+    if (tools()?.off?.has('helpers')) throw new AgentUnavailable('Helper assistants are turned off. Enable them in Settings, Tools to use /btw.', 'helpers-off');
+    signal?.throwIfAborted();
+    const { rt: runtime, route } = await ensureRuntime(choice, signal);
+    signal?.throwIfAborted();
+    if (sideRuns.size >= 2) throw new AgentUnavailable('Two side questions are already running.', 'btw-busy');
+    const reservation = {}; sideRuns.add(reservation);
+    let parent, follow, cancel;
+    try {
+      parent = sideParents.find(row => row.generation === runtime.generation && !row.busy);
+      if (!parent) {
+        const made = await createSessionWhenReady(() => runtime.gw.rpc('session/create', { request: { cwd: join(root, 'run'), agentPreset: 'strata-btw' } }), { readyMs: sessionReadyMs, retryMs: sessionRetryMs, cancelled: () => signal?.aborted });
+        signal?.throwIfAborted();
+        if (!made) throw new Error('The side question was stopped.');
+        parent = { id: made.sessionId, generation: runtime.generation, busy: true }; sideParents.push(parent);
+      } else parent.busy = true;
+      const select = effort => runtime.gw.rpc('session/selectModel', { request: { sessionId: parent.id, provider: route.route, model: route.modelId, ...(effort ? { reasoningEffort: effort } : {}) } });
+      try { await select('off'); } catch { await select(null); }
+      await applyMode(runtime, parent.id, 'plan');
+      signal?.throwIfAborted();
+      const prompt = JSON.stringify({ conversation: history, sideQuestion: message });
+      const receipt = await runtime.gw.rpc('commands/execute', { agentId: parent.id, line: `/strata-btw-start ${JSON.stringify({ prompt })}`, submittedAttachments: [] });
+      if (receipt?.result?.kind !== 'success') throw new Error('The side-question subagent could not start.');
+      const child = JSON.parse(receipt.result.text);
+      if (child.parentSessionId !== parent.id || !child.childSessionId || child.childSessionId === parent.id) throw new Error('The side-question subagent address is invalid.');
+      onFrame({ type: 'btw-agent', ...child });
+      const projector = new TurnProjector({ window: route.contextWindow });
+      let lastSeq = -1, settled = false;
+      await new Promise((resolve, reject) => {
+        const finish = error => { if (settled) return; settled = true; error ? reject(error) : resolve(); };
+        cancel = () => finish(signal?.reason ?? new Error('The side question was stopped.'));
+        signal?.addEventListener('abort', cancel, { once: true });
+        if (signal?.aborted) return cancel();
+        const fold = item => {
+          if (settled) return;
+          if (item.type === 'event') { if (item.event.seq <= lastSeq) return; lastSeq = item.event.seq; }
+          for (const frame of projector.consume(item)) if (['delta', 'reasoning', 'stats'].includes(frame.type)) onFrame(frame);
+          if (item.type === 'event' && item.event.type === 'turn/end') {
+            const reason = item.event.data?.reason?.kind ?? 'completed';
+            if (reason === 'error' || reason === 'blocked' || reason === 'interrupted') return finish(new Error('The side-question subagent could not finish.'));
+            onFrame({ type: 'done', finishReason: reason === 'aborted' ? 'aborted' : 'stop', cancelled: reason === 'aborted', model: route.name, agent: true }); finish();
+          }
+        };
+        follow = runtime.gw.openStream('session/follow', { request: { address: { kind: 'subagent', ...child }, assistantStream: true } }, {
+          onItem: item => { if (item.type === 'snapshot') { for (const row of item.records ?? []) if (row.type === 'event') fold({ type: 'event', event: row.event }); } else fold(item); },
+          onError: () => finish(new Error('Lost contact with the side-question subagent.')),
+          onEnd: () => { if (!settled) finish(new Error('The side-question subagent stream ended early.')); },
+        });
+      });
+    } finally {
+      if (cancel) signal?.removeEventListener('abort', cancel);
+      follow?.close();
+      if (parent) {
+        const ended = await runtime.gw.rpc('commands/execute', { agentId: parent.id, line: '/strata-btw-end', submittedAttachments: [] }).catch(() => null);
+        if (ended?.result?.kind === 'success') parent.busy = false;
+      }
+      sideRuns.delete(reservation); notifyIdle();
+      for (let i = sideParents.length - 1; i >= 0; i--) if (sideParents[i].generation !== runtime.generation) sideParents.splice(i, 1);
+    }
   }
 
   const planGone = () => new AgentUnavailable('There is no plan waiting in this chat. Ask for one with /plan followed by what you want done.', 'plan-gone');
@@ -1487,6 +1579,7 @@ ${note.text}
     onFrame({ type: 'start', model: last.model, contextMax: last.contextMax, demo: false, remoteModel: last.remoteModel, agent: true, mode: last.mode, sessionId: last.sessionId, requestId: last.requestId, skills: [], resumed: true });
     onFrame({ type: 'resync', content: last.content, reasoning: last.reasoning });
     for (const card of last.cards) onFrame({ type: 'agent-tool', tool: card });
+    if (last.skills?.length) onFrame({ type: 'skills-used', skills: last.skills });
     if (last.terminal) onFrame(last.terminal);
     return { ended: Promise.resolve(), live: false };
   }
@@ -1516,7 +1609,7 @@ ${note.text}
   /** Let go of a chat's Harness session mapping (a task starts every run in a session of its own). */
   function forget(chatId) { if (chats.get(chatId)?.turn) return; delete sessionMap[chatId]; chats.delete(chatId); persist(); }
 
-  return { compactCommand, messageHelper, answerQuestion, goalState, goalControl, harnessDir, status, turnOf, runningTurns, attach, runTurn, goalCommand, planCommand, researchCommand, llmTarget, setPlanBriefing, resetSession, reopenPlan, skipStep, planGoal, planControl, planState, queueMessage, cancelQueued, takeQueue, forget, approve, setMode, stop, pendingFor, pendingAll, close, sessionOf: chatId => sessionMap[chatId]?.sessionId ?? null, workingFolder: chatId => sessionMap[chatId]?.cwd ?? null, isRunning: chatId => !!chats.get(chatId)?.turn, _debug: () => ({ rt, sessionMap, startingPid:pendingRuntime?.hp.pid??null, closed }) };
+  return { btw, compactCommand, messageHelper, answerQuestion, goalState, goalControl, harnessDir, status, turnOf, runningTurns, attach, runTurn, goalCommand, planCommand, researchCommand, llmTarget, setPlanBriefing, resetSession, reopenPlan, skipStep, planGoal, planControl, planState, queueMessage, cancelQueued, takeQueue, forget, approve, setMode, stop, pendingFor, pendingAll, close, sessionOf: chatId => sessionMap[chatId]?.sessionId ?? null, workingFolder: chatId => sessionMap[chatId]?.cwd ?? null, isRunning: chatId => !!chats.get(chatId)?.turn, _debug: () => ({ rt, sessionMap, startingPid:pendingRuntime?.hp.pid??null, closed }) };
 }
 
 /** A goal that stopped by itself, in words. */

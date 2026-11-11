@@ -1,4 +1,4 @@
-/** Validate a tool-free side question. Main-agent state is never accepted or modified. */
+/** Validate a tool-free subagent side question. Main-agent state is never modified. */
 import { validChatId } from './chat-store.mjs';
 
 export function btwRequest(body) {

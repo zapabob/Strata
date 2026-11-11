@@ -31,12 +31,16 @@ export function skillInfoFrom(dir) {
 }
 
 export class SkillsUsed {
-  constructor({ emit, info = slug => ({ name: skillLabel(slug), description: '' }) }) { this.emit = emit; this.info = info; this.used = new Map(); }
+  constructor({ emit, info = slug => ({ name: skillLabel(slug), description: '' }) }) { this.emit = emit; this.info = info; this.used = new Map(); this.appliedSlugs = new Set(); }
+  applied(skills) {
+    for (const skill of skills) { this.appliedSlugs.add(String(skill.id).replace(/^(?:my|ws)-/, '')); this.used.set('app:' + skill.id, { name: String(skill.name).slice(0, 80), description: String(skill.description ?? '').slice(0, 200) }); }
+    if (skills.length) this.emit({ type: 'skills-used', skills: [...this.used.values()] });
+  }
   /** A tool card frame (every state change). Counts a `skill` call once, when it has worked. */
   card(tool) {
     if (!tool || tool.name !== 'skill' || tool.state !== 'done') return;
     const slug = String(tool.args?.name ?? tool.args?.skill ?? '').trim();
-    if (!slug || this.used.has(slug)) return;
+    if (!slug || this.used.has(slug) || this.appliedSlugs.has(slug)) return;
     this.used.set(slug, this.info(slug));
     this.emit({ type: 'skills-used', skills: [...this.used.values()] });
   }

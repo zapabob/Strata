@@ -1,5 +1,15 @@
 # Hakua / Strata
 
+<!-- skills-057 -->
+## 新しいプレビュー 0.5.7-local.1
+
+`/btw` は実際のサブエージェントへ質問を渡します。専用の親セッションからツールを持たない子を起動し、本題の会話と停止操作を分離します。スキル画面では、完了した作業から再利用できるSKILL.mdを学ぶ機能と、条件が合うスキルを実行ワークフローへ自動適用する機能を個別に有効化できます。手動編集、ワークスペースの範囲、承認設定を尊重します。
+
+[インストーラー](https://github.com/zapabob/Strata/releases/download/v0.5.7-local.1/Strata-0.5.7-local.1-windows-x64-setup.exe) · [tar.7z一括パッケージ](https://github.com/zapabob/Strata/releases/download/v0.5.7-local.1/Strata-0.5.7-local.1-windows-x64.tar.7z) · [導入と手順](docs/WORKFLOW_SKILLS.md)
+
+RustXNG 0.31.1 Full / native 0.5.5 / Control 0.5.6. [0.5.7 delivery status](_docs/2026-11-11_workflow-skill-learning_Codex.md). Stable / GitHub Latest: 0.5.1.
+
+
 ## 現行プレビュー 0.5.6-local.1
 
 `/btw 質問` で本題と別の回答を開き、`/deepresearch 調査内容` で検索とページ閲覧を伴う調査を始められます。調査に必要な資料が集まらなかった場合は、その制限を回答に明記します。設定 → ツール → Web検索で **RustXNG Full（キー不要）** を選択できます。

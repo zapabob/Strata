@@ -2118,6 +2118,7 @@ export async function sendBtw(question: string, targetId = state.activeSession) 
   let answer = '', received = false;
   try {
     await streamPost('/api/chat/btw', { sessionId, message: text, history, remoteModel: remote, nativeModelId }, frame => {
+      if (frame.type === 'btw-agent' && typeof frame.childSessionId === 'string') patch({ agentId: frame.childSessionId });
       if (frame.type === 'delta') { answer += String(frame.text ?? ''); patch({ answer }); }
       if (frame.type === 'done') received = true;
       if (frame.type === 'error') { received = true; patch({ error: plainFailureText(String(frame.message ?? 'The side question failed.')).message }); }
