@@ -1,12 +1,47 @@
 # Install Hakua / Strata on Windows
 
+## Stable 0.5.7
+
+Use the [0.5.7 setup EXE](https://github.com/zapabob/Strata/releases/download/v0.5.7/Strata-0.5.7-windows-x64-setup.exe)
+or [complete tar.7z](https://github.com/zapabob/Strata/releases/download/v0.5.7/Strata-0.5.7-windows-x64.tar.7z),
+and compare [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.5.7/SHA256SUMS.txt).
+This is the stable zapabob fork release. It becomes GitHub Latest and the mutable
+latest alias; older releases and immutable tags remain available.
+
+Finish requests, unload models, back up app data and quit Strata, including its
+tray icon. Run the new EXE using the existing per-user installation folder.
+The usual location is `%LOCALAPPDATA%\Programs\Strata`. Models, chats and memory
+have separate data locations. Do not delete model folders to update or roll back.
+
+For the bundle, extract 7z first and then tar; check BUNDLE-SHA256SUMS.txt inside.
+It contains the identical EXE, native 0.5.5 signed CUDA component and Control
+0.5.6. Import the engine tar.gz using **I already have the file**, keeping it
+compressed. Select a compatible model or local GGUF and click **Load**. Models
+start unloaded. No system Python, Node or compiler installation is needed.
+
+In **Skills**, enable workflow learning and automatic application separately.
+Learned documents are private and editable, with retained revisions and undo.
+`/btw` uses a real tool-free subagent, with its own Stop; `/deepresearch` gathers
+sources. RustXNG Full remains selectable in **Settings → Tools → Web search**.
+[Settings, data and undo](WORKFLOW_SKILLS.md) · [Search](BROWSER_SEARCH.md).
+
+The EXE has no Windows code signature; engine/feed component signatures are
+separate. The native component retains its earlier hardware measurements and
+`releaseQualified=false`. Full-window generation, general answer quality and
+GPU concurrency are not qualified by this app release. Read the
+[stable delivery record](../_docs/2026-11-11_stable-057-release_Codex.md) for actual
+checks and the [native measured limits](HAKUA_RELEASE.md). Rollback uses a retained
+installer/component plus the pre-update profile backup.
+
+## Historical preview instructions and measurements
+
 0.5.7 adds real /btw subagents, private workflow skill learning and automatic skill application. [Settings, data and undo](WORKFLOW_SKILLS.md).
 
 
-The 0.5.7-local.1 preview adds `/btw`, `/deepresearch` and bundled RustXNG Full.
-Use the [new installer](https://github.com/zapabob/Strata/releases/download/v0.5.7-local.1/Strata-0.5.7-local.1-windows-x64-setup.exe)
-or [tar.7z bundle](https://github.com/zapabob/Strata/releases/download/v0.5.7-local.1/Strata-0.5.7-local.1-windows-x64.tar.7z).
-The [new delivery record](../_docs/2026-11-11_workflow-skill-learning_Codex.md)
+Stable 0.5.7 adds `/btw`, `/deepresearch` and bundled RustXNG Full.
+Use the [new installer](https://github.com/zapabob/Strata/releases/download/v0.5.7/Strata-0.5.7-windows-x64-setup.exe)
+or [tar.7z bundle](https://github.com/zapabob/Strata/releases/download/v0.5.7/Strata-0.5.7-windows-x64.tar.7z).
+The [new delivery record](../_docs/2026-11-11_stable-057-release_Codex.md)
 separates actual publication/install checks from the previous preview's evidence.
 The native 0.5.5 engine and Control 0.5.6 are retained; the instructions below
 still apply to engine import, data preservation and rollback.

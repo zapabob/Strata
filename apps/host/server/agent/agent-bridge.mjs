@@ -1186,11 +1186,14 @@ ${note.text}
         parent = { id: made.sessionId, generation: runtime.generation, busy: true }; sideParents.push(parent);
       } else parent.busy = true;
       const select = effort => runtime.gw.rpc('session/selectModel', { request: { sessionId: parent.id, provider: route.route, model: route.modelId, ...(effort ? { reasoningEffort: effort } : {}) } });
-      try { await select('off'); } catch { await select(null); }
+      let effort;
+      try { await select('off'); effort = 'off'; } catch { await select(null); }
       await applyMode(runtime, parent.id, 'plan');
       signal?.throwIfAborted();
       const prompt = JSON.stringify({ conversation: history, sideQuestion: message });
-      const receipt = await runtime.gw.rpc('commands/execute', { agentId: parent.id, line: `/strata-btw-start ${JSON.stringify({ prompt })}`, submittedAttachments: [] });
+      // A never-prompted parent only has a pending model selection. Pass the
+      // resolved route explicitly instead of inheriting its creation default.
+      const receipt = await runtime.gw.rpc('commands/execute', { agentId: parent.id, line: `/strata-btw-start ${JSON.stringify({ prompt, provider: route.route, model: route.modelId, effort })}`, submittedAttachments: [] });
       if (receipt?.result?.kind !== 'success') throw new Error('The side-question subagent could not start.');
       const child = JSON.parse(receipt.result.text);
       if (child.parentSessionId !== parent.id || !child.childSessionId || child.childSessionId === parent.id) throw new Error('The side-question subagent address is invalid.');

@@ -1,13 +1,13 @@
 # Strata · Hakua
 
 <!-- skills-057 -->
-## Neue Vorschau 0.5.7-local.1
+## Stabile Version 0.5.7
 
 `/btw` delegiert an einen echten Unteragenten ohne Werkzeuge unter einer eigenen Elternsitzung. Hauptgespräch und Stoppen bleiben getrennt. Unter Skills lassen sich Lernen aus abgeschlossener Arbeit und automatisches Anwenden passender Anleitungen im Arbeitsablauf getrennt aktivieren. Manuelle Änderungen, Arbeitsbereich und Genehmigungen bleiben maßgeblich.
 
-[Installer](https://github.com/zapabob/Strata/releases/download/v0.5.7-local.1/Strata-0.5.7-local.1-windows-x64-setup.exe) · [tar.7z-Paket](https://github.com/zapabob/Strata/releases/download/v0.5.7-local.1/Strata-0.5.7-local.1-windows-x64.tar.7z) · [Installation und Anleitung](docs/WORKFLOW_SKILLS.md)
+[Installer](https://github.com/zapabob/Strata/releases/download/v0.5.7/Strata-0.5.7-windows-x64-setup.exe) · [tar.7z-Paket](https://github.com/zapabob/Strata/releases/download/v0.5.7/Strata-0.5.7-windows-x64.tar.7z) · [Installation und Anleitung](docs/WORKFLOW_SKILLS.md)
 
-RustXNG 0.31.1 Full / native 0.5.5 / Control 0.5.6. [0.5.7 delivery status](_docs/2026-11-11_workflow-skill-learning_Codex.md). Stable / GitHub Latest: 0.5.1.
+RustXNG 0.31.1 Full / native 0.5.5 / Control 0.5.6. [0.5.7 delivery status](_docs/2026-11-11_stable-057-release_Codex.md). Stable / GitHub Latest: 0.5.7.
 
 
 ## Vorherige Vorschau 0.5.6-local.1

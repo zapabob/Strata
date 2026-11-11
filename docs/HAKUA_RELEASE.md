@@ -1,5 +1,24 @@
 # Hakua Windows release qualification
 
+## Stable app 0.5.7 — subagents and workflow skills
+
+The stable zapabob fork app adds real tool-free `/btw` child agents, private
+learning from completed workflows and automatic application of matching skills.
+It retains `/deepresearch` and RustXNG 0.31.1 Full. The app's stable tag does not
+change the independently pinned native 0.5.5 or Control 0.5.6 qualification.
+
+[Stable delivery evidence](../_docs/2026-11-11_stable-057-release_Codex.md) records
+the exact build, installed checks, archive, publication and public readback.
+Four expanded context/guard tests failed on the retained pre-feature baseline;
+they remain documented. New workflow checks use real Harness/tool execution and
+a scripted model. General model quality, full-window generation and GPU
+concurrency remain unqualified, and `releaseQualified=false` is retained.
+
+The user explicitly requested formal distribution: v0.5.7 becomes GitHub Latest
+and the mutable latest alias. All older releases, assets and immutable tags
+remain unchanged. The records below describe their original versions and
+publication state, including the former stable 0.5.1 designation.
+
 ## Preview 0.5.6-local.1 — side questions and RustXNG Full research
 
 This app-only preview adds `/btw`, `/deepresearch` and an unmodified official

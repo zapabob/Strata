@@ -29,7 +29,7 @@ const model=http.createServer(async(req,res)=>{
   if(req.url==='/props'){res.setHeader('content-type','application/json');res.end(JSON.stringify({modalities:{vision:false}}));return;}
   requests.push(body);
   res.writeHead(200,{'content-type':'text/event-stream'});
-  const send=value=>res.write('data: '+JSON.stringify(value)+'\n\n');
+  const send=value=>res.write('data: '+JSON.stringify({id:'qa-completion-057',object:'chat.completion.chunk',model:'qa-model',created:Math.floor(Date.now()/1000),...value})+'\n\n');
   const texts=(body?.messages??[]).filter(row=>row.role==='user').map(row=>typeof row.content==='string'?row.content:(row.content??[]).map(part=>part.text??'').join('\n'));
   const text=[...texts].reverse().find(value=>/Observed workflow:\n|Please apply desktop validation|WORKFLOW_057|Side question:|MAIN_PENDING_057/.test(value))??texts.at(-1)??'';
   const full=JSON.stringify(body?.messages??[]);
@@ -51,7 +51,7 @@ const model=http.createServer(async(req,res)=>{
     }else{send({choices:[{index:0,delta:{content:'WORKFLOW_DONE_057'}}]});send({choices:[{index:0,delta:{},finish_reason:'stop'}],usage:{prompt_tokens:100,completion_tokens:12}});}
     res.end('data: [DONE]\n\n');return;
   }
-  if(String(text).includes('MAIN_PENDING_057')){
+  if(String(text).includes('MAIN_PENDING_057')&&!String(text).includes('Side question:')){
     mainResponse=res;
     res.on('close',()=>{if(!mainReleased)mainClosed=true;});
     send({choices:[{index:0,delta:{content:'Main task running.\n'}}]});
@@ -140,6 +140,8 @@ try{
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth+1);assert.equal(overflow,false);report.checks.push('mobile-no-horizontal-overflow');
   assert.deepEqual(errors,[]);report.consoleErrors=0;report.ok=true;
 }finally{
+  if(!report.ok&&page){await page.screenshot({path:join(home,'screenshots/failure.png'),fullPage:true}).catch(()=>{});}
+  writeFileSync(join(home,'fixture-model-requests.json'),JSON.stringify(requests,null,2)+'\n',{flag:'wx'});
   if(child.exitCode===null)child.kill();
   await browser?.close().catch(()=>{});
   model.closeAllConnections();await new Promise(resolve=>model.close(resolve));

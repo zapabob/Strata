@@ -1,6 +1,6 @@
 # Learn and apply workflow skills
 
-In the 0.5.7-local.1 preview, open **Skills** to enable either of two independent
+In version 0.5.7, open **Skills** to enable either of two independent
 options. **Automatically apply skills to agent workflows** sends the complete
 instructions of matching enabled skills to the selected task model. Matching
 uses the skill's trigger phrases and workspace scope. It covers ordinary agent

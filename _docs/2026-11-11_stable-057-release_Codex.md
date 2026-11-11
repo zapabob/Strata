@@ -51,3 +51,33 @@ assets to check size and SHA-256. Check older immutable identities again.
 
 No stable release or final installation success is claimed until these gates
 have actual receipts. Append the measured outcomes below.
+
+## Installed candidate finding and fix
+
+The installed candidate UI test exposed a route-selection defect. The dedicated
+parent never makes an inference, so Harness session/selectModel stores only a
+pending selection. Starting a child with inherited creation options could use
+the default route instead of the chosen API. The isolated fixture child showed
+the default DeepSeek route and failed without a credential; no personal chat or
+provider credential was involved. Keep the failed candidate and its evidence.
+
+The host now passes its already resolved provider/model explicitly to the
+child activation and carries an accepted off reasoning choice. It does not
+depend on a never-started parent's request header. An added real Harness API-only
+regression test, the local no-tools check, independent cancellation and disabled
+helpers all passed (3/3). The UI fixture also distinguishes the child question
+from the main pending-marker text in its bounded history. The formal app will
+be rebuilt from this corrected source and retested after installation.
+
+Accumulated implementation and candidate delivery changes were committed and
+pushed to main through 958c070d. Further stable metadata, this route fix and
+formal evidence are committed and pushed in the next gated source revision.
+
+The formal 0.5.7 source passed TypeScript and the focused suite (65 passed,
+zero failed, five optional Harness cases skipped in that smaller run). The
+separate actual Harness suite passed 15/15, including the new API-only route
+regression, local tool-free children, independent cancellation, workflow
+learning/reuse, automatic application, workspace scopes, goal/plan/resume and
+research. Only model responses are scripted. These are integration results,
+not a general model-quality measurement. The stable release uses a separate
+resource-guarded output and fresh private backup.

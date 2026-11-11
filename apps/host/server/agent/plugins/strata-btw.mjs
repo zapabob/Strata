@@ -24,12 +24,13 @@ export function apply(ctx) {
         assertSideParent(agent);
         if (active.has(agent.id)) throw new Error('A side question is already running.');
         const request = JSON.parse(rawInput);
-        if (Object.keys(request).some(k => k !== 'prompt') || typeof request.prompt !== 'string' || !request.prompt.trim() || request.prompt.length > 75_000) throw new Error('Invalid side question.');
+        if (Object.keys(request).some(k => !['prompt', 'provider', 'model', 'effort'].includes(k)) || (request.effort !== undefined && request.effort !== 'off') || typeof request.prompt !== 'string' || !request.prompt.trim() || request.prompt.length > 75_000 ||
+          typeof request.provider !== 'string' || !request.provider || request.provider.length > 200 || typeof request.model !== 'string' || !request.model || request.model.length > 256) throw new Error('Invalid side question.');
         const controller = new AbortController();
         const run = await ctx.subagents.startActivation({
           provider: 'spawn', label: 'Side question', delivery: 'caller', signal: controller.signal,
           request: { parent: agent, prompt: [{ type: 'text', text: request.prompt }], agentPreset: 'strata-btw', maxDepth: 1,
-            agentOptions: { maxTokens: 1536 } },
+            agentOptions: { provider: request.provider, model: request.model, reasoningEffort: request.effort, maxTokens: 1536 } },
         });
         active.set(agent.id, { run, controller });
         run.result.catch(() => {});

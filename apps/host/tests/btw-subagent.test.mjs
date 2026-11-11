@@ -35,6 +35,7 @@ test('real Harness: /btw starts a tool-free child, leaves a running main chat un
   assert.ok(childRequest, 'the child receives the frozen conversation');
   assert.deepEqual(childRequest.toolNames, [], 'the child has no tool schema, rather than only a no-tools prompt');
   assert.equal(childRequest.model, 'scripted-model');
+  assert.equal(childRequest.params.chat_template_kwargs?.enable_thinking, false);
   assert.equal(bridge.isRunning('main'), true);
   assert.equal(bridge.sessionOf('main'), mainId);
   assert.equal(mainFrames.some(f => f.type === 'done'), false);
@@ -60,4 +61,19 @@ test('/btw respects the disabled helpers setting before starting a runtime', asy
   const bridge = createAgentBridge({ dataDir: dir, localInstances: () => [], connections: () => [], tools: () => ({ off: new Set(['helpers']) }) });
   try { await assert.rejects(bridge.btw({ message: 'hi' }), /turned off/); assert.equal(bridge._debug().rt, null); }
   finally { await bridge.close(); rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('real Harness: an API-only side parent delegates to the selected API instead of its creation default', { skip, timeout: 90_000 }, async t => {
+  const dir = mkdtempSync(join(tmpdir(), 'strata-btw-api-'));
+  const worker = await startScriptedWorker({ model: 'cloud-model', chunkDelayMs: 5 });
+  const connection = { id: 'btw-api-fixture', name: 'Chosen API', baseUrl: worker.url, protocol: 'openai-chat', apiKey: 'test-fixture-key', models: [{ id: 'cloud-model', name: 'Cloud fixture', contextMax: 32768, reasoning: false }] };
+  const bridge = createAgentBridge({ dataDir: dir, localInstances: () => [], connections: () => [connection], env: process.env });
+  t.after(async () => { await bridge.close(); await worker.close(); rmSync(dir, { recursive: true, force: true, maxRetries: 3 }); });
+  const frames = [];
+  await bridge.btw({ choice: { connectionId: connection.id, modelId: 'cloud-model' }, message: 'SCRIPT:echo CHOSEN_API_ANSWER', onFrame: f => frames.push(f) });
+  assert.match(frames.filter(f => f.type === 'delta').map(f => f.text).join(''), /CHOSEN_API_ANSWER/);
+  assert.equal(worker.requests.length, 1, 'no parent inference or fallback model call');
+  assert.equal(worker.requests[0].model, 'cloud-model');
+  assert.deepEqual(worker.requests[0].toolNames, []);
+  assert.equal(frames.at(-1).type, 'done');
 });

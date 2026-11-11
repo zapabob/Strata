@@ -1,13 +1,13 @@
 # Strata · Hakua
 
 <!-- skills-057 -->
-## 新预览版 0.5.7-local.1
+## 正式版 0.5.7
 
 `/btw` 现在将问题交给真正的子代理。独立父会话启动无工具子代理，主对话和停止操作保持分离。技能页面可分别启用从已完成工作学习 SKILL.md，以及在执行流程中自动应用匹配技能。手动编辑、工作区范围和审批设置受到尊重。
 
-[安装程序](https://github.com/zapabob/Strata/releases/download/v0.5.7-local.1/Strata-0.5.7-local.1-windows-x64-setup.exe) · [tar.7z 完整包](https://github.com/zapabob/Strata/releases/download/v0.5.7-local.1/Strata-0.5.7-local.1-windows-x64.tar.7z) · [安装与操作](docs/WORKFLOW_SKILLS.md)
+[安装程序](https://github.com/zapabob/Strata/releases/download/v0.5.7/Strata-0.5.7-windows-x64-setup.exe) · [tar.7z 完整包](https://github.com/zapabob/Strata/releases/download/v0.5.7/Strata-0.5.7-windows-x64.tar.7z) · [安装与操作](docs/WORKFLOW_SKILLS.md)
 
-RustXNG 0.31.1 Full / native 0.5.5 / Control 0.5.6. [0.5.7 delivery status](_docs/2026-11-11_workflow-skill-learning_Codex.md). Stable / GitHub Latest: 0.5.1.
+RustXNG 0.31.1 Full / native 0.5.5 / Control 0.5.6. [0.5.7 delivery status](_docs/2026-11-11_stable-057-release_Codex.md). Stable / GitHub Latest: 0.5.7.
 
 
 ## 上一预览版 0.5.6-local.1

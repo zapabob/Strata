@@ -1,13 +1,13 @@
 # Strata · Hakua
 
 <!-- skills-057 -->
-## Nowa wersja próbna 0.5.7-local.1
+## Wersja stabilna 0.5.7
 
 `/btw` przekazuje pytanie prawdziwemu podagentowi bez narzędzi, pod osobną sesją nadrzędną. Główna rozmowa i jej zatrzymywanie pozostają niezależne. Na stronie umiejętności można osobno włączyć uczenie SKILL.md z wykonanej pracy oraz automatyczne stosowanie pasujących instrukcji. Ręczne zmiany, zakres obszaru roboczego i zatwierdzenia są respektowane.
 
-[Instalator](https://github.com/zapabob/Strata/releases/download/v0.5.7-local.1/Strata-0.5.7-local.1-windows-x64-setup.exe) · [Pakiet tar.7z](https://github.com/zapabob/Strata/releases/download/v0.5.7-local.1/Strata-0.5.7-local.1-windows-x64.tar.7z) · [Instalacja i użycie](docs/WORKFLOW_SKILLS.md)
+[Instalator](https://github.com/zapabob/Strata/releases/download/v0.5.7/Strata-0.5.7-windows-x64-setup.exe) · [Pakiet tar.7z](https://github.com/zapabob/Strata/releases/download/v0.5.7/Strata-0.5.7-windows-x64.tar.7z) · [Instalacja i użycie](docs/WORKFLOW_SKILLS.md)
 
-RustXNG 0.31.1 Full / native 0.5.5 / Control 0.5.6. [0.5.7 delivery status](_docs/2026-11-11_workflow-skill-learning_Codex.md). Stable / GitHub Latest: 0.5.1.
+RustXNG 0.31.1 Full / native 0.5.5 / Control 0.5.6. [0.5.7 delivery status](_docs/2026-11-11_stable-057-release_Codex.md). Stable / GitHub Latest: 0.5.7.
 
 
 ## Poprzednia wersja testowa 0.5.6-local.1
