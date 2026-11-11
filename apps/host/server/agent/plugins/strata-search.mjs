@@ -9,6 +9,7 @@
  */
 import { createDuckDuckGoSearch } from '../../web-search-ddg.mjs';
 import { createExaSearch, createPerplexitySearch } from '../../web-search-keyed.mjs';
+import { createRustxngSearch } from '../../web-search-rustxng.mjs';
 
 export const name = 'strata-web-search';
 export const inject = ['web'];
@@ -18,6 +19,7 @@ export function apply(ctx, config = {}) {
   // Tests only (the bridge option `searchMock`): the same search code on a pretend web, so nothing leaves the machine.
   const pretend = config.mock === 'offline' ? { fetch: async () => { throw new TypeError('fetch failed'); } } : config.mock === 'limited' ? { fetch: async url => new Response('<html>please verify you are human: captcha</html>', { status: /duckduckgo/.test(String(url)) ? 202 : 429 }) } : null;
   const provider = pretend ? createDuckDuckGoSearch(pretend)
+    : config.provider === 'rustxng' ? createRustxngSearch({ endpoint: config.endpoint })
     : config.provider === 'exa' ? createExaSearch({ key: keyOf })
     : config.provider === 'perplexity' ? createPerplexitySearch({ key: keyOf })
     : createDuckDuckGoSearch();

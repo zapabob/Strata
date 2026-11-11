@@ -148,3 +148,11 @@ Strata を支えてくださるすべての方に感謝します。
 <a href="https://github.com/jackyini"><img src="https://github.com/jackyini.png?size=96" width="48" height="48" alt="jackyini" title="jackyini"></a>
 <a href="https://github.com/router0mail"><img src="https://github.com/router0mail.png?size=96" width="48" height="48" alt="router0mail" title="router0mail"></a>
 <!-- supporters:end -->
+
+## 謝辞
+
+[Strata](https://github.com/Niko1221/Strata)の開発者の皆さまへ、ローカル推論と使いやすいデスクトップ体験を丁寧に作り続けてくださっていることに、深く敬意を表します。このフォークは、その充実した実装と積み重ねに支えられています。
+
+[llama.cpp](https://github.com/ggml-org/llama.cpp)と貢献者の皆さまには、C/C++によるモデル推論を多くの開発者や利用者に開いてくださったことへ、心から感謝します。また、[RustXNG](https://github.com/sahenjp/RustXNG)の、ローカルAIから利用できる検索と資料収集の仕組みを高く評価しています。それぞれの技術と、継続的な保守への取り組みに賛辞を送ります。
+
+このフォークの統合・変更は独立して保守しています。上記の謝辞は、各プロジェクトによる推薦や承認を意味しません。

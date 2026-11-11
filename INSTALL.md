@@ -5,6 +5,13 @@ Windowsアプリを使う場合は、GitHubの配布インストーラーから�
 
 ## ダウンロード先
 
+新しい `0.5.6-local.1` プレビューでは `/btw`、`/deepresearch` と
+RustXNG Fullを追加しています。[インストーラー](https://github.com/zapabob/Strata/releases/download/v0.5.6-local.1/Strata-0.5.6-local.1-windows-x64-setup.exe)、
+[tar.7z一括パッケージ](https://github.com/zapabob/Strata/releases/download/v0.5.6-local.1/Strata-0.5.6-local.1-windows-x64.tar.7z)、
+[チェックサム](https://github.com/zapabob/Strata/releases/download/v0.5.6-local.1/SHA256SUMS.txt)が配布先です。
+公開・上書き検証の実際の状態は[今回の配布記録](_docs/2026-11-11_btw-deepresearch-rustxng_Codex.md)をご確認ください。
+下表は保持している前版と安定版です。GPUエンジン0.5.5とControl0.5.6は前版の署名付き配布物を引き継ぎます。
+
 | 配布版 | 入手先 |
 | --- | --- |
 | 新しいプレビュー `0.5.5-local.1` | **[Windowsインストーラーをダウンロード](https://github.com/zapabob/Strata/releases/download/v0.5.5-local.1/Strata-0.5.5-local.1-windows-x64-setup.exe)** · [エンジン・手順も入った一括パッケージ](https://github.com/zapabob/Strata/releases/download/v0.5.5-local.1/Strata-0.5.5-local.1-windows-x64.tar.7z) · [チェックサム](https://github.com/zapabob/Strata/releases/download/v0.5.5-local.1/SHA256SUMS.txt) |

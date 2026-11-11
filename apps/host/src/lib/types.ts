@@ -473,6 +473,8 @@ export interface LoopRecord {
 }
 
 export interface Session {
+  /** Separate, tool-free questions; excluded from the main model's messages. */
+  asides?: { id: string; question: string; answer: string; running: boolean; error?: string }[];
   /** The person dismissed this chat's (or its loop's) card on the board at this time. A later problem brings it back. */
   ackedAt?: string;
   loop?: LoopRecord;

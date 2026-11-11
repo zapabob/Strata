@@ -34,7 +34,7 @@ export function WebSearchDialog({open,sessionId,onClose,onUse}:{open:boolean;ses
     {busy?<Btn icon="stop" onClick={cancel}>{tr('Stop')}</Btn>:<Btn disabled={!capability?.available||!query.trim()} onClick={()=>void search()}>{tr('Search')}</Btn>}
     {result?.sources.length?<Btn variant="primary" onClick={()=>{if(Date.now()>=result.expiresAt){setError('Search references expired or belong to another chat. Search again.');return;}onUse(result);close();}}>{tr('Use results in question')}</Btn>:null}
   </>}><div className="form-stack">
-    <p className="small muted">{tr('Only the query you enter is sent to DuckDuckGo / Bing. No account or API key is needed. Your conversation and private memory are not used to make the query.')}</p>
+    <p className="small muted">{tr('Only the query you enter is sent to the selected search provider. Your conversation and private memory are not used to make the query.')}</p>
     <label className="input-field"><span>{tr('Search query')}</span><input className="st-input" value={query} maxLength={400} disabled={busy} onChange={e=>{setQuery(e.target.value);setResult(null);}} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();void search();}}}/></label>
     <p className="xs muted">{tr('Destination')}: {capability?.destination??'DuckDuckGo / Bing'}</p>
     {capability&&!capability.available?<><p role="status">{tr(capability.reason??'Web search is disabled. Enable it in Settings → Tools.')}</p><Btn onClick={()=>{close();setSettingsSection('Tools');navigate('settings');}}>{tr('Open tool settings')}</Btn></>:null}

@@ -1,4 +1,5 @@
 import { WebSearchDialog } from '../components/WebSearchDialog';
+import { BtwReplies } from '../components/BtwReplies';
 import {localeTag} from '../lib/i18n';
 import { tr } from '../lib/i18n';
 import { UsageDashboard } from '../components/UsageDashboard';
@@ -454,6 +455,7 @@ export function ChatScreen() {
         let text = draft.trim();
         if (!text && !queuedPhotos.length)
             return;
+        if (/^\/btw(?:\s|$)/i.test(text)) { updateDraft(''); void sendMessage(text); return; }
         if (streaming) {
             // Typed while a goal runs: it waits in the queue, shown under the conversation. With no goal running there is nothing to queue behind.
             if (!text || !session)
@@ -549,6 +551,7 @@ export function ChatScreen() {
               {tr(session.messages.length === 0 ? (session.statsAvailable === false ? <p className="small muted">{tr("Editing from an earlier message. Update the prompt below.")}</p> :
             <UsageDashboard loaded={!!loaded}/>) : (session.messages.map((m, i) => (<Message key={m.id} message={m} isLast={i === session.messages.length - 1} onEditPrompt={messageHandlers.onEditPrompt} onPreview={messageHandlers.onPreview} onClosePreview={messageHandlers.onClosePreview} onOpenTimeSkip={messageHandlers.onOpenTimeSkip} timeSkipDone={!!allTimeSkipRuns.find(r => r.id === m.timeSkipId)?.completedAt} timeSkipReal={!!allTimeSkipRuns.find(r => r.id === m.timeSkipId)?.job} timeSkipRun={allTimeSkipRuns.find(r => r.id === m.timeSkipId)} onOpenLink={messageHandlers.onOpenLink}/>))))}
               <QueuedMessages chatId={session.id}/>
+              <BtwReplies session={session}/>
             </div>
           </div>
           <div className="jumplatest-row">{tr(awayFromBottom ? (<button type="button" className="jumplatest" data-finished={justFinished || undefined} aria-label={tr("Scroll to the latest message")} title={tr("Scroll to the latest message")} onClick={() => scrollToLatest()}>
@@ -576,6 +579,8 @@ function useSlashCommands(clear: () => void, setDraft: (value: string) => void, 
         { id: 'goal', label: '/goal', hint: 'Set a goal and let the assistant keep working until it is done', icon: 'bolt', run: () => setDraft('/goal ') },
         { id: 'plan', label: '/plan', hint: 'Have the assistant write a plan first; nothing runs until you approve it', icon: 'check', run: () => setDraft('/plan ') },
         { id: 'research', label: '/research', hint: autonomous?'Search the web, read the pages and answer with sources':'Open Search web to choose a query and attach snippets', icon: 'search', run: () => autonomous?setDraft('/research '):onSearch() },
+        { id: 'deepresearch', label: '/deepresearch', hint: 'Compare sources with multiple searches and page reads', icon: 'search', run: () => setDraft('/deepresearch ') },
+        { id: 'btw', label: '/btw', hint: 'Ask a separate question without interrupting the main task', icon: 'chat', run: () => setDraft('/btw ') },
         { id: 'loop', label: '/loop', hint: 'Repeat a message every few minutes while this chat is open', icon: 'refresh', run: () => setDraft('/loop 10m ') },
         { id: 'website', label: '/website', hint: 'Open a website in the preview sidebar', icon: 'link', run: () => { clear(); window.dispatchEvent(new Event('strata:open-website')); } },
         { id: 'preview', label: '/preview', hint: 'Open a local file in the preview sidebar', icon: 'file', run: () => { clear(); window.dispatchEvent(new Event('strata:open-preview')); } },

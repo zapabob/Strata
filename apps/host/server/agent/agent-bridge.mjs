@@ -36,7 +36,7 @@ import { cutNotice, cutNudge } from './reply-cut.mjs';
 export const MAX_CUT_RETRIES = 2;
 import { buildAnswer, parseQuestions } from './user-questions.mjs';
 import { BASE_TOKENS, COUNT_ABOVE_CHARS, FIT_TEXT, countTokens, decideFit, fill, grouped } from './context-fit.mjs';
-import { PlanStore, planPrompt, parsePlan, parsePoints, stepObjective, stepLine, firstSentence, stepSummary, planAsPrompt, editedSteps, planView, researchPrompt, researchWritePrompt, RESEARCH_NUDGE, parseSources } from './plan.mjs';
+import { PlanStore, planPrompt, parsePlan, parsePoints, stepObjective, stepLine, firstSentence, stepSummary, planAsPrompt, editedSteps, planView, researchPrompt, researchWritePrompt, researchEvidence, RESEARCH_NUDGE, parseSources } from './plan.mjs';
 
 /**
  * A failure the person can read. `message` is a plain sentence with the next step; `details` keeps the technical
@@ -393,7 +393,7 @@ export function createAgentBridge({ dataDir, componentsDir = null, bundledDir = 
     try { return await runTurnInner(c, options); } finally { c.starting = false; }
   }
 
-  async function runTurnInner(c, { chatId, message, workspacePath, choice = null, mode = null, history = [], onFrame, requestId = `req-${randomUUID()}`, signal, goal = null, thinking = null, thinkingBudget = 0, images = [], planTask = null, planRun = null, researchTopic = null }) {
+  async function runTurnInner(c, { chatId, message, workspacePath, choice = null, mode = null, history = [], onFrame, requestId = `req-${randomUUID()}`, signal, goal = null, thinking = null, thinkingBudget = 0, images = [], planTask = null, planRun = null, researchTopic = null, deepResearch = false }) {
     let send = onFrame; let attached = true;
     // A research run gathers first; what the assistant writes while gathering is notes, not the answer, so it is not shown.
     let hideDeltas = !!researchTopic;
@@ -551,7 +551,11 @@ export function createAgentBridge({ dataDir, componentsDir = null, bundledDir = 
       try { if (toolsRan) for (const d of tracker.sweep()) { emit(d); groups.addFile(d); } } catch { /* never blocks the end of a turn */ }
       if (workspacePath) folderClaims.end(workspacePath, chatId);
       groups.end();
-      if (researchTopic && !failure && !turn.stopping) { const sources = parseSources(written.all); if (sources.length) extra.push({ type: 'research', topic: researchTopic, sources }); }
+      if (researchTopic && !failure && !turn.stopping) {
+        const evidence = deepResearch ? researchEvidence(projector.tools.values()) : null;
+        const sources = parseSources(written.all).filter(source => !evidence || evidence.urls.includes(source.url));
+        extra.push({ type: 'research', topic: researchTopic, sources, ...(evidence ? { deep: true, evidence } : {}) });
+      }
       try { extra.push(...settlePlan(failure)); } catch { /* a plan frame must never break the end of a turn */ }
       // The turn guard: a turn the app stopped, or one that ended with no words, always ends with one plain message (a plan card carries it itself).
       let noteReason = turn.guard ?? null;
@@ -857,9 +861,13 @@ ${note.text}
             const r = turn.research;
             if (r.waitingStart) { turn.settleTimer = after(300, armSettle); return; }
             const opened = [...projector.tools.values()].filter(x => x.card?.name === 'web_fetch' && x.card.state === 'done').length;
-            const prompt = r.phase === 'write' ? null : (opened < 2 && !r.nudged) ? RESEARCH_NUDGE : researchWritePrompt(researchTopic);
+            const evidence = deepResearch ? researchEvidence(projector.tools.values()) : null;
+            const missing = evidence ? !evidence.complete : opened < 2;
+            const nudge = deepResearch ? 'Continue gathering evidence. Make at least three distinct web_search queries in total and use web_fetch on at least four distinct relevant pages. Do not repeat a refused request. If providers are unavailable, record the limitation and finish your notes.' : RESEARCH_NUDGE;
+            const prompt = r.phase === 'write' ? null : (missing && !r.nudged) ? nudge : researchWritePrompt(researchTopic, evidence);
             if (prompt) {
-              if (prompt !== RESEARCH_NUDGE) { r.phase = 'write'; hideDeltas = false; written.all = ''; reporter.set({ phase: 'waiting', code: 'research-writing', text: 'Writing the answer…', key: 'Writing the answer…', values: [], args: {} }); } else r.nudged = true;
+              if (prompt !== nudge) { r.phase = 'write'; hideDeltas = false; written.all = ''; reporter.set({ phase: 'waiting', code: 'research-writing', text: 'Writing the answer…', key: 'Writing the answer…', values: [], args: {} }); } else r.nudged = true;
+              if (r.phase === 'write' && evidence && !evidence.complete) emit({ type:'delta', own:true, text:'This is a limited investigation: the minimum of three distinct searches and four page reads was not reached.\n\n' });
               r.waitingStart = true;
               try { await runtime.gw.rpc('session/prompt', { request: { requestId: `research-${randomUUID()}`, sessionId, mode: 'queue', content: [{ type: 'text', text: prompt }] } }); }
               catch { r.waitingStart = false; hideDeltas = false; finishTurn(null); return; }
@@ -1125,9 +1133,9 @@ ${note.text}
    */
   async function researchCommand(options) {
     const topic = String(options.line ?? '').trim();
-    if (!topic) return sayOnce(options, 'Type /research followed by what you want to know, for example: /research how do heat pumps compare with gas boilers. I will search the web, read the pages and answer with sources.');
+    if (!topic) return sayOnce(options, options.deep ? 'Type /deepresearch followed by what you want to investigate. I will compare search results and pages, then answer with sources and limits.' : 'Type /research followed by what you want to know, for example: /research how do heat pumps compare with gas boilers. I will search the web, read the pages and answer with sources.');
     if (tools()?.off?.has('search')) return sayOnce(options, 'Research needs web search, which is turned off. Turn it on in Settings, Tools (DuckDuckGo needs no key), then try again.');
-    return runTurn({ ...options, message: researchPrompt(topic), researchTopic: topic });
+    return runTurn({ ...options, message: researchPrompt(topic, options.deep === true), researchTopic: topic, deepResearch: options.deep === true });
   }
 
   const planGone = () => new AgentUnavailable('There is no plan waiting in this chat. Ask for one with /plan followed by what you want done.', 'plan-gone');

@@ -98,3 +98,11 @@ Strata 使用 MIT 许可证。模型权重、Hakua-memory 和依赖保留各自�
 <a href="https://github.com/jackyini"><img src="https://github.com/jackyini.png?size=96" width="48" height="48" alt="jackyini" title="jackyini"></a>
 <a href="https://github.com/router0mail"><img src="https://github.com/router0mail.png?size=96" width="48" height="48" alt="router0mail" title="router0mail"></a>
 <!-- supporters:end -->
+
+## 致谢
+
+感谢 [Strata](https://github.com/Niko1221/Strata) 开发者对本地推理和易用桌面体验的细致打磨。本分支建立在这些扎实的工作之上。
+
+向 [llama.cpp](https://github.com/ggml-org/llama.cpp) 及其贡献者致敬，感谢他们让更多开发者和用户能够使用 C/C++ 模型推理；也感谢 [RustXNG](https://github.com/sahenjp/RustXNG) 为本地 AI 提供实用、开放的搜索与资料获取服务。这些项目的工程实践和持续维护值得赞赏。
+
+本分支独立维护其集成与修改；上述致谢不表示相关项目对本分支的认可或背书。

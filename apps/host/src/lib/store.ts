@@ -223,6 +223,7 @@ const browserStorage: StorageLike = {
 function fixSession(session: Session): Session {
   return {
     ...session,
+    ...(session.asides ? { asides: session.asides.map(side => side.running ? { ...side, running: false, error: side.error ?? 'The side question was interrupted. The partial answer is kept.' } : side) } : {}),
     ...(session.showcase && !session.showcaseAgentStates ? {agents:SHOWCASE_AGENTS,showcaseAgentStates:true}:{}),
     ...(!session.showcase && session.agents ? { agents: settleAgents(session.agents) } : {}),
     messages: (session.messages ?? []).map(message => message.streaming ? {
@@ -1357,7 +1358,7 @@ export async function loadChatsFromHost(owns: () => boolean = () => true) {
   if (chatsRead) { await syncChatsFromHost(owns); return; }
   const result = await hydrateChats({
     transport: chatTransport, browser: browserStorage, current: state.sessions,
-    isLive: id => liveTurns.has(id),
+    isLive: id => liveTurns.has(id) || btwTurns.has(id),
   });
   if (!owns()) return;
   if (result.offline) {
@@ -1382,18 +1383,18 @@ export async function applyChatChange(id: string, rev: number | null, deleted: b
   if (!owns()) return;
   const here = state.sessions.find(s => s.id === id);
   if (deleted) {
-    if (here && !liveTurns.has(id) && !sessionWriter.dirty(here)) {
+    if (here && !liveTurns.has(id) && !btwTurns.has(id) && !sessionWriter.dirty(here)) {
       sessionWriter.forget(id);
       set({ sessions: state.sessions.filter(s => s.id !== id), ...(state.activeSession === id ? { activeSession: null } : {}) });
     }
     return;
   }
   if (rev !== null && sessionWriter.rev(id) >= rev) return;
-  if (here && (liveTurns.has(id) || sessionWriter.dirty(here))) return;   // this window's own work wins; its next save keeps the displaced version on the host
+  if (here && (liveTurns.has(id) || btwTurns.has(id) || sessionWriter.dirty(here))) return;   // this window's own work wins; its next save keeps the displaced version on the host
   const got = await chatTransport.get(id).catch(() => null);
   if (!got || !owns()) return;
   const fresh = state.sessions.find(s => s.id === id);
-  if (fresh && (liveTurns.has(id) || sessionWriter.dirty(fresh))) return;
+  if (fresh && (liveTurns.has(id) || btwTurns.has(id) || sessionWriter.dirty(fresh))) return;
   sessionWriter.adopt(got.session, got.rev);
   const next = fresh ? state.sessions.map(s => (s.id === id ? got.session : s)) : [...state.sessions, got.session].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
   set({ sessions: next });
@@ -2090,6 +2091,42 @@ type SendMessageOptions = {
   requestId?: string;
 };
 
+const btwTurns = new Map<string, AbortController>();
+
+export function stopBtw(sessionId: string) { btwTurns.get(sessionId)?.abort(); }
+export function dismissBtw(sessionId: string, id: string) {
+  patchSession(sessionId, session => ({ ...session, asides: session.asides?.filter(side => side.id !== id) }));
+}
+
+/** The destination and context are frozen before waiting; a tab switch cannot redirect the answer. */
+export async function sendBtw(question: string, targetId = state.activeSession) {
+  const text = question.trim();
+  if (!text || text.length > 4000) { pushToast('info', 'Add a side question of 1–4000 characters after /btw.'); return; }
+  if (targetId && btwTurns.has(targetId)) { pushToast('info', 'A side question is already running. Stop it or wait.'); return; }
+  const existing = state.sessions.find(session => session.id === targetId);
+  const remote = copyRemote(existing?.preferences?.remoteModel !== undefined ? existing.preferences.remoteModel : state.remoteModel);
+  const why = noModelNotice(nativeState(), { remote: !!remote, libraryLoaded: !!state.library?.loaded });
+  if (why) { pushToast('info', why.title, why.message); return; }
+  const sessionId = existing?.id ?? newSession().id;
+  const session = state.sessions.find(row => row.id === sessionId)!;
+  const history = session.messages.filter(row => !row.local && !row.timeSkipId && !row.streaming && row.content.trim() && ['user', 'assistant'].includes(row.role)).slice(-40).map(({ role, content }) => ({ role, content }));
+  const nativeModelId = nativeState()?.defaultId;
+  const id = uid('aside'), controller = new AbortController();
+  btwTurns.set(sessionId, controller);
+  patchSession(sessionId, row => ({ ...row, asides: [...(row.asides ?? []).slice(-4), { id, question: text, answer: '', running: true }] }));
+  const patch = (change: Partial<NonNullable<Session['asides']>[number]>) => patchSession(sessionId, row => ({ ...row, asides: row.asides?.map(side => side.id === id ? { ...side, ...change } : side) }));
+  let answer = '', received = false;
+  try {
+    await streamPost('/api/chat/btw', { sessionId, message: text, history, remoteModel: remote, nativeModelId }, frame => {
+      if (frame.type === 'delta') { answer += String(frame.text ?? ''); patch({ answer }); }
+      if (frame.type === 'done') received = true;
+      if (frame.type === 'error') { received = true; patch({ error: plainFailureText(String(frame.message ?? 'The side question failed.')).message }); }
+    }, controller.signal);
+    if (!received) patch({ error: 'The side question was cut off. The partial answer is kept.' });
+  } catch (error) { patch({ error: controller.signal.aborted ? 'The side question was stopped.' : plainFailureText(error instanceof Error ? error.message : String(error)).message }); }
+  finally { patch({ running: false }); if (btwTurns.get(sessionId) === controller) btwTurns.delete(sessionId); }
+}
+
 function copyRemote(remote: RemoteModelSelection | null | undefined): RemoteModelSelection | null {
   return remote ? { connectionId: remote.connectionId, modelId: remote.modelId } : null;
 }
@@ -2101,6 +2138,8 @@ function copyRemote(remote: RemoteModelSelection | null | undefined): RemoteMode
  * the first await.
  */
 export async function sendMessage(text: string, options: SendMessageOptions = {}) {
+  const aside = /^\/btw(?:\s+([\s\S]*))?$/i.exec(text.trim());
+  if (aside) { await sendBtw(aside[1] ?? '', options.sessionId ?? state.activeSession); return; }
   // A host-owned turn resumes in its original chat after a page reload.
   const reattach = options.reattach;
   const targetSession = reattach ?? options.sessionId;

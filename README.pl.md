@@ -99,3 +99,11 @@ Dziękujemy wszystkim, którzy wspierają Stratę.
 <a href="https://github.com/jackyini"><img src="https://github.com/jackyini.png?size=96" width="48" height="48" alt="jackyini" title="jackyini"></a>
 <a href="https://github.com/router0mail"><img src="https://github.com/router0mail.png?size=96" width="48" height="48" alt="router0mail" title="router0mail"></a>
 <!-- supporters:end -->
+
+## Podziękowania
+
+Dziękujemy twórcom [Strata](https://github.com/Niko1221/Strata) za staranną pracę nad lokalnym wnioskowaniem i przystępną aplikacją komputerową. Ten fork opiera się na ich znaczącym dorobku.
+
+Wyrażamy również uznanie dla [llama.cpp](https://github.com/ggml-org/llama.cpp) i jego współtwórców za udostępnienie wnioskowania w C/C++ programistom i użytkownikom oraz dla [RustXNG](https://github.com/sahenjp/RustXNG) za przydatną, otwartą usługę wyszukiwania i pozyskiwania źródeł dla lokalnej AI. Ich praca inżynierska i stałe utrzymanie zasługują na docenienie.
+
+Integracje i zmiany w tym forku są utrzymywane niezależnie. Podziękowania nie oznaczają poparcia ze strony wymienionych projektów.

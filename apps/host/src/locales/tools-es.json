@@ -2,5 +2,16 @@
  "tl01": "Usa un nombre de servidor sencillo de hasta 32 caracteres: letras, números, guiones o guiones bajos.",
  "tl02": "Estos servidores de herramientas se han omitido porque sus nombres no están permitidos: {0}. Un nombre puede tener hasta 32 letras, números, guiones o guiones bajos.",
  "tl03": "Estos servidores de herramientas se han omitido porque no tienen programa ni dirección web: {0}.",
- "tl04": "Estos servidores de herramientas se han omitido porque otro tiene casi el mismo nombre: {0}."
+ "tl04": "Estos servidores de herramientas se han omitido porque otro tiene casi el mismo nombre: {0}.",
+ "search056_01": "RustXNG Full (sin clave)",
+ "search056_02": "Preguntas aparte",
+ "search056_03": "Respuesta aparte · sin herramientas",
+ "search056_04": "Detener pregunta aparte",
+ "search056_06": "Respondiendo la pregunta aparte… Con una sola ranura, el modelo puede esperar a la inferencia actual.",
+ "search056_07": "Comparar fuentes con varias búsquedas y lecturas",
+ "search056_08": "Hacer una pregunta aparte sin interrumpir la tarea principal",
+ "search056_09": "Solo se envía su consulta al buscador elegido. La conversación y la memoria privada no se usan para crearla.",
+ "search056_10": "Ejecuta RustXNG Full localmente. Los proveedores externos activos reciben su consulta.",
+ "search056_11": "RustXNG Full y DuckDuckGo / Bing no necesitan clave. Las consultas van a servicios externos. /deepresearch compara fuentes; Buscar en la web adjunta extractos.",
+ "search056_12": "RustXNG Full se ejecuta en este equipo. Incluye servicios con condiciones de automatización restrictivas o sin revisar; use solo los autorizados. Una clave guardada en Strata no activa servicios de pago."
 }

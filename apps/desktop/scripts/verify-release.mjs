@@ -6,6 +6,7 @@ import {files,sha256,verifyHost,verifyTree,verifyEngine,verifyNativeBuild,verify
 import {HARNESS_BUDGET_PATCH} from './harness-budget.mjs';
 import {missingHarnessImports} from './harness-prune.mjs';
 import {LOCAL_BACKENDS,findLocalBackend,verifyLocalBackend} from '../../host/server/local-backends.mjs';
+import {RUSTXNG_VERSION,RUSTXNG_SHA256} from '../../host/server/rustxng-runtime.mjs';
 const root=resolve(import.meta.dirname,'../../..');
 const resources=join(root,'apps/desktop/src-tauri/resources');
 const control=join(resources,'control');
@@ -59,6 +60,9 @@ const patch=harnessBundle.patches?.find(item=>item.id===HARNESS_BUDGET_PATCH.id)
 if(!patch || patch.beforeSha256!==HARNESS_BUDGET_PATCH.beforeSha256 || patch.afterSha256!==sha256(join(harness,HARNESS_BUDGET_PATCH.file)))throw new Error('Stale Harness output-budget patch');
 if(missingHarnessImports(harness).length)throw new Error('Missing Harness runtime dependencies');
 if(process.platform==='win32') {
+ const search=join(harness,'rustxng'),searchSource=json(join(search,'SOURCE.json'));
+ if(searchSource.version!==RUSTXNG_VERSION || searchSource.profile!=='full' || searchSource.sourceCommit!=='a8ba33d8c9ceed91236f3abf029254d0f84995bb' || sha256(join(search,'rustxng.exe'))!==RUSTXNG_SHA256)throw new Error('Stage the pinned RustXNG Full distribution');
+ for(const name of ['LICENSE','NOTICE','corresponding-source.tar.gz'])if(!searchSource.files?.[name] || sha256(join(search,name))!==searchSource.files[name].sha256)throw new Error('RustXNG source or attribution changed: '+name);
  const node=join(resources,'node/node.exe');
  if(sha256(join(resources,'node/LICENSE'))!=='ed34dd8e3f0a78dbaf00d0444ce8e285b015b765379c2e17880455f70370f8e9')throw new Error('Stage the official Node 24.22.2 licence');
  // nodejs.org/dist/v24.22.2/SHASUMS256.txt: win-x64/node.exe.

@@ -34,7 +34,7 @@ export interface CustomTool {
 }
 export interface ToolsState {
   groups: ToolGroup[];
-  search: { provider: 'builtin' | 'exa' | 'perplexity' | 'deepseek'; keySet: boolean };
+  search: { provider: 'builtin' | 'rustxng' | 'exa' | 'perplexity' | 'deepseek'; keySet: boolean };
   /** Skip the once-per-chat question before the first web search or page in Manual mode. Off unless the person turned it on. */
   webWithoutAsking: boolean;
   browser: { enabled: boolean; found: boolean; name: string | null; missing?: 'component' };
@@ -47,6 +47,7 @@ const AREAS: { id: ToolGroup['area']; title: string }[] = [
   { id: 'together', title: 'Working on bigger jobs' },
 ];
 const SEARCH_CHOICES = [
+  { value: 'rustxng', label: 'RustXNG Full (no key)' },
   { value: 'builtin', label: 'DuckDuckGo (no key)' },
   { value: 'exa', label: 'Exa (your own key)' },
   { value: 'perplexity', label: 'Perplexity (your own key)' },
@@ -116,7 +117,7 @@ export function SettingsTools({ preview }: { preview?: ToolsState }) {
   }
 
   if (!state) return <div className="stack stack--lg settings-models">{error ? <ErrorNotice message={tr(error)} onRetry={() => void load()} /> : <p className="small muted">{tr('Loading the tool list…')}</p>}</div>;
-  const keyed = state.search.provider !== 'builtin';
+  const keyed = !['builtin', 'rustxng'].includes(state.search.provider);
 
   return <div className="stack stack--lg settings-tools">
     <div><h2 className="h3">{tr('Tools')}</h2><p className="small muted settings-models__intro">{tr('Choose what the assistant may use in your chats. A change applies from your next message. In Manual mode, anything that changes your computer still asks you first.')}</p></div>
@@ -132,10 +133,11 @@ export function SettingsTools({ preview }: { preview?: ToolsState }) {
 
     <section className="settings-section">
       <h2 className="h4" style={{ marginBottom: 10 }}>{tr('Web search')}</h2>
-      <p className="small muted">{tr('DuckDuckGo / Bing works without an API key. Use Search web in chat to choose a query and attach snippets.')}</p>
+      <p className="small muted">{tr('RustXNG Full and DuckDuckGo / Bing work without a key. Search queries are sent to external providers. Use /deepresearch to compare sources, or Search web to attach snippets.')}</p>
+      {state.search.provider === 'rustxng' ? <p className="small muted">{tr('The bundled RustXNG Full service runs on this computer. Full includes providers with restrictive or unreviewed automation terms; use only providers you have permission to access. Paid providers are not enabled by a saved Strata search key.')}</p> : null}
       {keyed && !state.search.keySet ? <p className="small muted">{tr('No key is saved. Autonomous agent search falls back to DuckDuckGo / Bing. Manual Search web supports the built-in provider only.')}</p> : null}
       <div className="st-card st-card--flush">
-        <Field label={tr('Where results come from')} hint={tr(keyed ? 'Searches use your own account with this service.' : 'Results come from DuckDuckGo, or from Bing when DuckDuckGo is busy. You do not need an account or a key.')}>
+        <Field label={tr('Where results come from')} hint={tr(state.search.provider === 'rustxng' ? 'Runs RustXNG Full locally. Enabled external providers receive your search query.' : keyed ? 'Searches use your own account with this service.' : 'Results come from DuckDuckGo, or from Bing when DuckDuckGo is busy. You do not need an account or a key.')}>
           <Select ariaLabel={tr('Where results come from')} value={state.search.provider} options={SEARCH_CHOICES} onChange={value => { setKey(''); void save({ search: { provider: value } }); }} />
         </Field>
         {keyed ? <Field label={tr('Your key')} hint={tr(state.search.keySet ? 'A key is saved on this computer. Enter a new one to replace it.' : 'Saved on this computer only. Strata never shows it again.')}>

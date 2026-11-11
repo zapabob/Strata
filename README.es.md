@@ -99,3 +99,11 @@ Gracias a todas las personas que apoyan Strata.
 <a href="https://github.com/jackyini"><img src="https://github.com/jackyini.png?size=96" width="48" height="48" alt="jackyini" title="jackyini"></a>
 <a href="https://github.com/router0mail"><img src="https://github.com/router0mail.png?size=96" width="48" height="48" alt="router0mail" title="router0mail"></a>
 <!-- supporters:end -->
+
+## Agradecimientos
+
+Agradecemos a los desarrolladores de [Strata](https://github.com/Niko1221/Strata) su cuidado al crear inferencia local y una aplicación de escritorio accesible. Este fork se apoya en ese importante trabajo.
+
+También reconocemos a [llama.cpp](https://github.com/ggml-org/llama.cpp) y sus colaboradores por acercar la inferencia en C/C++ a desarrolladores y usuarios, y a [RustXNG](https://github.com/sahenjp/RustXNG) por ofrecer un servicio abierto y útil de búsqueda y consulta de fuentes para la IA local. Su ingeniería y mantenimiento continuo merecen nuestro reconocimiento.
+
+Las integraciones y modificaciones de este fork se mantienen de forma independiente. Estos agradecimientos no implican el respaldo de los proyectos citados.

@@ -1,7 +1,7 @@
 {
   "name": "strata-desktop",
   "productName": "Strata",
-  "version": "0.5.5-local.1",
+  "version": "0.5.6-local.1",
   "private": true,
   "description": "Strata Desktop - local AI, tuned to one model.",
   "scripts": {

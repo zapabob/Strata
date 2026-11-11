@@ -1,5 +1,13 @@
 # Strata packaging: targets, recipes and locks
 
+The 0.5.6-local.1 app preview adds bundled RustXNG Full and keeps the signed
+0.5.5 engine / 0.5.6 Control components independent. Before a Windows build, run
+`node apps/desktop/scripts/stage-rustxng.mjs --execute` at the repository root.
+The stager pins official binary, attribution and corresponding-source bytes;
+the normal packaging verifier checks them. These files stay under the existing
+installer-managed `harness/rustxng` tree, so the standard NSIS upgrade cleanup
+still owns their replacement. See the [new delivery record](../_docs/2026-11-11_btw-deepresearch-rustxng_Codex.md).
+
 This page is for developers who build the desktop app, the Terminal archive and the engine packages. To install this Hakua
 Windows fork, use [INSTALL.md](../INSTALL.md) or [docs/HAKUA_INSTALL.md](../docs/HAKUA_INSTALL.md). The
 0.5.5-local.1 preview integrates official0.2.13 while preserving Hakua memory,

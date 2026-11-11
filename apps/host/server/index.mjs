@@ -65,6 +65,9 @@ import { RequestQueue } from './request-queue.mjs';
 import { selectSkills, skillInstructions } from './skill-selection.mjs';
 import { previewSkillMarkdown } from './skill-import.mjs';
 import { createChatWebSearch, referenceHistory } from './chat-web-search.mjs';
+import { createRustxngRuntime } from './rustxng-runtime.mjs';
+import { createRustxngSearch } from './web-search-rustxng.mjs';
+import { btwRequest } from './chat-btw.mjs';
 import { createModelProviders } from './model-providers.mjs';
 import { createForkTimeskip } from './timeskip-fork.mjs';
 import { prepareOversized } from './oversize.mjs';
@@ -183,7 +186,10 @@ const native=createNativeControl({control,ready:bundledEngine,appUpdater,hardwar
 // What the person chose in Settings -> Tools (tool groups, web search service and key, the browser, their own tools).
 const llmProxy = createLlmProxy({ targetOf: key => agent.llmTarget(key), samplingNow: () => samplingFromExpert(store.get().expert) });
 const agentTools = createAgentTools({ read: () => store.get().agentTools, write: value => store.update({ agentTools: value }, { durable: true }), dataDir: store.DATA_DIR, browser: () => ({ ...findBrowser(), cli: findPlaywrightMcp(agent.harnessDir()) }) });
-const chatWebSearch = createChatWebSearch({ settings: () => agentTools.view() });
+const rustxng = createRustxngRuntime();
+const rustxngSearch = createRustxngSearch({ endpoint: () => rustxng.start() });
+const chatWebSearch = createChatWebSearch({ settings: () => agentTools.view(), rustxngProvider: rustxngSearch });
+const activeBtw = new Set();
 agentTools.ensureFile();
 const visionProbe = createVisionProbe();
 /** The model APIs as the chat picker sees them: each model says whether it reads pictures (what the person ticked, else what the server answered). Unanswered models are asked in the background. */
@@ -230,7 +236,7 @@ function agentLocalRows() {
   return mergeAgentLocalInstances(nativeRows, supervisorAgentRow());
 }
 const agent = createAgentBridge({
-  tools: () => agentTools.profileView(),
+  tools: () => ({ ...agentTools.profileView(), rustxngUrl: rustxng.endpoint() }),
   skillsDir: () => AGENT_SKILLS,
   onGoal: (chatId, goal) => hub.send('goal', { chatId, goal }),
   // The person's Response settings (thinking budget, Expert sampling) reach the agent's model through this host's own forwarding endpoint.
@@ -665,17 +671,19 @@ async function runAgentTurn({ res, controller, chatId, body, message, workspaceI
   const settle = (tokensOut, error) => { if (entry) serving.finish(entry.id, { tokensOut, durationMs: Date.now() - started, ...(error ? { error } : {}) }); };
   try {
     // "/goal ..." is the Harness's goal command (set, show, pause, resume, clear); everything else is a message.
+    const selectedTools = agentTools.profileView();
+    if (selectedTools.search.provider === 'rustxng' && !selectedTools.off.has('search')) await rustxng.start();
     const attached = chatAttachments.take(chatId);
     if (attached.length && !/^\//.test(message.trim())) message = withAttachments(message, attached);
     const goalLine = /^\/goal(?:\s+([\s\S]*))?$/i.exec(message.trim());
     const planLine = /^\/plan(?:\s+([\s\S]*))?$/i.exec(message.trim());
-    const researchLine = /^\/research(?:\s+([\s\S]*))?$/i.exec(message.trim());
+    const researchLine = /^\/(?:research|deepresearch)(?:\s+([\s\S]*))?$/i.exec(message.trim());
     // "/compact" summarises the older messages of this chat now (it used to go to the model as text, which answered it as a question).
     const compactLine = /^\/compact\s*$/i.test(message.trim());
     const turnOptions = { chatId, message, workspacePath: cwd, choice, images, mode: typeof body.mode === 'string' ? body.mode : null, thinking: typeof body.thinking === 'string' ? body.thinking : null, thinkingBudget: Number.isFinite(body.thinkingBudget) ? body.thinkingBudget : 0, history: Array.isArray(body.history) ? body.history : [], onFrame: write, signal: controller.signal };
     const result = typeof body.planId === 'string' && body.message === '/plan start' ? await agent.planGoal({ ...turnOptions, planId: body.planId })
       : compactLine ? await agent.compactCommand(turnOptions)
-      : researchLine ? await agent.researchCommand({ ...turnOptions, line: researchLine[1] ?? '' })
+      : researchLine ? await agent.researchCommand({ ...turnOptions, line: researchLine[1] ?? '', deep: /^\/deepresearch(?:\s|$)/i.test(message.trim()) })
       : planLine ? await agent.planCommand({ ...turnOptions, line: planLine[1] ?? '' })
       : goalLine ? await agent.goalCommand({ ...turnOptions, line: goalLine[1] ?? '' }) : await agent.runTurn(turnOptions);
     if (result?.detached) void result.ended.then(r => settle(r?.tokensOut ?? null), () => settle(null));
@@ -687,7 +695,7 @@ async function runAgentTurn({ res, controller, chatId, body, message, workspaceI
   }
 }
 
-async function runTurn({ message, history = [], onFrame, signal, client, workspaceId = null, sessionId = null, remoteModel = null, runtimeModelId = undefined, nativeModelId, images=[], useTools=false, thinking='medium', thinkingBudget=0, webReferences=null }) {
+async function runTurn({ message, history = [], onFrame, signal, client, workspaceId = null, sessionId = null, remoteModel = null, runtimeModelId = undefined, nativeModelId, images=[], useTools=false, thinking='medium', thinkingBudget=0, webReferences=null, plainOnly=false }) {
   if (remoteModel) return runRemoteTurn({ selection: remoteModel, message, history, images, thinking, onFrame, signal, workspaceId, webReferences });
   if(native.hasLive()||nativeModelId){
     let instance;try{instance=native.resolveInstance(nativeModelId??native.state().defaultId);}catch(e){const message=plainNoModel(e.message);onFrame({type:'error',message});return {error:message};}const started=Date.now(),cancel=new AbortController();
@@ -736,7 +744,7 @@ async function runTurn({ message, history = [], onFrame, signal, client, workspa
         result = await streamChat({
           message,
           history: referenceHistory(history,webReferences),
-          disableTools:!!webReferences,
+          disableTools:plainOnly||!!webReferences,
           systemPrompt,
           modelLabel: v.label,
           candidates: readableCandidates(),
@@ -2165,6 +2173,34 @@ async function api(req, res, path, method, url) {
     try { return json(res, 200, await agent.stop(b.sessionId)); } catch (e) { return error(res, 502, e.message); }
   }
 
+  // Side questions use a separate direct inference request and never enter the agent's session or queue.
+  if (path === '/api/chat/btw' && method === 'POST') {
+    res.removeHeader('access-control-allow-origin');
+    if (!localReferenceControl(req)) return error(res,403,'Open /btw in the local Strata app.');
+    const body = await readBody(req,256*1024);
+    let side;
+    try { side = btwRequest(body); } catch (e) { return error(res,400,e.message); }
+    if (activeBtw.has(body.sessionId) || activeBtw.size >= 2) return error(res,409,'A side question is already running. Stop it or wait.');
+    activeBtw.add(body.sessionId);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(),180_000);
+    res.on('close', () => { if (!res.writableEnded) controller.abort(); });
+    res.writeHead(200, { 'content-type':'application/x-ndjson; charset=utf-8', 'cache-control':'no-cache, no-transform' });
+    keepStreamAlive(res);
+    let chars = 0;
+    try {
+      await runTurn({ ...side, onFrame: frame => {
+        if (frame.type === 'delta' || frame.type === 'reasoning') chars += String(frame.text ?? '').length;
+        if (chars > 24_000) { controller.abort(); return; }
+        if (!res.destroyed && !res.writableEnded) res.write(`${JSON.stringify(frame)}\n`);
+      }, signal:controller.signal, client:'Strata side question', sessionId:`btw-${randomBytes(16).toString('hex')}`,
+      remoteModel:body.remoteModel??null, nativeModelId:body.nativeModelId,
+      thinking:'off', useTools:false, plainOnly:true });
+    } catch { if (!res.destroyed && !res.writableEnded) res.write(`${JSON.stringify({ type:'error',message:'The side question could not be completed.' })}\n`); }
+    finally { clearTimeout(timeout); activeBtw.delete(body.sessionId); if (!res.writableEnded) res.end(); }
+    return undefined;
+  }
+
   // --- chat ---------------------------------------------------------------
   if ((path === '/api/chat/stream' || path === '/api/plan/start-goal') && method === 'POST') {
     const body = await readBody(req,12*1024*1024);
@@ -2187,7 +2223,7 @@ async function api(req, res, path, method, url) {
        does not fire in another. */
     const workspaceId = typeof body.workspaceId === 'string' ? body.workspaceId : null;
 
-    if (!webReferences && /^\/research(?:\s|$)/.test(message) && (body.agent === false || body.tools === false || process.env.STRATA_AGENT === 'off' || !(body.remoteModel || native.hasLive() || supervisorIsReady(supervisor.status())))) return error(res,409,'Autonomous research needs an agent model. Use Search web to attach references with this model.');
+    if (!webReferences && /^\/(?:research|deepresearch)(?:\s|$)/i.test(message) && (body.agent === false || body.tools === false || process.env.STRATA_AGENT === 'off' || !(body.remoteModel || native.hasLive() || supervisorIsReady(supervisor.status())))) return error(res,409,'Autonomous research needs an agent model. Use Search web to attach references with this model.');
     res.writeHead(200, {
       'content-type': 'application/x-ndjson; charset=utf-8',
       'cache-control': 'no-cache, no-transform',
@@ -2476,7 +2512,7 @@ const shutdown = async () => {
   clearInterval(taskTimer);tasks.close();
   const timeout=setTimeout(()=>process.exit(0),control?45000:10000);timeout.unref();   // stopping an engine through Control: drained (15 s), then ended; the shell's deadline is longer
   server.close();server.closeAllConnections?.();
-  await Promise.allSettled([localShare.stop(),cloudflare.stop(),native.close(),agent.close(),supervisor.stop()]);
+  await Promise.allSettled([localShare.stop(),cloudflare.stop(),native.close(),agent.close(),supervisor.stop(),rustxng.close()]);
   process.exit(0);
 };
 // Every ordinary way of being told to stop takes the clean path: Ctrl+C, kill, the terminal closing (SIGHUP), Ctrl+Break.

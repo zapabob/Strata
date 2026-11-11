@@ -1,5 +1,19 @@
 # Hakua Windows release qualification
 
+## Preview 0.5.6-local.1 — side questions and RustXNG Full research
+
+This app-only preview adds `/btw`, `/deepresearch` and an unmodified official
+RustXNG 0.31.1 Windows executable using the user's requested Full profile.
+The signed native 0.5.5 engine and Control 0.5.6 retain their own earlier source
+identities and qualification. No new native performance or numerical result is
+claimed. RustXNG returned nonempty results in two documentation searches on
+2026-11-11; this does not qualify arbitrary queries or generated answers.
+
+The new [implementation and delivery record](../_docs/2026-11-11_btw-deepresearch-rustxng_Codex.md)
+contains current test, build, overwrite, archive and publication evidence.
+Previous passing and failing evidence below remains attached to its original
+artifacts. `releaseQualified=false` and stable 0.5.1 / GitHub Latest remain.
+
 ## Preview 0.5.5-local.1 — native repairs, folder history and browser tools
 
 [Release and assets](https://github.com/zapabob/Strata/releases/tag/v0.5.5-local.1) ·

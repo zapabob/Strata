@@ -2,5 +2,16 @@
  "tl01": "Verwende einen einfachen Servernamen mit höchstens 32 Zeichen: Buchstaben, Zahlen, Bindestriche oder Unterstriche.",
  "tl02": "Diese Tool-Server wurden weggelassen, weil ihre Namen nicht erlaubt sind: {0}. Ein Name darf bis zu 32 Buchstaben, Zahlen, Bindestriche oder Unterstriche enthalten.",
  "tl03": "Diese Tool-Server wurden weggelassen, weil sie kein Programm und keine Webadresse haben: {0}.",
- "tl04": "Diese Tool-Server wurden weggelassen, weil ein anderer fast den gleichen Namen hat: {0}."
+ "tl04": "Diese Tool-Server wurden weggelassen, weil ein anderer fast den gleichen Namen hat: {0}.",
+ "search056_01": "RustXNG Full (ohne Schlüssel)",
+ "search056_02": "Nebenfragen",
+ "search056_03": "Separate Antwort · ohne Werkzeuge",
+ "search056_04": "Nebenfrage stoppen",
+ "search056_06": "Nebenfrage wird beantwortet… Bei einem Anfrageplatz kann das Modell auf die laufende Inferenz warten.",
+ "search056_07": "Quellen durch mehrere Suchen und Seitenabrufe vergleichen",
+ "search056_08": "Eine Nebenfrage stellen, ohne die Hauptaufgabe zu unterbrechen",
+ "search056_09": "Nur Ihre Eingabe geht an den gewählten Suchdienst. Gespräch und privates Gedächtnis erzeugen keine Suchanfrage.",
+ "search056_10": "Führt RustXNG Full lokal aus. Aktivierte externe Anbieter erhalten Ihre Suchanfrage.",
+ "search056_11": "RustXNG Full und DuckDuckGo / Bing brauchen keinen Schlüssel. Anfragen gehen an externe Anbieter. /deepresearch vergleicht Quellen; Websuche hängt Auszüge an.",
+ "search056_12": "Der gebündelte RustXNG-Full-Dienst läuft lokal. Full enthält Anbieter mit einschränkenden oder ungeprüften Automatisierungsbedingungen. Nutzen Sie nur erlaubte Anbieter. Ein gespeicherter Strata-Suchschlüssel aktiviert keine kostenpflichtigen Dienste."
 }

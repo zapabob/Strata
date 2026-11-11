@@ -12,6 +12,7 @@ function installDom() {
   globalThis.window ??= globalThis;
   globalThis.document ??= {
     addEventListener() {},
+    hasFocus() { return true; },
     visibilityState: 'visible',
     documentElement: { dataset: {}, style: { setProperty() {} }, classList: { toggle() {}, add() {}, remove() {} } },
   };
@@ -45,8 +46,49 @@ async function loadStore(streamScript) {
     loader: { '.json': 'json' },
     plugins: [mockClient],
   });
-  return import(`data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString('base64')}`);
+  return import(`data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text+'\n//# sourceURL=strata-store-fixture.mjs').toString('base64')}`);
 }
+
+test('/btw stays separate during an active main turn, and stopping it leaves the main turn running', async () => {
+  const store = await loadStore(`
+    export class ApiError extends Error {}
+    export const api = {get:async()=>({}),post:async()=>({connections:[{id:'test',models:[{id:'model'}]}]}),put:async()=>({}),del:async()=>({})};
+    export function onEvent(){return ()=>{};}
+    export async function streamPost(path,body,onFrame,signal){
+      if(path==='/api/chat/btw'){
+        globalThis.__btwBody=body;
+        if(body.message==='wait')await new Promise((resolve,reject)=>signal.addEventListener('abort',()=>reject(new Error('aborted')),{once:true}));
+        onFrame({type:'delta',text:'side answer'});onFrame({type:'done'});return;
+      }
+      globalThis.__mainSignal=signal;
+      await new Promise(resolve=>{globalThis.__finishMain=()=>{onFrame({type:'delta',text:'main answer'});onFrame({type:'done'});resolve();};});
+    }
+  `);
+  await store.saveModelConnection({kind:'custom',name:'Test',baseUrl:'http://127.0.0.1:1234/v1',protocol:'openai-chat',models:[{id:'model'}]});
+  store.selectRemoteModel({connectionId:'test',modelId:'model'});
+  const main=store.sendMessage('main task');
+  await new Promise(resolve=>setImmediate(resolve));
+  const sessionId=store.getState().activeSession;
+  assert.equal(store.getState().streaming,true);
+  await store.sendMessage('/btw Explain that');
+  let session=store.getState().sessions.find(row=>row.id===sessionId);
+  assert.equal(session.asides[0].answer,'side answer');
+  assert.equal(session.messages.length,2);
+  assert.equal(session.messages.some(row=>row.content.includes('side answer')),false);
+  assert.equal(store.getState().streaming,true);
+  assert.equal(globalThis.__mainSignal.aborted,false);
+  const side=store.sendMessage('/btw wait');
+  await new Promise(resolve=>setImmediate(resolve));
+  store.stopBtw(sessionId);await side;
+  assert.equal(globalThis.__mainSignal.aborted,false);
+  assert.equal(store.getState().streaming,true);
+  session=store.getState().sessions.find(row=>row.id===sessionId);
+  assert.match(session.asides.at(-1).error,/stopped/);
+  assert.equal(session.asides.at(-1).running,false);
+  globalThis.__finishMain();await main;
+  assert.equal(store.getState().streaming,false);
+  assert.equal(store.getState().sessions.find(row=>row.id===sessionId).messages.at(-1).content,'main answer');
+});
 
 test('F07: stream EOF without done/error clears message streaming and keeps partial text', async () => {
   const store = await loadStore(`

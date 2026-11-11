@@ -137,6 +137,19 @@ test('Stop in the middle of a plan pauses it with the finished steps kept; Resum
   assert.equal(r.bridge.planState('p4').state, 'paused');
 });
 
+test('/deepresearch reports limited evidence through the real Harness and excludes unread sources', { skip }, async (t) => {
+  const r = await rig(t), out = [];
+  await r.bridge.researchCommand({ ...r.base('deep1', frame => out.push(frame)), line: 'SCRIPT:echo Limited findings https://a.example/unread', deep: true });
+  const research = out.find(frame => frame.type === 'research');
+  assert.equal(research.deep,true);
+  assert.deepEqual(research.evidence,{queries:[],urls:[],complete:false});
+  assert.deepEqual(research.sources,[]);
+  const last = r.worker.requests.at(-1).raw;
+  assert.match(last,/minimum deep-research retrieval checks DID NOT pass/);
+  assert.match(last,/Only these successfully opened URLs/);
+  assert.equal(out.at(-1).type,'done');
+});
+
 test('/research: gathering is not shown, a run that opened no pages is sent back once, and the answer is written in a second step with its sources listed', { skip }, async (t) => {
   const r = await rig(t);
   const out = [];
