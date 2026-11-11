@@ -34,7 +34,7 @@ def main():
     receipts = dict(completed(name) for name in (
         'app-build', 'focused-skills-final', 'learning-unit-final', 'btw-skills-harness-final',
         'btw-isolated-final', 'nsis-cleanup-final', 'private-backup', 'extract-self-test',
-        'install', 'installed-ui', 'bundle', 'normal-start', 'publication-snapshot', 'release-upload',
+        'install', 'installed-ui', 'bundle', 'normal-start', 'normal-unload', 'publication-snapshot', 'release-upload',
         'release-publish', 'release-readback'))
     for suffix in ('', '.ja', '.zh-CN', '.de', '.fr', '.es', '.pt-BR', '.pl'):
         text = (ROOT / ('README' + suffix + '.md')).read_text(encoding='utf-8')
@@ -61,6 +61,7 @@ def main():
     report = {'releaseQualified': False, 'appBuild': load(OUT / 'app-build.json'),
         'nsisShellBinding': load(OUT / 'nsis-shell-binding.json'), 'installed': load(OUT / 'installed.json'),
         'backup': load(OUT / 'backup.json'), 'installedWebView2': ui, 'normalStartup': normal,
+        'normalUnloadAfterUserApproval': load(OUT / 'normal-unload.json'),
         'readmeLanguagesChecked': 8, 'packagedSelfTestsPassed': 13, 'nsisCleanupScenariosPassed': 6,
         'quality': load(OUT / 'assets/QUALITY.json'), 'signedFeed': load(OUT / 'signed-feed-check.json'),
         'cloudCIObservation': load(OUT / 'exact-sha-ci.json'),

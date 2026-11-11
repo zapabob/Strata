@@ -167,3 +167,11 @@ completed assets. Resource floors are unchanged. Reducing those floors or
 silently interrupting a newly started user task was rejected. Resume help/dry-run
 and the actual contained attempt validate this branch; final success still
 requires the complete verified draft and anonymous readback.
+
+After the user explicitly approved stopping the new app task, the normal
+`/api/chat/stop` endpoint ended one active turn and the normal runtime unload
+endpoint unloaded one model. No native instance was present, so none is
+claimed unloaded. No force kill was used. Both instance lists and the active
+turn list were empty, and tool/approval choices were unchanged. Available RAM
+recovered to about 16.8 GiB; the third upload attempt keeps the same resource
+floors and retains the two interrupted receipts.
