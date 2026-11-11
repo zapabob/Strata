@@ -202,9 +202,10 @@ jobs:
           retention-days: 7
 
   macos:
-    # Keep both Mac suites required and request one runner at a time.
+    # Keep both Mac suites required. macOS 15 ARM64 allocation repeatedly expired;
+    # use the same available macOS 26 ARM64 image as the Metal compile checks.
     name: macOS / ${{ matrix.name }}
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 60
     strategy:
       fail-fast: false

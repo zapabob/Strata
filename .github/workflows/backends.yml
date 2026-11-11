@@ -59,7 +59,10 @@ jobs:
     name: CUDA ${{ matrix.cuda }}
     runs-on: ubuntu-24.04
     timeout-minutes: 120
-    container: nvidia/cuda:${{ matrix.image }}
+    container:
+      image: nvidia/cuda:${{ matrix.image }}
+      # Job-local public DNS avoids the observed hosted bridge resolver failures.
+      options: --dns 1.1.1.1 --dns 8.8.8.8
     strategy:
       fail-fast: false
       matrix:
@@ -70,7 +73,7 @@ jobs:
     steps:
       - name: Tools
         run: |
-          apt-get update
+          apt-get -o Acquire::Retries=3 -o APT::Update::Error-Mode=any update
           DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends git ca-certificates cmake ninja-build ccache
           cmake --version | head -1
       - uses: actions/checkout@v4
@@ -102,11 +105,13 @@ jobs:
     name: HIP ROCm 7.2
     runs-on: ubuntu-24.04
     timeout-minutes: 120
-    container: rocm/dev-ubuntu-24.04:7.2.4-complete
+    container:
+      image: rocm/dev-ubuntu-24.04:7.2.4-complete
+      options: --dns 1.1.1.1 --dns 8.8.8.8
     steps:
       - name: Tools
         run: |
-          apt-get update
+          apt-get -o Acquire::Retries=3 -o APT::Update::Error-Mode=any update
           DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends git ca-certificates cmake ninja-build ccache
           cmake --version | head -1
       - uses: actions/checkout@v4
@@ -141,15 +146,17 @@ jobs:
     name: SYCL oneAPI 2026.1
     runs-on: ubuntu-24.04
     timeout-minutes: 120
-    container: ubuntu:24.04
+    container:
+      image: ubuntu:24.04
+      options: --dns 1.1.1.1 --dns 8.8.8.8
     steps:
       - name: Tools and oneAPI 2026.1
         run: |
-          apt-get update
+          apt-get -o Acquire::Retries=3 -o APT::Update::Error-Mode=any update
           DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends git ca-certificates cmake ninja-build ccache wget gpg
           wget -qO- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB | gpg --dearmor -o /usr/share/keyrings/oneapi-archive-keyring.gpg
           echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" > /etc/apt/sources.list.d/oneAPI.list
-          apt-get update
+          apt-get -o Acquire::Retries=3 -o APT::Update::Error-Mode=any update
           DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
             intel-oneapi-compiler-dpcpp-cpp-2026.1=2026.1.1-325 intel-oneapi-mkl-devel-2026.1=2026.1.0-236
       - uses: actions/checkout@v4

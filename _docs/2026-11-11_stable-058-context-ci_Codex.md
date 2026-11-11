@@ -304,3 +304,17 @@ the real H: build drive. Its first C: attempt retained one owner-death fixture
 failure: the separately spawned production CLI correctly reloaded its H default.
 That fixture now configures its separate CPU-only interpreter explicitly before
 calling the real runner, while production CLI admission remains unchanged.
+
+The installed 0.5.8 app is now open normally. Eight cached old NSIS installers
+were removed only after matching their retained private backup hashes; the
+current installer, incremental compiler caches and published assets remain.
+The 547dcd69 CI run passed both Windows/Linux host, tools and serving suites,
+the pinned Harness and CPU checks. Mac tools never acquired a runner: GitHub's
+annotations explicitly report macOS ARM64 capacity constraints. Both required
+Mac suites now use macOS 26 ARM64, already allocated by this run's successful
+Metal compile job. Four Linux container jobs failed before checkout/compilation
+because archive.ubuntu.com and security.ubuntu.com could not resolve, including
+the same-commit retry. Job-local public DNS and bounded strict apt index retries
+address that preparation failure without changing compiler images, versions,
+build flags, package authentication or test requirements. Full exact-head CI
+remains required before publication; the installed runtime sources are unchanged.
