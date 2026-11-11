@@ -187,8 +187,9 @@ jobs:
 
   metal:
     name: Metal strata + strata_ds4
-    # the macOS 26 SDK: metal/src/mtl_rt.mm names MTLGPUFamilyMetal4 behind @available (a run-time check); the names must be in the SDK
-    runs-on: macos-26
+    # Keep Apple Silicon targets and the macOS 26 SDK. Hosted ARM64 allocation
+    # repeatedly expired before any step; compile/link arm64 on the Intel pool.
+    runs-on: macos-26-intel
     timeout-minutes: 60
     env:
       # metal/setup_mac.py's metal-cpp pin (the same as metal-build.yml)
@@ -214,12 +215,23 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: .ccache
-          key: ccache-metal-${{ hashFiles('CMakeLists.txt', 'src/**', 'include/**', 'metal/**') }}
-          restore-keys: ccache-metal-
+          key: ccache-metal-arm64-apple-m1-${{ hashFiles('CMakeLists.txt', 'src/**', 'include/**', 'metal/**') }}
+          restore-keys: ccache-metal-arm64-apple-m1-
       - name: Configure
         run: |
+          uname -m
+          xcodebuild -version
+          xcrun --sdk macosx --show-sdk-version
           cmake -S metal -B build-metal -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 -DGGML_NATIVE=OFF \
+            -DCMAKE_C_FLAGS=-mcpu=apple-m1 -DCMAKE_CXX_FLAGS=-mcpu=apple-m1 -DCMAKE_OBJCXX_FLAGS=-mcpu=apple-m1 \
             -DMETAL_CPP_DIR="$PWD/_mcpp/metal-cpp" -DSTRATA_GGML_DIR="$PWD/llama.cpp" \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
       - name: Build and link strata and strata_ds4
         run: cmake --build build-metal --target strata strata_ds4
+      - name: Verify both targets are arm64 Mach-O
+        run: |
+          for target in strata strata_ds4; do
+            file "build-metal/$target"
+            test "$(lipo -archs "build-metal/$target")" = arm64
+          done

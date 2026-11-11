@@ -364,3 +364,15 @@ normally onto that commit; the incoming funding update remains intact. The
 runtime equivalence validator explicitly allows only this additional GitHub
 display metadata file and verifies it is absent from installed/extracted app,
 host and Control payloads. All existing source and exact-installer checks remain.
+
+The bd440f15 Intel Mac host passed typecheck, build and all 2,061 tests (121
+explicit skips); Mac tools passed 2,119 tests and 838 subtests (89 skips). The
+Linux full suite passed. Separately, three Metal job allocations on the ARM64
+pool expired with zero steps and explicit capacity annotations; CUDA 12.9/13.0,
+HIP and SYCL remained successful. The Metal compile-only gate now uses standard
+Intel macOS 26, explicitly targets arm64/Apple M1, disables host-native feature
+execution probes, and verifies both linked Mach-O files contain only arm64.
+Its cache namespace is separate from native-host builds. The same pinned ggml,
+metal-cpp, Metal SDK requirement and both targets remain. This is compile/link
+evidence, not a claim of Mac inference or GPU qualification. No distributed
+native/app/Control source or payload changes. Full exact-head CI remains required.
