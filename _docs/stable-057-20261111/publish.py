@@ -164,6 +164,33 @@ def verify_draft() -> None:
     print('Draft asset sizes and server SHA-256 digests matched.', flush=True)
 
 
+def resume_upload(attempt: str) -> None:
+    """Keep completed draft assets after a contained resource stop; upload only absent names."""
+    require(re.fullmatch(r'r[2-9][0-9]*', attempt), 'Explicit fresh upload retry required')
+    failed = load('receipts/release-upload.json')
+    require(not failed['passed'] and failed['run']['status'] == 'RESOURCE_PRESSURE'
+            and failed['run']['job_active_after'] == 0, 'Retained contained first upload failure required')
+    records = local_assets()
+    unchanged()
+    require(gh('api', 'user', '--jq', '.login').strip() == 'zapabob', 'Expected release owner')
+    release = get_release()
+    require(release['draft'] and not release['prerelease'], 'Resume only the unpublished formal draft')
+    observed = {row['name']: row for row in release['assets']}
+    require(set(observed) <= set(records), 'Unexpected draft asset must be preserved for review')
+    for name, row in observed.items():
+        require(row['state'] == 'uploaded' and row['size'] == records[name]['bytes']
+                and row['digest'] == 'sha256:' + records[name]['sha256'],
+                'Incomplete or changed draft asset requires review: ' + name)
+    save('upload-resume-before-' + attempt + '.json', {
+        'id': release['id'], 'retainedAssets': release_identity(release)['assets'],
+        'failedReceiptSHA256': sha(OUT / 'receipts/release-upload.json'),
+        'note': 'No completed asset is deleted, replaced or uploaded again; resource floors stay unchanged.'})
+    for name in sorted(set(records) - set(observed), key=lambda name: records[name]['bytes']):
+        print('Uploading absent draft asset ' + name, flush=True)
+        gh('release', 'upload', TAG, str(ASSETS / name), '--repo', REPO)
+    verify_draft()
+
+
 def verify_remote(release: dict, records: dict) -> None:
     observed = {row['name']: row for row in release['assets']}
     require(set(observed) == set(records), 'Remote asset membership differs')
@@ -251,14 +278,16 @@ def readback(attempt: str = 'r1') -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=['snapshot', 'snapshot-local-alias', 'upload', 'verify-draft', 'publish', 'readback'])
+    parser.add_argument('action', choices=['snapshot', 'snapshot-local-alias', 'upload', 'resume-upload', 'verify-draft', 'publish', 'readback'])
     parser.add_argument('--execute', action='store_true')
     parser.add_argument('--attempt', default='r1')
     args = parser.parse_args()
     if not args.execute:
         print(json.dumps({'execute': False, 'action': args.action, 'tag': TAG}))
         return
-    if args.action == 'readback':
+    if args.action == 'resume-upload':
+        resume_upload(args.attempt)
+    elif args.action == 'readback':
         readback(args.attempt)
     else:
         globals()[args.action.replace('-', '_')]()

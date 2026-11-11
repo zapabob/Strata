@@ -34,7 +34,7 @@ def main():
     receipts = dict(completed(name) for name in (
         'app-build', 'focused-skills-final', 'learning-unit-final', 'btw-skills-harness-final',
         'btw-isolated-final', 'nsis-cleanup-final', 'private-backup', 'extract-self-test',
-        'install', 'installed-ui', 'bundle', 'normal-start', 'publication-snapshot',
+        'install', 'installed-ui', 'bundle', 'normal-start', 'publication-snapshot', 'release-upload',
         'release-publish', 'release-readback'))
     for suffix in ('', '.ja', '.zh-CN', '.de', '.fr', '.es', '.pt-BR', '.pl'):
         text = (ROOT / ('README' + suffix + '.md')).read_text(encoding='utf-8')

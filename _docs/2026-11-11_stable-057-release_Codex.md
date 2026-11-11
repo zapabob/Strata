@@ -147,3 +147,23 @@ only. The archive is 1674424482 bytes with SHA-256
 `904b39ba966666144fdbcea398d9697776781a25f92d459a05b074babc637284`.
 There are 17 prepared release assets. Model weights, personal profiles,
 private backup inventories and fixture transcripts are excluded.
+
+## Retained publication interruptions
+
+The first upload and its contained second attempt stopped with
+`RESOURCE_PRESSURE` when available RAM fell below the unchanged 3 GiB floor.
+Both owned process trees terminated with zero active processes. This was not
+an app-build or archive failure. The formal release remains an unpublished,
+non-prerelease draft until every uploaded asset matches the frozen bundle.
+Anonymous readback follows publication and is required before delivery is
+reported complete. Fifteen complete assets are retained with their original
+IDs and server SHA-256 digests.
+
+Self-review-event: `qa_defect` and repeated delivery interruption. The narrower
+publication helper now resumes only absent asset names after checking every
+existing draft asset's uploaded state, size and digest against the frozen bundle.
+It records the interrupted receipt and retained IDs; it never clobbers or deletes
+completed assets. Resource floors are unchanged. Reducing those floors or
+silently interrupting a newly started user task was rejected. Resume help/dry-run
+and the actual contained attempt validate this branch; final success still
+requires the complete verified draft and anonymous readback.
