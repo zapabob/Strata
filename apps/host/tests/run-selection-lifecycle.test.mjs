@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { build } from 'esbuild';
 import { chromium } from 'playwright-core';
+import { testBrowserExecutable } from './helpers/browser-executable.mjs';
 import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -72,7 +73,7 @@ async function fixture(t, id, profiles = empty, draft = null, allowRun = false, 
     Object.assign(env,{LOCALAPPDATA:dirs.local,APPDATA:dirs.roaming,TEMP:dirs.tmp,TMP:dirs.tmp,STRATA_HOME:dirs.home,STRATA_WORKSPACE:dirs.workspace,STRATA_MODELS_DIR:dirs.models,STRATA_COMPONENTS_DIR:dirs.components,STRATA_RUNTIME_DIR:dirs.runtime,STRATA_SETTINGS_FILE:join(home,'settings.json'),STRATA_NO_ACQUIRE:'1',STRATA_NO_BUNDLED_ENGINE:'1',STRATA_NO_REPAIR_ACCESS:'1',STRATA_AGENT:'off'});
     // Windows token discovery needs the real user root; browser/app data remain task-only.
     if (process.env.STRATA_TEST_WINDOWS_PROFILE) { env.USERPROFILE=process.env.STRATA_TEST_WINDOWS_PROFILE; delete env.HOME; }
-    const browser = await chromium.launchPersistentContext(join(home,'browser'),{ executablePath: 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', headless: true, env, timeout:10000,args: ['--disable-gpu','--disable-background-networking','--disable-component-update','--no-first-run'] });
+    const browser = await chromium.launchPersistentContext(join(home,'browser'),{ executablePath: testBrowserExecutable(), headless: true, env, timeout:10000,args: ['--disable-gpu','--disable-background-networking','--disable-component-update','--no-first-run'] });
     t.diagnostic('isolated browser profile: '+join(home,'browser'));
     t.after(async()=>{await browser.close();});
     const page = await browser.newPage();

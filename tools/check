@@ -318,7 +318,7 @@ def step_pytest(name, targets, extra=(), need_node=False, cwd=None):
         log = ctx.scratch.path(name + ".log")
         cmd = [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "-o", "junit_family=xunit2",
                "--junitxml=" + junit, "--maxfail=1000000", *extra, *paths]
-        rc, secs = run_cmd(cmd, cwd or ROOT, ctx.scratch.env(), ctx.timeout(name), log)
+        rc, secs = run_cmd(cmd, cwd or ROOT, ctx.scratch.env({"STRATA_TEST_NODE_EXE": node} if need_node else None), ctx.timeout(name), log)
         r.seconds = secs
         ok = parse_junit(junit, r)
         if rc is None and not ok:
@@ -424,8 +424,8 @@ def step_docs(ctx):
 
 STEP_FUNCS = {
     "cmake-cpu": step_cmake,
-    "py-tests": step_pytest("py-tests", ["tests"], ["--ignore=" + os.path.join(ROOT, "tests", "snapshot")]),
-    "py-serve": step_pytest("py-serve", ["serve"]),
+    "py-tests": step_pytest("py-tests", ["tests"], ["--ignore=" + os.path.join(ROOT, "tests", "snapshot")], need_node=True),
+    "py-serve": step_pytest("py-serve", ["serve"], need_node=True),
     "py-tools": step_pytest("py-tools", ["tools/test_*.py"]),
     "py-optional": step_optional,
     "host-typecheck": step_npm("host-typecheck", "typecheck"),

@@ -16,7 +16,7 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 const delay = ms => new Promise(r => setTimeout(r, ms));
 async function freePort() { const s = net.createServer(); await new Promise(r => s.listen(0, '127.0.0.1', r)); const p = s.address().port; await new Promise(r => s.close(r)); return p; }
 
-async function startHost() {
+async function startHost(t) {
   const home = await mkdtemp(join(tmpdir(), 'strata-host-badhost-'));
   const port = await freePort(), sharePort = await freePort();
   const env = {
@@ -25,13 +25,18 @@ async function startHost() {
     STRATA_SETTINGS_FILE: join(home, 'app-settings.json'), STRATA_COMPONENTS_DIR: join(home, 'components'),
     LOCALAPPDATA: join(home, 'Local'), APPDATA: join(home, 'Roaming'), XDG_DATA_HOME: join(home, 'xdg-data'),
     XDG_STATE_HOME: join(home, 'xdg-state'), XDG_CONFIG_HOME: join(home, 'xdg-config'),
+    HOME: home, USERPROFILE: home, STRATA_WORKSPACE: join(home, 'workspace'), STRATA_BIND: '127.0.0.1',
   };
-  const host = spawn(process.execPath, ['server/index.mjs'], { cwd: root, stdio: 'ignore', env });
+  const host = spawn(process.execPath, ['server/index.mjs'], { cwd: root, stdio: ['ignore', 'pipe', 'pipe'], env });
+  let diagnostics = '';
+  for (const stream of [host.stdout, host.stderr]) stream.on('data', chunk => { diagnostics = (diagnostics + chunk).slice(-6000); });
   const exit = new Promise(r => host.once('exit', (code, signal) => r({ code, signal })));
-  let up = false;
-  for (let i = 0; i < 150 && !up; i++) { try { up = (await fetch(`http://127.0.0.1:${port}/api/health`)).ok; } catch { await delay(100); } }
-  assert.ok(up, 'host started');
-  return { host, port, sharePort, exit, done: async () => { host.kill('SIGKILL'); await exit; await rm(home, { recursive: true, force: true }).catch(() => {}); } };
+  const done = async () => { if (host.exitCode === null) host.kill('SIGKILL'); await exit; await rm(home, { recursive: true, force: true }).catch(() => {}); };
+  t.after(done);
+  let up = false, lastProbe = '';
+  for (let i = 0; i < 150 && !up && host.exitCode === null; i++) { try { const response = await fetch(`http://127.0.0.1:${port}/api/health`, {signal: AbortSignal.timeout(1000)}); up = response.ok; lastProbe = `${response.status} ${(await response.text()).slice(0,500)}`; } catch (error) { lastProbe = `${error.message}: ${error.cause?.code ?? ''}`; await delay(100); } }
+  assert.ok(up, `host started (exit ${host.exitCode}, last probe ${lastProbe}): ` + diagnostics);
+  return { host, port, sharePort, exit };
 }
 
 /** One raw HTTP request on its own socket: the bytes are sent as written and the first response is returned. */
@@ -66,8 +71,7 @@ test('requestUrl: a good Host (name, port, IPv6) or none gives the URL; an empty
 });
 
 test('App Host: an empty, missing, malformed or IPv6 Host never ends the process; a healthy request on another socket still works', async t => {
-  const h = await startHost();
-  t.after(h.done);
+  const h = await startHost(t);
   let ended = null;
   h.exit.then(r => { ended = r; });
 
@@ -101,8 +105,7 @@ test('App Host: an empty, missing, malformed or IPv6 Host never ends the process
 });
 
 test('The share listener also survives a request target that is not a path', async t => {
-  const h = await startHost();
-  t.after(h.done);
+  const h = await startHost(t);
   // the share listener is off until sharing is started: start it the way the app does
   const started = await fetch(`http://127.0.0.1:${h.port}/api/serving/share`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ enabled: true }) }).catch(() => null);
   if (!started || !started.ok) return t.skip('could not start the share listener in this environment');

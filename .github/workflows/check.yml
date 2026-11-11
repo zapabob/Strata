@@ -66,6 +66,42 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  harness:
+    name: Windows / pinned Harness context and guard integration
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: apps/host/package-lock.json
+      - name: Host packages
+        working-directory: apps/host
+        run: npm ci --no-audit --no-fund
+      - name: Extract the immutable qualified Harness component
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $installer = Join-Path $env:RUNNER_TEMP 'Strata-0.5.7-windows-x64-setup.exe'
+          Invoke-WebRequest 'https://github.com/zapabob/Strata/releases/download/v0.5.7/Strata-0.5.7-windows-x64-setup.exe' -OutFile $installer
+          if ((Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant() -ne '2f2b14b22c7a1e5433820e05e5b0eca3ddb02ec09d031e8264d8b1be734233c2') { throw 'Pinned installer digest mismatch' }
+          $staged = Join-Path $env:RUNNER_TEMP 'strata-harness'
+          & 'C:\Program Files\7-Zip\7z.exe' x $installer 'harness/*' "-o$staged" -y
+          if ($LASTEXITCODE -ne 0) { throw 'Harness extraction failed' }
+          $harness = Join-Path $staged 'harness'
+          $record = Get-Content -LiteralPath (Join-Path $harness 'BUNDLE.json') -Raw | ConvertFrom-Json
+          if ($record.commit -ne '571902028a75c64c1d767f4ae5fd099485f0ddf0') { throw 'Harness source identity mismatch' }
+          "STRATA_HARNESS_DIR=$harness" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          'STRATA_NO_ACQUIRE=1' | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Real Harness regressions (no model weights or service keys)
+        working-directory: apps/host
+        run: node --test --test-concurrency=2 tests/agent-context.test.mjs tests/agent-tools.test.mjs tests/agent-turn-guard.test.mjs tests/harness-environment.test.mjs
+
   linux:
     name: Linux / ${{ matrix.name }}
     runs-on: ubuntu-24.04
@@ -83,13 +119,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: pip
           cache-dependency-path: requirements*.txt
       - uses: actions/setup-node@v4
-        if: ${{ startsWith(matrix.only, 'host') }}
         with:
           node-version: '24'
           cache: npm
@@ -97,7 +133,7 @@ jobs:
       - name: Python packages
         run: python -m pip install -r requirements.txt -r requirements-dev.txt -r requirements-build.txt
       - name: tools/check
-        run: python tools/check --only "${{ matrix.only }}" --keep --scratch "$RUNNER_TEMP/check" --json "$RUNNER_TEMP/check/result.json"
+        run: python tools/check --strict --only "${{ matrix.only }}" --keep --scratch "$RUNNER_TEMP/check" --json "$RUNNER_TEMP/check/result.json"
       - name: Logs
         if: ${{ failure() }}
         uses: actions/upload-artifact@v4
@@ -125,13 +161,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: pip
           cache-dependency-path: requirements*.txt
       - uses: actions/setup-node@v4
-        if: ${{ startsWith(matrix.only, 'host') }}
         with:
           node-version: '24'
           cache: npm
@@ -139,8 +175,22 @@ jobs:
       - name: Python packages
         run: python -m pip install -r requirements.txt -r requirements-dev.txt -r requirements-build.txt
       # tools/check finds Visual Studio's compiler itself (vcvars64.bat); bash is Git for Windows' (the tester-README tests need it)
+      - name: Dedicated H drive for Windows process-guard fixtures
+        if: ${{ matrix.only == 'py-tools' }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (Test-Path 'H:\') { throw 'H drive is already assigned; refusing to reuse unrelated storage' }
+          $guardVolume = Join-Path $env:RUNNER_TEMP 'strata-guard-volume'
+          New-Item -ItemType Directory -Path $guardVolume | Out-Null
+          subst H: $guardVolume
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot create the isolated fixture volume' }
+          New-Item -ItemType Directory -Path 'H:\Strata\build' -Force | Out-Null
       - name: tools/check
-        run: python tools/check --only "${{ matrix.only }}" --keep --scratch "$env:RUNNER_TEMP\check" --json "$env:RUNNER_TEMP\check\result.json"
+        shell: pwsh
+        run: |
+          $checkRoot = "$env:RUNNER_TEMP\check"
+          python tools/check --strict --only "${{ matrix.only }}" --keep --scratch $checkRoot --json "$checkRoot\result.json"
       - name: Logs
         if: ${{ failure() }}
         uses: actions/upload-artifact@v4
@@ -168,13 +218,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: pip
           cache-dependency-path: requirements*.txt
       - uses: actions/setup-node@v4
-        if: ${{ startsWith(matrix.only, 'host') }}
         with:
           node-version: '24'
           cache: npm
@@ -182,4 +232,13 @@ jobs:
       - name: Python packages
         run: python -m pip install -r requirements.txt -r requirements-dev.txt
       - name: tools/check
-        run: python tools/check --only "${{ matrix.only }}"
+        run: python tools/check --strict --only "${{ matrix.only }}" --keep --scratch "$RUNNER_TEMP/check" --json "$RUNNER_TEMP/check/result.json"
+      - name: Logs
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: check-macos-${{ strategy.job-index }}
+          path: |
+            ${{ runner.temp }}/check/*.log
+            ${{ runner.temp }}/check/result.json
+          retention-days: 7

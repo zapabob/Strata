@@ -17,6 +17,9 @@ data/quant_quality/** -text
 # the license text is shipped and checked as LF text on every checkout
 LICENSE text eol=lf
 
+# Chat templates are compared with the recorded GGUF template digest on every OS.
+serve/*.jinja text eol=lf
+
 # The model-data notice is pinned by its original byte digest in PROVENANCE.json.
 data/experimental-speed-projection/LICENSE -text
 

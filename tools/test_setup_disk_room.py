@@ -71,8 +71,10 @@ class DiskRoom(unittest.TestCase):
     def test_the_old_refusal_for_the_copy_is_gone_from_the_run_path(self):
         source = (ROOT / "setup.py").read_text(encoding="utf-8")
         run = source[source.index("copy_gb = MODELS[model]"):]
-        run = run[:run.index("if free_now < need:")]
-        self.assertIn("disk_room_problem(", run)
+        run = run[:run.index("# ---- 3. python packages")]
+        self.assertIn("check_setup_space(", run)
+        self.assertIn("(pack_now, pack_gb * 1e9)", run)
+        self.assertIn("remaining_pack_gb(pack_now, copy_gb)", run)
         self.assertNotIn("not enough free disk space in {models_dir}", run)
 
 

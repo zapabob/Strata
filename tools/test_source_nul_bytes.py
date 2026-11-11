@@ -18,7 +18,8 @@ SOURCE_DIRS = ("src", "include", "sycl", "metal", "serve", "tools", "tests", "cm
 
 def source_files() -> list[Path]:
     try:
-        out = subprocess.run(["git", "ls-files", "-z", "--", *SOURCE_DIRS, "*.py", "*.txt", "*.sh", "*.bat"],
+        out = subprocess.run(["git", "ls-files", "-z", "--", *SOURCE_DIRS,
+                              *[f":(top,glob)*{suffix}" for suffix in (".py", ".txt", ".sh", ".bat")]],
                              cwd=ROOT, capture_output=True, check=True).stdout
         names = [n.decode("utf-8", "surrogateescape") for n in out.split(b"\0") if n]
         paths = [ROOT / n for n in names]
@@ -49,6 +50,11 @@ class SourceNulBytes(unittest.TestCase):
             p = Path(d) / "x.cpp"
             p.write_bytes(b"int a;\nchar c = '\0';\n")
             self.assertEqual(nul_lines(p), [2])
+
+    def test_scan_stays_inside_maintained_source_and_top_level_scripts(self):
+        for path in source_files():
+            relative = path.relative_to(ROOT)
+            self.assertTrue(len(relative.parts) == 1 or relative.parts[0] in SOURCE_DIRS, str(relative))
 
 
 if __name__ == "__main__":

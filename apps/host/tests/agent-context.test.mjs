@@ -7,6 +7,7 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startScriptedWorker } from './helpers/scripted-worker.mjs';
+import { harnessFixtureEnvironment } from './helpers/harness-environment.mjs';
 import { createAgentBridge } from '../server/agent/agent-bridge.mjs';
 import { resolveHarness } from '../server/agent/harness-runtime.mjs';
 import { buildProfile } from '../server/agent/profile.mjs';
@@ -92,7 +93,7 @@ async function rig(t, { window = 32768, charsPerToken = 3, noCount = false } = {
   const worker = await startScriptedWorker({ window, charsPerToken, noCount });
   const dir = mkdtempSync(join(tmpdir(), 'strata-ctx-'));
   const ws = join(dir, 'ws'); mkdirSync(ws, { recursive: true });
-  const bridge = createAgentBridge({ dataDir: dir, localInstances: () => [{ id: 'i', label: 'S', baseUrl: worker.url, modelId: 'scripted-model', context: window, slots: 2 }], connections: () => [], env: process.env, startTimeoutMs: 90_000 });
+  const bridge = createAgentBridge({ dataDir: dir, localInstances: () => [{ id: 'i', label: 'S', baseUrl: worker.url, modelId: 'scripted-model', context: window, slots: 2 }], connections: () => [], env: harnessFixtureEnvironment(dir), startTimeoutMs: 90_000 });
   t.after(async () => { await bridge.close(); await worker.close(); try { rmSync(dir, { recursive: true, force: true, maxRetries: 3 }); } catch { /* best effort */ } });
   const send = async (message) => { const frames = []; await bridge.runTurn({ chatId: 'c', message, workspacePath: ws, mode: 'bypass', onFrame: f => frames.push(f) }); return frames; };
   const harnessLog = () => { try { return readFileSync(join(dir, 'agent', 'harness.log'), 'utf8'); } catch { return ''; } };

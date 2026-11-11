@@ -270,7 +270,7 @@ test('tool server: instruction tools return the person\'s text; command tools ru
       await cmd.ask('initialize', {});
       assert.deepEqual((await cmd.ask('tools/list')).result.tools.map(t => t.name), ['show']);
       const ok = (await cmd.ask('tools/call', { name: 'show', arguments: { input: 'hello; echo HACKED' } })).result;
-      assert.equal(ok.isError, false); assert.equal(ok.content[0].text, 'got:hello; echo HACKED', 'the text is data, never a command');
+      assert.equal(ok.isError, false, JSON.stringify(ok.content)); assert.equal(ok.content[0].text, 'got:hello; echo HACKED', 'the text is data, never a command');
       const bad = (await cmd.ask('tools/call', { name: 'show', arguments: { input: 'fail' } })).result;
       assert.equal(bad.isError, true);
       assert.match((await cmd.ask('tools/call', { name: 'gone', arguments: {} })).result.content[0].text, /no longer available/);

@@ -18,6 +18,19 @@ from tools.qwen35 import q36_bounded_run as runner
 pytestmark = pytest.mark.skipif(os.name != "nt", reason="Windows Job integration")
 
 
+@pytest.fixture(autouse=True)
+def fixture_volume(tmp_path, monkeypatch):
+    # These CPU processes exercise the real Windows Job guard in pytest's
+    # private scratch volume. Production keeps the explicit H: admission rule.
+    monkeypatch.setattr(runner, 'OUTPUT_VOLUME', tmp_path.resolve().drive.upper())
+
+
+def test_production_volume_policy_is_still_enforced(tmp_path, monkeypatch):
+    monkeypatch.setattr(runner, 'OUTPUT_VOLUME', 'Z:' if tmp_path.drive.upper() != 'Z:' else 'Y:')
+    with pytest.raises(ValueError, match='existing_guard_requires_H_volume_output'):
+        runner.validate_spec(spec_for(tmp_path))
+
+
 def spec_for(tmp_path, body=None):
     model = tmp_path / "fake-model.bin"
     model.write_bytes(b"CPU fixture; not model weights")

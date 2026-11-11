@@ -24,9 +24,9 @@ class ReleaseManifest(unittest.TestCase):
     def test_version_lines_are_rewritten_and_a_second_pass_changes_nothing(self):
         m = rm.load()
         page, regex, keys = [r for r in rm.LINES if r[0] == "AGENTS.md"][0]
-        text = "Version 0.2.5, engine 0.1.50. The public model families"
+        text = "Keep upstream Niko1221 0.2.5 at its recorded source."
         once = rm.rewrite(text, regex, keys, m)
-        self.assertEqual(once, "Version %s, engine %s. The public model families" % (m["product_version"], m["engine_version"]))
+        self.assertEqual(once, "Keep upstream Niko1221 %s at its recorded source." % m["product_version"])
         self.assertEqual(rm.rewrite(once, regex, keys, m), once)
 
     def test_a_drifting_manifest_is_reported(self):
@@ -41,6 +41,24 @@ class ReleaseManifest(unittest.TestCase):
         m = rm.load()
         for name in rm.expand(m):
             self.assertIn(name, m["assets"])
+
+    def test_unlisted_installer_is_rejected_even_when_other_releases_are_declared(self):
+        from unittest.mock import patch
+        original = rm.read
+        with patch.object(rm, 'read', side_effect=lambda page: original(page) + ('\nStrata-9.9.9-windows-x64-setup.exe\n' if page == 'README.md' else '')):
+            self.assertIn('Strata-9.9.9', '\n'.join(rm.check(rm.load())))
+
+    def test_installer_download_tag_must_match_its_declared_asset(self):
+        from unittest.mock import patch
+        original = rm.read
+        asset = rm.expand(rm.load())[0]
+        with patch.object(rm, 'read', side_effect=lambda page: original(page) + (f'\nhttps://github.com/zapabob/Strata/releases/download/v9.9.9/{asset}\n' if page == 'README.md' else '')):
+            self.assertIn('immutable download tag', '\n'.join(rm.check(rm.load())))
+
+    def test_control_is_checked_independently_of_the_engine(self):
+        manifest = copy.deepcopy(rm.load())
+        manifest['control_version'] = '9.9.9'
+        self.assertIn('CONTROL_VERSION says', '\n'.join(rm.check(manifest)))
 
 
 if __name__ == "__main__":

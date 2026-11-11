@@ -117,7 +117,8 @@ test('9: a chat that is working shows it on its sidebar row, and the model chip 
   assert.match(bar, /!working\.has\(s\.id\) && isUnread\(s, activeSession\) \? <span className="navsession__unread"/, 'a working chat is not also shown as unread');
   // GUI-FB2 item 6: the ring comes BEFORE the chat's name
   assert.ok(bar.indexOf('navsession__working') < bar.indexOf('<span className="navsession__title">'), 'the ring is left of the name');
-  assert.match(bar, /\{workingLine \?\? modelQuant\}/, 'the model chip names the working chat');
+  assert.match(bar, /const modelLine = modelState\.loaded \? workingLine \?\? modelQuant : tr\(status\);/, 'the loaded model chip names the working chat');
+  assert.match(bar, /\{modelLine\}/, 'the chip renders its computed label');
   assert.match(bar, /!\(location\.route === 'chat' && id === activeSession\)/, 'no line for the chat that is in front of the person');
   // a stroked SVG circle (round caps), not a bordered box: it stays round at fractional sizes and turning angles
   assert.match(bar, /<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><circle className="navsession__track" cx="8" cy="8" r="6"\/>/);

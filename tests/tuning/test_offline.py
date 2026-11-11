@@ -176,11 +176,12 @@ class TestTheServerUsesThePolicy(unittest.TestCase):
 
     def test_every_child_environment_call_passes_the_policy(self):
         """A single call site that forgot the flag would leak network access to that child."""
+        import ast
         offenders = []
-        for index, line in enumerate(self.source.splitlines(), start=1):
-            if "child_env(" in line and "def child_env" not in line:
-                if "offline=" not in line:
-                    offenders.append(f"line {index}: {line.strip()}")
+        for node in ast.walk(ast.parse(self.source)):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == 'child_env':
+                if not any(keyword.arg == 'offline' for keyword in node.keywords):
+                    offenders.append(f"line {node.lineno}: {ast.get_source_segment(self.source, node)}")
         self.assertEqual(offenders, [],
                          "every child_env call must pass the server's offline state: "
                          + "; ".join(offenders))

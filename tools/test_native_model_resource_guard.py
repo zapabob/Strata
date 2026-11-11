@@ -12,6 +12,8 @@ import pytest
 from native_model_resource_guard import PressurePolicy, run_owned
 import native_model_resource_guard as guard
 
+windows_processes = pytest.mark.skipif(sys.platform != 'win32', reason='requires real Windows Job Objects and CREATE_NO_WINDOW')
+
 
 def test_ram_requires_continuous_thirty_seconds() -> None:
     policy = PressurePolicy()
@@ -74,6 +76,7 @@ def test_invalid_pressure_policy(settings: dict) -> None:
         PressurePolicy(**settings)
 
 
+@windows_processes
 def test_custom_policy_reaps_only_owned_child(tmp_path: Path) -> None:
     command = [sys.executable, "-B", "-c", "import time; time.sleep(60)"]
     policy = PressurePolicy(physical_floor_bytes=3 * 1024**3, physical_grace_seconds=0)
@@ -95,6 +98,7 @@ def test_custom_policy_reaps_only_owned_child(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("kind", ["pressure", "telemetry"])
+@windows_processes
 def test_owned_child_abort_preserves_other_child(tmp_path: Path, kind: str) -> None:
     """Exercise real Windows process handles; no name/PID lookup can target peer."""
 
@@ -128,6 +132,7 @@ def test_owned_child_abort_preserves_other_child(tmp_path: Path, kind: str) -> N
 
 
 @pytest.mark.parametrize("exit_code", [0, 7])
+@windows_processes
 def test_natural_exit_is_separate_from_generation_success(
     tmp_path: Path, exit_code: int
 ) -> None:
@@ -145,6 +150,7 @@ def test_natural_exit_is_separate_from_generation_success(
     assert result["reason"] is None and result["owned_child_reaped"]
 
 
+@windows_processes
 def test_timeout_reaps_real_owned_child(tmp_path: Path) -> None:
     result = run_owned(
         [sys.executable, "-B", "-c", "import time; time.sleep(60)"],
@@ -289,6 +295,7 @@ def test_cli_parses_only_the_bytes_it_hashed(
     assert len(reads) == 1
 
 
+@windows_processes
 def test_nested_no_console_preserves_child_output(tmp_path: Path) -> None:
     """A bounded Windows host has no stdin console; preserve both diagnostic pipes."""
     code = (

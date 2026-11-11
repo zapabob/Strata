@@ -24,8 +24,8 @@ from typing import Any
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("test_hermes_strata")
 
-HERMES_REPO = Path(r"C:\Users\downl\Documents\New project\hermes-agent")
-if str(HERMES_REPO) not in sys.path:
+HERMES_REPO = Path(os.environ.get('STRATA_TEST_HERMES_REPO', '.')).resolve()
+if os.environ.get('STRATA_TEST_HERMES_REPO') and str(HERMES_REPO) not in sys.path:
     sys.path.insert(0, str(HERMES_REPO))
 
 
@@ -63,6 +63,7 @@ class MockContext:
         }
 
 
+@unittest.skipUnless(os.environ.get('STRATA_TEST_HERMES_REPO'), 'external Hermes plugin checkout required: set STRATA_TEST_HERMES_REPO')
 class TestHermesStrataPlugin(unittest.TestCase):
     """Test suite for Strata Hermes plugin."""
 

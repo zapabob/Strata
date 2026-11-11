@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { TurnGuard, GUARD_LIMITS, GUARD_NOTES, guardNote } from '../server/agent/turn-guard.mjs';
 import { startScriptedWorker } from './helpers/scripted-worker.mjs';
+import { harnessFixtureEnvironment } from './helpers/harness-environment.mjs';
 import { createAgentBridge } from '../server/agent/agent-bridge.mjs';
 import { resolveHarness } from '../server/agent/harness-runtime.mjs';
 
@@ -100,7 +101,7 @@ async function rig(t, options = {}) {
   const bridge = createAgentBridge({ dataDir: dir, localInstances: () => [{ id: 'i', label: 'S', baseUrl: worker.url, modelId: 'scripted-model', context: options.context ?? 32768, slots: 2 }], connections: () => [],
     // these chats are in Manual and search without a person at the card: the Settings switch that skips the web question is on
     tools: () => ({ off: new Set(), search: { provider: 'builtin', key: '' }, servers: {}, webWithoutAsking: true }),
-    env: process.env, startTimeoutMs: 90_000, searchMock: 'limited', log: l => logs.push(l) });
+    env: harnessFixtureEnvironment(dir), startTimeoutMs: 90_000, searchMock: 'limited', log: l => logs.push(l) });
   t.after(async () => { await bridge.close(); await worker.close(); try { rmSync(dir, { recursive: true, force: true, maxRetries: 3 }); } catch { /* best effort */ } });
   return { worker, bridge, ws, logs, base: (chatId, onFrame) => ({ chatId, workspacePath: ws, mode: 'manual', onFrame }) };
 }

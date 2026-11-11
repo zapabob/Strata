@@ -1,5 +1,15 @@
 # Hakua / Strata
 
+<!-- stable-058 -->
+## Stable 0.5.8
+
+Repairs the extended context, compaction and search-guard tests. Each agent fixture owns its profile, and the actual Harness child receives the selected environment. CI also checks translation coverage, platform-specific fixtures and independent product/Control/engine versions.
+
+[Windows NSIS](https://github.com/zapabob/Strata/releases/download/v0.5.8/Strata-0.5.8-windows-x64-setup.exe) · [tar.7z](https://github.com/zapabob/Strata/releases/download/v0.5.8/Strata-0.5.8-windows-x64.tar.7z) · [SHA256SUMS](https://github.com/zapabob/Strata/releases/download/v0.5.8/SHA256SUMS.txt) · [0.5.8 verification](_docs/2026-11-11_stable-058-context-ci_Codex.md)
+
+RustXNG 0.31.1 Full / app, Terminal, native engine and Control 0.5.8. Native model quality remains unqualified (`releaseQualified=false`). Previous releases and their measurements follow below.
+
+
 Local AI on Windows, with separate side questions, research with sources and your
 choice of models, memory and tools. This is the [zapabob fork](https://github.com/zapabob/Strata)
 of [Niko1221/Strata](https://github.com/Niko1221/Strata), integrating upstream 0.2.13.

@@ -22429,6 +22429,34 @@
    "retired_in": ""
   },
   {
+   "name": "STRATA_NATIVE_GDN_COALESCED",
+   "backends": [
+    "cuda-hip"
+   ],
+   "reads": [
+    {
+     "file": "src/kernels/cuda/native_gdn.cu",
+     "line": 150,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    }
+   ],
+   "parse": "flag",
+   "default_state": null,
+   "code_default": null,
+   "engine_sets": [],
+   "engine_defaults": [],
+   "launch_files": [],
+   "launch_sets": [],
+   "launch_reads": [],
+   "doc_mentions": [],
+   "status": "unsure",
+   "owner": "Hakua fork",
+   "note": "Read at src/kernels/cuda/native_gdn.cu:150. Recorded from source; backend behavior and performance are not newly qualified by the 0.5.8 test repair.",
+   "retire_after": "",
+   "retired_in": ""
+  },
+  {
    "name": "STRATA_NIB_GU_PROTO",
    "backends": [
     "cuda-hip"
@@ -25056,6 +25084,66 @@
    "status": "opt-in",
    "owner": "program",
    "note": "[auto] documented for users (docs/DETAILS.md:566)",
+   "retire_after": "",
+   "retired_in": ""
+  },
+  {
+   "name": "STRATA_PERF131K_BLOB_DIAG",
+   "backends": [
+    "cuda-hip"
+   ],
+   "reads": [
+    {
+     "file": "include/strata/perf131k/blob_failure.hpp",
+     "line": 34,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    }
+   ],
+   "parse": "flag",
+   "default_state": "off",
+   "code_default": null,
+   "engine_sets": [],
+   "engine_defaults": [],
+   "launch_files": [],
+   "launch_sets": [],
+   "launch_reads": [],
+   "doc_mentions": [
+    "docs/PERF131K.md:99"
+   ],
+   "status": "unsure",
+   "owner": "Hakua fork",
+   "note": "Read at include/strata/perf131k/blob_failure.hpp:34. Recorded from source; backend behavior and performance are not newly qualified by the 0.5.8 test repair.",
+   "retire_after": "",
+   "retired_in": ""
+  },
+  {
+   "name": "STRATA_PERF131K_HOST_TRACE",
+   "backends": [
+    "cuda-hip"
+   ],
+   "reads": [
+    {
+     "file": "include/strata/perf131k/trace.hpp",
+     "line": 336,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    }
+   ],
+   "parse": "flag",
+   "default_state": null,
+   "code_default": null,
+   "engine_sets": [],
+   "engine_defaults": [],
+   "launch_files": [],
+   "launch_sets": [],
+   "launch_reads": [],
+   "doc_mentions": [
+    "docs/PERF131K.md:127"
+   ],
+   "status": "unsure",
+   "owner": "Hakua fork",
+   "note": "Read at include/strata/perf131k/trace.hpp:336. Recorded from source; backend behavior and performance are not newly qualified by the 0.5.8 test repair.",
    "retire_after": "",
    "retired_in": ""
   },
@@ -31380,6 +31468,43 @@
    "retired_in": ""
   },
   {
+   "name": "STRATA_Q36_FILE_STAGING",
+   "backends": [
+    "cuda-hip"
+   ],
+   "reads": [
+    {
+     "file": "src/qwen35/q36_engine.cu",
+     "line": 1328,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    },
+    {
+     "file": "src/qwen35/q36_engine.cu",
+     "line": 2348,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    }
+   ],
+   "parse": "string",
+   "default_state": null,
+   "code_default": null,
+   "engine_sets": [],
+   "engine_defaults": [],
+   "launch_files": [],
+   "launch_sets": [],
+   "launch_reads": [],
+   "doc_mentions": [
+    "docs/HAKUA_RELEASE.md:539",
+    "docs/Q36_BOUNDED_EXPERTS.md:29"
+   ],
+   "status": "unsure",
+   "owner": "Hakua fork",
+   "note": "Read at src/qwen35/q36_engine.cu:1328. Recorded from source; backend behavior and performance are not newly qualified by the 0.5.8 test repair.",
+   "retire_after": "",
+   "retired_in": ""
+  },
+  {
    "name": "STRATA_Q36_FIXED_SLOTS",
    "backends": [
     "cuda-hip"
@@ -31411,6 +31536,38 @@
    "status": "opt-in",
    "owner": "qwen35",
    "note": "[auto] documented for users (docs/QWEN36.md:91)",
+   "retire_after": "",
+   "retired_in": ""
+  },
+  {
+   "name": "STRATA_Q36_HOTSPOT_PROFILE",
+   "backends": [
+    "cuda-hip"
+   ],
+   "reads": [
+    {
+     "file": "include/strata/qwen35/hotspot_trace.hpp",
+     "line": 12,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    }
+   ],
+   "parse": "flag",
+   "default_state": "off",
+   "code_default": null,
+   "engine_sets": [],
+   "engine_defaults": [],
+   "launch_files": [
+    "apps/host/server/q36-run-contract.mjs"
+   ],
+   "launch_sets": [],
+   "launch_reads": [],
+   "doc_mentions": [
+    "docs/HAKUA_RELEASE.md:655"
+   ],
+   "status": "unsure",
+   "owner": "Hakua fork",
+   "note": "Read at include/strata/qwen35/hotspot_trace.hpp:12. Recorded from source; backend behavior and performance are not newly qualified by the 0.5.8 test repair.",
    "retire_after": "",
    "retired_in": ""
   },
@@ -31588,6 +31745,44 @@
    "retired_in": ""
   },
   {
+   "name": "STRATA_Q36_PIN_PIPELINE",
+   "backends": [
+    "cuda-hip"
+   ],
+   "reads": [
+    {
+     "file": "src/qwen35/q36_engine.cu",
+     "line": 1339,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    },
+    {
+     "file": "src/qwen35/q36_engine.cu",
+     "line": 2376,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    }
+   ],
+   "parse": "flag",
+   "default_state": "off",
+   "code_default": null,
+   "engine_sets": [],
+   "engine_defaults": [],
+   "launch_files": [],
+   "launch_sets": [],
+   "launch_reads": [],
+   "doc_mentions": [
+    "docs/HAKUA_INSTALL.md:145",
+    "docs/HAKUA_RELEASE.md:449",
+    "docs/Q36_BOUNDED_EXPERTS.md:27"
+   ],
+   "status": "unsure",
+   "owner": "Hakua fork",
+   "note": "Read at src/qwen35/q36_engine.cu:1339. Recorded from source; backend behavior and performance are not newly qualified by the 0.5.8 test repair.",
+   "retire_after": "",
+   "retired_in": ""
+  },
+  {
    "name": "STRATA_Q36_PLACE_DEBUG",
    "backends": [
     "cuda-hip"
@@ -31657,6 +31852,80 @@
    "retired_in": ""
   },
   {
+   "name": "STRATA_Q36_STARTUP_DETAIL",
+   "backends": [
+    "cuda-hip"
+   ],
+   "reads": [
+    {
+     "file": "include/strata/qwen35/startup_trace.hpp",
+     "line": 21,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    }
+   ],
+   "parse": "flag",
+   "default_state": null,
+   "code_default": null,
+   "engine_sets": [],
+   "engine_defaults": [],
+   "launch_files": [],
+   "launch_sets": [],
+   "launch_reads": [],
+   "doc_mentions": [],
+   "status": "unsure",
+   "owner": "Hakua fork",
+   "note": "Read at include/strata/qwen35/startup_trace.hpp:21. Recorded from source; backend behavior and performance are not newly qualified by the 0.5.8 test repair.",
+   "retire_after": "",
+   "retired_in": ""
+  },
+  {
+   "name": "STRATA_Q36_STARTUP_GENERATION",
+   "backends": [
+    "cuda-hip"
+   ],
+   "reads": [
+    {
+     "file": "include/strata/qwen35/startup_trace.hpp",
+     "line": 14,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    }
+   ],
+   "parse": "flag",
+   "default_state": null,
+   "code_default": null,
+   "engine_sets": [],
+   "engine_defaults": [],
+   "launch_files": [
+    "serve/server.py"
+   ],
+   "launch_sets": [
+    {
+     "file": "serve/server.py",
+     "line": 1113,
+     "value": "None"
+    },
+    {
+     "file": "serve/server.py",
+     "line": 1116,
+     "value": "generation"
+    },
+    {
+     "file": "serve/server.py",
+     "line": 4730,
+     "value": "None"
+    }
+   ],
+   "launch_reads": [],
+   "doc_mentions": [],
+   "status": "unsure",
+   "owner": "Hakua fork",
+   "note": "Read at include/strata/qwen35/startup_trace.hpp:14. Recorded from source; backend behavior and performance are not newly qualified by the 0.5.8 test repair.",
+   "retire_after": "",
+   "retired_in": ""
+  },
+  {
    "name": "STRATA_Q36_STREAM_ALL",
    "backends": [
     "cuda-hip"
@@ -31686,6 +31955,38 @@
    "status": "research",
    "owner": "qwen35",
    "note": "[auto] off unless set, not documented for users",
+   "retire_after": "",
+   "retired_in": ""
+  },
+  {
+   "name": "STRATA_Q36_STREAM_RESIDENT",
+   "backends": [
+    "cuda-hip"
+   ],
+   "reads": [
+    {
+     "file": "src/qwen35/q36_engine.cu",
+     "line": 2457,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    }
+   ],
+   "parse": "flag",
+   "default_state": "off",
+   "code_default": null,
+   "engine_sets": [],
+   "engine_defaults": [],
+   "launch_files": [],
+   "launch_sets": [],
+   "launch_reads": [],
+   "doc_mentions": [
+    "docs/HAKUA_INSTALL.md:146",
+    "docs/HAKUA_RELEASE.md:450",
+    "docs/Q36_BOUNDED_EXPERTS.md:28"
+   ],
+   "status": "unsure",
+   "owner": "Hakua fork",
+   "note": "Read at src/qwen35/q36_engine.cu:2457. Recorded from source; backend behavior and performance are not newly qualified by the 0.5.8 test repair.",
    "retire_after": "",
    "retired_in": ""
   },
@@ -31754,6 +32055,36 @@
    "status": "opt-in",
    "owner": "qwen35",
    "note": "[auto] documented for users (docs/QWEN36.md:117)",
+   "retire_after": "",
+   "retired_in": ""
+  },
+  {
+   "name": "STRATA_Q36_VERIFY_PACK",
+   "backends": [
+    "cuda-hip"
+   ],
+   "reads": [
+    {
+     "file": "src/qwen35/expert_store.cpp",
+     "line": 782,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    }
+   ],
+   "parse": "flag",
+   "default_state": null,
+   "code_default": null,
+   "engine_sets": [],
+   "engine_defaults": [],
+   "launch_files": [],
+   "launch_sets": [],
+   "launch_reads": [],
+   "doc_mentions": [
+    "docs/HAKUA_RELEASE.md:161"
+   ],
+   "status": "unsure",
+   "owner": "Hakua fork",
+   "note": "Read at src/qwen35/expert_store.cpp:782. Recorded from source; backend behavior and performance are not newly qualified by the 0.5.8 test repair.",
    "retire_after": "",
    "retired_in": ""
   },

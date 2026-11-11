@@ -241,7 +241,7 @@ export function createAgentBridge({ dataDir, componentsDir = null, bundledDir = 
     writeFileSync(patchFile, profile.patch);
     const workdir = join(root, 'run');
     const hp = new HarnessProcess({
-      harness: h, home, patchFile, cwd: workdir, env: profile.env, nodePath, logFile: join(root, 'harness.log'), pidFile: join(root, 'harness.pid'),
+      harness: h, home, patchFile, cwd: workdir, env: profile.env, baseEnv: env, nodePath, logFile: join(root, 'harness.log'), pidFile: join(root, 'harness.pid'),
       onExit: exit => {
         log(`agent · the Harness process exited (code ${exit.code})`);
         if (rt?.hp === hp) { lastError = 'The agent process stopped.'; rt = null; }

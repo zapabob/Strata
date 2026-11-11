@@ -1,18 +1,22 @@
 #!/usr/bin/env python3
-"""The release the current docs describe, kept in one place:  docs/data/release.json
+"""Independent fork release and upstream documentation reference: docs/data/release.json.
 
     python tools/release_manifest.py --check     fail when a current page or a version source disagrees
-    python tools/release_manifest.py --write     write the manifest's versions into the current pages
+    python tools/release_manifest.py --write     update owned upstream-reference version lines
 
 What it covers (standard library only, no network):
-  * the manifest against the code: app/Terminal version (strata_cli/__init__.py, apps/host and apps/desktop package
-    files, Cargo.toml) and Control/engine version (the CMake project version);
-  * the three installer file names in the manifest's asset list;
+  * fork product versions against the app/Terminal sources, Control against
+    CONTROL_VERSION and the engine against the CMake project version;
+  * the declared platform installers (all three for an upstream-only manifest,
+    Windows only for the Hakua fork);
   * every installer file name (Strata-<version>-windows-x64-setup.exe, ...-linux-x86_64.AppImage, ...-macos-arm64.dmg)
-    in a current page: the version must be the manifest's, and the file must be in the release's asset list;
-  * the version lines of the pages listed in LINES below.
+    in a current page: each must be in the current, upstream or explicitly
+    declared historical release's asset list. Immutable URL tags must agree;
+  * upstream-reference version lines listed in LINES below, independently of
+    fork product and component versions.
 Release notes, measurement logs and history/ keep the versions they were written with; tools/doc_pages.py says which
-pages are archived.  To bump a release: change the version sources, edit docs/data/release.json, run --write, run --check.
+pages are archived. Review new installer links explicitly: --write preserves
+every immutable URL and historical installer name. Run --check after a bump.
 """
 import argparse
 import json
@@ -38,7 +42,7 @@ LINES = [
     ("docs/INSTALL.md", r"\(version " + V + r"\)", ["product_version"]),
     ("docs/AI_SETUP.md", r"install Strata \(version " + V + r"\)", ["product_version"]),
     ("docs/SOURCE_INSTALL.md", r"use Strata \(version " + V + r"\)", ["product_version"]),
-    ("AGENTS.md", r"^Version " + V + r", engine " + V + r"\.", ["product_version", "engine_version"]),
+    ("AGENTS.md", r"Keep upstream Niko1221 " + V + r" at", ["product_version"]),
     ("docs/AI_REFERENCE.md", r"against the " + V + r" release tree \(app and Terminal " + V + r"; Control and engines " + V + r"\)",
      ["product_version", "product_version", "engine_version"]),
     ("packaging/UPDATES.md", r"one per OS \(" + V + r"\)", ["product_version"]),
@@ -50,7 +54,7 @@ LINES = [
     ("packaging/UPDATES.md", r'"version": "' + V + r'", "platform": "linux-x86_64", "backend": "cuda"', ["engine_version"]),
     ("packaging/UPDATES.md", r"engine/strata-engine-" + V + r"-linux-x86_64-cuda-cuda13", ["engine_version"]),
     ("docs/MEDIA_KIT.md", r"for Strata " + V + r"\.", ["product_version"]),
-    ("packaging/README.md", r"\(app and Terminal " + V + r", Control and engines " + V + r"\)", ["product_version", "engine_version"]),
+    ("packaging/README.md", r"Upstream reference: app and Terminal " + V + r", Control and engines " + V + r"\.", ["product_version", "engine_version"]),
     ("packaging/ENGINE-COMPONENT.md", r'"name": "strata-engine", "version": "' + V + '"', ["engine_version"]),
     ("packaging/ENGINE-COMPONENT.md", r"package_engine.py --src <build folder> --backend cuda --version " + V, ["engine_version"]),
 ]
@@ -80,12 +84,12 @@ def code_versions():
         "apps/desktop/package.json": (json.loads(read("apps/desktop/package.json")).get("version"), "product_version"),
         "apps/desktop/src-tauri/Cargo.toml": (first("apps/desktop/src-tauri/Cargo.toml", r'^version = "([^"]+)"'), "product_version"),
         "CMakeLists.txt (engine)": (cmake, "engine_version"),
-        "CMakeLists.txt (Control)": (cmake, "control_version"),
+        "CONTROL_VERSION": (read("CONTROL_VERSION").strip(), "control_version"),
     }
 
 
 def expand(manifest):
-    return [n.format(v=manifest["product_version"]) for n in INSTALLER_NAMES]
+    return [n.format(v=manifest["product_version"]) for n in manifest.get("installer_names", INSTALLER_NAMES)]
 
 
 def rewrite(text, regex, keys, manifest):
@@ -106,10 +110,13 @@ def write(manifest):
     changed = []
     for rel_path in doc_pages.current_pages():
         text = read(rel_path)
-        new = INSTALLER_RE.sub(lambda m: m.group(0).replace(m.group(1), manifest["product_version"], 1), text)
+        # Immutable release URLs and historical installer references must never
+        # be upgraded by an unscoped text replacement. Only owned version lines
+        # are generated here; new installer links are reviewed with the release.
+        new = text
         for page, regex, keys in LINES:
             if page == rel_path:
-                new = rewrite(new, regex, keys, manifest)
+                new = rewrite(new, regex, keys, manifest.get("upstream", manifest))
         if new != text:
             with open(os.path.join(ROOT, rel_path), "w", encoding="utf-8", newline="") as f:
                 f.write(new)
@@ -133,16 +140,29 @@ def check(manifest):
     for name in expand(manifest):
         if name not in assets:
             problems.append("docs/data/release.json: the asset list has no %s" % name)
+    reference = manifest.get("upstream", manifest)
+    allowed_assets = assets | set(reference["assets"])
+    for historical in manifest.get("historical_releases", []):
+        if historical.get("tag") != "v" + historical.get("product_version", ""):
+            problems.append("historical release tag/version mismatch")
+        for asset in historical.get("assets", []):
+            match = INSTALLER_RE.fullmatch(asset)
+            if not match or match.group(1) != historical.get("product_version"):
+                problems.append("historical release has invalid installer: " + asset)
+            allowed_assets.add(asset)
+    if reference["tag"] != "v" + reference["product_version"]:
+        problems.append("upstream reference tag/version mismatch")
     for rel_path in doc_pages.current_pages():
         text = read(rel_path)
         for m in INSTALLER_RE.finditer(text):
             line = text.count("\n", 0, m.start()) + 1
-            if m.group(1) != manifest["product_version"]:
-                problems.append("%s:%d names %s, the release is %s" % (rel_path, line, m.group(0), manifest["product_version"]))
-            else:
-                tail = re.match(r"[A-Za-z0-9_.-]*", text[m.start():]).group(0).rstrip(".")
-                if tail not in assets:
-                    problems.append("%s:%d names %s, which is not in the release's asset list" % (rel_path, line, tail))
+            tail = re.match(r"[A-Za-z0-9_.-]*", text[m.start():]).group(0).rstrip(".")
+            if tail not in allowed_assets:
+                problems.append("%s:%d names %s, which is not in a declared release's asset list" % (rel_path, line, tail))
+        for link in re.finditer(r"https://github\.com/[^\s/]+/Strata/releases/download/v([0-9.]+)/(?P<asset>Strata-[^\s)`]+)", text):
+            installer = INSTALLER_RE.match(link.group('asset'))
+            if installer and installer.group(1) != link.group(1):
+                problems.append("%s: installer version differs from its immutable download tag" % rel_path)
     for page, regex, keys in LINES:
         text = read(page)
         matches = list(re.finditer(regex, text, re.M))
@@ -151,8 +171,8 @@ def check(manifest):
         for m in matches:
             line = text.count("\n", 0, m.start()) + 1
             for i, key in enumerate(keys, 1):
-                if m.group(i) != manifest[key]:
-                    problems.append("%s:%d says %s, the release's %s is %s" % (page, line, m.group(i), key, manifest[key]))
+                if m.group(i) != reference[key]:
+                    problems.append("%s:%d says %s, the upstream reference's %s is %s" % (page, line, m.group(i), key, reference[key]))
     return problems
 
 

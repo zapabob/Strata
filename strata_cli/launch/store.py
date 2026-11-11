@@ -125,7 +125,7 @@ def list_presets() -> list[LaunchSettings]:
             out.append(s)
         except (OSError, ValueError):
             continue
-    out.sort(key=lambda s: s.last_used or s.created or "", reverse=True)
+    out.sort(key=lambda s: (s.last_used or s.created or "", bool(s.last_used)), reverse=True)
     return out
 
 

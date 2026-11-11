@@ -134,11 +134,11 @@ export function createImageModels({ dataDir, modelsDir, real = false, changed = 
       const file = [join(directory(), 'image', v.id, v.file), join(directory(), v.file)].find(path => matchesGGUF(path, v.bytes, directory()));
       if (!file) { delete found[v.id]; continue; }
       const stat = statSync(file), cached = found[v.id];
-      if (!(cached?.file === file && cached?.mtimeMs === stat.mtimeMs && cached?.sha256 === v.sha256)) {
-        const hash = createHash('sha256');
-        for await (const chunk of createReadStream(file)) hash.update(chunk);
-        if (hash.digest('hex') !== v.sha256) { delete found[v.id]; continue; }
-      }
+      // A rescan explicitly verifies existing files. Size and mtime alone can
+      // collide after a same-size rewrite on NTFS, or be restored by a copier.
+      const hash = createHash('sha256');
+      for await (const chunk of createReadStream(file)) hash.update(chunk);
+      if (hash.digest('hex') !== v.sha256) { delete found[v.id]; continue; }
       found[v.id] = { simulated: false, file, mtimeMs: stat.mtimeMs, sha256: v.sha256, installedAt: cached?.installedAt ?? new Date().toISOString() };
     }
     saved = { ...saved, installedByDirectory: { ...saved.installedByDirectory, [directory()]: found } };

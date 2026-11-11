@@ -77,7 +77,7 @@ test('Windows saves retain destination access rules, named streams and the previ
   writeFileSync(target + ':Zone.Identifier', '[ZoneTransfer]\r\nZoneId=3\r\n');
   makePrivate(target);
   const accessDigest = () => createHash('sha256').update(execFileSync(join(process.env.SystemRoot || 'C:\\Windows', 'System32/WindowsPowerShell/v1.0/powershell.exe'),
-    ['-NoProfile', '-NonInteractive', '-Command', '(Get-Acl -LiteralPath $env:STRATA_TEST_FILE).GetSecurityDescriptorSddlForm([Security.AccessControl.AccessControlSections]::Access)'],
+    ['-NoProfile', '-NonInteractive', '-Command', '[IO.File]::GetAccessControl($env:STRATA_TEST_FILE).GetSecurityDescriptorSddlForm([Security.AccessControl.AccessControlSections]::Access)'],
     { env: { ...process.env, STRATA_TEST_FILE: target }, encoding: 'utf8', timeout: 15000, windowsHide: true }).trim()).digest('hex');
   const before = accessDigest(), file = readWorkspaceFile(root, "private ' old.md");
   updateWorkspaceFile(root, { path: file.path, text: 'saved private contents', revision: file.revision });

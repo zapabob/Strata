@@ -10,8 +10,8 @@ const compiled = await build({
     import {renderToStaticMarkup} from 'react-dom/server';
     import {ChatTelemetry} from './src/components/TelemetryPopover';
     import {ErrorNotice} from './src/components/ui';
-    import {setTranslationLanguage, tr, LANGUAGES} from './src/lib/i18n';
-    export {tr, LANGUAGES, setTranslationLanguage};
+    import {setTranslationLanguage, tr, LANGUAGES, loadCatalog} from './src/lib/i18n';
+    export {tr, LANGUAGES, setTranslationLanguage, loadCatalog};
     export const telemetry = (language, message) => {
       setTranslationLanguage(language);
       return renderToStaticMarkup(React.createElement(ChatTelemetry, {session: {
@@ -38,7 +38,8 @@ const compiled = await build({
 });
 const module = {exports: {}};
 new Function('require', 'module', 'exports', compiled.outputFiles[0].text)(createRequire(import.meta.url), module, module.exports);
-const {telemetry, errorNotice, tr, LANGUAGES, setTranslationLanguage} = module.exports;
+const {telemetry, errorNotice, tr, LANGUAGES, setTranslationLanguage, loadCatalog} = module.exports;
+await Promise.all(LANGUAGES.map(({value}) => loadCatalog(value)));
 const text = html => html.replace(/<[^>]*>/g, '').replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&');
 
 for (const {value: language} of LANGUAGES) {

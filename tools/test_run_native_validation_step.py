@@ -56,7 +56,8 @@ def test_failed_or_unfinished_prerequisite_never_launches(
 def test_failed_in_process_preflight_never_launches_guard(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str
 ) -> None:
-    root = Path("H:/Strata/build/task5a-sequential-tests-20261024")
+    root = tmp_path / 'task5a-sequential-tests'
+    monkeypatch.setattr(launcher, 'EVIDENCE_PARENT', tmp_path)
     root.mkdir(exist_ok=True)
     prior = tmp_path / "prior.json"
     prior.write_text(
@@ -126,6 +127,17 @@ def test_failed_in_process_preflight_never_launches_guard(
 
     monkeypatch.setattr(subprocess, "run", forbidden)
     if failure == "gpu_timeout":
+
+        # Exercise the actual timeout translation without probing a runner GPU.
+        # The Windows API shim supplies healthy RAM; the child probe is mocked.
+        from types import SimpleNamespace
+        def healthy_memory(pointer):
+            pointer._obj.free_physical = 16 * 1024**3
+            pointer._obj.free_commit = 16 * 1024**3
+            return 1
+        monkeypatch.setattr(launcher.ctypes, 'windll', SimpleNamespace(kernel32=SimpleNamespace(GlobalMemoryStatusEx=healthy_memory)), raising=False)
+        monkeypatch.setattr(subprocess, 'CREATE_NO_WINDOW', 0, raising=False)
+        monkeypatch.setenv('SystemRoot', str(tmp_path))
 
         def stalled_gpu(*args: object, **kwargs: object) -> str:
             assert kwargs.get("timeout") == 10

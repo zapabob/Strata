@@ -76,7 +76,8 @@ def test_query_v3_bonsai_dialects_preserved():
     assert ptq1.name == "PTQ1_0"
     assert ptq1.dialect == DialectType.PRISM
     assert ptq1.block_size == 128
-    assert ptq1.type_size == 18
+    # Recorded Prism block: 26 bytes of trits plus the two-byte scale.
+    assert ptq1.type_size == 28
 
     # 256 elements of PQ2_0 = 2 blocks * 34 bytes = 68 bytes
     assert compute_tensor_bytes([256, 1], pq2.block_size, pq2.type_size) == 68

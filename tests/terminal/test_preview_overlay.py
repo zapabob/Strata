@@ -24,6 +24,8 @@ class OverlayTests(unittest.TestCase):
             path = stage / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(data)
+            if name == 'strata.exe':
+                path.chmod(0o755)  # inert bytes; POSIX verification still checks the file mode
         component = {"schema_version": 2, "id": "strata-engine", "version": "0.3.2-preview.1",
                      "platform": "windows-x86_64", "backend": "cuda", "entrypoint": "strata.exe",
                      "archs": ["sm_120"], "build_id": "CPU-fixture",

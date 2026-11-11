@@ -126,6 +126,10 @@ class MetalPerSet(Base):
         self.assertTrue(drafting.tuned_ok(self.data))
         self.assertTrue((self.data / "dflash2" / (drafting.TUNED_NAME + ".ok")).is_file())
         self.put_tuned(b"y" * len(TUNED_BYTES))
+        import os
+        path = drafting.tuned_path(self.data)
+        previous = json.loads(path.with_name(path.name + '.ok').read_text())['mtime_ns']
+        os.utime(path, ns=(path.stat().st_atime_ns, previous + 1_000_000_000))
         self.assertFalse(drafting.tuned_ok(self.data))
 
     def test_the_users_own_draft_conf_and_spec_are_respected(self):

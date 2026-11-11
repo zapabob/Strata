@@ -11,6 +11,7 @@ import { existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startScriptedWorker } from './helpers/scripted-worker.mjs';
+import { harnessFixtureEnvironment } from './helpers/harness-environment.mjs';
 import { createAgentBridge } from '../server/agent/agent-bridge.mjs';
 import { resolveHarness } from '../server/agent/harness-runtime.mjs';
 import { buildProfile, GATE_PLUGIN } from '../server/agent/profile.mjs';
@@ -118,7 +119,7 @@ async function rig(t) {
   const dir = mkdtempSync(join(tmpdir(), 'strata-tools-'));
   const ws = join(dir, 'ws'); mkdirSync(ws, { recursive: true });
   const local = [{ id: 'inst-1', label: 'Scripted', baseUrl: worker.url, modelId: 'scripted-model', context: 32768, slots: 4 }];
-  const bridge = createAgentBridge({ dataDir: dir, localInstances: () => local, connections: () => [], env: process.env, startTimeoutMs: 90_000 });
+  const bridge = createAgentBridge({ dataDir: dir, localInstances: () => local, connections: () => [], env: harnessFixtureEnvironment(dir), startTimeoutMs: 90_000 });
   t.after(async () => { await bridge.close(); await worker.close(); cleanup(dir); });
   const run = async (chatId, message, { mode = 'bypass', answer } = {}) => {
     const frames = [];

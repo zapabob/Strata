@@ -64,8 +64,8 @@ export class HarnessProcess {
   exited = null;
   #onExit;
 
-  constructor({ harness, home, patchFile, cwd, env = {}, nodePath = process.execPath, logFile = null, pidFile = null, onExit = () => {} }) {
-    Object.assign(this, { harness, home, patchFile, cwd, extraEnv: env, nodePath, logFile, pidFile });
+  constructor({ harness, home, patchFile, cwd, env = {}, baseEnv = process.env, nodePath = process.execPath, logFile = null, pidFile = null, onExit = () => {} }) {
+    Object.assign(this, { harness, home, patchFile, cwd, extraEnv: env, baseEnv, nodePath, logFile, pidFile });
     this.#onExit = onExit;
   }
 
@@ -79,7 +79,8 @@ export class HarnessProcess {
     const args = [this.harness.bin, '--profile', 'web', '--patch', this.patchFile, '--port', '0', '--no-open'];
     const child = spawn(this.nodePath, args, {
       cwd: this.cwd, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'],
-      env: agentEnvironment(process.env, { ...this.extraEnv, DSH_HOME: this.home }),
+      // Use the caller's environment so an isolated profile cannot discover the owner's global skills.
+      env: agentEnvironment(this.baseEnv, { ...this.extraEnv, DSH_HOME: this.home }),
     });
     this.#child = child;
     let text = '';

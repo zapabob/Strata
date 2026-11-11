@@ -3635,5 +3635,7 @@
   "uxskill026": "Add at least one trigger phrase before importing.",
   "uxtool001": "DuckDuckGo / Bing works without an API key. Use Search web in chat to choose a query and attach snippets.",
   "uxtool002": "No key is saved. Autonomous agent search falls back to DuckDuckGo / Bing. Manual Search web supports the built-in provider only.",
-  "uxweb029": "Search"
+  "uxweb029": "Search",
+  "wc05801": "Workspace",
+  "wc05802": "Move to trash"
 }

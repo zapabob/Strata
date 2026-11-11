@@ -1,5 +1,7 @@
 # Strata packaging: targets, recipes and locks
 
+Upstream reference: app and Terminal 0.2.13, Control and engines 0.1.59.
+
 The 0.5.6-local.1 app preview adds bundled RustXNG Full and keeps the signed
 0.5.5 engine / 0.5.6 Control components independent. Before a Windows build, run
 `node apps/desktop/scripts/stage-rustxng.mjs --execute` at the repository root.

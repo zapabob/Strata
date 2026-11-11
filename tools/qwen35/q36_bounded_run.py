@@ -109,6 +109,9 @@ def sha(value: object) -> bool:
     return isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value) is not None
 
 
+OUTPUT_VOLUME = 'H:'
+
+
 def validate_spec(spec: dict) -> None:
     """Reject incomplete identities and attempts to weaken the resource floors."""
     required = {
@@ -223,7 +226,7 @@ def validate_spec(spec: dict) -> None:
     root, output = Path(spec["output_root"]), Path(spec["output_dir"])
     if not root.is_absolute() or not output.is_absolute() or not root.is_dir():
         raise ValueError("output_root")
-    if root.resolve().drive.upper() != "H:":
+    if root.resolve().drive.upper() != OUTPUT_VOLUME:
         raise ValueError("existing_guard_requires_H_volume_output")
     # An immediate new child of an explicitly selected root prevents traversal and overwrites.
     if (

@@ -1,5 +1,15 @@
 # Strata · Hakua
 
+<!-- stable-058 -->
+## 正式版 0.5.8
+
+修复长对话、摘要和搜索次数限制的扩展测试。代理子进程接收所选环境，每个测试使用独立配置目录。CI 同时验证翻译完整性、各平台测试以及应用、Control 和引擎的独立版本。
+
+[Windows NSIS](https://github.com/zapabob/Strata/releases/download/v0.5.8/Strata-0.5.8-windows-x64-setup.exe) · [tar.7z](https://github.com/zapabob/Strata/releases/download/v0.5.8/Strata-0.5.8-windows-x64.tar.7z) · [SHA256SUMS](https://github.com/zapabob/Strata/releases/download/v0.5.8/SHA256SUMS.txt) · [0.5.8 verification](_docs/2026-11-11_stable-058-context-ci_Codex.md)
+
+RustXNG 0.31.1 Full / app, Terminal, native engine and Control 0.5.8. Native model quality remains unqualified (`releaseQualified=false`). Previous releases and their measurements follow below.
+
+
 <!-- skills-057 -->
 ## 正式版 0.5.7
 

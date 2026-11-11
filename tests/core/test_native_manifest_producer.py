@@ -127,6 +127,10 @@ class Admission(unittest.TestCase):
             with self.assertRaises(ValueError): M.validate_source(record,q,h)
             with self.assertRaises(ValueError): M.validate_source(record,p,"0"*64)
             p.write_bytes(b"changed!")
+            # The producer checks the trusted receipt's exact metadata, not a
+            # fresh whole-shard hash. Make metadata drift explicit on NTFS too.
+            import os
+            os.utime(p, ns=(p.stat().st_atime_ns, record['mtime_ns'] + 1_000_000_000))
             with self.assertRaises(ValueError): M.validate_source(record,p,h)
 
     def test_oversize_is_rejected_before_content_read(self):

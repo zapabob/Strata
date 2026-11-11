@@ -1,5 +1,15 @@
 # Strata · Hakua
 
+<!-- stable-058 -->
+## Wersja stabilna 0.5.8
+
+Naprawia rozszerzone testy kontekstu, podsumowań i limitów wyszukiwania. Każdy test ma osobny profil, a proces potomny agenta otrzymuje wybrane środowisko. CI sprawdza również tłumaczenia, testy platformowe oraz niezależne wersje aplikacji, Control i silnika.
+
+[Windows NSIS](https://github.com/zapabob/Strata/releases/download/v0.5.8/Strata-0.5.8-windows-x64-setup.exe) · [tar.7z](https://github.com/zapabob/Strata/releases/download/v0.5.8/Strata-0.5.8-windows-x64.tar.7z) · [SHA256SUMS](https://github.com/zapabob/Strata/releases/download/v0.5.8/SHA256SUMS.txt) · [0.5.8 verification](_docs/2026-11-11_stable-058-context-ci_Codex.md)
+
+RustXNG 0.31.1 Full / app, Terminal, native engine and Control 0.5.8. Native model quality remains unqualified (`releaseQualified=false`). Previous releases and their measurements follow below.
+
+
 <!-- skills-057 -->
 ## Wersja stabilna 0.5.7
 

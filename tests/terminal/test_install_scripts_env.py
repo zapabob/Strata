@@ -26,7 +26,7 @@ class Text(unittest.TestCase):
             text = path.read_text(encoding="utf-8")
             self.assertNotIn("install.sh | sh", text, path.name)
             self.assertIn(f"zapabob/Strata/releases/download/v{version}/", text, path.name)
-            self.assertIn(f"Strata_{version}_x64-setup.exe", text, path.name)
+            self.assertIn(f"Strata-{version}-windows-x64-setup.exe", text, path.name)
 
     def setUp(self):
         self.ps1 = PS1.read_text(encoding="utf-8")

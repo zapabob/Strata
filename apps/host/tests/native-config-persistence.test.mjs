@@ -5,7 +5,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { chmodSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { nativeFixture, finishJob } from './helpers/native-fixture.mjs';
 
@@ -74,10 +74,12 @@ test('explicit save failure leaves a ready model running', async () => {
     assert.equal(loaded.state, 'done', loaded.error);
     const path = join(f.repo, 'strata-iq2_xs.json');
     const original = f.control.settings('iq2_xs');
-    chmodSync(path, 0o444);
+    // A read-only destination inode is replaceable on POSIX when its parent is writable.
+    // Occupy the atomic-write target instead: this deterministically fails before replacement on every OS.
+    mkdirSync(path + '.ui-tmp');
     assert.throws(
       () => f.control.save('iq2_xs', { values: { ...original.values, parallel: 2 } }),
-      /EACCES|EPERM|denied|read-only|EROFS|EBUSY|EIO|Cannot|access|permission/i,
+      /EACCES|EPERM|EISDIR|denied|read-only|EROFS|EBUSY|EIO|Cannot|access|permission/i,
     );
     assert.equal(f.control.state().instances[0]?.status, 'ready');
   } finally {

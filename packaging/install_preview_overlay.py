@@ -31,6 +31,7 @@ def copy_checked(source, target, digest):
     target.parent.mkdir(parents=True, exist_ok=True)
     with source.open("rb") as incoming, target.open("xb") as outgoing:
         shutil.copyfileobj(incoming, outgoing, 1024**2)
+    shutil.copymode(source, target, follow_symlinks=False)
     if sha(target) != digest:
         raise ValueError("copied file differs")
 

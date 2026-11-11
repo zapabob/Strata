@@ -263,7 +263,7 @@ test('#3723 only a first start is detected: a saved language, even English, is k
 
 test('#3723 Context memory has one line per format, from the documented memory figures', () => {
   const models = src('components/NativeModels.tsx');
-  assert.match(models, /KV_CHOICES\.map\(c => \(\{ value: c\.value, label: c\.label, title: c\.hint \}\)\)/);
+  assert.match(models, /KV_CHOICES\.filter\(c => ordinaryKv\.includes\(c\.value\)\)\.map\(c => \(\{ value: c\.value, label: c\.label, title: c\.hint \}\)\)/, 'only engine-supported formats carry their documented labels and hints');
   for (const text of ['INT8 is the standard: good quality and a medium amount of memory.', 'Q4 uses about half the memory of INT8, but is less precise on very long documents.', 'K8 / V4 uses about a quarter less memory than INT8 and is more precise than Q4. Prompts are 2 to 5% slower.']) assert.ok(models.includes(text), text);
   // The figures are the ones of docs/DETAILS.md and of native-fit.ts: q4_0 576 and k8v4 816 against int8 1056 bytes per token and layer.
   const fit = src('lib/native-fit.ts');
@@ -394,7 +394,7 @@ test('#4785 quoting is wired: the menu, the selection, the box above the compose
   assert.match(chat, /document\.addEventListener\('selectionchange', read\)/);
   assert.match(chat, /data-message-id=\{m\.id\}/);
   assert.match(chat, /return quotes\.length && !text\.startsWith\('\/'\) \? composeQuoted\(quotes\.map\(q => q\.text\), text\) : text;/, 'a command goes out as typed');
-  assert.match(chat, /void sendMessage\(session \? quotedMessage\(quotes, text\) : text\);/);
+  assert.match(chat, /void sendMessage\(session \? quotedMessage\(quotes, text\) : text,\s*webSearch&&webSearch\.sessionId===session\?\.id\?\{webSearch\}:\{\}\);/, 'quotes are retained when the active session carries an explicit search request');
   assert.match(chat, /const sentQuote = m\.role === 'user' \? parseQuoted\(m\.content\) : null;/);
 });
 

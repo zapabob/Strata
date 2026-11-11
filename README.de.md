@@ -1,5 +1,15 @@
 # Strata · Hakua
 
+<!-- stable-058 -->
+## Stabile Version 0.5.8
+
+Behebt die erweiterten Tests für lange Gespräche, Zusammenfassungen und Suchbegrenzungen. Jeder Test nutzt ein eigenes Profil; der Agent-Unterprozess erhält die gewählte Umgebung. CI prüft außerdem Übersetzungen, Plattformtests und die unabhängigen Versionen von App, Control und Engine.
+
+[Windows NSIS](https://github.com/zapabob/Strata/releases/download/v0.5.8/Strata-0.5.8-windows-x64-setup.exe) · [tar.7z](https://github.com/zapabob/Strata/releases/download/v0.5.8/Strata-0.5.8-windows-x64.tar.7z) · [SHA256SUMS](https://github.com/zapabob/Strata/releases/download/v0.5.8/SHA256SUMS.txt) · [0.5.8 verification](_docs/2026-11-11_stable-058-context-ci_Codex.md)
+
+RustXNG 0.31.1 Full / app, Terminal, native engine and Control 0.5.8. Native model quality remains unqualified (`releaseQualified=false`). Previous releases and their measurements follow below.
+
+
 <!-- skills-057 -->
 ## Stabile Version 0.5.7
 

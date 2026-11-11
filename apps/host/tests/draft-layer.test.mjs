@@ -13,7 +13,7 @@ import { createNativeControl } from '../server/native-control.mjs';
 import { withoutDraftLayer, NATIVE_FIELDS, APP_OWNED_FIELDS, validateNativeSettings } from '../server/native-settings.mjs';
 import { checkRunConfig } from '../server/run-config-check.mjs';
 
-const ARGS = ['--pack', '/p', '--expert-cache', 'auto', '--spec', '4', '--spec-min-p', '0.5', '--mtp', '/m/rt', '--max-context', '40000', '--kv', 'int8', '--vision'];
+const ARGS = ['--pack', '/p', '--expert-cache', 'auto', '--spec', '4', '--spec-min-p', '0.5', '--mtp', '/m/rt', '--max-context', '40000', '--vision'];
 
 function fixture(config = {}, { gpuGb = 12 } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'strata-draft-test-'));
@@ -38,7 +38,7 @@ const finish = async (native, id) => { for (let i = 0; i < 500; i++) { const job
 const visionSection = { exe: 'E:\\e\\strata-vision.exe', mmproj: 'E:\\mm.gguf', model: 'E:\\m.gguf', gpu: false, max_tokens: 300 };
 
 test('withoutDraftLayer takes out --mtp, --spec-min-p and --batch-mtp and keeps --spec', () => {
-  assert.deepEqual(withoutDraftLayer(ARGS), ['--pack', '/p', '--expert-cache', 'auto', '--spec', '4', '--max-context', '40000', '--kv', 'int8', '--vision']);
+  assert.deepEqual(withoutDraftLayer(ARGS), ['--pack', '/p', '--expert-cache', 'auto', '--spec', '4', '--max-context', '40000', '--vision']);
   assert.deepEqual(withoutDraftLayer(['--mtp', '2', '--spec', '2', '--batch-mtp']), ['--spec', '2'], 'Qwen3.6: a draft count');
   assert.deepEqual(withoutDraftLayer(['--spec', '4', '--mtp']), ['--spec', '4'], 'a flag with no value at the end');
   assert.deepEqual(withoutDraftLayer(['--mtp', '--spec', '4']), ['--spec', '4'], 'a flag whose next word is another flag');
@@ -46,7 +46,7 @@ test('withoutDraftLayer takes out --mtp, --spec-min-p and --batch-mtp and keeps 
 
 test('"Draft layer (MTP)" is a setting of the app, not frozen, and "MTP per request" is not frozen either', async () => {
   assert.ok(NATIVE_FIELDS.some(f => f.id === 'mtp' && f.type === 'boolean'));
-  assert.deepEqual(APP_OWNED_FIELDS.sort(), ['batchMtp', 'drafting', 'ds_experts', 'mtp']);
+  assert.deepEqual([...APP_OWNED_FIELDS].sort(), ['batchMtp', 'drafting', 'ds_experts', 'mtp', 'q36_memory', 'refusal_direction_removal']);
   const f = fixture();
   try {
     await f.native.refresh(true);

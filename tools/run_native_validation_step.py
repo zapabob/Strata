@@ -22,6 +22,8 @@ import subprocess
 
 from verify_native_pack_binding import receipt_mtime_ns
 
+EVIDENCE_PARENT = Path('H:/Strata/build')
+
 
 def digest(path: Path) -> str:
     """Hash executable/source evidence without loading it all into RAM."""
@@ -152,7 +154,7 @@ def run_step(plan_path: Path, label: str, prerequisites: list[Path]) -> int:
     plan_bytes = plan_path.read_bytes()
     plan = json.loads(plan_bytes.decode("utf-8-sig"))
     root = Path(plan["output_root"])
-    if root.parent.resolve() != Path("H:/Strata/build").resolve() or not re.fullmatch(
+    if root.parent.resolve() != EVIDENCE_PARENT.resolve() or not re.fullmatch(
         r"task5a-[a-zA-Z0-9-]+", root.name
     ):
         raise ValueError(

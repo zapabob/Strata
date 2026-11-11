@@ -82,7 +82,8 @@ class Help(unittest.TestCase):
                     self.assertGreater(len(app._help_wrapped(width)), 1, "narrower than the line: it wraps")
                     await pilot.press("question_mark")
                     await pilot.pause(0.3)
-                    self.assertIn("Read only", last_line(app))   # back to the one-line message
+                    idle = app.classic.get('tip') if app.classic and app.classic.get('tip') else 'Read only'
+                    self.assertIn(idle, last_line(app))   # platform's ordinary one-line message
         for size in ((80, 24), (60, 16)):
             asyncio.run(go(*size))
 

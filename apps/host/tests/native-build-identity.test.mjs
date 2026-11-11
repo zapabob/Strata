@@ -11,6 +11,7 @@ test('packaging rejects an engine from previous native source or a substituted b
  const source=join(root,'src','engine.cpp'),exe=join(stage,'strata.exe');
  writeFileSync(source,'current code');writeFileSync(exe,'fresh binary');
  const manifest={version:'0.3.3',entrypoint:'strata.exe'};
+ writeFileSync(join(stage,'engine-component.json'),JSON.stringify(manifest));
  writeFileSync(join(stage,'native-build.json'),JSON.stringify({...manifest,sha256:sha256(exe),sources:nativeSources(root)}));
  assert.doesNotThrow(()=>verifyNativeBuild(stage,root,manifest));
  writeFileSync(source,'newer code');assert.throws(()=>verifyNativeBuild(stage,root,manifest),/sources changed/);
@@ -23,6 +24,7 @@ test('packaging binds the reviewed CUDA budget and rejects changed or escaping b
  const exe=join(stage,'strata.exe'),budget=join(root,'budget.json');
  writeFileSync(exe,'fresh binary');writeFileSync(budget,'reviewed measurements');
  const manifest={version:'0.3.3',entrypoint:'strata.exe'};
+ writeFileSync(join(stage,'engine-component.json'),JSON.stringify(manifest));
  const record={...manifest,sha256:sha256(exe),sources:nativeSources(root),recipe:{cudaSpillBaseline:{path:'budget.json',sha256:sha256(budget)}}};
  const save=()=>writeFileSync(join(stage,'native-build.json'),JSON.stringify(record));
  save();assert.doesNotThrow(()=>verifyNativeBuild(stage,root,manifest));

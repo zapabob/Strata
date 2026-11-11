@@ -557,6 +557,15 @@ class LazyModel(UpdaterCase):
 
 
 class OtherComponents(UpdaterCase):
+    def setUp(self):
+        super().setUp()
+        # These archives are updates from a synthetic 0.1.45 installation.
+        # The developer/CI checkout's independently versioned Control is not
+        # the installed component in this fixture.
+        patch = mock.patch.object(ec, 'runtime_version', return_value='0.1.45')
+        patch.start()
+        self.addCleanup(patch.stop)
+
     def build_with_app(self, version="0.2.0", tamper=False):
         public, secret = fx.minisign_pair()
         installer = os.urandom(5000)

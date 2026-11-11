@@ -42,7 +42,8 @@ function fixture({ layout = 'own', vision = null, arch = undefined, onFetch = nu
   const mmproj = join(dataFolder, 'models', 'mmproj-Qwen3.8-Flash-Next-BF16.gguf');
   if (mmprojFile) { mkdirSync(join(dataFolder, 'models'), { recursive: true }); writeFileSync(mmproj, 'mm'); }
   const configPath = join(install, 'strata-iq3_s.json');
-  const args = ['--pack', pack, '--native', gguf, '--ple-gguf', gguf.replace('00001', '00002'), '--mtp', mtp, '--max-context', '8192', '--kv', 'int8'];
+  // These tests exercise picture downloads, not an adapter's optional ordinary-KV capability.
+  const args = ['--pack', pack, '--native', gguf, '--ple-gguf', gguf.replace('00001', '00002'), '--mtp', mtp, '--max-context', '8192'];
   const config = { exe: 'component:strata-engine', tokenizer: join(pack, 'tokenizer'), args, model_name: 'qwen3.8-flash-next-iq3_s', port: 8080, ...(arch ? { arch } : {}),
     ...(vision ? { vision: { exe: join(root, 'engine', 'strata-vision'), mmproj, model: gguf, gpu: false, max_tokens: 300 } } : {}) };
   writeFileSync(configPath, JSON.stringify(config));

@@ -1,8 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { appendFileSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { finishJob, nativeFixture } from './helpers/native-fixture.mjs';
@@ -44,7 +43,7 @@ test('a C: selection is not launched from H:, and the file name is not the model
     const opened = fileIdentitySync(jp);
     assert.equal(opened.sizeBytes, String(Buffer.byteLength('unicode-path')));
     const link = join(root, 'link');
-    execFileSync('cmd.exe', ['/d', '/c', 'mklink', '/J', link, realDir], { windowsHide: true });
+    symlinkSync(realDir, link, process.platform === 'win32' ? 'junction' : 'dir');
     const via = fileIdentitySync(join(link, 'model.gguf'));
     assert.equal(sameModelIdentity(a, via), true);
     assert.equal(sameModelIdentity({ fileId: null, contentSha256: 'abc', basename: 'model.gguf' }, { fileId: null, contentSha256: 'abc', basename: 'other.gguf' }), true);

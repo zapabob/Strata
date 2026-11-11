@@ -39,7 +39,7 @@ test('3: the progress card names the step and nothing else', () => {
   const card = models.slice(models.indexOf('export function NativeProgress'));
   for (const gone of ['The buttons below wait until this finishes.', 'Still working for {0}', 'native-wait-note', 'section-toolbar']) assert.ok(!models.includes(gone) || !card.includes(gone), gone);
   assert.ok(!models.includes('The buttons below wait until this finishes.'));
-  assert.match(models, /<button type="button" className="native-progress__stop"[\s\S]*?\}>\{tr\(stopping \? 'Stopping…' : 'Stop'\)\}<\/button>/, 'Stop is a text button');
+  assert.match(models, /<button type="button" className="native-progress__stop"[\s\S]*?\}>\{tr\(stopping \|\| cancelling \? 'Stopping…' : 'Stop'\)\}<\/button>/, 'Stop remains a translated text button while either stop request is pending');
   assert.match(models, /aria-live="polite"/);
   // only transform and opacity move
   const frames = [...css.matchAll(/@keyframes (native-ring|native-breathe|native-glide) \{[^\n]*\n/g)].map(m => m[0]);

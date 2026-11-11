@@ -18,7 +18,26 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "tools"))
 
-from strata_memory_mcp import StrataUnifiedMemory, run_cli
+from strata_memory_mcp import StrataUnifiedMemory
+import strata_memory_mcp as memory_module
+
+
+@pytest.fixture(autouse=True)
+def isolated_memory(tmp_path, monkeypatch):
+    """Exercise the actual file/SQLite fallback without reading or writing a personal profile."""
+    hermes = tmp_path / 'hermes'
+    (hermes / 'memories').mkdir(parents=True)
+    (hermes / 'SOUL.md').write_text('# Fixture persona\nSynthetic test content.\n', encoding='utf-8')
+    (hermes / 'memories/MEMORY.md').write_text('# Fixture memory\nOnly synthetic records.\n', encoding='utf-8')
+    hakua = tmp_path / 'hakua'
+    monkeypatch.setattr(memory_module, 'HERMES_DIR', hermes)
+    monkeypatch.setattr(memory_module, 'HAKUA_MEM_DIR', hakua)
+    monkeypatch.setattr(memory_module, 'HakuaHermesMemoryStack', None)
+    # This suite tests the documented optional-dependency fallback. The stack
+    # integration has separate consent/profile tests and must not be auto-loaded.
+    monkeypatch.setitem(sys.modules, 'hakua_memory.composite', None)
+    for key, value in {'HOME': tmp_path, 'USERPROFILE': tmp_path, 'HERMES_HOME': hermes, 'HAKUA_MEMORY_HOME': hakua}.items():
+        monkeypatch.setenv(key, str(value))
 
 
 def test_strata_memory_status() -> None:
@@ -67,22 +86,15 @@ def test_strata_memory_remember_and_recall() -> None:
 
 
 def test_strata_memory_cli_status() -> None:
-    cmd = ["py", "-3", str(REPO_ROOT / "tools" / "strata_memory_mcp.py"), "--cli", "status"]
-    proc = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    # Match the in-process missing-optional-dependencies fixture while running
+    # the real __main__, parser and JSON CLI in a separate interpreter.
+    bootstrap = "import runpy,sys; sys.modules['hakua_hermes_memory_stack']=None; sys.modules['hakua_memory.composite']=None; sys.argv=sys.argv[1:]; runpy.run_path(sys.argv[0],run_name='__main__')"
+    cmd = [sys.executable, '-c', bootstrap, str(REPO_ROOT / "tools" / "strata_memory_mcp.py"), "--cli", "status"]
+    proc = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=30)
     out_json = json.loads(proc.stdout)
     assert out_json["status"] == "healthy"
     assert out_json["soul"]["exists"] is True
 
 
 if __name__ == "__main__":
-    print("Running test_strata_memory_status()...")
-    test_strata_memory_status()
-    print("Running test_strata_memory_read_soul()...")
-    test_strata_memory_read_soul()
-    print("Running test_strata_memory_read_memory_md()...")
-    test_strata_memory_read_memory_md()
-    print("Running test_strata_memory_remember_and_recall()...")
-    test_strata_memory_remember_and_recall()
-    print("Running test_strata_memory_cli_status()...")
-    test_strata_memory_cli_status()
-    print("ALL TESTS PASSED!")
+    raise SystemExit(pytest.main([__file__]))

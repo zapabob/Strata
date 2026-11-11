@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync, symlinkSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync, symlinkSync, statSync, utimesSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer } from 'node:net';
@@ -70,7 +70,9 @@ test('image downloads are scoped per directory and existing real image files req
  const bytes=Buffer.from('GGUFverified-small-image'), catalog={...IMAGE_CATALOG,variants:[{...IMAGE_CATALOG.variants[0],bytes:bytes.length,sha256:createHash('sha256').update(bytes).digest('hex')}]};
  writeFileSync(join(second,catalog.variants[0].file),bytes);
  const real=createImageModels({dataDir:join(home,'real-data'),modelsDir:second,real:true,catalog});await real.rescan();assert.equal(real.library().variants[0].state,'installed');
- writeFileSync(join(second,catalog.variants[0].file),Buffer.from('GGUFmodified-small-image'));await real.rescan();assert.equal(real.library().variants[0].state,'available');
+ const imageFile=join(second,catalog.variants[0].file), originalStat=statSync(imageFile);
+ writeFileSync(imageFile,Buffer.from('GGUFmodified-small-image'));utimesSync(imageFile,originalStat.atime,originalStat.mtime);
+ await real.rescan();assert.equal(real.library().variants[0].state,'available','same-size bytes with restored timestamps must still pass the pinned SHA-256');
 });
 
 async function freePort(){const server=createServer();await new Promise(r=>server.listen(0,'127.0.0.1',r));const port=server.address().port;await new Promise(r=>server.close(r));return port;}

@@ -1,5 +1,10 @@
 # AGENTS.md
 
+Hakua product version 0.5.8 is the current candidate source; engine 0.5.8 and
+Control 0.5.8 require freshly built, signed and tested payloads. Publication and installation
+are recorded in _docs/2026-11-11_stable-058-context-ci_Codex.md. Historical
+measurements below retain their original product versions.
+
 ## Current local app update (2026-11-11)
 
 Stable app 0.5.7 is installed from the five-job formal build in
