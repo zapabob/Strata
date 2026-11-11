@@ -29,7 +29,9 @@ const model=http.createServer(async(req,res)=>{
   if(req.url==='/props'){res.setHeader('content-type','application/json');res.end(JSON.stringify({modalities:{vision:false}}));return;}
   requests.push(body);
   res.writeHead(200,{'content-type':'text/event-stream'});
-  const send=value=>res.write('data: '+JSON.stringify({id:'qa-completion-057',object:'chat.completion.chunk',model:'qa-model',created:Math.floor(Date.now()/1000),...value})+'\n\n');
+  const completionId='qa-completion-057-'+requests.length;
+  const send=value=>res.write('data: '+JSON.stringify({id:completionId,object:'chat.completion.chunk',model:'qa-model',created:Math.floor(Date.now()/1000),...value})+'\n\n');
+  send({choices:[{index:0,delta:{role:'assistant'}}]});
   const texts=(body?.messages??[]).filter(row=>row.role==='user').map(row=>typeof row.content==='string'?row.content:(row.content??[]).map(part=>part.text??'').join('\n'));
   const text=[...texts].reverse().find(value=>/Observed workflow:\n|Please apply desktop validation|WORKFLOW_057|Side question:|MAIN_PENDING_057/.test(value))??texts.at(-1)??'';
   const full=JSON.stringify(body?.messages??[]);

@@ -33,6 +33,10 @@ SHA256SUMS.txt. Real Harness/tool execution and installed WebView2 checks use a
 scripted model and do not qualify general model quality or GPU concurrency.
 Broader native/full-window/low-precision quality remains unqualified:
 releaseQualified=false. Earlier broad-suite failures remain recorded separately.
+Local verification passed: 65 focused host tests, 15 actual Harness cases,
+13 packaged self-tests, six NSIS cleanup scenarios and 16 installed WebView2
+checks. The exact build SHA had no matching GitHub Actions run when checked;
+no cloud-CI success is claimed.
 
 We appreciate [Strata](https://github.com/Niko1221/Strata),
 [llama.cpp](https://github.com/ggml-org/llama.cpp),

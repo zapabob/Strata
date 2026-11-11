@@ -63,6 +63,7 @@ def main():
         'backup': load(OUT / 'backup.json'), 'installedWebView2': ui, 'normalStartup': normal,
         'readmeLanguagesChecked': 8, 'packagedSelfTestsPassed': 13, 'nsisCleanupScenariosPassed': 6,
         'quality': load(OUT / 'assets/QUALITY.json'), 'signedFeed': load(OUT / 'signed-feed-check.json'),
+        'cloudCIObservation': load(OUT / 'exact-sha-ci.json'),
         'bundle': bundle, 'public': public, 'receipts': receipts, 'preservedFailedAttempts': failed,
         'note': 'Private inventories, user content and credentials are excluded. Expanded pre-existing failures remain unqualified.'}
     with (HERE / 'LOCAL_VERIFICATION.json').open('x', encoding='utf-8', newline='\n') as stream:

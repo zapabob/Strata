@@ -134,7 +134,7 @@ def extract() -> None:
     installer = Path(build['installer'])
     require(sha(installer) == build['installerSHA256'], 'Exact installer required')
     if not EXTRACTED.exists():
-        subprocess.run([str(SEVEN), 'x', str(installer), '-o' + str(EXTRACTED), '-y'], check=True, timeout=180)
+        subprocess.run([str(SEVEN), 'x', str(installer), '-o' + str(EXTRACTED), '-y'], check=True, timeout=600)
     else:
         # The prior 7z extraction completed; its subsequent serial hashing timed out.
         # Verify the existing bytes without rewriting or deleting that attempt.
@@ -234,6 +234,7 @@ def bundle() -> None:
     require(load(OUT / 'receipts' / ('installed-ui-' + ui['attempt'] + '.json'))['passed'], 'Contained UI run required')
     require(load(OUT / 'receipts/nsis-cleanup-final.json')['passed'], 'NSIS cleanup scenarios required')
     quality = {'releaseQualified': False, 'nativeComponentUnchanged': True,
+               'cloudCIObservation': load(OUT / 'exact-sha-ci.json'),
                'nativePriorEvidence': 'https://github.com/zapabob/Strata/releases/tag/v0.5.5-local.1',
                'focusedHostTests': {'passed': 65, 'failed': 0, 'optionalSkipped': 5},
                'realHarnessWorkflowTests': {'passed': 15, 'failed': 0},

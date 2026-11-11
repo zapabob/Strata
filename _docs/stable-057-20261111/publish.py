@@ -96,20 +96,31 @@ def unchanged() -> dict:
             'latest': latest['tag_name'], 'historicalAssetsUnchanged': True}
 
 
+def snapshot_local_alias() -> None:
+    remote = api('git/ref/tags/latest')['object']['sha']
+    require(remote == load('publication-before.json')['tags']['refs/tags/latest']['sha'], 'Remote alias changed since publication snapshot')
+    local = subprocess.check_output(['git', 'rev-parse', 'refs/tags/latest'], cwd=ROOT, text=True).strip()
+    peeled = subprocess.check_output(['git', 'rev-parse', 'refs/tags/latest^{commit}'], cwd=ROOT, text=True).strip()
+    save('local-alias-before.json', {'localObject': local, 'peeledCommit': peeled, 'remoteObject': remote,
+         'note': 'Retain the independently stale local cache; promote only this explicitly observed mutable alias with compare-and-swap.'})
+    print('Recorded local and remote mutable alias identities without changing either.', flush=True)
+
+
 def promote_alias() -> dict:
     before = load('publication-before.json')['tags']['refs/tags/latest']['sha']
     target = api('git/ref/tags/' + TAG)['object']['sha']
     current = api('git/ref/tags/latest')['object']['sha']
     require(current in (before, target), 'The mutable latest alias changed since the snapshot')
     local = subprocess.check_output(['git', 'rev-parse', 'refs/tags/latest'], cwd=ROOT, text=True).strip()
-    require(local in (before, target), 'An unrelated local alias change must be preserved')
+    local_before = load('local-alias-before.json')['localObject']
+    require(local in (local_before, target), 'An unrelated local alias change must be preserved')
     if current != target:
         subprocess.run(['git', 'push', '--force-with-lease=refs/tags/latest:' + before,
                         'origin', target + ':refs/tags/latest'], cwd=ROOT, check=True, timeout=120)
     if local != target:
         subprocess.run(['git', 'update-ref', 'refs/tags/latest', target, local], cwd=ROOT, check=True, timeout=30)
     require(api('git/ref/tags/latest')['object']['sha'] == target, 'Latest alias did not match the immutable release tag')
-    return {'oldObject': before, 'newObject': target, 'leaseGuarded': True, 'immutableTag': TAG}
+    return {'oldRemoteObject': before, 'oldLocalObject': local_before, 'newObject': target, 'leaseGuarded': True, 'immutableTag': TAG}
 
 
 def local_assets() -> dict:
@@ -240,7 +251,7 @@ def readback(attempt: str = 'r1') -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=['snapshot', 'upload', 'verify-draft', 'publish', 'readback'])
+    parser.add_argument('action', choices=['snapshot', 'snapshot-local-alias', 'upload', 'verify-draft', 'publish', 'readback'])
     parser.add_argument('--execute', action='store_true')
     parser.add_argument('--attempt', default='r1')
     args = parser.parse_args()
