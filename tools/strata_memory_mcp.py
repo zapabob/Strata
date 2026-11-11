@@ -457,7 +457,7 @@ class StrataUnifiedMemory:
                 logger.warning("Hermes DB remember error: %s", exc)
 
         return {
-            "saved": True,
+            "saved": any(result is not None for result in (record_id, composite_res, stack_res)),
             "hermes_memory_id": record_id,
             "composite_result": composite_res,
             "stack_result": stack_res,

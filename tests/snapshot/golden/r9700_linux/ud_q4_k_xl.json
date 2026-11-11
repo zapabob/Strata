@@ -89,7 +89,10 @@
      "--kv-resident",
      "32768"
     ],
-    "env_set": {},
+    "env_set": {
+     "STRATA_REQUIRE_Q36_KV": "0",
+     "STRATA_REQUIRE_Q36_PRIVATE_CACHE": "0"
+    },
     "notes": []
    },
    "setup_says": [
@@ -182,7 +185,10 @@
      "--resident-budget-gib",
      "48"
     ],
-    "env_set": {},
+    "env_set": {
+     "STRATA_REQUIRE_Q36_KV": "0",
+     "STRATA_REQUIRE_Q36_PRIVATE_CACHE": "0"
+    },
     "notes": []
    }
   },
@@ -215,6 +221,7 @@
     }
    ],
    "config_file": {
+    "arch": "qwen4exp",
     "exe": "<ROOT>/engine/strata",
     "args": [
      "--pack",
@@ -238,7 +245,11 @@
      "--kv",
      "int8",
      "--resident-budget-gib",
-     "48"
+     "48",
+     "--prompt-cache",
+     "0",
+     "--conversation-cache-mib",
+     "0"
     ],
     "cwd": "<REPO>",
     "tokenizer": "<ROOT>/data/packs/ud_q4_k_xl/tokenizer",
@@ -251,6 +262,16 @@
     "open_browser": false,
     "mcp": {},
     "fit_max_tokens": true,
+    "hakua_harness": {
+     "enabled": true,
+     "users": [
+      {
+       "principal": "local",
+       "key_env": "STRATA_HAKUA_LOCAL_KEY",
+       "root": "<ROOT>/host-data/hakua-memory/local"
+      }
+     ]
+    },
     "aliases": [
      "unsloth-ud-q4_k_xl"
     ],
@@ -281,9 +302,16 @@
      "--kv",
      "int8",
      "--resident-budget-gib",
-     "48"
+     "48",
+     "--prompt-cache",
+     "0",
+     "--conversation-cache-mib",
+     "0"
     ],
-    "env_set": {},
+    "env_set": {
+     "STRATA_REQUIRE_Q36_KV": "0",
+     "STRATA_REQUIRE_Q36_PRIVATE_CACHE": "0"
+    },
     "notes": []
    }
   },
@@ -316,6 +344,7 @@
     }
    ],
    "config_file": {
+    "arch": "qwen4exp",
     "exe": "<ROOT>/engine/strata",
     "args": [
      "--pack",
@@ -339,7 +368,11 @@
      "--kv",
      "int8",
      "--resident-budget-gib",
-     "48"
+     "48",
+     "--prompt-cache",
+     "0",
+     "--conversation-cache-mib",
+     "0"
     ],
     "cwd": "<REPO>",
     "tokenizer": "<ROOT>/data/packs/ud_q4_k_xl/tokenizer",
@@ -348,11 +381,21 @@
     "lib_dirs": [],
     "port": 18500,
     "backend": "hip",
+    "drafting": "auto",
     "host": "127.0.0.1",
     "open_browser": false,
-    "drafting": "auto",
     "mcp": {},
     "fit_max_tokens": true,
+    "hakua_harness": {
+     "enabled": true,
+     "users": [
+      {
+       "principal": "local",
+       "key_env": "STRATA_HAKUA_LOCAL_KEY",
+       "root": "<ROOT>/host-data/hakua-memory/local"
+      }
+     ]
+    },
     "aliases": [
      "unsloth-ud-q4_k_xl"
     ],
@@ -383,9 +426,16 @@
      "--kv",
      "int8",
      "--resident-budget-gib",
-     "48"
+     "48",
+     "--prompt-cache",
+     "0",
+     "--conversation-cache-mib",
+     "0"
     ],
-    "env_set": {},
+    "env_set": {
+     "STRATA_REQUIRE_Q36_KV": "0",
+     "STRATA_REQUIRE_Q36_PRIVATE_CACHE": "0"
+    },
     "notes": []
    }
   }

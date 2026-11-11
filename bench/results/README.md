@@ -4,7 +4,7 @@ Raw results and short reports from measurement runs, one folder per run, named b
 the Strata version, hardware and method of its own day, and none is a statement about a later release. Current numbers are in the
 [docs](../../docs/README.md) and the [README](../../README.md); how to measure is in [BENCHMARK_PROTOCOL.md](../../docs/BENCHMARK_PROTOCOL.md).
 
-This page is built by `python tools/bench_results_index.py` (`--check` fails when a folder is missing from it). 143 folders and 3 loose files, 2378 files in all.
+This page is built by `python tools/bench_results_index.py` (`--check` fails when a folder is missing from it). 143 folders and 3 loose files, 2348 files in all.
 
 
 ## 2026-09
@@ -163,7 +163,7 @@ This page is built by `python tools/bench_results_index.py` (`--check` fails whe
 
 | Folder | What | Files |
 | --- | --- | ---: |
-| [2026-11-02-rtx-5060ti-gdn-coalesced](2026-11-02-rtx-5060ti-gdn-coalesced/) | RTX 5060 Ti GDN coalesced experiment, 2026-11-02 | 193 |
+| [2026-11-02-rtx-5060ti-gdn-coalesced](2026-11-02-rtx-5060ti-gdn-coalesced/) | RTX 5060 Ti GDN coalesced experiment, 2026-11-02 | 163 |
 
 ## Loose files
 

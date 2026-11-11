@@ -9,6 +9,7 @@ Tests:
 from __future__ import annotations
 
 import json
+import sqlite3
 import subprocess
 import sys
 from pathlib import Path
@@ -29,6 +30,13 @@ def isolated_memory(tmp_path, monkeypatch):
     (hermes / 'memories').mkdir(parents=True)
     (hermes / 'SOUL.md').write_text('# Fixture persona\nSynthetic test content.\n', encoding='utf-8')
     (hermes / 'memories/MEMORY.md').write_text('# Fixture memory\nOnly synthetic records.\n', encoding='utf-8')
+    with sqlite3.connect(hermes / 'ebbinghaus_memory.db') as database:
+        database.execute('''CREATE TABLE memories (
+            memory_id INTEGER PRIMARY KEY, content TEXT, encoded TEXT, cues TEXT, tags TEXT,
+            salience REAL, valence REAL, strength REAL, rehearsal_count INTEGER,
+            retrieval_count INTEGER, source TEXT, session_id TEXT, created_at REAL,
+            updated_at REAL, state TEXT)''')
+    database.close()
     hakua = tmp_path / 'hakua'
     monkeypatch.setattr(memory_module, 'HERMES_DIR', hermes)
     monkeypatch.setattr(memory_module, 'HAKUA_MEM_DIR', hakua)
@@ -78,11 +86,21 @@ def test_strata_memory_remember_and_recall() -> None:
 
     save_res = mem.remember(content=test_content, importance=0.85, tags=[test_tag])
     assert save_res["saved"] is True
+    assert isinstance(save_res['hermes_memory_id'], int)
 
     recall_res = mem.recall(query=test_tag, top_k=5)
     assert recall_res["count"] >= 1
     found = any(test_tag in str(r.get("metadata", {})) or test_tag in r.get("content", "") for r in recall_res["results"])
     assert found is True
+
+
+def test_remember_reports_failure_when_no_storage_backend_is_available() -> None:
+    mem = StrataUnifiedMemory()
+    mem.get_hermes_db_path().unlink()
+    result = mem.remember(content='Synthetic unsaved record', tags=['fixture'])
+    assert result['saved'] is False
+    assert result['hermes_memory_id'] is None
+    assert mem.recall('Synthetic unsaved record')['count'] == 0
 
 
 def test_strata_memory_cli_status() -> None:

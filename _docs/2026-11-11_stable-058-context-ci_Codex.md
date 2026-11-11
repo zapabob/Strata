@@ -130,3 +130,49 @@ force-attempt receipts remain separate. Broad Hermes-profile content encountered
 by an overbroad search was not used in code, reports, memory or release assets;
 that search was interrupted and subsequent inspection was restricted to owning
 source and process metadata.
+
+First coordinated source c629ee37 was pushed to main. Its pinned actual-Harness
+CI job passed all 43 tests. Windows host typecheck/build passed, with 2062 host
+tests passed, zero failed and 119 explicitly skipped. Linux Python tests passed
+3845 tests and 491 subtests, with 109 explicit skips and one remaining synthetic
+memory fixture failure. CUDA 12.9/13.0, HIP 7.2 and Metal compiled successfully;
+SYCL exposed an outdated implementation signature, now corrected to accept and
+reject the unsupported nonzero native-cache arena explicitly. No SYCL native
+cache support is claimed. The current Windows CUDA build uses frozen c629ee37
+and identical CUDA inputs; later app/Control source commits are recorded apart.
+
+Follow-up fixes keep Chrome's POSIX temporary socket path short, use the real
+Windows account root only for token discovery while browser profiles/data stay
+private, handle case-only renames on case-insensitive APFS without replacing a
+distinct hardlink, and make simulated PC setup targets explicit on Apple Silicon.
+The Docker shell fixture now keeps its /run directory inside its own sandbox.
+The capability generator uses the declared upstream reference inventory; the
+benchmark index uses Git-tracked public files and ignores unpublished local runs.
+Focused generators passed 9 tests. Host cross-platform follow-up passed 35 with
+zero failed and two actual platform/privilege skips. Earlier failed attempts and
+the third host-wide timeout remain retained with zero owned processes remaining.
+
+Fresh snapshots were generated and reviewed across all 32 machine/model cells.
+The first generation exposed eight invalid DeepSeek fixture loads that injected
+a Qwen drafting setting; those records were rejected, never used as goldens.
+The corrected fixture follows the model-family controls. The second generation
+retains the unchanged 24 Qwen records and reruns all eight DeepSeek cells, with
+no failed entry. The 448 reviewed field changes are explicit architecture and
+existing Hakua private-cache configuration, disabled Q36-only requirements on
+other models, and the DeepSeek fixture's family-specific default. Cloud snapshot
+verification must still reproduce these records on both operating systems.
+
+The synthetic memory fixture now creates its own SQLite schema instead of
+depending on an existing personal database. The bridge previously returned saved
+even when no backend stored anything; it now reports that case as false, with a
+separate regression. PowerShell installer diagnostics use the actual Windows
+OEM encoding when the parent Python is in UTF-8 mode. Full follow-up CI, native
+qualification, formal packaging, installation and publication remain pending.
+
+The final focused Python repair group passed 42 tests with five explicit external
+Hermes/OS skips. The first negative storage test exposed the fixture's unclosed
+SQLite connection; it now closes before testing missing storage. Current and
+frozen CUDA source maps match all 779 files. One generated PowerShell analysis
+cache was retained outside the checkout and removed from the source tree after
+hash verification; direct test profiles now create all declared user directories.
+No runtime cache or personal profile content is committed or packaged.

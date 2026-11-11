@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { closeSync, existsSync, fsyncSync, lstatSync, mkdirSync, openSync, readFileSync, readdirSync, realpathSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { isAbsolute, join, toNamespacedPath } from 'node:path';
+import { basename, dirname, isAbsolute, join, toNamespacedPath } from 'node:path';
 import { isInside, openFile, refusedFolder } from './chat-files.mjs';
 import { makePrivateDir } from './private-file.mjs';
 
@@ -149,9 +149,11 @@ export function renameWorkspaceFile(root, { path, newPath, revision: expected })
   const item = checked(root, path, expected), destination = locate(root, newPath, { create: true });
   if (item.path === destination.path) return { ok: true, path: destination.name };
   const existing = existingEntry(destination.path);
-  // Windows may report the same directory entry under the new spelling of its name.
-  if (existing && process.platform === 'win32' && item.path.toLowerCase() === destination.path.toLowerCase()
-      && !existing.isSymbolicLink() && item.st.dev === existing.dev && item.st.ino === existing.ino) {
+  // Case-insensitive filesystems (including default APFS) may resolve the old
+  // entry through the new spelling. A separately named hardlink stays a conflict.
+  if (existing && item.path.toLowerCase() === destination.path.toLowerCase()
+      && !existing.isSymbolicLink() && item.st.ino && item.st.dev === existing.dev && item.st.ino === existing.ino
+      && !readdirSync(dirname(destination.path)).includes(basename(destination.path))) {
     checked(root, path, expected);
     renameSync(item.path, destination.path);
     return { ok: true, path: destination.name };

@@ -49,6 +49,13 @@ class CapabilityTable(unittest.TestCase):
         for p in ct.PAGES:
             self.assertNotIn("no DeepSeek yet", ct.read(p))
 
+    def test_fork_assets_do_not_replace_the_upstream_hardware_reference(self):
+        upstream = self.release["upstream"]
+        fork = {"tag": "v9.9.9", "assets": [], "upstream": upstream}
+        self.assertEqual(ct.validate(self.cap, fork), [])
+        self.assertEqual(ct.page(self.cap, fork), ct.page(self.cap, upstream))
+        self.assertNotIn("v9.9.9", ct.page(self.cap, fork))
+
 
 if __name__ == "__main__":
     unittest.main()

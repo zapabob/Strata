@@ -462,7 +462,7 @@ class StartStop(FakeRoot):
         self.write_config("q2_0", port=port, delay=1.5)
         res, err = self.call("strata_start", {"wait_seconds": 30})
         self.assertFalse(err, res)
-        self.assertIn("Strata is running", res["summary"])
+        self.assertIn("Strata is running", res["summary"], {"result": res, "log": M.read_tail(self.strata.state_dir / 'server.log', 20)})
         pid = res["server"]["pid"]
 
         st, _ = self.call("strata_status", {"hardware": False})
@@ -513,7 +513,7 @@ class StartStop(FakeRoot):
         self.assertIn("loading", res["summary"])
         st, _ = self.call("strata_status", {"hardware": False})
         self.assertIn("loading", st["summary"])
-        self.assertTrue(wait_for(lambda: self.strata.probe(port) is not None, 30))
+        self.assertTrue(wait_for(lambda: self.strata.probe(port) is not None, 30), M.read_tail(self.strata.state_dir / 'server.log', 20))
 
     def test_stop_while_busy_needs_force(self):
         port = free_port()
@@ -528,11 +528,13 @@ class StartStop(FakeRoot):
     def test_external_server_is_only_unloaded(self):
         port = free_port()
         self.write_config("q2_0", port=port)
-        p = subprocess.Popen([sys.executable, str(self.root / "serve" / "server.py"), "--config",
-                              str(self.root / "strata-q2_0.json"), "--port", str(port)],
-                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        external_log = self.root / 'external-server.log'
+        with external_log.open('w', encoding='utf-8') as output:
+            p = subprocess.Popen([sys.executable, str(self.root / "serve" / "server.py"), "--config",
+                                  str(self.root / "strata-q2_0.json"), "--port", str(port)],
+                                 stdout=output, stderr=subprocess.STDOUT)
         self.extra.append(p)
-        self.assertTrue(wait_for(lambda: self.strata.probe(port) is not None, 30))
+        self.assertTrue(wait_for(lambda: self.strata.probe(port) is not None, 30), {'exit': p.poll(), 'log': M.read_tail(external_log, 20)})
         st, _ = self.call("strata_status", {"hardware": False})
         self.assertIn("outside this MCP server", st["running"][0]["started_by"])
         res, err = self.call("strata_start", {})
@@ -1011,7 +1013,7 @@ class MixedGraphics(unittest.TestCase):
         S = s.setup_module()
         cards = [{"index": 0, "name": "AMD Radeon RX 9070 XT", "vram_gb": 15.9, "arch": "gfx1201", "driver": "32.0.1"},
                  {"index": 1, "name": "AMD Radeon(TM) Graphics", "vram_gb": 0.5, "arch": "unknown (PCI 164E)", "driver": "32.0.1"}]
-        with mock.patch.object(M, "WIN", True), mock.patch.object(S, "gpus", lambda: []),                 mock.patch.object(S, "amd_gpus", lambda: [dict(g) for g in cards]),                 mock.patch.object(M, "windows_video_controllers", lambda: [{"name": "AMD Radeon RX 9070 XT", "driver": "32"}]),                 mock.patch.object(S, "ram_gb", lambda: 64.0), mock.patch.object(S, "page_file_gb", lambda: 10.0):
+        with mock.patch.object(M.sys, "platform", "win32"), mock.patch.object(M, "WIN", True), mock.patch.object(S, "gpus", lambda: []),                 mock.patch.object(S, "amd_gpus", lambda: [dict(g) for g in cards]),                 mock.patch.object(M, "windows_video_controllers", lambda: [{"name": "AMD Radeon RX 9070 XT", "driver": "32"}]),                 mock.patch.object(S, "ram_gb", lambda: 64.0), mock.patch.object(S, "page_file_gb", lambda: 10.0):
             hw = s._hardware()
             by = {g["name"]: g for g in hw["gpus"]}
             self.assertTrue(by["AMD Radeon RX 9070 XT"]["usable"])

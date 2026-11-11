@@ -10,6 +10,7 @@ Markdown file), and how many files it holds.  The results themselves stay where 
 import argparse
 import os
 import re
+import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -20,8 +21,24 @@ RESULTS = os.path.join(ROOT, "bench", "results")
 OUT = os.path.join(RESULTS, "README.md")
 
 
-def title_of(folder):
-    names = sorted(n for n in os.listdir(folder) if n.lower().endswith(".md"))
+def published_files():
+    """Index committed/staged results; private ignored runs must not change CI docs.
+
+    An exported source archive has no Git index, so all of its files are public.
+    """
+    if os.path.exists(os.path.join(ROOT, ".git")):
+        result = subprocess.run(["git", "-C", ROOT, "ls-files", "-z", "--", "bench/results"],
+                                capture_output=True, check=True)
+        prefix = "bench/results/"
+        return {name[len(prefix):] for name in result.stdout.decode("utf-8").split("\0")
+                if name.startswith(prefix) and os.path.isfile(os.path.join(ROOT, name))}
+    return {os.path.relpath(os.path.join(base, name), RESULTS).replace(os.sep, "/")
+            for base, _, names in os.walk(RESULTS) for name in names}
+
+
+def title_of(folder, published=None):
+    names = sorted(n for n in os.listdir(folder) if n.lower().endswith(".md")
+                   and (published is None or os.path.relpath(os.path.join(folder, n), RESULTS).replace(os.sep, "/") in published))
     names.sort(key=lambda n: (n.lower() != "readme.md", n))
     for name in names:
         try:
@@ -36,15 +53,16 @@ def title_of(folder):
     return "(no Markdown page)"
 
 
-def count_files(folder):
-    return sum(len(files) for _, _, files in os.walk(folder))
+def count_files(folder, published):
+    prefix = os.path.relpath(folder, RESULTS).replace(os.sep, "/") + "/"
+    return sum(name.startswith(prefix) for name in published)
 
 
 def build():
-    entries = sorted(e for e in os.listdir(RESULTS) if e != "README.md")
-    folders = [e for e in entries if os.path.isdir(os.path.join(RESULTS, e))]
-    loose = [e for e in entries if not os.path.isdir(os.path.join(RESULTS, e))]
-    total = sum(count_files(os.path.join(RESULTS, f)) for f in folders) + len(loose)
+    published = published_files() - {"README.md"}
+    folders = sorted({name.split("/", 1)[0] for name in published if "/" in name})
+    loose = sorted(name for name in published if "/" not in name)
+    total = len(published)
     lines = ["# Benchmark results", "",
              "Raw results and short reports from measurement runs, one folder per run, named by date. They stay here as they were written: each states",
              "the Strata version, hardware and method of its own day, and none is a statement about a later release. Current numbers are in the",
@@ -58,7 +76,7 @@ def build():
         if key != month:
             month = key
             lines += ["", "## " + key, "", "| Folder | What | Files |", "| --- | --- | ---: |"]
-        lines.append("| [%s](%s/) | %s | %d |" % (f, f, title_of(os.path.join(RESULTS, f)), count_files(os.path.join(RESULTS, f))))
+        lines.append("| [%s](%s/) | %s | %d |" % (f, f, title_of(os.path.join(RESULTS, f), published), count_files(os.path.join(RESULTS, f), published)))
     if loose:
         lines += ["", "## Loose files", "", "| File |", "| --- |"] + ["| [%s](%s) |" % (n, n) for n in loose]
     return "\n".join(lines) + "\n"

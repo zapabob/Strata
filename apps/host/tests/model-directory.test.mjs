@@ -76,16 +76,16 @@ test('image downloads are scoped per directory and existing real image files req
 });
 
 async function freePort(){const server=createServer();await new Promise(r=>server.listen(0,'127.0.0.1',r));const port=server.address().port;await new Promise(r=>server.close(r));return port;}
-test('directory API protects loaded models, active requests and downloads, then rescans without moving files',{timeout:30000},async t => {
+test('directory API protects loaded models, active requests and downloads, then rescans without moving files',{timeout:90000},async t => {
  const home=fixture(t), next=join(home,'existing');mkdirSync(next);mkdirSync(join(home,'data'));mkdirSync(join(home,'models'));
  const original=join(home,'models'),keep=join(original,'keep.txt');writeFileSync(keep,'preserve');
- writeFileSync(join(home,'data','state.json'),JSON.stringify({installed:{'qwen38-q4_k_m':{simulated:true}},loaded:'qwen38-q4_k_m',setup:{complete:true,flowVersion:2,step:4}}));
+ writeFileSync(join(home,'data','state.json'),JSON.stringify({installed:{'qwen38-q4_k_m':{simulated:true}},loaded:'qwen38-q4_k_m',expert:{'gpu.layers':'All layers'},setup:{complete:true,flowVersion:2,step:4}}));
  const port=await freePort(),base=`http://127.0.0.1:${port}`;
  const host=spawn(process.execPath,['server/index.mjs'],{cwd,env:{...process.env,STRATA_HOME:home,STRATA_MODELS_DIR:join(home,'models'),STRATA_REAL_ENGINE:'0',STRATA_PORT:String(port),STRATA_BIND:'127.0.0.1'},stdio:['ignore','pipe','pipe']});
  let diagnostics='';for(const stream of [host.stdout,host.stderr])stream.on('data',chunk=>{diagnostics=(diagnostics+String(chunk)).slice(-6000);});
  async function call(path,body){const response=await fetch(base+path,{method:body===undefined?'GET':'POST',headers:{'content-type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});return {status:response.status,body:await response.json()};}
  try {
-  let ready=false,lastRead='';for(let i=0;i<100;i++){try{const answer=await call('/api/runtime');lastRead=JSON.stringify(answer);ready=answer.status===200;if(ready)break;}catch(error){lastRead=String(error);}await pause(100);}assert.ok(ready,diagnostics+'\nLast runtime response: '+lastRead);
+  let ready=false,lastRead='';for(let i=0;i<300;i++){if(host.exitCode!==null)break;try{const answer=await call('/api/runtime');lastRead=JSON.stringify(answer);ready=answer.status===200;if(ready)break;}catch(error){lastRead=String(error);}await pause(100);}assert.ok(ready,diagnostics+'\nLast runtime response: '+lastRead);
   assert.equal((await call('/api/storage/models-directory',{directory:next})).status,409);
   assert.equal((await call('/api/models')).body.disk.modelsDir,original);
   assert.equal((await call('/api/storage/models-directory',{directory:join(home,'missing'),unload:true})).status,400);

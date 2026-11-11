@@ -26,6 +26,9 @@ def main() -> None:
         raise RuntimeError('Commit reviewed source before the candidate build')
     if (OUT / 'app-build.json').exists():
         raise RuntimeError('Preserve prior candidate evidence')
+    frozen = json.loads((OUT / 'frozen-source.json').read_text())
+    node = RES / 'node/node.exe'
+    subprocess.run([str(node), str(Path(__file__).with_name('source-binding.mjs')), frozen['sourceRoot'], frozen['sourceCommit']], check=True, timeout=90)
     prior = OUT / 'prior-cargo-artifacts'
     prior.mkdir()
     preserved = []
@@ -40,7 +43,7 @@ def main() -> None:
     env.update(STRATA_PUBLIC_PACKAGE='1', STRATA_PUBLIC_ASSETS='H:/Strata/releases/hakua033-public-assets',
                STRATA_PUBLIC_ASSETS_RECEIPT='H:/Strata/releases/hakua033-public-assets.receipt.json',
                STRATA_NATIVE_SOURCE_ROOT='H:/Strata/worktrees/native-058-source-20261111',
-               STRATA_NATIVE_SOURCE_COMMIT=commit,
+               STRATA_NATIVE_SOURCE_COMMIT=frozen['sourceCommit'],
                STRATA_NATIVE_MANIFEST_SHA256=sha(RES / 'engine-bundle/0.5.8-windows-x86_64-cuda-cuda13/engine-component.json'),
                CARGO_TARGET_DIR=str(TARGET), CARGO_BUILD_JOBS='5', CMAKE_BUILD_PARALLEL_LEVEL='5',
                NODE_OPTIONS='--max-old-space-size=1024', RUSTC_WRAPPER='', RUSTC_WORKSPACE_WRAPPER='')

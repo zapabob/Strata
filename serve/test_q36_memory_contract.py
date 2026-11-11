@@ -247,7 +247,7 @@ class Q36MemoryContract(unittest.TestCase):
         root = Path(__file__).resolve().parents[1]
         output = subprocess.run(
             [
-                os.environ["STRATA_TEST_NODE_EXE"],
+                os.environ.get("STRATA_TEST_NODE_EXE", "node"),
                 str(
                     root / "apps/host/tests/helpers/native-family-consumer-fixture.mjs"
                 ),

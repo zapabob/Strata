@@ -65,7 +65,7 @@ const saved = { schema: 1, defaults: { [computer+'\nq36']: 'q', [computer+'\nhik
 ] };
 
 async function fixture(t, id, profiles = empty, draft = null, allowRun = false, hw = hardware) {
-    const home = await mkdtemp(join(tmpdir(), 'strata-e2-component-'));
+    const home = await mkdtemp(join(tmpdir(), 's-e2-'));
     const dirs = Object.fromEntries(['home','local','roaming','workspace','models','components','runtime','tmp'].map(name=>[name,join(home,name)]));
     await Promise.all(Object.values(dirs).map(path=>mkdir(path,{recursive:true})));
     const html = join(home,'index.html'); await writeFile(html,'<!doctype html><html><body><div id="root"></div></body></html>');

@@ -49,7 +49,7 @@ class Entrypoint(unittest.TestCase):
         self.log = self.tmp / "calls.log"
         text = (ROOT / "docker" / "entrypoint.sh").read_text(encoding="utf-8")
         text = (text.replace("/opt/strata", str(self.tmp / "opt")).replace("/data", str(self.tmp / "data"))
-                .replace("/run/strata-phase", str(self.tmp / "phase")).replace("mkdir -p ", "mkdir -p " + str(self.tmp / "run") + " ", 1))
+                .replace("/run/strata-phase", str(self.tmp / "phase")).replace(" /run ", " " + str(self.tmp / "run") + " "))
         self.script = self.tmp / "entry.sh"
         self.script.write_text(text, encoding="utf-8")
 

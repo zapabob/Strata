@@ -36,7 +36,9 @@ commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=Tr
 assert not subprocess.check_output(['git', 'status', '--porcelain'], cwd=ROOT)
 native = load(OUT / 'app-058-components/staged-native.json')
 control = load(OUT / 'app-058-components/control-build.json')
-assert native['ok'] and native['signatureVerified'] and native['nativeSourceCommit'] == commit
+frozen = load(OUT / 'frozen-source.json')
+subprocess.run([str(RES / 'node/node.exe'), str(Path(__file__).with_name('source-binding.mjs')), frozen['sourceRoot'], frozen['sourceCommit']], check=True, timeout=90)
+assert native['ok'] and native['signatureVerified'] and native['nativeSourceCommit'] == frozen['sourceCommit']
 assert control['ok'] and control['sourceCommit'] == commit and control['controlVersion'] == PRODUCT
 assert (RES / 'control/COMMIT').read_text().strip() == commit
 assert (RES / 'control/VERSION').read_text().strip() == PRODUCT

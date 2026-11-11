@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createWorkspaceFile, listWorkspaceFiles, readWorkspaceFile, renameWorkspaceFile, restoreWorkspaceFile, trashWorkspaceFile, updateWorkspaceFile, WORKSPACE_TEXT_LIMIT } from '../server/workspace-files.mjs';
@@ -69,6 +69,17 @@ test('case-only renames keep bytes while a different existing entry is never rep
   entry = readWorkspaceFile(root, 'oldname.md');
   assert.throws(() => renameWorkspaceFile(root, { path: entry.path, newPath: 'another.md', revision: entry.revision }), { status: 409 });
   assert.equal(readFileSync(join(root, 'another.md'), 'utf8'), 'another original');
+});
+
+test('a separately named case-variant hardlink is never replaced', t => {
+  const { root } = fixture(t);
+  writeFileSync(join(root, 'CaseLink.md'), 'retained');
+  if (existsSync(join(root, 'caselink.md'))) return t.skip('The filesystem resolves both spellings to one entry');
+  linkSync(join(root, 'CaseLink.md'), join(root, 'caselink.md'));
+  const entry = readWorkspaceFile(root, 'CaseLink.md');
+  assert.throws(() => renameWorkspaceFile(root, { path: entry.path, newPath: 'caselink.md', revision: entry.revision }), { status: 409 });
+  assert.ok(readdirSync(root).includes('CaseLink.md'));
+  assert.ok(readdirSync(root).includes('caselink.md'));
 });
 
 test('Windows saves retain destination access rules, named streams and the previous contents', { skip: process.platform !== 'win32' }, t => {

@@ -755,7 +755,9 @@ int64_t qsa_kv_resident() { return g_kv_resident; }
 int64_t qsa_kv_resident_min() { return 20480; }
 uint64_t qsa_kv_host_bytes() { return g_kv_host_bytes; }
 
-uint64_t qsa_state_bytes(const ModelGeometry& g, int64_t max_cells, bool with_rope, int64_t ring_cells) {
+uint64_t qsa_state_bytes(const ModelGeometry& g, int64_t max_cells, bool with_rope, int64_t ring_cells, uint64_t native_bytes) {
+    // Native CUDA cache arenas are not implemented by this backend.
+    if (native_bytes) return 0;
     const QsaShapes s = qsa_shapes(g);
     const KvPlan p = kv_plan(s, max_cells, ring_cells);
     uint64_t n = 0;
@@ -775,7 +777,8 @@ uint64_t qsa_state_bytes(const ModelGeometry& g, int64_t max_cells, bool with_ro
 }
 
 uint64_t qsa_state_init(const ModelGeometry& g, int64_t max_cells, void* base, QsaState& st,
-                        const QsaState* share_rope, int64_t ring_cells) {
+                        const QsaState* share_rope, int64_t ring_cells, uint64_t native_bytes) {
+    if (native_bytes) return 0;
     const QsaShapes s = qsa_shapes(g);
     const KvPlan p = kv_plan(s, max_cells, ring_cells);
     const int64_t pages = p.pages;

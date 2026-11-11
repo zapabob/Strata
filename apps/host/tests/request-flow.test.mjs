@@ -92,7 +92,7 @@ test('Serving cancellation stops active and queued demo requests; test keys enfo
   const home = await mkdtemp(join(tmpdir(), 'strata-request-host-'));
   await mkdir(join(home, 'data'));
   const id = 'qwen38-q4_k_m';
-  await writeFile(join(home, 'data/state.json'), JSON.stringify({ installed: { [id]: { installedAt: new Date().toISOString(), bytes: 491400032, simulated:true } }, beginner:{priority:'balanced',contextLength:'32k',readImages:false,gpuIdle:'never'}, current: id, loaded: id }));
+  await writeFile(join(home, 'data/state.json'), JSON.stringify({ installed: { [id]: { installedAt: new Date().toISOString(), bytes: 491400032, simulated:true } }, beginner:{priority:'balanced',contextLength:'32k',readImages:false,gpuIdle:'never'}, expert:{'gpu.layers':'All layers'}, current: id, loaded: id }));
   const socket = http.createServer(); const port = await listen(socket); await close(socket);
   const host = spawn(process.execPath, ['server/index.mjs'], { cwd: join(import.meta.dirname, '..'), env: { ...process.env, STRATA_HOME:home,STRATA_MODELS_DIR:join(home,'models'), STRATA_PORT: String(port), STRATA_REAL_ENGINE: '0' }, stdio: 'ignore' });
   const base = `http://127.0.0.1:${port}`;

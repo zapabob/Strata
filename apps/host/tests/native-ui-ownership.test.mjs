@@ -41,7 +41,7 @@ window.__root=createRoot(document.getElementById('root'));window.__pollDelay=nat
 const job = (state,summary='Operation A')=>({id:'job-A',kind:'load',model:'A',state,summary,error:state==='error'?'A failed':null,result:null,startedAt:'2026-11-06T00:00:00Z'});
 const state = jobs=>({available:true,jobs,instances:[],fields:[],catalog:{families:[],contexts:[32768]},installed:{models:[]},hardware:{ram_gb:32,gpus:[]}});
 async function fixture(t,kind='settings',jobs=[]) {
-    const home=await mkdtemp(join(tmpdir(),'strata-e3c-component-'));
+    const home=await mkdtemp(join(tmpdir(),'s-e3-'));
     const dirs=Object.fromEntries(['home','local','roaming','workspace','models','components','runtime','tmp'].map(n=>[n,join(home,n)]));
     await Promise.all(Object.values(dirs).map(p=>mkdir(p,{recursive:true})));
     const html=join(home,'index.html');await writeFile(html,'<!doctype html><div id="root"></div>');

@@ -59,7 +59,7 @@ class Run(unittest.TestCase):
         env = dict(os.environ, PROCESSOR_ARCHITECTURE="ARM64", STRATA_FEED="http://127.0.0.1:9")
         env.pop("PROCESSOR_ARCHITEW6432", None)
         done = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(PS1)],
-                              capture_output=True, text=True, env=env, timeout=120)
+                              capture_output=True, encoding="oem", errors="replace", env=env, timeout=120)
         self.assertNotEqual(done.returncode, 0)
         self.assertIn("Windows on ARM PC", done.stderr + done.stdout)
         self.assertNotIn("Downloading", done.stdout)

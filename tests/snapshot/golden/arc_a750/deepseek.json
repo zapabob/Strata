@@ -74,7 +74,9 @@
     "env_set": {
      "STRATA_DS4_SLOT_DIR": "<ROOT>/<STATE>/launch/ds4-slots",
      "STRATA_DS4_SLOT_GB": "2",
-     "STRATA_DS4_SLOT_KEEP": "1"
+     "STRATA_DS4_SLOT_KEEP": "1",
+     "STRATA_REQUIRE_Q36_KV": "0",
+     "STRATA_REQUIRE_Q36_PRIVATE_CACHE": "0"
     },
     "notes": []
    }
@@ -108,6 +110,7 @@
     }
    ],
    "config_file": {
+    "arch": "deepseek41",
     "exe": "<ROOT>/engine/strata-dsv41",
     "args": [
      "--pack",
@@ -126,7 +129,6 @@
     "cwd": "<REPO>",
     "tokenizer": "<ROOT>/data/packs/deepseek/tokenizer",
     "model_name": "deepseek-v4.1-flash",
-    "arch": "deepseek41",
     "log": "<ROOT>/install/strata-deepseek-v4.1-flash-ist-das-2.00bpw.log",
     "lib_dirs": [],
     "port": 18500,
@@ -159,19 +161,21 @@
     "env_set": {
      "STRATA_DS4_SLOT_DIR": "<ROOT>/install/ds4-slots",
      "STRATA_DS4_SLOT_GB": "2",
-     "STRATA_DS4_SLOT_KEEP": "1"
+     "STRATA_DS4_SLOT_KEEP": "1",
+     "STRATA_REQUIRE_Q36_KV": "0",
+     "STRATA_REQUIRE_Q36_PRIVATE_CACHE": "0"
     },
     "notes": []
    }
   },
   "app_models": {
    "entry": "app_models",
-   "command": "Models screen: Load deepseek-v4.1-flash-ist-das-2.00bpw with Drafting = Auto",
+   "command": "Models screen: Load deepseek-v4.1-flash-ist-das-2.00bpw with model-family defaults",
    "fetches": [],
    "control_calls": [
     {
      "call": "draftingPlan",
-     "mode": "auto",
+     "mode": null,
      "noSplit": false,
      "result": {
       "needed": false,
@@ -193,6 +197,7 @@
     }
    ],
    "config_file": {
+    "arch": "deepseek41",
     "exe": "<ROOT>/engine/strata-dsv41",
     "args": [
      "--pack",
@@ -211,7 +216,6 @@
     "cwd": "<REPO>",
     "tokenizer": "<ROOT>/data/packs/deepseek/tokenizer",
     "model_name": "deepseek-v4.1-flash",
-    "arch": "deepseek41",
     "log": "<ROOT>/install/strata-deepseek-v4.1-flash-ist-das-2.00bpw.log",
     "lib_dirs": [],
     "port": 18500,
@@ -219,7 +223,6 @@
     "backend": "sycl",
     "host": "127.0.0.1",
     "open_browser": false,
-    "drafting": "auto",
     "mcp": {},
     "aliases": [
      "deepseek-v4.1-flash-ist-das-2.00bpw"
@@ -245,7 +248,9 @@
     "env_set": {
      "STRATA_DS4_SLOT_DIR": "<ROOT>/install/ds4-slots",
      "STRATA_DS4_SLOT_GB": "2",
-     "STRATA_DS4_SLOT_KEEP": "1"
+     "STRATA_DS4_SLOT_KEEP": "1",
+     "STRATA_REQUIRE_Q36_KV": "0",
+     "STRATA_REQUIRE_Q36_PRIVATE_CACHE": "0"
     },
     "notes": []
    }

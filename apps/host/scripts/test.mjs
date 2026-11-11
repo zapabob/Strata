@@ -11,13 +11,19 @@ import {mkdtempSync,mkdirSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-const scratch=mkdtempSync(join(tmpdir(),'strata-host-suite-profile-'));
+// Chrome's POSIX singleton socket has a small path limit. CI's nested TMPDIR
+// leaves too little space for even a fresh browser profile; keep our private
+// suite root short while retaining the same filesystem isolation guard.
+const scratch=mkdtempSync(join(process.platform==='win32'?tmpdir():'/tmp','sh-'));
 const testTemp=join(scratch,'tmp');mkdirSync(testTemp);
 // Default command cwd is os.homedir(); make the private profile before any
 // parallel test starts rather than relying on another fixture to create it.
 for(const name of ['home','Local','Roaming','components','xdg-data','xdg-state','xdg-config'])mkdirSync(join(scratch,name));
 const guard=pathToFileURL(join(root,'scripts/test-fs-guard.mjs')).href;
 const env=isolatedTestEnvironment(process.env,{STRATA_TEST_SCRATCH:scratch,TEMP:testTemp,TMP:testTemp,TMPDIR:testTemp,HOME:join(scratch,'home'),USERPROFILE:join(scratch,'home'),STRATA_HOME:join(scratch,'home'),STRATA_SETTINGS_FILE:join(scratch,'app-settings.json'),STRATA_COMPONENTS_DIR:join(scratch,'components'),LOCALAPPDATA:join(scratch,'Local'),APPDATA:join(scratch,'Roaming'),XDG_DATA_HOME:join(scratch,'xdg-data'),XDG_STATE_HOME:join(scratch,'xdg-state'),XDG_CONFIG_HOME:join(scratch,'xdg-config')});
+// Chromium resolves the Windows account token through its registered profile.
+// Browser data still use each fixture's explicit disposable user-data directory.
+if(process.platform==='win32')env.STRATA_TEST_WINDOWS_PROFILE=process.env.USERPROFILE;
 // Each fixture selects its own Control and settings through its scratch HOME.
 // A caller's packaged Control/settings override would silently switch test routes
 // and share state between otherwise independent fixture homes.

@@ -96,13 +96,14 @@ try {
   native.state();
   for (let i = 0; i < 100 && !probe; i++) await new Promise(r => setTimeout(r, 20));    // the host asks once, at its first state; the Load must start after the answer
   if (probe) { await probe.catch(() => {}); await new Promise(r => setTimeout(r, 100)); }
-  const args = which === 'models' ? { model: tag, values: { drafting: 'auto' } } : { model: tag };
+  const qwenDrafting = which === 'models' && family !== 'deepseek41';
+  const args = qwenDrafting ? { model: tag, values: { drafting: 'auto' } } : { model: tag };
   const job = await until(native.operation('load', args));
   if (job.state !== 'done') { console.error('Load ended in state ' + job.state + ': ' + (job.error ?? '')); exitCode = 3; }
   const fetchLog = join(root, 'shim-fetches.jsonl');
   const fetches = existsSync(fetchLog) ? readFileSync(fetchLog, 'utf8').split('\n').filter(Boolean).map(l => JSON.parse(l)) : [];
   const result = {
-    command: which === 'models' ? `Models screen: Load ${tag} with Drafting = Auto` : `plain Load ${tag}`,
+    command: which === 'models' ? `Models screen: Load ${tag}${qwenDrafting ? ' with Drafting = Auto' : ' with model-family defaults'}` : `plain Load ${tag}`,
     control_calls: calls.map(c => (c.length === 2 && typeof c[1] === 'object' ? { call: c[0], ...c[1] } : { call: c[0] })),
     fetches, config_file: saved.length ? saved[saved.length - 1] : null,
     job: { state: job.state, summary: job.summary ?? null, drafterNote: job.drafterNote ?? null },

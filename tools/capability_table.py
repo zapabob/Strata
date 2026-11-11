@@ -46,6 +46,7 @@ def column_for(os_name, arch, backend):
 
 def packages(release, family):
     """column id -> sorted list of 'variant' strings for the family's packages in the release."""
+    release = release.get("upstream", release)
     found = {}
     wanted = family.get("backends")
     for name in release["assets"]:
@@ -122,6 +123,8 @@ def block(cap, release, key):
 
 
 def page(cap, release):
+    # This hardware table describes the upstream packages, not the Windows fork.
+    release = release.get("upstream", release)
     cols = cap["columns"]
     out = ["# Which model runs on which hardware", "",
            "This page is built by `tools/capability_table.py` from [docs/data/capabilities.json](data/capabilities.json) and the package names of release %s ([docs/data/release.json](data/release.json)). Do not edit it by hand." % release["tag"],
