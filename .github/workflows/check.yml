@@ -212,8 +212,8 @@ jobs:
       max-parallel: 1
       matrix:
         include:
-          - { name: Python tools/, only: py-tools }
           - { name: host typecheck + test + build, only: "host-typecheck,host-test,host-build" }
+          - { name: Python tools/, only: py-tools }
     steps:
       - uses: actions/checkout@v4
         with:

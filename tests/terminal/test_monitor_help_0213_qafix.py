@@ -63,13 +63,19 @@ class Help(unittest.TestCase):
         asyncio.run(go())
 
     def test_narrow_terminals_wrap_the_list_at_the_keys_and_show_every_key(self):
-        async def go(width, height):
+        async def go(width, height, classic):
             app = MonitorApp(Source(metrics("generating")), None, interval=0.2)
+            # Exercise both footer styles on every OS without changing platform globals.
+            app.classic = classic
+            app.margin = 3 if classic else 2
             async with app.run_test(size=(width, height)) as pilot:
                 await pilot.pause(0.5)
                 for key in ("1", "2"):
                     await pilot.press(key)
                     await pilot.pause(0.3)
+                    ordinary = last_line(app).strip()
+                    self.assertTrue(ordinary)
+                    self.assertNotIn("Space freeze", ordinary)
                     await pilot.press("question_mark")
                     await pilot.pause(0.8)               # polls pass; it stays
                     rows = [s.text.rstrip() for s in app.screen._compositor.render_strips()]
@@ -82,12 +88,13 @@ class Help(unittest.TestCase):
                     self.assertGreater(len(app._help_wrapped(width)), 1, "narrower than the line: it wraps")
                     await pilot.press("question_mark")
                     await pilot.pause(0.3)
-                    idle = app.classic.get('tip') if app.classic and app.classic.get('tip') else 'Read only'
-                    visible = last_line(app).strip()
-                    self.assertTrue(visible)
-                    self.assertTrue(idle.startswith(visible), f'ordinary footer is not a visible prefix: {visible!r}')
+                    self.assertEqual(last_line(app).strip(), ordinary,
+                                     "Closing help must restore the complete visible ordinary footer")
+        styles = (None, {"tip": "For the full look, use Windows Terminal with Cascadia Mono in Settings > Profiles."})
         for size in ((80, 24), (60, 16)):
-            asyncio.run(go(*size))
+            for classic in styles:
+                with self.subTest(size=size, classic=bool(classic)):
+                    asyncio.run(go(*size, classic))
 
 
 if __name__ == "__main__":

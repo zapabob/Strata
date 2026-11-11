@@ -318,3 +318,18 @@ the same-commit retry. Job-local public DNS and bounded strict apt index retries
 address that preparation failure without changing compiler images, versions,
 build flags, package authentication or test requirements. Full exact-head CI
 remains required before publication; the installed runtime sources are unchanged.
+
+The c2d8140c run passed all five backend compile jobs and Mac tools (2,119
+passed, 89 skipped, 838 subtests passed). Mac host did not acquire a runner and
+was cancelled with explicit capacity annotations. GitHub rejected its individual
+retry while the Python suites were still active. Linux full tests reported one
+test-only footer assertion failure, with 3,846 tests and 491 subtests passing.
+The earlier prefix repair incorrectly used only Read only as the complete
+default footer. The regression now requires exact restoration of the visible
+footer observed before opening help, and exercises both default and long classic
+console tips at both narrow sizes on every OS. All help keys remain mandatory.
+This does not change the distributed Terminal or require a runtime rebuild.
+The focused four-test module passed locally with both footer styles at both
+sizes. The required Mac matrix now schedules the still-unexecuted host suite
+first, then tools; both remain mandatory and serial. The new exact-head run
+repeats the full Python suites with this corrected regression.
