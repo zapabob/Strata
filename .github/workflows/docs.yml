@@ -6,6 +6,7 @@ name: Docs
 # Archived pages (history/, release notes, bench/results) are not checked; their baseline is history/LINK-BASELINE.md.
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:

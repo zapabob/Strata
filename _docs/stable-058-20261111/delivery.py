@@ -234,7 +234,7 @@ def bundle() -> None:
     ui = load(OUT / 'installed-ui-verified.json')
     require(ui['ok'] and ui['actualInstalledExe'] and ui['mockModelOnly'], 'Installed WebView2 checks required')
     require(load(OUT / 'receipts' / ('installed-ui-' + ui['attempt'] + '.json'))['passed'], 'Contained UI run required')
-    require(load(OUT / 'receipts/nsis-cleanup-final.json')['passed'], 'NSIS cleanup scenarios required')
+    require(load(OUT / 'receipts/nsis-cleanup-final-r2.json')['passed'], 'NSIS cleanup scenarios required')
     ci = load(OUT / 'ci-verified.json')
     require(ci['ok'] and ci['sourceCommit'] == load(OUT / 'app-build.json')['sourceCommit'], 'CI must qualify the exact app build source')
     final_native = load(OUT / 'native-final-verified.json')

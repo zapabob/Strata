@@ -31,5 +31,7 @@ MODES['install-followup'] = ['-m', 'pytest', '-q', '-p', 'no:cacheprovider',
     'tools/test_setup_cuda_repo.py', 'tools/test_setup_engine_hash.py',
     'tools/test_setup_feed_models.py', 'tools/test_setup_oldcpu.py',
     'tools/test_setup_pins.py', 'tools/test_setup_rerun_size.py']
+MODES['mac-fixture-final'] = ['-m', 'pytest', '-q', '-p', 'no:cacheprovider',
+    'tools/test_setup_choices.py', 'tools/test_setup_feed_models.py']
 environment = dict(os.environ, STRATA_TEST_NODE_EXE=str(ROOT / 'apps/desktop/src-tauri/resources/node/node.exe'), PYTEST_DISABLE_PLUGIN_AUTOLOAD='1')
 raise SystemExit(subprocess.call([sys.executable, '-X', 'utf8', '-B', *MODES[sys.argv[1]]], cwd=ROOT, env=environment))

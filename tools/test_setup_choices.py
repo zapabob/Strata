@@ -453,6 +453,7 @@ class HipVision(unittest.TestCase):
                 (bdir / "bin" / setup.VEXE).write_bytes(b"vision")
 
             with mock.patch.object(setup, "ROOT", root), mock.patch.object(setup, "cmake_build", cmake_build), \
+                    mock.patch.object(setup, "cpu_info", return_value=("fixture AVX2 CPU", True)), \
                     mock.patch.object(setup, "source_hash", lambda paths: vsrc if paths == setup.VISION_SOURCES else src):
                 quiet(setup.build_engine_hip, {"arch": "gfx1201"}, "llama", vision)
             return built, json.loads((eng / "BUILD.json").read_text()), (eng / setup.VEXE).exists()

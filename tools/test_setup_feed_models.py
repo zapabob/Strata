@@ -22,7 +22,6 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from types import SimpleNamespace
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -64,6 +63,14 @@ def own_path(**kw):
     return m
 
 
+class _PcSystem:
+    platform = 'linux'
+
+    def __getattr__(self, name):
+        # argv is changed after loading a fixture; forward each lookup live.
+        return getattr(sys, name)
+
+
 def fresh_setup(name="setup_under_test"):
     """setup.py loaded again under its own name, so a test's registrations never reach another test."""
     spec = importlib.util.spec_from_file_location(name, ROOT / "setup.py")
@@ -72,7 +79,7 @@ def fresh_setup(name="setup_under_test"):
     if sys.platform == 'darwin':
         # These fresh modules model x86 PC installation; Mac feed tables have
         # separate mac_fit tests. Keep the interpreter's own platform intact.
-        mod.sys = SimpleNamespace(**dict(vars(sys), platform='linux'))
+        mod.sys = _PcSystem()
     return mod
 
 
@@ -114,6 +121,9 @@ class Base(unittest.TestCase):
             mac_fit.MAC_ABOUT.update(saved[1])
             mac_fit.FEED_FAMILIES[:] = saved[2]
         self.addCleanup(restore_mac)
+        if sys.platform == 'darwin':
+            import strata_mcp
+            self.enterContext(mock.patch.object(strata_mcp, 'sys', _PcSystem()))
         self.setup = fresh_setup()
 
     def signed_feed(self, name="feed", sequence=1, models=None) -> str:
@@ -350,6 +360,13 @@ class PinVerifyAndBad(Base):
 
 
 class RefusalsAndOffline(Base):
+    def test_pc_system_proxy_preserves_later_cli_arguments(self):
+        proxy = _PcSystem()
+        arguments = ['setup.py', '--family', 'qwen35-test', '--check']
+        with mock.patch.object(sys, 'argv', arguments):
+            self.assertIs(proxy.argv, arguments)
+            self.assertEqual(proxy.platform, 'linux')
+
     def test_a_family_the_engine_does_not_run_is_listed_as_not_available_and_never_added(self):
         result = feed_models.apply(self.setup, parsed(own_path(), flash_next(id="later-one", family="qwen5new")), {"qwen4exp"})
         self.assertEqual(result.registered, [])

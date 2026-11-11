@@ -238,3 +238,18 @@ changes the order of installation and qualification, not the final release gates
 The second Control build completed from 42ca8ebd, with actual source and pinned
 runtime verified. Its earlier rejected wrong-commit invocation did not build or
 stage anything; that invocation log remains retained separately.
+
+Preinstall composition completed and verified the signed payload and its archive.
+Its pending-model status is explicit; the full native protocol continues against
+the same bytes. Backup verified 3,727 user files (99,920,664 bytes) plus the full
+old managed app. All six actual NSIS cleanup scenarios passed in fresh fixtures.
+The first NSIS invocation used a missing PowerShell path and executed no fixture;
+its failed receipt remains separate from the successful observed-path r2 run.
+
+Mac tools CI now passes 2,113 tests with five remaining simulated-PC fixture
+failures. The HIP fixture now declares its simulated AVX2 CPU rather than probing
+the runner. The fresh setup sys proxy forwards argv live, and the feed catalog's
+MCP fixture selects a private PC sys object. The scoped Windows run passed all
+99 tests, including a regression for later CLI argument replacement. No new
+runtime change or Control rebuild is needed; all 401 packaged Control source
+files still match. Docs now supports manual exact-source workflow dispatch.
