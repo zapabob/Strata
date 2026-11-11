@@ -346,3 +346,21 @@ The first post-fix local attempt stopped for external memory pressure with zero
 owned processes left, before yielding a test result. The installed Strata had
 zero runtime/native instances and zero active turns. The unchanged 3-GiB floor
 is retained; cloud CI must verify this repair before formal publication.
+
+On 1088c7d9, all twelve executed Checks jobs passed, including both full Python
+suites and Mac tools (2,119 tests and 838 subtests). Three consecutive Mac host
+attempts never acquired an ARM64 runner; all had zero steps and explicit hosted
+capacity annotations. The same-commit individual retries retained all twelve
+successes. A fresh local post-fix 7-GiB-caller attempt passed both lifecycle cases
+after RAM headroom recovered, with zero owned processes left. The application
+host was no longer listening; no additional model stop or force kill was used.
+The required Mac host/tools suites now use the standard macos-26-intel pool.
+The separate Metal job remains macos-26 ARM64. All eight exact-head workflows
+and the same thirteen named Checks jobs are repeated; no test or gate is waived.
+The installed app, Control and native payloads remain byte-identical.
+The first Intel-runner push was rejected because origin/main had independently
+received 075b951b (FUNDING.yml only). The unpublished CI change was rebased
+normally onto that commit; the incoming funding update remains intact. The
+runtime equivalence validator explicitly allows only this additional GitHub
+display metadata file and verifies it is absent from installed/extracted app,
+host and Control payloads. All existing source and exact-installer checks remain.

@@ -20,10 +20,15 @@ def verify(ci_commit, app_commit):
         return (name.startswith(('_docs/', 'tests/', 'apps/host/tests/'))
                 or name in ('apps/host/scripts/test.mjs', 'apps/host/scripts/test-fs-guard.mjs',
                             'apps/host/scripts/test-environment.mjs', 'tools/conftest.py',
-                            'tools/perf131k/windows_job.py')
+                            'tools/perf131k/windows_job.py', '.github/FUNDING.yml')
                 or name.startswith('tools/test_') and name.endswith('.py')
                 or name.startswith('.github/workflows/') and name.endswith(('.yml', '.yaml')))
     assert all(unshipped(name) for name in names), 'A distributed runtime/build input changed; rebuild the app'
+    if '.github/FUNDING.yml' in names:
+        # GitHub's sponsor display metadata is not an app/Control input.
+        for base in (APP, APP / 'host', APP / 'control', OUT / 'extracted',
+                     OUT / 'extracted/host', OUT / 'extracted/control'):
+            assert not (base / '.github/FUNDING.yml').exists(), 'Funding metadata is now distributed; inspect the package input'
     changes = {}
     for name in names:
         values = []
