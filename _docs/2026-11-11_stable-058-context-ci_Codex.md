@@ -333,3 +333,16 @@ The focused four-test module passed locally with both footer styles at both
 sizes. The required Mac matrix now schedules the still-unexecuted host suite
 first, then tools; both remain mandatory and serial. The new exact-head run
 repeats the full Python suites with this corrected regression.
+
+The 188ec684 Mac host reached and passed typecheck/build. Host tests passed
+2,059 cases with two lifecycle failures: the remembered demo model was not
+adopted, so directory protection returned 200 instead of 409 and cancellation
+found no active request. A private Windows reproduction supplied the Mac
+runner's 7-GiB capacity and reproduced both exact failures. These fixtures had
+inherited physical hardware instead of the existing ROOMY_HOST lifecycle fixture.
+Both child hosts now explicitly select that synthetic hardware, matching other
+HTTP lifecycle tests; real capacity checks and all assertions are unchanged.
+The first post-fix local attempt stopped for external memory pressure with zero
+owned processes left, before yielding a test result. The installed Strata had
+zero runtime/native instances and zero active turns. The unchanged 3-GiB floor
+is retained; cloud CI must verify this repair before formal publication.
