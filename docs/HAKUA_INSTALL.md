@@ -5,8 +5,8 @@
 Use the [0.5.7 setup EXE](https://github.com/zapabob/Strata/releases/download/v0.5.7/Strata-0.5.7-windows-x64-setup.exe)
 or [complete tar.7z](https://github.com/zapabob/Strata/releases/download/v0.5.7/Strata-0.5.7-windows-x64.tar.7z),
 and compare [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.5.7/SHA256SUMS.txt).
-This is the stable zapabob fork release. It becomes GitHub Latest and the mutable
-latest alias; older releases and immutable tags remain available.
+This is the stable zapabob fork release. It is selected by GitHub Latest and the
+mutable latest alias; older releases and immutable tags remain available.
 
 Finish requests, unload models, back up app data and quit Strata, including its
 tray icon. Run the new EXE using the existing per-user installation folder.

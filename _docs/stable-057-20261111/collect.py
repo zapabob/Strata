@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import re
 import shutil
+import psutil
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = Path('H:/Strata/releases/stable-057-20261111-codex')
@@ -58,10 +59,19 @@ def main():
     assert public['mutableLatestAliasMatches'] and public['latest'] == 'v0.5.7'
     draft = load(OUT / 'draft-verified.json')
     assert draft['ok']
+    # Export only the explicitly requested persisted flags, never the private state document.
+    private_state = load(Path('C:/Users/downl/.strata/data/state.json'))
+    assert private_state['skillLearning']['enabled'] and private_state['skillLearning']['autoApply']
+    final_state = {'persistedLearningEnabled': True, 'persistedAutomaticApplicationEnabled': True,
+        'loadedModelRecorded': bool(private_state.get('loaded')),
+        'appRunningAtFinalCheck': any(p.info.get('exe', '').replace('\\', '/').lower() ==
+            'c:/users/downl/appdata/local/programs/strata/strata-desktop.exe'
+            for p in psutil.process_iter(['exe']) if p.info.get('exe')),
+        'privateStatePublished': False}
     report = {'releaseQualified': False, 'appBuild': load(OUT / 'app-build.json'),
         'nsisShellBinding': load(OUT / 'nsis-shell-binding.json'), 'installed': load(OUT / 'installed.json'),
         'backup': load(OUT / 'backup.json'), 'installedWebView2': ui, 'normalStartup': normal,
-        'normalUnloadAfterUserApproval': load(OUT / 'normal-unload.json'),
+        'normalUnloadAfterUserApproval': load(OUT / 'normal-unload.json'), 'finalInstalledState': final_state,
         'readmeLanguagesChecked': 8, 'packagedSelfTestsPassed': 13, 'nsisCleanupScenariosPassed': 6,
         'quality': load(OUT / 'assets/QUALITY.json'), 'signedFeed': load(OUT / 'signed-feed-check.json'),
         'cloudCIObservation': load(OUT / 'exact-sha-ci.json'),

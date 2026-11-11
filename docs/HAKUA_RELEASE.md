@@ -14,8 +14,8 @@ they remain documented. New workflow checks use real Harness/tool execution and
 a scripted model. General model quality, full-window generation and GPU
 concurrency remain unqualified, and `releaseQualified=false` is retained.
 
-The user explicitly requested formal distribution: v0.5.7 becomes GitHub Latest
-and the mutable latest alias. All older releases, assets and immutable tags
+The user explicitly requested formal distribution: v0.5.7 is selected by GitHub
+Latest and the mutable latest alias. All older releases, assets and immutable tags
 remain unchanged. The records below describe their original versions and
 publication state, including the former stable 0.5.1 designation.
 

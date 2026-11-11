@@ -2,20 +2,30 @@
 
 ## Current local app update (2026-11-11)
 
-App 0.5.6-local.1 is installed from the five-job candidate in
-`H:/Strata/releases/search-056-20261111-codex`. It adds `/btw`, `/deepresearch`
-and pinned RustXNG 0.31.1 Full; app source is
-`6da4a421eeddade8cab74c7e6b80c9746031c721`. Native 0.5.5 and Control 0.5.6
-remain the separately frozen sources listed below. The actual NSIS overwrite
-matched 29552 managed files and preserved 3719 inventoried user files. The
-private r3 backup and failed attempts are retained. Installed WebView2 lifecycle
-checks use an explicit local model fixture, with real RustXNG searches; they
-do not qualify model/GPU performance. Normal startup is unloaded and has no
-debug arguments. This PC selects RustXNG; other tool/approval choices remain
-unchanged. `releaseQualified=false`; stable/latest and historical assets stay
-separate. See `_docs/2026-11-11_btw-deepresearch-rustxng_Codex.md` for actual
-publication/readback status and the broad-suite failures. The 0.5.5 records
-below remain historical evidence.
+Stable app 0.5.7 is installed from the five-job formal build in
+`H:/Strata/releases/stable-057-20261111-codex`; exact app build source is
+`427f77ca225595b68cee750c5a367d8e6cee49f4`. It includes real tool-free `/btw`
+subagents, private workflow skill learning, automatic matching-skill application,
+`/deepresearch` and RustXNG 0.31.1 Full. Native 0.5.5 and Control 0.5.6 remain
+the separately frozen sources listed below. The standard NSIS overwrite matched
+29555 managed files and preserved all 3731 inventoried user files; the private
+backup and failed attempts remain retained. Local checks passed: 65 focused host,
+15 actual Harness, 13 packaged, six NSIS cleanup and 16 installed WebView2 cases.
+The model API in those workflow checks is scripted; RustXNG searches are real.
+They do not qualify general model quality, full-window generation or GPU
+concurrency. Existing broader-suite failures and absent exact-SHA cloud CI remain
+documented; `releaseQualified=false` is unchanged.
+
+This PC has learning and automatic application enabled; fresh profiles keep both
+off. RustXNG Full, other tools, keys and approval choices are preserved. Normal
+startup passed without debug arguments. After two resource-stopped uploads, the
+user separately approved normal stop/unload of one new active turn and one
+runtime model; no force kill or absent native unload is claimed. Keep the RAM,
+commit and disk floors unchanged. Formal `v0.5.7`, GitHub Latest and the mutable
+`latest` alias are published. Older immutable tags, releases and assets remain
+preserved. See `_docs/2026-11-11_stable-057-release_Codex.md` and its linked
+verification receipts for exact publication/readback status. The 0.5.6/0.5.5
+records and installation measurements below remain historical evidence.
 
 ## Local working location and build concurrency
 
@@ -63,7 +73,7 @@ existing executable defaults may differ, so inspect the plan and choose the fami
 
 ## Installing this Hakua fork
 
-For a Hakua Windows request, use [docs/HAKUA_INSTALL.md](docs/HAKUA_INSTALL.md) and the [fork release](https://github.com/zapabob/Strata/releases/tag/v0.5.1): `Strata-0.5.1-windows-x64-setup.exe`. The same NSIS installer, signed CUDA component, Control and instructions are also in `Strata-0.5.1-windows-x64.tar.7z`. The app includes private Node/Python, Control 0.5.1 and Hakua-memory 0.3.5. The signed stable feed offers native engine 0.5.1; unchanged PrismML/PQ2_0 and TurboQuant packages remain 0.4.0. Use the immutable SemVer tag `v0.5.1`, the `latest` alias and GitHub Latest. Preserve older published assets. Read [docs/HAKUA_RELEASE.md](docs/HAKUA_RELEASE.md) for the measured limits and actual publication status. Native mapped-pack Qwen3.6 startup and six short private-cache requests passed with 4096 context cells. Full-window generation and low-precision model quality remain unqualified.
+For a Hakua Windows request, use [docs/HAKUA_INSTALL.md](docs/HAKUA_INSTALL.md) and the [stable fork release](https://github.com/zapabob/Strata/releases/tag/v0.5.7): `Strata-0.5.7-windows-x64-setup.exe`. The identical per-user Tauri NSIS installer, signed native 0.5.5 CUDA component, Control 0.5.6, instructions and checksums are also in `Strata-0.5.7-windows-x64.tar.7z`. The app carries private Node/Python; the GPU component remains separate and the EXE has no Windows code signature. Use immutable SemVer tag `v0.5.7`, the mutable `latest` alias and GitHub Latest. Preserve older published assets. Read [docs/HAKUA_RELEASE.md](docs/HAKUA_RELEASE.md) for independently measured native limits, retained broader test failures and actual publication status. The stable app designation does not qualify full-window generation or low-precision model quality; `releaseQualified=false` remains explicit.
 
 The model-family overview above is upstream reference. This fork Windows release has no native image input or separate native DeepSeek engine. See docs/HAKUA_RELEASE.md for the measured paths and limits.
 

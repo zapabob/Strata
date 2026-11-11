@@ -175,3 +175,41 @@ claimed unloaded. No force kill was used. Both instance lists and the active
 turn list were empty, and tool/approval choices were unchanged. Available RAM
 recovered to about 16.8 GiB; the third upload attempt keeps the same resource
 floors and retains the two interrupted receipts.
+
+## Completed stable publication and public readback
+
+The resumed upload completed with all 17 server asset sizes and SHA-256 digests
+matching the frozen bundle. The formal non-prerelease was published at
+2026-11-11 18:12:19 JST:
+[v0.5.7](https://github.com/zapabob/Strata/releases/tag/v0.5.7).
+Its annotated immutable tag resolves to
+`798b3a2173c6cf3ff42dec3688964c0d2d5bbdbd`. GitHub Latest selects v0.5.7;
+the mutable `latest` tag was promoted with its exact observed lease and now
+matches the v0.5.7 tag object. No older immutable tag was moved.
+
+An unauthenticated downloader then fetched all 17 public assets in full. Every
+size and SHA-256 matched. The stable `releases/latest/download` feed and its
+signature also matched the formal release. The post-publication inventory
+confirmed all 25 prior releases, their asset identities and all 25 prior
+immutable tags unchanged. The owned publication/readback trees finished with
+zero active processes; the three interrupted formal verification/upload
+attempts remain recorded separately rather than reported as passes.
+
+[Public verification](stable-057-20261111/PUBLIC_VERIFICATION.json) and
+[local build/install/workflow verification](stable-057-20261111/LOCAL_VERIFICATION.json)
+contain the exact asset digests and receipt hashes. They exclude private profile
+contents, credentials, backup inventories and fixture transcripts. The final
+read-only check found the app closed and no loaded model recorded. Persisted
+learning and automatic application were both enabled; no new app restart or
+user-task interruption was performed during that final check.
+
+Self-review-event: `ticket_completed`. The narrow project AGENTS current-app
+and installation paragraphs now point to the actually installed/published
+0.5.7 and these receipts. Their historical native evidence, resource floors,
+default-off behavior for fresh profiles and qualification limits stay explicit.
+The global AGENTS, skills, SOPs and memory were not changed. All delivery scripts
+parse; the revised collector ran successfully and checked all eight README
+languages. Changes after the frozen app source concern delivery recipes and
+documentation only. Existing expanded-suite failures, the unsigned Windows
+EXE and absence of matching exact-build-SHA cloud CI remain disclosed. This is
+the fork's stable Windows app release, with native `releaseQualified=false`.
