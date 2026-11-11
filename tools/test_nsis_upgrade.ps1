@@ -61,8 +61,8 @@ Section Uninstall
 SectionEnd
 "@|Set-Content -LiteralPath $nsi -Encoding utf8
   $env:TEMP=$temp;$env:TMP=$temp
-  & $NsisCompiler -V2 $nsi *> (Join-Path $case 'compile.log')
-  if($LASTEXITCODE -ne 0){throw "Fixture compilation failed: $scenario"}
+  $compiler=Start-Process -FilePath $NsisCompiler -ArgumentList @('/V2',"`"$nsi`"") -WindowStyle Hidden -Wait -PassThru -RedirectStandardOutput (Join-Path $case 'compile.log') -RedirectStandardError (Join-Path $case 'compile-error.log')
+  if($compiler.ExitCode -ne 0){throw "Fixture compilation failed: $scenario (exit $($compiler.ExitCode)); see compile.log and compile-error.log"}
   $lock=$null
   try{
    if($scenario -eq 'locked'){$lock=[IO.File]::Open((Join-Path $app 'engine-bundle\0.1.47\strata.exe'),[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::None)}

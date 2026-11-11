@@ -1,5 +1,22 @@
 # AGENTS.md
 
+## Current local app update (2026-11-11)
+
+App 0.5.6-local.1 is installed from the five-job candidate in
+`H:/Strata/releases/search-056-20261111-codex`. It adds `/btw`, `/deepresearch`
+and pinned RustXNG 0.31.1 Full; app source is
+`6da4a421eeddade8cab74c7e6b80c9746031c721`. Native 0.5.5 and Control 0.5.6
+remain the separately frozen sources listed below. The actual NSIS overwrite
+matched 29552 managed files and preserved 3719 inventoried user files. The
+private r3 backup and failed attempts are retained. Installed WebView2 lifecycle
+checks use an explicit local model fixture, with real RustXNG searches; they
+do not qualify model/GPU performance. Normal startup is unloaded and has no
+debug arguments. This PC selects RustXNG; other tool/approval choices remain
+unchanged. `releaseQualified=false`; stable/latest and historical assets stay
+separate. See `_docs/2026-11-11_btw-deepresearch-rustxng_Codex.md` for actual
+publication/readback status and the broad-suite failures. The 0.5.5 records
+below remain historical evidence.
+
 ## Local working location and build concurrency
 
 The user's primary working checkout is `C:/Users/downl/Documents/ChatGPT/Strata`

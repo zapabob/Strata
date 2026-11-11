@@ -60,7 +60,12 @@ Receipt: H:/Strata/releases/search-056-20261111-codex/rustxng-live.json.
 The first guarded attempt was refused before execution at the unchanged 3 GiB
 available-RAM floor. With the user's explicit authorization, the active Strata
 chat was normally stopped and its model normally unloaded. Hermes was untouched.
-The Strata window then closed normally and its process was confirmed absent.
+The first window-close observation was insufficient: Strata was still running
+in its tray. Backup admission refused that live process. To exit normally, the
+exact shell-preferences bytes were privately saved, tray behavior was temporarily
+disabled through the app API, and Alt+F4 exited the app. The original preferences
+were restored byte-for-byte and no installed app process remained. No live
+user process was forcibly terminated for the upgrade.
 
 The full host suite initially ran 2159 tests: 2013 passed, 29 failed, 117 skipped.
 A detached d9207991 baseline replayed every failing file: all 28 pre-existing
@@ -86,8 +91,9 @@ Use the narrow candidate QA checklist and retain baseline failures and receipts.
 Python commands use uv with the existing Python 3.12 interpreter and the project's
 preserved process/resource guard; large outputs and caches stay on H:.
 
-Build, installation, archive and publication remain in progress. No success for
-those stages is claimed yet.
+The production app source is frozen at
+6da4a421eeddade8cab74c7e6b80c9746031c721. The native and Control sources remain
+independent. Later recipe and documentation commits do not change the app bytes.
 
 Final pre-build focused checks: TypeScript passed; 37 tests passed, 3 explicitly
 optional Harness/browser tests skipped, 0 failed. The separately executed real
@@ -96,3 +102,89 @@ zero active owned processes and unchanged resource floors. `git diff --check`
 passes using the repository's configured CRLF normalization. A diagnostic run
 with core.autocrlf disabled treated existing CRLF endings as whitespace; it was
 not a source defect and no repository-wide line-ending rewrite was performed.
+
+## Build, extraction and backup
+
+The five-job production build passed. Installer SHA-256:
+fb91cd8866895645fb30880160e31a35c814b22c2be1c6b2551fceefe94f80ed
+(127079626 bytes). Its extracted shell differs from the unbundled Rust build
+only at Tauri's single official bundle-type marker, UNK to NSS. Complete byte
+comparison after that substitution passed. NSIS shell SHA-256:
+e987fde14ebab4ab27b8a10482c1972f22f6a36906287bf2b83dacc6724592ff.
+The original unbundled-shell receipt remains unchanged. Owning implementation:
+tauri-utils 2.10.2 src/platform.rs; binding receipt: nsis-shell-binding.json.
+
+The first extraction completed but serial hashing exceeded its 300-second
+budget. The next verification caught the bundle-marker difference in the
+verification assumption. Both failed receipts remain preserved. The corrected
+bounded five-worker verification matched 29552 managed files; all 13 actual
+packaged self-tests passed. No production acceptance check was removed.
+
+The first private backup was refused while the tray process remained live.
+The next sequential backup exceeded its 600-second budget; its partial directory
+remains preserved. A fresh five-worker backup, r3, passed complete source/copy
+hash and membership checks: 3719 inventoried user files, 100581931 bytes,
+plus the previous installed app and uninstall-registry export. Model weights
+were excluded from copying. The backup has a private current-user/SYSTEM ACL.
+Private inventories are not included in this repository or public artifacts.
+
+The production NSIS cleanup fixture passed all six scenarios: upgrade, fresh,
+empty, locked file, managed-folder junction and root junction. Initial compiler
+wrapper attempts reported failure despite a valid direct compilation. The
+PowerShell helper now waits for an explicit compiler process and reads its
+observed ExitCode, preserving stdout and stderr separately; the acceptance
+checks and production installer are unchanged. The r3 receipt records all six
+outcomes and expected refusal behavior for locked/linked paths.
+
+Candidate WebView2 QA passed nine checks with the real candidate shell and real
+RustXNG Full. Its language-model API is an explicit isolated local fixture;
+it establishes UI/request lifecycle behavior, not real-model quality or GPU
+throughput. The first UI attempt caught a missing client header in the fixture;
+r2 passed after correcting that fixture. Isolated desktop/mobile screenshots
+were inspected. No personal chat screenshot is published.
+
+## Actual overwrite and normal startup
+
+The standard NSIS overwrite passed under the resource guard (install-r1).
+All 29552 managed files match the extracted installer; all 3719 inventoried
+user files were unchanged immediately after installation. The installed exe
+reports product 0.5.6-local.1. The private r3 backup remains available.
+
+The actual installed shell/WebView2 passed all nine isolated UI checks
+(installed-ui-r1), including side question during live main output, no main
+cancellation or queuing, tool-free side API, separate durable aside, the
+deepresearch slash option, real RustXNG Full public search, reload persistence,
+and 390-pixel layout without horizontal overflow. Console/page errors: zero.
+The model API was a local fixture, explicitly not GPU/model qualification.
+
+The user app then started normally through its installed exe, outside QA, with
+no debug arguments or automatic model loading. Its own API reports matching
+host/shell 0.5.6-local.1, no native/runtime instances and a stopped supervisor.
+Only this PC's selected search provider changed from builtin to rustxng through
+the app API, as explicitly requested. The entire other tools view, key-set
+state and approval choices compare unchanged. RustXNG uses the pinned Full
+profile. The normal window is available with its model unloaded.
+
+The unchanged signed feed was freshly verified using only the packaged
+Control's bundled public keys; exactly one native and one Control package
+verified. No signing private key was accessed. Archive and public download
+checks are recorded below after completion.
+
+## Frozen distribution package
+
+bundle-r1 passed complete streamed 7z-to-tar readback of every member, with
+matching byte counts and SHA-256 hashes. The outer archive uses 7z Copy mode
+because its EXE/gzip/ZIP inputs are already compressed. Archive size:
+1674393778 bytes; SHA-256:
+14568efc35d53d8e0ab50b226ae6cf93a256780d470b0ab9a3f0cc598efbb60e.
+The 17 whitelisted release assets include the same EXE, unchanged signed native
+and Control packages/feed, exact RustXNG source/LICENSE/NOTICE, provenance,
+quality limits, bilingual instructions and both checksum manifests. No models,
+keys, personal memories or private inventories are included. The normal-start
+setup recipe now requires an explicit --execute flag for future reuse.
+
+The prior releases, asset IDs/digests, tags and stable Latest were snapshotted
+before publication. GitHub connector capabilities are read-only for release
+assets here, so the authenticated GitHub CLI performs this authorized upload.
+Publication and anonymous readback have not been claimed by this prepublication
+source tag; the following main-branch receipt records their actual result.
