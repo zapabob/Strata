@@ -23,7 +23,7 @@ class _TargetModule:
 def simulated_pc_setup_target(request, monkeypatch):
     name = Path(str(request.path)).name
     pc_fixture = (name.startswith('test_setup_') and name != 'test_setup_mac.py') or name in {
-        'test_calibrate.py', 'test_picture_defaults.py', 'test_strata_mcp.py', 'test_user_args.py',
+        'test_calibrate.py', 'test_picture_defaults.py', 'test_user_args.py',
     }
     if sys.platform == 'darwin' and pc_fixture:
         import setup
@@ -31,3 +31,4 @@ def simulated_pc_setup_target(request, monkeypatch):
         # An individual test may still select a different target through setup.
         monkeypatch.setattr(setup, 'sys', _TargetModule(sys, platform='linux'))
         monkeypatch.setattr(setup, 'platform', _TargetModule(setup.platform, machine=lambda: 'x86_64'))
+        monkeypatch.setattr(setup.sysinfo, 'machine', lambda: 'x86_64')

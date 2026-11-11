@@ -204,3 +204,26 @@ that actual source commit. Current packaged Control source matches all 401 files
 and its data verifier, independently of subsequent test-only/app changes. The
 native freeze remains c629ee37 with all 779 CUDA source files identical. These
 separate source identities are carried through the final package metadata.
+
+The user changed the order to install the local candidate before completing
+cloud CI and publication. The bounded local browser group passed all 36 cases
+after giving cold browser launch its own 30-second deadline, sharing only the
+browser process, and giving every case a fresh context and intercepted trusted
+loopback origin. An intermediate untrusted synthetic origin broke UUID access;
+that failed attempt remains recorded. No functional assertions were removed.
+
+The Mac follow-up exposed completed owned install children remaining visible to
+the non-procfs liveness probe. install_job now reaps owned children first. A
+deterministic POSIX zombie regression covers that path. The synthetic HTTP
+fixture does not perform reverse DNS, and simulated PC fixtures set the actual
+architecture helper as well as their private platform object. The focused
+installation/setup group passed 121 tests, with one POSIX-only skip on Windows.
+Control must be rebuilt from this actual production source; the first 0.5.8
+Control and its receipts remain intact, with a separate r2 adapter/output.
+
+All 21 final numerical checks passed against the r2 bound native binaries.
+The r2 protected-model protocol remains in progress. A second observed Strata
+runtime was normally unloaded through the app API to recover GPU headroom; no
+force termination was used. Eight obsolete build caches were archived privately,
+decoded and checked against every source file before removal. Published assets,
+dirty worktrees, active native/Cargo caches, models and evidence remain intact.

@@ -22,6 +22,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -68,6 +69,10 @@ def fresh_setup(name="setup_under_test"):
     spec = importlib.util.spec_from_file_location(name, ROOT / "setup.py")
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
+    if sys.platform == 'darwin':
+        # These fresh modules model x86 PC installation; Mac feed tables have
+        # separate mac_fit tests. Keep the interpreter's own platform intact.
+        mod.sys = SimpleNamespace(**dict(vars(sys), platform='linux'))
     return mod
 
 

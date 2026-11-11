@@ -1,13 +1,12 @@
 /** Supplemental mounted React component tests, with controlled API promises. No Host or engine E2E. */
-import test from 'node:test';
+import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { build } from 'esbuild';
 import { chromium } from 'playwright-core';
-import { testBrowserExecutable } from './helpers/browser-executable.mjs';
-import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
+import { testBrowserExecutable, TEST_BROWSER_LAUNCH_TIMEOUT_MS } from './helpers/browser-executable.mjs';
+import { mkdtemp, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
 import {NATIVE_FIELDS} from '../server/native-settings.mjs';
 
 const root = resolve(import.meta.dirname, '..');
@@ -40,18 +39,23 @@ window.__root=createRoot(document.getElementById('root'));window.__pollDelay=nat
 });
 const job = (state,summary='Operation A')=>({id:'job-A',kind:'load',model:'A',state,summary,error:state==='error'?'A failed':null,result:null,startedAt:'2026-11-06T00:00:00Z'});
 const state = jobs=>({available:true,jobs,instances:[],fields:[],catalog:{families:[],contexts:[32768]},installed:{models:[]},hardware:{ram_gb:32,gpus:[]}});
+let browserPromise;
+after(async()=>{if(browserPromise)await browserPromise.then(browser=>browser.close(),()=>{});});
 async function fixture(t,kind='settings',jobs=[]) {
     const home=await mkdtemp(join(tmpdir(),'s-e3-'));
     const dirs=Object.fromEntries(['home','local','roaming','workspace','models','components','runtime','tmp'].map(n=>[n,join(home,n)]));
     await Promise.all(Object.values(dirs).map(p=>mkdir(p,{recursive:true})));
-    const html=join(home,'index.html');await writeFile(html,'<!doctype html><div id="root"></div>');
     const env=Object.fromEntries(Object.entries(process.env).filter(([k])=>!/^STRATA_|^DSH_|^WEBVIEW2_/i.test(k)));
     Object.assign(env,{LOCALAPPDATA:dirs.local,APPDATA:dirs.roaming,TEMP:dirs.tmp,TMP:dirs.tmp,STRATA_HOME:dirs.home,STRATA_WORKSPACE:dirs.workspace,STRATA_MODELS_DIR:dirs.models,STRATA_COMPONENTS_DIR:dirs.components,STRATA_RUNTIME_DIR:dirs.runtime,STRATA_SETTINGS_FILE:join(home,'settings.json'),STRATA_NO_ACQUIRE:'1',STRATA_NO_BUNDLED_ENGINE:'1',STRATA_NO_REPAIR_ACCESS:'1',STRATA_AGENT:'off'});
     if (process.env.STRATA_TEST_WINDOWS_PROFILE) { env.USERPROFILE=process.env.STRATA_TEST_WINDOWS_PROFILE; delete env.HOME; }
-    const browser=await chromium.launchPersistentContext(join(home,'browser'),{executablePath:testBrowserExecutable(),headless:true,env,timeout:10000,args:['--disable-gpu','--disable-background-networking','--disable-component-update','--no-first-run']});
-    t.after(()=>browser.close());t.diagnostic('isolated browser profile: '+join(home,'browser'));
-    const page=await browser.newPage();page.setDefaultTimeout(5000);const errors=[];page.on('pageerror',e=>errors.push(e.message));t.after(()=>assert.deepEqual(errors,[]));
-    await page.route(/^https?:/,r=>r.abort());await page.goto(pathToFileURL(html).href);
+    browserPromise??=chromium.launch({executablePath:testBrowserExecutable(),headless:true,env,timeout:TEST_BROWSER_LAUNCH_TIMEOUT_MS,args:['--disable-gpu','--disable-background-networking','--disable-component-update','--no-first-run']});
+    const browser=await browserPromise,context=await browser.newContext();
+    t.after(()=>context.close());t.diagnostic('isolated browser context; fixture home: '+home);
+    const page=await context.newPage();page.setDefaultTimeout(5000);const errors=[];page.on('pageerror',e=>errors.push(e.message));t.after(()=>assert.deepEqual(errors,[]));
+    await page.route(/^https?:/,r=>r.abort());
+    await page.route('http://127.0.0.1/',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><div id="root"></div>'}));
+    await page.goto('http://127.0.0.1/',{waitUntil:'domcontentloaded',timeout:TEST_BROWSER_LAUNCH_TIMEOUT_MS});
+    assert.equal(await page.evaluate(()=>window.isSecureContext),true);
     await page.evaluate(s=>{window.__native=s;window.__requests=[];window.__actions=[]},state(jobs));await page.addScriptTag({content:bundle.outputFiles[0].text});await page.evaluate(k=>window.__render(k),kind);
     return page;
 }

@@ -1,6 +1,10 @@
 import { existsSync } from 'node:fs';
 import { chromium } from 'playwright-core';
 
+// The CI browser's first cold process can take more than ten seconds to start.
+// Keep a bounded launch deadline separate from each component assertion's timeout.
+export const TEST_BROWSER_LAUNCH_TIMEOUT_MS = 30_000;
+
 /** Use an installed or explicitly provisioned browser on each CI OS; never a user's browser profile. */
 export function testBrowserExecutable() {
   const explicit = process.env.STRATA_TEST_BROWSER_EXE;

@@ -35,7 +35,7 @@ assert args.key.is_absolute() and not args.key.is_relative_to(ROOT) and not args
 commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
 assert not subprocess.check_output(['git', 'status', '--porcelain'], cwd=ROOT)
 native = load(OUT / 'app-058-components/staged-native.json')
-control = load(OUT / 'app-058-components/control-build.json')
+control = load(OUT / 'app-058-control-r2/control-build.json')
 frozen = load(OUT / 'frozen-source.json')
 subprocess.run([str(RES / 'node/node.exe'), str(Path(__file__).with_name('source-binding.mjs')), frozen['sourceRoot'], frozen['sourceCommit']], check=True, timeout=90)
 assert native['ok'] and native['signatureVerified'] and native['nativeSourceCommit'] == frozen['sourceCommit']

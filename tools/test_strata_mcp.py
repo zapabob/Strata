@@ -62,7 +62,7 @@ if __name__ == "__main__":
 '''
 
 FAKE_SERVER = r'''
-import json, os, signal, sys, time
+import json, os, signal, socketserver, sys, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 a = sys.argv
@@ -115,7 +115,13 @@ class H(BaseHTTPRequestHandler):
                           "timings": {"predicted_per_second": 61.5, "prompt_per_second": 400.0}})
         else:
             self.js(404, {})
-httpd = ThreadingHTTPServer(("127.0.0.1", port), H)
+class FixtureServer(ThreadingHTTPServer):
+    def server_bind(self):
+        # No ambient reverse DNS is needed for this synthetic loopback server.
+        socketserver.TCPServer.server_bind(self)
+        self.server_name = 'fixture.localhost'
+        self.server_port = self.server_address[1]
+httpd = FixtureServer(("127.0.0.1", port), H)
 def term(*_):
     print("[strata] stopped (fake)", flush=True)
     os._exit(0)
@@ -397,6 +403,27 @@ class Validation(FakeRoot):
 class Install(FakeRoot):
     def wait_job(self):
         self.assertTrue(wait_for(lambda: not self.strata.install_job()["running"], 60))
+
+    @unittest.skipIf(os.name == 'nt', 'POSIX zombie semantics')
+    @unittest.skipUnless(hasattr(os, 'waitid') and hasattr(os, 'WNOWAIT'), 'waitid WNOWAIT required to observe an unreaped child')
+    def test_completed_owned_job_is_reaped_without_procfs(self):
+        child = subprocess.Popen([sys.executable, '-c', 'pass'], stdout=subprocess.DEVNULL)
+        self.strata.children.append(child)
+        # Observe a completed child without reaping it, independent of timing.
+        os.waitid(os.P_PID, child.pid, os.WEXITED | os.WNOWAIT)
+        self.strata.save_state('install', {'pid': child.pid, 'ident': 'pid', 'job': 'fixture', 'log': str(self.root / 'job.log')})
+
+        def no_procfs_identity(pid):
+            try:
+                os.kill(pid, 0)
+                return 'pid'
+            except ProcessLookupError:
+                return None
+
+        with mock.patch.object(M, 'proc_identity', no_procfs_identity):
+            self.assertTrue(M.proc_alive(child.pid, 'pid'))
+            self.assertFalse(self.strata.install_job()['running'])
+        self.assertEqual(child.returncode, 0)
 
     def test_plan_then_install(self):
         res, err = self.call("strata_install", {})

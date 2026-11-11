@@ -1,13 +1,12 @@
 /** Supplemental component regressions: actual React/ModelRun, controlled in-memory boundaries, no Host or E1 claim. */
-import test from 'node:test';
+import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { build } from 'esbuild';
 import { chromium } from 'playwright-core';
-import { testBrowserExecutable } from './helpers/browser-executable.mjs';
-import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
+import { testBrowserExecutable, TEST_BROWSER_LAUNCH_TIMEOUT_MS } from './helpers/browser-executable.mjs';
+import { mkdtemp, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
 
 const root = resolve(import.meta.dirname, '..');
 const ui = `import React from 'react';
@@ -64,23 +63,27 @@ const saved = { schema: 1, defaults: { [computer+'\nq36']: 'q', [computer+'\nhik
     { id: 'h', name: 'H', variantId: 'hikari', hardware: computer, engineVersion: 'test', config: { ...qconfig, beginner: { contextLength: '32k' }, expert: { 'ctx.length': '32K', 'gpu.cpuMoeLayers': 0, 'runtime.backend': 'PrismML' } }, imageModel: 'off' },
 ] };
 
+let browserPromise;
+after(async()=>{if(browserPromise)await browserPromise.then(browser=>browser.close(),()=>{});});
 async function fixture(t, id, profiles = empty, draft = null, allowRun = false, hw = hardware) {
     const home = await mkdtemp(join(tmpdir(), 's-e2-'));
     const dirs = Object.fromEntries(['home','local','roaming','workspace','models','components','runtime','tmp'].map(name=>[name,join(home,name)]));
     await Promise.all(Object.values(dirs).map(path=>mkdir(path,{recursive:true})));
-    const html = join(home,'index.html'); await writeFile(html,'<!doctype html><html><body><div id="root"></div></body></html>');
     const env = Object.fromEntries(Object.entries(process.env).filter(([key])=>!/^STRATA_|^DSH_|^WEBVIEW2_/i.test(key)));
     Object.assign(env,{LOCALAPPDATA:dirs.local,APPDATA:dirs.roaming,TEMP:dirs.tmp,TMP:dirs.tmp,STRATA_HOME:dirs.home,STRATA_WORKSPACE:dirs.workspace,STRATA_MODELS_DIR:dirs.models,STRATA_COMPONENTS_DIR:dirs.components,STRATA_RUNTIME_DIR:dirs.runtime,STRATA_SETTINGS_FILE:join(home,'settings.json'),STRATA_NO_ACQUIRE:'1',STRATA_NO_BUNDLED_ENGINE:'1',STRATA_NO_REPAIR_ACCESS:'1',STRATA_AGENT:'off'});
     // Windows token discovery needs the real user root; browser/app data remain task-only.
     if (process.env.STRATA_TEST_WINDOWS_PROFILE) { env.USERPROFILE=process.env.STRATA_TEST_WINDOWS_PROFILE; delete env.HOME; }
-    const browser = await chromium.launchPersistentContext(join(home,'browser'),{ executablePath: testBrowserExecutable(), headless: true, env, timeout:10000,args: ['--disable-gpu','--disable-background-networking','--disable-component-update','--no-first-run'] });
-    t.diagnostic('isolated browser profile: '+join(home,'browser'));
-    t.after(async()=>{await browser.close();});
-    const page = await browser.newPage();
+    browserPromise??=chromium.launch({ executablePath: testBrowserExecutable(), headless: true, env, timeout:TEST_BROWSER_LAUNCH_TIMEOUT_MS,args: ['--disable-gpu','--disable-background-networking','--disable-component-update','--no-first-run'] });
+    const browser=await browserPromise,context=await browser.newContext();
+    t.diagnostic('isolated browser context; fixture home: '+home);
+    t.after(()=>context.close());
+    const page = await context.newPage();
     page.setDefaultTimeout(10000);
     const errors=[]; page.on('pageerror',e=>errors.push(e.message));
     await page.route(/^https?:/,route=>route.abort());
-    await page.goto(pathToFileURL(html).href);
+    await page.route('http://127.0.0.1/',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><html><body><div id="root"></div></body></html>'}));
+    await page.goto('http://127.0.0.1/',{waitUntil:'domcontentloaded',timeout:TEST_BROWSER_LAUNCH_TIMEOUT_MS});
+    assert.equal(await page.evaluate(()=>window.isSecureContext),true);
     await page.evaluate(({id,profiles,engine,hardware,models,draft,allowRun})=>{
         localStorage.clear();sessionStorage.clear();localStorage.setItem('strata.run-profiles.v1',JSON.stringify(profiles));
         if(id===null)localStorage.setItem('strata.run-local-variant.v1','hikari');

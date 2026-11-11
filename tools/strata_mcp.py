@@ -1612,6 +1612,7 @@ class Strata:
 
     # ---- install job
     def install_job(self) -> dict | None:
+        self.reap()  # Reap completed owned children before the non-/proc liveness probe.
         j = self.state("install")
         if not j:
             return None
