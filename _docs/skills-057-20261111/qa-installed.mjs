@@ -30,7 +30,8 @@ const model=http.createServer(async(req,res)=>{
   requests.push(body);
   res.writeHead(200,{'content-type':'text/event-stream'});
   const send=value=>res.write('data: '+JSON.stringify(value)+'\n\n');
-  const text=(body?.messages??[]).filter(row=>row.role==='user').at(-1)?.content??'';
+  const texts=(body?.messages??[]).filter(row=>row.role==='user').map(row=>typeof row.content==='string'?row.content:(row.content??[]).map(part=>part.text??'').join('\n'));
+  const text=[...texts].reverse().find(value=>/Observed workflow:\n|Please apply desktop validation|WORKFLOW_057|Side question:|MAIN_PENDING_057/.test(value))??texts.at(-1)??'';
   const full=JSON.stringify(body?.messages??[]);
   if(String(text).includes('Observed workflow:\n')){
     const packet=JSON.parse(String(text).split('Observed workflow:\n').at(-1));
@@ -70,7 +71,7 @@ const {chromium}=createRequire(join(root,'apps/host/package.json'))('playwright-
 let browser,page,base;const errors=[],sideBodies=[];
 const until=async(fn,ms=30_000)=>{const end=Date.now()+ms;while(Date.now()<end){const value=await fn();if(value)return value;await delay(150);}throw new Error('QA condition timed out');};
 const call=async(path,method='GET',body)=>{const response=await fetch(base+path,{method,headers:{origin:base,'content-type':'application/json','x-strata-client':'isolated-feature-qa'},...(body===undefined?{}:{body:JSON.stringify(body)}),signal:AbortSignal.timeout(60_000)});assert.equal(response.status,200,`${path}: ${response.status}`);return response.json();};
-const report={ok:false,target,actualInstalledExe:target==='installed',actualWebView2:true,isolatedHome:true,mockModelOnly:true,realRustxng:true,checks:[]};
+const report={ok:false,target,attempt,actualInstalledExe:target==='installed',actualWebView2:true,isolatedHome:true,mockModelOnly:true,realRustxng:true,checks:[]};
 try{
   await until(async()=>{try{return (await fetch(`http://127.0.0.1:${debugPort}/json/version`,{signal:AbortSignal.timeout(700)})).ok;}catch{return false;}},60_000);
   browser=await chromium.connectOverCDP(`http://127.0.0.1:${debugPort}`);
@@ -96,7 +97,7 @@ try{
   assert.equal(stored.messages.length,2);assert.equal(stored.messages.some(row=>row.content.includes('SIDE_ANSWER_057')),false);
   const sideRequest=requests.find(body=>JSON.stringify(body.messages).includes('Side question:'));
   assert.ok(sideRequest);assert.equal((sideRequest.tools??[]).length,0);assert.ok(stored.asides[0].agentId);
-  await page.getByText('Subagent answer · no tools',{exact:true}).waitFor();
+  await page.getByText(/^(Subagent answer · no tools|サブエージェントの回答 · ツールなし)$/).waitFor();
   report.checks.push('btw-typed-during-main-stream','main-not-cancelled-or-queued','btw-real-child-tool-free-api','separate-durable-aside');
   await page.screenshot({path:join(home,'screenshots/btw-desktop.png'),fullPage:true});
   mainReleased=true;
@@ -110,8 +111,8 @@ try{
   assert.ok(search.sources.length>0);report.rustxngSources=search.sources.map(({title,url})=>({title,url}));report.checks.push('installed-rustxng-full-real-search');
   await page.reload();await page.getByText('SIDE_ANSWER_057',{exact:true}).waitFor();report.checks.push('aside-survives-page-reload');
   await page.goto(base+'/#/skills');
-  const learning=page.getByRole('switch',{name:'Learn from completed work',exact:true});
-  const automatic=page.getByRole('switch',{name:'Automatically apply skills to agent workflows',exact:true});
+  const learning=page.getByRole('switch',{name:/^(Learn from completed work|完了した作業から学ぶ)$/});
+  const automatic=page.getByRole('switch',{name:/^(Automatically apply skills to agent workflows|実行ワークフローにスキルを自動適用する)$/});
   await learning.waitFor();assert.equal(await learning.getAttribute('aria-checked'),'false');assert.equal(await automatic.getAttribute('aria-checked'),'false');
   await automatic.click();await until(async()=>await automatic.getAttribute('aria-checked')==='true');
   await learning.click();await until(async()=>await learning.getAttribute('aria-checked')==='true');
@@ -130,7 +131,7 @@ try{
   report.checks.push('real-harness-three-completed-reads','same-model-bounded-tool-free-review','private-skill-created-without-file-outputs','next-workflow-receives-full-matching-skill');
   await page.goto(base+'/#/skills');await page.getByText('Desktop validation',{exact:true}).first().waitFor();
   await page.screenshot({path:join(home,'screenshots/skills-learning-desktop.png'),fullPage:true});
-  await page.getByRole('button',{name:'Undo last learned change',exact:true}).click();
+  await page.getByRole('button',{name:/^(Undo last learned change|直前の学習を取り消す)$/}).click();
   await until(async()=>{const all=await call('/api/skills');return all.some(row=>row.id===learned.id&&!row.enabled&&row.body===learned.body);});
   await page.reload();await learning.waitFor();assert.equal(await learning.getAttribute('aria-checked'),'true');assert.equal(await automatic.getAttribute('aria-checked'),'true');
   report.checks.push('ui-undo-disables-retains-document','settings-and-undone-skill-survive-reload');
@@ -143,5 +144,6 @@ try{
   await browser?.close().catch(()=>{});
   model.closeAllConnections();await new Promise(resolve=>model.close(resolve));
   writeFileSync(join(home,'result.json'),JSON.stringify({...report,errors},null,2)+'\n',{flag:'wx'});
+  if(report.ok&&target==='installed')writeFileSync(join(out,'installed-ui-verified.json'),JSON.stringify({...report,home,errors},null,2)+'\n',{flag:'wx'});
 }
 console.log(JSON.stringify(report,null,2));

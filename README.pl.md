@@ -10,7 +10,7 @@
 RustXNG 0.31.1 Full / native 0.5.5 / Control 0.5.6. [0.5.7 delivery status](_docs/2026-11-11_workflow-skill-learning_Codex.md). Stable / GitHub Latest: 0.5.1.
 
 
-## Aktualna wersja testowa 0.5.6-local.1
+## Poprzednia wersja testowa 0.5.6-local.1
 
 `/btw <pytanie>` otwiera osobną odpowiedź podczas pracy głównego czatu. `/deepresearch <temat>` łączy wiele wyszukiwań i odczytów stron oraz informuje o niepełnych dowodach. W ustawieniach narzędzi i wyszukiwania wybierz **RustXNG Full**, bez klucza.
 

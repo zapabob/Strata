@@ -10,7 +10,7 @@
 RustXNG 0.31.1 Full / native 0.5.5 / Control 0.5.6. [0.5.7 delivery status](_docs/2026-11-11_workflow-skill-learning_Codex.md). Stable / GitHub Latest: 0.5.1.
 
 
-## Aktuelle Vorschau 0.5.6-local.1
+## Vorherige Vorschau 0.5.6-local.1
 
 `/btw <Frage>` öffnet eine separate Antwort neben dem laufenden Chat. `/deepresearch <Thema>` verbindet mehrere Suchanfragen und gelesene Seiten; unvollständige Belege werden kenntlich gemacht. Unter Einstellungen → Werkzeuge → Websuche lässt sich **RustXNG Full** ohne Schlüssel auswählen.
 

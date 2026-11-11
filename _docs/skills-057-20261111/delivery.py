@@ -229,8 +229,9 @@ def bundle() -> None:
     for source, target in [('corresponding-source.tar.gz', 'RustXNG-0.31.1-source.tar.gz'), ('LICENSE', 'RustXNG-LICENSE.txt'), ('NOTICE', 'RustXNG-NOTICE.txt')]:
         shutil.copy2(EXTRACTED / 'harness/rustxng' / source, ASSETS / target)
     save(ASSETS / 'SOURCE.json', {**build, 'unbundledShellSHA256': build['shellSHA256'], 'nsisShellBinding': load(OUT / 'nsis-shell-binding.json'), 'releaseTag': 'v' + PRODUCT, 'upstreamCommit': 'f33c8c30588ff00e24b6b63bad0bf6a14da19081', 'rustxng': load(EXTRACTED / 'harness/rustxng/SOURCE.json')})
-    ui = load(OUT / 'qa-installed-r1/result.json')
+    ui = load(OUT / 'installed-ui-verified.json')
     require(ui['ok'] and ui['actualInstalledExe'] and ui['mockModelOnly'], 'Installed WebView2 checks required')
+    require(load(OUT / 'receipts' / ('installed-ui-' + ui['attempt'] + '.json'))['passed'], 'Contained UI run required')
     require(load(OUT / 'receipts/nsis-cleanup-final.json')['passed'], 'NSIS cleanup scenarios required')
     quality = {'releaseQualified': False, 'nativeComponentUnchanged': True,
                'nativePriorEvidence': 'https://github.com/zapabob/Strata/releases/tag/v0.5.5-local.1',
@@ -245,7 +246,7 @@ def bundle() -> None:
                                     'modelAPI': 'explicit local test fixture; does not qualify real-model or GPU performance', 'realRustXNG': True},
                'prior056BroadHostSuite': {'passed': 2013, 'failed': 29, 'skipped': 117,
                                  'note': 'All 28 pre-existing failure titles reproduced on baseline; new locale collision subsequently fixed. Broad suite does not pass.'},
-               'rustxng': {'version': '0.31.1', 'profile': 'full', 'realQueriesWithResults': 2},
+               'rustxng': {'version': '0.31.1', 'profile': 'full', 'realQueriesWithResults': 1},
                'installed': load(OUT / 'installed.json')}
     save(ASSETS / 'QUALITY.json', quality)
     verify_code = "import json,sys;sys.path.insert(0,sys.argv[1]);from strata_control import feed,signing;v=feed.fetch(sys.argv[2],signing.load_trusted_keys(environ={}));assert len(v.engine)==len(v.control)==1;print(json.dumps({'ok':True,'engine':len(v.engine),'control':len(v.control),'trust':'bundled public keys only'}))"

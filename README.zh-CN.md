@@ -10,7 +10,7 @@
 RustXNG 0.31.1 Full / native 0.5.5 / Control 0.5.6. [0.5.7 delivery status](_docs/2026-11-11_workflow-skill-learning_Codex.md). Stable / GitHub Latest: 0.5.1.
 
 
-## 当前预览版 0.5.6-local.1
+## 上一预览版 0.5.6-local.1
 
 使用 `/btw <问题>` 可在主对话继续运行时打开独立回答；使用 `/deepresearch <主题>` 可结合多次搜索和页面阅读开展调查，并明确说明证据不足的情况。在设置 → 工具 → 网页搜索中选择 **RustXNG Full**，无需密钥。
 
