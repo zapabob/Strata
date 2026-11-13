@@ -84,3 +84,22 @@ Prevention is the new actual-Harness capability test plus using the existing
 full-suite environment contract. Review level: review-only for global governance.
 No global AGENTS, SOP, Codex skill, automation or security rule was modified.
 The project AGENTS change only declares candidate-version provenance.
+
+Main 782e25bd was pushed with the runtime fixes and coordinated versions. Docs
+CI caught an invalid historical tar.7z entry in a list reserved for installers;
+db640451 corrects that metadata and Docs passed. The other six filtered workflows
+were explicitly dispatched at db640451, alongside its Docs/Pages runs. A clean
+full source freeze at db640451 is retained on H:. Its first preparation caught
+the concurrent two-file metadata commit and stopped at tree equality; the
+already copied tree was proven byte-for-byte equal to db640451's Git tree before
+the owned detached HEAD was advanced with an expected-old-object update. The
+fresh preparation passed without copying historical qualification results.
+
+The complete local Harness group passed 44/44 with zero skips. The second local
+host run passed 2070, skipped 123 and failed one PowerShell verifier because the
+filtered driver lacked PATHEXT, so bare git was unavailable inside PowerShell.
+The driver now forwards the existing extension list. The exact remaining module
+passed 2/2; this does not relabel the earlier full run as all green. Hosted full
+Windows and Linux suite results remain separately required. Configuration
+snapshot generation completed with zero changed files or values. Final focused
+checks and typecheck passed. RAM floors and all test assertions remain unchanged.

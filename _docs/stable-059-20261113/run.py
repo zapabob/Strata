@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import os
 from pathlib import Path
 import re
 import sys
@@ -41,6 +42,7 @@ def main() -> int:
             command[index] = str(ROOT / part)
     env = guard.environment()
     env['PATH'] += ';C:/Windows/System32/WindowsPowerShell/v1.0;C:/Users/downl/.cargo/bin;' + str(Path(shutil.which('pwsh')).parent)
+    env['PATHEXT'] = os.environ.get('PATHEXT', '.COM;.EXE;.BAT;.CMD')
     env.update(CARGO_BUILD_JOBS='5', CMAKE_BUILD_PARALLEL_LEVEL='5', PYTHONUTF8='1',
                PYTHONIOENCODING='utf-8', STRATA_TEST_CONCURRENCY='2')
     result = guard.owned(ROOT, args.name, command, args.seconds, env=env, output_bytes=32 * 1024**2)
