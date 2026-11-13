@@ -193,3 +193,113 @@ Adversarial tests cover missing/repeated labels, partial views and quoted litera
 numbered text. Nine focused safety tests pass. This distributed fix requires a
 fresh app build, overwrite and real-model verification; prior candidates and
 failed records remain preserved. Native and Control build inputs are unchanged.
+
+The fresh app from e6bd6a4ebc8b5e8a0c6f68de8acf76a861adeb49 passed its
+five-job build. Its standard NSIS is 127118332 bytes, SHA-256
+04402235955aa1221d4ebbe9d6959c7c11a803f7fd18e49cb140df7b41227778.
+The final overwrite matched all 29558 managed files and preserved all 3789
+inventoried user files during installation. The independently hash-verified
+private backup is H:/Strata/private-backups/stable-059-20261113-codex-r3.
+All 13 packaged self-test steps, six NSIS cleanup cases and 16 installed
+WebView2 checks passed. Those 16 use an explicit fixture model and real RustXNG.
+The completed native evidence also passed all seven bounded, seven legacy and
+two fresh-owner restart requests, plus 21 final numerical checks.
+
+Every one of eight required hosted workflows and all thirteen actual Checks
+jobs passed on e6bd6a4e, including the Windows full Python suite. ci-verified.json
+binds that exact app source to the installed Host, installer, all 779 frozen
+native source inputs and all 401 packaged Control source files. Native build
+source remains db640451e677ba2c43ebfb555a505e4c037e0bd1; Control remains
+d11edad8200f1ba9bf4ef4bab30e5c1e5616f6ea. Repacking changed the engine tar.gz
+outer hash to d833761aac91f6e50a4d0816cb578f6cae7503d3dd520324a9cb89d3564fdff1,
+while its signed manifest and every installed payload file remained identical.
+The global strata command resolves to the bundled Control launcher and reports
+0.5.9 with its private Python 3.12.15; no second Terminal installation was needed.
+
+Actual-model attempts retain distinct outcomes. R2 stopped during workspace
+registration because its earlier QA folder already existed. R3 passed the fixed
+CSV audit but declined a learned-name collision with a protected existing skill;
+all prior user skills and choices remained unchanged. A fresh isolated profile
+started with learning and automatic application both off and no created skills.
+Only its two requested options and RustXNG selection were enabled. Its initial
+Automatic load could not load this trunk-only Qwen3.5 GGUF (declared MTP metadata
+without predictor tensors). The original weights were preserved. Selecting the
+same compatible PrismML 0.4.1 runtime used by the normal profile allowed loading.
+R4's load failure and the subsequent explicit selection remain recorded.
+
+R5 completed actual local-model admission, separate /btw, deterministic audit,
+private procedural learning, automatic skill application and research. Both saved
+and reread audit JSONs had totals 1/0/0/0, with the correct differing IDs. A real
+model review created inventory-audit-procedure; the next task received that skill
+without manual selection. Research made four distinct searches and read four
+official pages with HTTP 200, used only web_search/web_fetch, made no manual
+denial and changed no workspace file. The language model was the existing
+Qwen3.5 9B Q4_K_M GGUF with explicit PrismML, 65536 configured context, no mmap
+and batch 256; these were bounded prompts, not a full-window test.
+
+During UI verification, free RAM fell quickly. The production guard stopped only
+its owned QA model with 8447000576 bytes (about 7.87 GiB) still available, above
+the unchanged 3 GiB floor. After checking 14162870272 bytes available, only that
+QA model was reloaded; no guard threshold was changed. The same installed Host
+returned and persisted UI /btw answer 42. Its final steady segment recorded 242
+RAM samples, minimum 12826775552 bytes, no pressure. The earlier protective-stop
+record is retained separately and enters public quality metadata; it is not
+erased by the later steady segment. Both segment minima stayed above the floor.
+A pre-existing Windows network-permission dialog for a native test executable
+blocked native input; no network access was granted. Native WebView2 had already
+passed its 16 fixture checks; actual UI answer verification used CUA's browser
+against the same normally running installed Host. real-btw-ui.png retains the
+interrupted attempt and the subsequent answer. The early UI conclusion of a
+time limit was corrected after reading the actual RAM-protection status.
+
+The research mechanics passed, but answer factual accuracy is not qualified.
+Manual readback found an incorrect implication that implementing Copy supplies
+Clone automatically. Clone must also be implemented or derived; the official
+reference is https://doc.rust-lang.org/std/marker/trait.Copy.html. One successful
+page was the historical Rust 1.8.0 book. research-answer-review.json and public
+QUALITY preserve these specific limitations without publishing raw transcripts.
+
+R5 cleanup unloaded the model, reached zero active turns and restored its
+settings, tools and prior skills. After normal exit of the isolated profile,
+normal user startup passed without debug arguments. All ten original skill
+entries, tool/key/approval choices, beginner settings and expert values matched
+the checkpoint. User learning and automatic application remain enabled and
+RustXNG remains Full. The model is unloaded. Publication is the remaining gate;
+no 0.5.9 public download success is asserted at this point.
+
+Formal v0.5.9 was published at 2026-11-13T17:26:11Z, release ID
+444507817, with no prerelease flag. The annotated tag peels to the
+exact built and CI-qualified e6bd6a4e source. GitHub Latest and the lease-guarded
+mutable latest alias now select v0.5.9. All 17 public files were downloaded
+anonymously and matched their frozen sizes and SHA-256 values, including
+the latest/download feed and signature. All 27 prior releases, their assets
+and all 27 prior immutable tags were preserved. PUBLIC_VERIFICATION.json and
+passed release-upload, release-publish and release-readback-r1 receipts retain
+the exact observations. The readback resource guard reported no violation.
+
+The tar.7z is 1674465442 bytes, SHA-256
+7c19e32403949e5650f4b5a77190e45bfe6e42a463a376caa7698155b95532cf.
+The public NSIS remains 127118332 bytes, SHA-256
+04402235955aa1221d4ebbe9d6959c7c11a803f7fd18e49cb140df7b41227778,
+identical to the final already-installed overwrite. The public bundle contains
+the standard installer, separately signed native and Control archives,
+installation instructions, checksums, notices and corresponding RustXNG source.
+Models, chats and private keys are not distributed. The initial bundle adapter
+looked up an absent metadata field and failed before creating assets; its
+retained failure was corrected to read the observed binary version field.
+No real-model receipt was edited.
+
+Private raw tool configuration, including the saved search key, and the serving
+key were compared directly against the verified pre-overwrite backup and were
+unchanged; their values were never printed. Publication is now verified.
+The remaining source follow-up is a documentation-only commit of these results
+and localized current-release paragraphs in all eight READMEs.
+
+The documentation follow-up retains all three requested upstream URLs in all
+eight READMEs and localizes their current release status. The unchanged six-case
+product-version consistency module passed after the edits. An initial unittest
+module invocation hit an unrelated installed tests namespace and executed no
+project assertions; its failed loader receipt is retained. The existing pytest
+driver with the repository path completed all six unchanged assertions. This
+follow-up changes documentation only; the built release and its immutable tag
+remain at the already-qualified e6bd6a4e source.

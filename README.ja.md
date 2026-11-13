@@ -7,11 +7,11 @@ Windowsでローカルモデルのロード中と生成中の空きRAMを監視�
 
 [Windows NSIS](https://github.com/zapabob/Strata/releases/download/v0.5.9/Strata-0.5.9-windows-x64-setup.exe) · [tar.7z](https://github.com/zapabob/Strata/releases/download/v0.5.9/Strata-0.5.9-windows-x64.tar.7z) · [SHA256SUMS](https://github.com/zapabob/Strata/releases/download/v0.5.9/SHA256SUMS.txt) · [Verification](_docs/2026-11-13_stable-059-workflow-safety_Codex.md)
 
-App / Terminal / Control / native engine 0.5.9; RustXNG 0.31.1 Full. Build, installation and publication evidence is recorded in the linked verification log. General model quality and full-window generation remain unqualified (releaseQualified=false). Earlier releases and acknowledgements remain below.
+アプリ・Terminal・Control・ネイティブエンジンはすべて 0.5.9、RustXNG は 0.31.1 Full です。正式公開、必要な CI 8 ワークフロー、実モデルのワークフロー、上書きインストール、全公開ファイルの取得照合はリンク先の記録で確認できます。一般的な回答品質、最大文脈での推論、GPU 同時実行は未認定です（releaseQualified=false）。旧版の記録と上流プロジェクトへの謝辞は以下に残しています。
 
 
 <!-- stable-058 -->
-## 正式版 0.5.8
+## 過去の正式版 0.5.8
 
 長い会話、要約、検索回数制限の拡張テストを修正しました。エージェントの子プロセスには選択した環境を渡し、テストごとにプロファイルを分離します。翻訳の不足、OS 固有のテスト、本体・Control・エンジンの独立したバージョン情報も CI で検証します。
 

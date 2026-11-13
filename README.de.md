@@ -7,11 +7,11 @@
 
 [Windows NSIS](https://github.com/zapabob/Strata/releases/download/v0.5.9/Strata-0.5.9-windows-x64-setup.exe) · [tar.7z](https://github.com/zapabob/Strata/releases/download/v0.5.9/Strata-0.5.9-windows-x64.tar.7z) · [SHA256SUMS](https://github.com/zapabob/Strata/releases/download/v0.5.9/SHA256SUMS.txt) · [Verification](_docs/2026-11-13_stable-059-workflow-safety_Codex.md)
 
-App / Terminal / Control / native engine 0.5.9; RustXNG 0.31.1 Full. Build, installation and publication evidence is recorded in the linked verification log. General model quality and full-window generation remain unqualified (releaseQualified=false). Earlier releases and acknowledgements remain below.
+App, Terminal, Control und native Engine verwenden 0.5.9; RustXNG bleibt bei 0.31.1 Full. Die verlinkte Dokumentation bestätigt die Veröffentlichung, alle acht erforderlichen CI-Workflows, Abläufe mit einem echten Modell, die Installation über die vorhandene Version und die Prüfung aller öffentlichen Downloads. Allgemeine Antwortqualität, Inferenz mit vollem Kontext und GPU-Parallelbetrieb bleiben ungeprüft (releaseQualified=false). Frühere Veröffentlichungen und der Dank an die Upstream-Projekte bleiben unten erhalten.
 
 
 <!-- stable-058 -->
-## Stabile Version 0.5.8
+## Frühere stabile Version 0.5.8
 
 Behebt die erweiterten Tests für lange Gespräche, Zusammenfassungen und Suchbegrenzungen. Jeder Test nutzt ein eigenes Profil; der Agent-Unterprozess erhält die gewählte Umgebung. CI prüft außerdem Übersetzungen, Plattformtests und die unabhängigen Versionen von App, Control und Engine.
 

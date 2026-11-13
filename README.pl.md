@@ -7,11 +7,11 @@ Monitoruje dostępną pamięć RAM podczas ładowania i generowania modeli lokal
 
 [Windows NSIS](https://github.com/zapabob/Strata/releases/download/v0.5.9/Strata-0.5.9-windows-x64-setup.exe) · [tar.7z](https://github.com/zapabob/Strata/releases/download/v0.5.9/Strata-0.5.9-windows-x64.tar.7z) · [SHA256SUMS](https://github.com/zapabob/Strata/releases/download/v0.5.9/SHA256SUMS.txt) · [Verification](_docs/2026-11-13_stable-059-workflow-safety_Codex.md)
 
-App / Terminal / Control / native engine 0.5.9; RustXNG 0.31.1 Full. Build, installation and publication evidence is recorded in the linked verification log. General model quality and full-window generation remain unqualified (releaseQualified=false). Earlier releases and acknowledgements remain below.
+Aplikacja, Terminal, Control i silnik natywny mają wersję 0.5.9; RustXNG pozostaje w wersji 0.31.1 Full. Podlinkowany zapis potwierdza publikację, wszystkie osiem wymaganych procesów CI, przepływy z rzeczywistym modelem, instalację na istniejącej wersji oraz sprawdzenie wszystkich publicznych plików. Ogólna jakość odpowiedzi, wnioskowanie z pełnym kontekstem i współbieżność GPU pozostają niepotwierdzone (releaseQualified=false). Poniżej zachowano wcześniejsze wydania oraz podziękowania dla projektów źródłowych.
 
 
 <!-- stable-058 -->
-## Wersja stabilna 0.5.8
+## Poprzednia wersja stabilna 0.5.8
 
 Naprawia rozszerzone testy kontekstu, podsumowań i limitów wyszukiwania. Każdy test ma osobny profil, a proces potomny agenta otrzymuje wybrane środowisko. CI sprawdza również tłumaczenia, testy platformowe oraz niezależne wersje aplikacji, Control i silnika.
 

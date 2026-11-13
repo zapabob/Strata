@@ -3,15 +3,15 @@
 <!-- stable-059 -->
 ## Stable 0.5.9
 
-Protects available system RAM throughout Windows local-model loading and generation. Research can only search and read pages, then writes its answer without tools. Inventory CSV audits use calculated comparison results: a passed check needs no additional evidence.
+Protects available system RAM throughout Windows local-model loading and generation. Research can only search and read pages, then returns its answer without tools. Inventory CSV audits use calculated comparison results: a passed check needs no additional evidence.
 
 [Windows NSIS](https://github.com/zapabob/Strata/releases/download/v0.5.9/Strata-0.5.9-windows-x64-setup.exe) · [tar.7z](https://github.com/zapabob/Strata/releases/download/v0.5.9/Strata-0.5.9-windows-x64.tar.7z) · [SHA256SUMS](https://github.com/zapabob/Strata/releases/download/v0.5.9/SHA256SUMS.txt) · [Verification](_docs/2026-11-13_stable-059-workflow-safety_Codex.md)
 
-App / Terminal / Control / native engine 0.5.9; RustXNG 0.31.1 Full. Build, installation and publication evidence is recorded in the linked verification log. General model quality and full-window generation remain unqualified (releaseQualified=false). Earlier releases and acknowledgements remain below.
+App, Terminal, Control and native engine are all 0.5.9; RustXNG remains 0.31.1 Full. The formal release, all eight required CI workflows, actual-model workflow checks, overwrite installation and all public downloads are verified in the linked record. General answer quality, full-window inference and GPU concurrency remain unqualified (releaseQualified=false). Older releases and upstream acknowledgements are retained below.
 
 
 <!-- stable-058 -->
-## Stable 0.5.8
+## Historical stable 0.5.8
 
 Repairs the extended context, compaction and search-guard tests. Each agent fixture owns its profile, and the actual Harness child receives the selected environment. CI also checks translation coverage, platform-specific fixtures and independent product/Control/engine versions.
 
@@ -42,7 +42,7 @@ separate. The complete tar.7z includes the identical installer.
 | Previous preview / previous stable | [0.5.6-local.1](https://github.com/zapabob/Strata/releases/tag/v0.5.6-local.1) / [0.5.7](https://github.com/zapabob/Strata/releases/tag/v0.5.7) |
 
 The stable delivery is tracked at [the release](https://github.com/zapabob/Strata/releases/tag/v0.5.8). The [delivery record](_docs/2026-11-11_stable-058-context-ci_Codex.md)
-records installation, archive and public-download verification. It is GitHub Latest and the mutable latest alias. Native and Control
+records installation, archive and public-download verification. At publication it was GitHub Latest and the mutable latest alias; 0.5.9 supersedes it. Native and Control
 0.5.8 packages are freshly built, signed and checked. This is a fork distribution; it is not endorsed by
 upstream. The EXE has no Windows code signature; component signatures are separate.
 

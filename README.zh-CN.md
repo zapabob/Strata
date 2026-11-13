@@ -7,11 +7,11 @@
 
 [Windows NSIS](https://github.com/zapabob/Strata/releases/download/v0.5.9/Strata-0.5.9-windows-x64-setup.exe) · [tar.7z](https://github.com/zapabob/Strata/releases/download/v0.5.9/Strata-0.5.9-windows-x64.tar.7z) · [SHA256SUMS](https://github.com/zapabob/Strata/releases/download/v0.5.9/SHA256SUMS.txt) · [Verification](_docs/2026-11-13_stable-059-workflow-safety_Codex.md)
 
-App / Terminal / Control / native engine 0.5.9; RustXNG 0.31.1 Full. Build, installation and publication evidence is recorded in the linked verification log. General model quality and full-window generation remain unqualified (releaseQualified=false). Earlier releases and acknowledgements remain below.
+应用、Terminal、Control 和原生引擎均为 0.5.9；RustXNG 保持 0.31.1 Full。正式发布、全部 8 项必需 CI 工作流、真实模型工作流、覆盖安装和所有公开下载的校验均记录在上方链接中。通用回答质量、完整上下文推理和 GPU 并发尚未认证（releaseQualified=false）。下方保留旧版记录及对上游项目的致谢。
 
 
 <!-- stable-058 -->
-## 正式版 0.5.8
+## 历史正式版 0.5.8
 
 修复长对话、摘要和搜索次数限制的扩展测试。代理子进程接收所选环境，每个测试使用独立配置目录。CI 同时验证翻译完整性、各平台测试以及应用、Control 和引擎的独立版本。
 

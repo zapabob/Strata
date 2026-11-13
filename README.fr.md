@@ -7,11 +7,11 @@ Surveille la mémoire disponible pendant le chargement et la génération des mo
 
 [Windows NSIS](https://github.com/zapabob/Strata/releases/download/v0.5.9/Strata-0.5.9-windows-x64-setup.exe) · [tar.7z](https://github.com/zapabob/Strata/releases/download/v0.5.9/Strata-0.5.9-windows-x64.tar.7z) · [SHA256SUMS](https://github.com/zapabob/Strata/releases/download/v0.5.9/SHA256SUMS.txt) · [Verification](_docs/2026-11-13_stable-059-workflow-safety_Codex.md)
 
-App / Terminal / Control / native engine 0.5.9; RustXNG 0.31.1 Full. Build, installation and publication evidence is recorded in the linked verification log. General model quality and full-window generation remain unqualified (releaseQualified=false). Earlier releases and acknowledgements remain below.
+L’application, Terminal, Control et le moteur natif sont tous en version 0.5.9 ; RustXNG reste en 0.31.1 Full. Le document lié confirme la publication, les huit workflows CI requis, les workflows avec un modèle réel, la réinstallation et la vérification de tous les téléchargements publics. La qualité générale des réponses, l’inférence sur toute la fenêtre de contexte et la concurrence GPU ne sont pas certifiées (releaseQualified=false). Les anciennes versions et les remerciements aux projets amont sont conservés ci-dessous.
 
 
 <!-- stable-058 -->
-## Version stable 0.5.8
+## Ancienne version stable 0.5.8
 
 Corrige les tests étendus de contexte, de résumé et de limitation des recherches. Chaque test possède son propre profil et le sous-processus agent reçoit l’environnement choisi. La CI vérifie aussi les traductions, les tests par plateforme et les versions indépendantes de l’application, de Control et du moteur.
 

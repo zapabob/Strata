@@ -1,6 +1,6 @@
 # Hakua Windows release qualification
 
-## 0.5.9 workflow safety candidate
+## Stable 0.5.9 workflow safety release
 
 Repairs Windows local-engine physical-memory containment, research capability
 restrictions and inventory CSV comparison. App, Terminal, Control and native
@@ -8,7 +8,11 @@ source versions are coordinated at 0.5.9. Fresh builds, component signatures,
 actual-model workflow checks, exact-source CI, standard overwrite and anonymous
 release readback are tracked individually in the
 [0.5.9 delivery record](../_docs/2026-11-13_stable-059-workflow-safety_Codex.md).
-Do not infer a completed release from this source-version declaration.
+Formal v0.5.9 is published as GitHub Latest and the latest alias. All seventeen assets matched anonymous size and SHA-256 readback. All eight exact-source CI workflows and thirteen Checks jobs passed. The final standard overwrite matched 29558 managed files and preserved 3789 user files during installation.
+
+Actual-model checks used a fresh isolated installed-app profile and explicit PrismML 0.4.1 with a Qwen3.5 9B GGUF. They passed /btw, skill learning and automatic application, two saved audits with counts 1/0/0/0, four real searches and four successful page reads with no workspace writes. A genuine pressure stop at 8447000576 bytes available was preserved; no RAM threshold was changed before reloading and observing UI answer 42.
+
+The generated research answer incorrectly implied that Copy automatically supplies Clone, and one fetched page was the historical Rust 1.8.0 book. General answer accuracy is not qualified. The Automatic runtime could not load this trunk-only GGUF; explicit PrismML selection was required. These limits and the actual protective stop remain in public QUALITY.json. The normal user profile, all ten existing skill entries, tools/keys/approvals and model settings were restored; the model is unloaded.
 The failed initial 0.5.8 real-model attempt is retained in its
 [verification report](../_docs/2026-11-13_real-model-workflows_Codex.md).
 General model quality, full-window inference and GPU concurrency remain
@@ -44,8 +48,8 @@ research quality and GPU concurrency remain unqualified. `releaseQualified=false
 is explicit. The installer has no Windows Authenticode signature; authenticated
 component/feed signatures are independent.
 
-[Formal v0.5.8](https://github.com/zapabob/Strata/releases/tag/v0.5.8) is GitHub
-Latest and the mutable latest alias. All seventeen public assets were downloaded
+[Formal v0.5.8](https://github.com/zapabob/Strata/releases/tag/v0.5.8) was GitHub
+Latest and the mutable latest alias at publication; 0.5.9 supersedes it. All seventeen public assets were downloaded
 anonymously and matched their frozen sizes and SHA-256 values. The tar.7z contains
 the same installer, signed components, instructions, source/quality records,
 RustXNG corresponding source and checksums. Models and personal data are excluded.

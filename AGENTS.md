@@ -1,21 +1,36 @@
 # AGENTS.md
 
-Current candidate source: Hakua product version 0.5.9; app, Terminal, Control and native engine 0.5.9.
-The workflow-safety changes and fresh build, real-model, CI, installation and
-publication evidence are tracked in
-_docs/2026-11-13_stable-059-workflow-safety_Codex.md. Until its completion record
-is present, installed/public 0.5.8 remains the last verified release described
-below. Preserve the unchanged resource floors and historical receipts.
+Current stable release: Hakua product version 0.5.9; app, Terminal, Control and native engine 0.5.9.
+Formal v0.5.9, GitHub Latest and the latest alias are published. All seventeen
+public assets were downloaded anonymously and matched frozen SHA-256 values.
+App build and all eight hosted CI workflows use e6bd6a4ebc8b5e8a0c6f68de8acf76a861adeb49;
+all thirteen Checks jobs passed. Native source is db640451e677ba2c43ebfb555a505e4c037e0bd1;
+Control source is d11edad8200f1ba9bf4ef4bab30e5c1e5616f6ea.
+The standard NSIS overwrite matched 29558 managed files and preserved 3789 user
+files during installation. Real-model workflow checks passed in an isolated
+installed-app profile with explicitly selected PrismML 0.4.1. A genuine RAM
+pressure stop at about 7.87 GiB and successful reload are recorded; retain the
+unchanged 3 GiB RAM floor and other resource floors. Both saved audits had
+counts 1/0/0/0. Research used four searches and four page reads without workspace
+writes. Its generated answer still had a factual error, recorded in QUALITY.json.
+General model quality, full-window inference and GPU concurrency remain
+unqualified; releaseQualified=false. Windows Authenticode signing is absent;
+component/feed signatures were verified with bundled production public keys.
+The original user profile is normally running with its settings and prior skills
+preserved, learning and auto-application enabled, RustXNG Full and no loaded model.
+See _docs/2026-11-13_stable-059-workflow-safety_Codex.md for exact scope and evidence.
 
-Hakua app, Terminal, Control and native engine 0.5.8 are installed and formally
+## Historical 0.5.8 records
+
+Hakua app, Terminal, Control and native engine 0.5.8 were installed and formally
 published. The components were freshly built, signed and tested; Windows
 Authenticode signing of the app installer remains absent. Publication and installation
 are recorded in _docs/2026-11-11_stable-058-context-ci_Codex.md. Historical
 measurements below retain their original product versions.
 
-## Current local app update (2026-11-12)
+## Historical local app update (2026-11-12)
 
-Stable 0.5.8 is installed from `H:/Strata/releases/stable-058-20261111-codex`.
+Stable 0.5.8 was installed from `H:/Strata/releases/stable-058-20261111-codex`.
 Actual app source: `91107e48367d934a02644bc7c61d5cb923d7f700`;
 Control source: `42ca8ebd70328788001695b4a7ffe67b444f10db`;
 native source: `c629ee37dde049b09bc42bdc00b076906f44fa27`.
@@ -55,7 +70,7 @@ their original versions and measurements.
 
 ## Historical 0.5.7 local update (2026-11-11)
 
-Stable app 0.5.7 is installed from the five-job formal build in
+Stable app 0.5.7 was installed from the five-job formal build in
 `H:/Strata/releases/stable-057-20261111-codex`; exact app build source is
 `427f77ca225595b68cee750c5a367d8e6cee49f4`. It includes real tool-free `/btw`
 subagents, private workflow skill learning, automatic matching-skill application,
@@ -126,7 +141,7 @@ existing executable defaults may differ, so inspect the plan and choose the fami
 
 ## Installing this Hakua fork
 
-For a Hakua Windows request, use [docs/HAKUA_INSTALL.md](docs/HAKUA_INSTALL.md) and the [stable fork release](https://github.com/zapabob/Strata/releases/tag/v0.5.8): `Strata-0.5.8-windows-x64-setup.exe`. The identical per-user Tauri NSIS installer, signed native 0.5.8 CUDA component, Control 0.5.8, instructions and checksums are also in `Strata-0.5.8-windows-x64.tar.7z`. The app carries private Node/Python; the GPU component remains separate and the EXE has no Windows code signature. Use immutable SemVer tag `v0.5.8`, the mutable `latest` alias and GitHub Latest. Preserve older published assets. Read [docs/HAKUA_RELEASE.md](docs/HAKUA_RELEASE.md) for independently measured native limits, passing exact-source CI and retained historical failures and actual publication status. The stable app designation does not qualify full-window generation or low-precision model quality; `releaseQualified=false` remains explicit.
+For a Hakua Windows request, use [docs/HAKUA_INSTALL.md](docs/HAKUA_INSTALL.md) and the [stable fork release](https://github.com/zapabob/Strata/releases/tag/v0.5.9): `Strata-0.5.9-windows-x64-setup.exe`. The identical per-user Tauri NSIS installer, signed native 0.5.9 CUDA component, Control 0.5.9, instructions and checksums are also in `Strata-0.5.9-windows-x64.tar.7z`. The app carries private Node/Python; the GPU component remains separate and the EXE has no Windows code signature. Use immutable SemVer tag `v0.5.9`, the mutable `latest` alias and GitHub Latest. Preserve older published assets. Read [docs/HAKUA_RELEASE.md](docs/HAKUA_RELEASE.md) for independently measured native limits, passing exact-source CI and retained historical failures and actual publication status. The stable app designation does not qualify full-window generation or low-precision model quality; `releaseQualified=false` remains explicit.
 
 The model-family overview above is upstream reference. This fork Windows release has no native image input or separate native DeepSeek engine. See docs/HAKUA_RELEASE.md for the measured paths and limits.
 

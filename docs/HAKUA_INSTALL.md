@@ -2,15 +2,15 @@
 
 ## 0.5.9 workflow safety update
 
-The next coordinated Windows release is 0.5.9 for app, Terminal, Control and
+The published coordinated Windows release is 0.5.9 for app, Terminal, Control and
 native engine. Use its [standard setup EXE](https://github.com/zapabob/Strata/releases/download/v0.5.9/Strata-0.5.9-windows-x64-setup.exe)
 or [tar.7z bundle](https://github.com/zapabob/Strata/releases/download/v0.5.9/Strata-0.5.9-windows-x64.tar.7z)
 after confirming the [delivery record](../_docs/2026-11-13_stable-059-workflow-safety_Codex.md).
-That record distinguishes candidate, installed and publicly verified status.
+Formal v0.5.9 is GitHub Latest and the mutable latest alias. All seventeen public files matched anonymous download checks. The delivery record distinguishes real-model checks from fixture-model checks.
 The standard per-user overwrite, backup and rollback instructions below apply.
 RustXNG stays at 0.31.1 Full; existing provider and approval choices are retained.
 
-Windows local GGUF loading requires more than 5 GiB available RAM. The host
+Windows local GGUF loading reserves 5 GiB of available RAM and, for fitting fully GPU-resident models, additional loading and mapped-page headroom. The hard floor stays 3 GiB. The host
 monitors its own engine throughout loading and generation and stops it early
 under physical memory pressure. A stopped model may need a smaller batch or
 memory mapping disabled before reloading. Context is never silently reduced.
@@ -22,7 +22,7 @@ Inventory CSV audits use calculated comparisons; passed means successful.
 Use the [0.5.8 setup EXE](https://github.com/zapabob/Strata/releases/download/v0.5.8/Strata-0.5.8-windows-x64-setup.exe)
 or [complete tar.7z](https://github.com/zapabob/Strata/releases/download/v0.5.8/Strata-0.5.8-windows-x64.tar.7z),
 and compare [SHA256SUMS.txt](https://github.com/zapabob/Strata/releases/download/v0.5.8/SHA256SUMS.txt).
-This formal fork release is GitHub Latest and the mutable latest alias. App,
+At its publication, this formal fork release was GitHub Latest and the mutable latest alias. It has been superseded by 0.5.9. App,
 Terminal, Control and freshly built native engine are all 0.5.8. RustXNG stays
 0.31.1 Full; third-party packages keep their independent versions.
 
