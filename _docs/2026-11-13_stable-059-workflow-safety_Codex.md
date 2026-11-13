@@ -121,3 +121,23 @@ barrier: the real revision process is held until the test observes detached
 return and generating state, then is released. Changed-file, apply and rollback
 assertions remain intact. The complete Time-skip module passed locally. This
 test-only repair does not change distributed Control or native sources.
+
+The fresh five-job native 0.5.9 build passed from frozen db640451. Its build
+phase already produced the authoritative source/binary binding; an unnecessary
+explicit bind request was refused as already bound. That refusal remains
+recorded and no receipt was relabelled. The numerical helper now accepts the
+same successful build-or-bind contract as the component verifier, preserving
+all source, hash, drained-Job and final 21-case assertions. CPU, GPU, sanitizer,
+spill and all 21 additional numerical checks passed. The bounded real-model
+phase passed seven request cases and before/after model hashes; legacy and
+fresh-owner restart comparisons are pending.
+
+The old app was normally unloaded and exited through its normal window close.
+Its tray preference was temporarily disabled and restored before backup; no
+process was force killed. The five-worker private backup and full hash readback
+passed. All six NSIS cleanup scenarios passed. The release bundler now requires
+the actual-model workflow receipt, correct saved audit counts, production RAM
+samples, no unwanted research writes/denials and full user-choice restoration.
+Only bounded outcomes enter public QUALITY.json; private transcripts, settings,
+model paths and skill bodies remain local. No 0.5.9 installation or publication
+is claimed yet.

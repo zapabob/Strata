@@ -218,6 +218,43 @@ def install() -> None:
 
 
 def bundle() -> None:
+    real_path = OUT / 'REAL_MODEL_059.json'
+    real = load(real_path)
+    require(real.get('ok') is True and real.get('actualModel') is True
+            and real.get('syntheticResponses') is False, 'Passing actual local-model workflows required')
+    checks = real['checks']
+    require(all(checks.get(name, {}).get('pass') is True for name in
+                ('memoryAdmission', 'btw', 'learning', 'automaticApplication', 'deepresearch')),
+            'Every requested actual-model workflow must pass')
+    cleanup = real['cleanup']
+    require(cleanup['engineRunning'] is False and cleanup['activeTurns'] == 0
+            and all(cleanup[key] is True for key in ('toolsUnchanged', 'oldSkillsUnchanged', 'settingsRestored')),
+            'Real-model verification must restore user choices and unload its model')
+    guard = real['memoryGuard']
+    require(guard['samples'] > 0 and guard['minimumAvailableBytes'] > 3 * 1024**3
+            and guard['pressure'] is None, 'Actual production RAM guard evidence required')
+    research = checks['deepresearch']
+    require(len(research['queries']) >= 3 and len(research['urls']) >= 4
+            and research['manualDenials'] == research['unwantedWrites'] == 0
+            and all(card['name'] in ('web_search', 'web_fetch') for card in research['task']['cards']),
+            'Research must complete without unwanted tools or manual denials')
+    counts = [[checks[name]['audit'][key] for key in
+               ('total_mismatches', 'total_duplicates', 'total_missing', 'total_failed')]
+              for name in ('learning', 'automaticApplication')]
+    require(counts == [[1, 0, 0, 0], [1, 0, 0, 0]], 'Both actual saved audits must have correct counts')
+    # Publish only bounded outcomes; private transcripts, skill bodies, settings
+    # and absolute model paths remain on this PC.
+    real_public = {'actualLocalModel': True, 'syntheticResponses': False,
+        'evidenceSHA256': sha(real_path), 'modelFamily': 'Qwen3.5 9B Q4_K_M',
+        'contextTokens': real['runtime']['context'], 'memoryMapping': not real['runtime']['noMmap'],
+        'mappedLoadRejectedBeforeEngineStart': checks['memoryAdmission']['engineNotStarted'],
+        'separateBtwSubagent': True, 'workflowLearningPassed': True,
+        'automaticApplicationWithoutManualSelection': checks['automaticApplication']['manualSkillSelection'] is False,
+        'savedAuditCounts': counts, 'researchQueries': len(research['queries']),
+        'successfulPageReads': len(research['urls']), 'unwantedWrites': 0, 'manualDenials': 0,
+        'minimumAvailableRAMBytes': guard['minimumAvailableBytes'], 'memorySamples': guard['samples'],
+        'modelUnloadedAndUserChoicesRestored': True,
+        'limits': 'Bounded fixtures and cited research only; no general model-quality, full-window or concurrency qualification.'}
     require(load(OUT / 'installed.json')['ok'] and not ASSETS.exists(), 'Verified install and fresh asset folder required')
     ASSETS.mkdir()
     build = load(OUT / 'app-build.json')
@@ -246,6 +283,7 @@ def bundle() -> None:
             'Complete native audit must qualify the exact locally installed component before publication')
     require(load(OUT / 'receipts/harness-group-final.json')['passed'], 'The actual Harness regression group must pass')
     quality = {'releaseQualified': False, 'coordinatedSemVer': '0.5.9', 'components': verified,
+               'actualModelWorkflows': real_public,
                'cloudCIObservation': ci, 'completeNativeAuditAfterLocalInstallPreparation': final_native,
                'nativePriorEvidence': 'https://github.com/zapabob/Strata/releases/tag/v0.5.5-local.1',
                'expandedProfileContextGuard': {'passed': 44, 'failed': 0, 'skipped': 0,
