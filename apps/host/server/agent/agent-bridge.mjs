@@ -568,8 +568,14 @@ export function createAgentBridge({ dataDir, componentsDir = null, bundledDir = 
       if (turn.finished) return;
       turn.finished = true;
       if (turn.research) {
-        try { await researchPhase('off'); }
-        catch { failure ??= 'Research stopped, but its restrictions could not be cleared. Reopen this chat before continuing.'; delete sessionMap[c.id]; persist(); }
+        if (failure || turn.stopping || projector.ended?.kind !== 'completed') {
+          // A cancelled/lost stream may still have a late model call in flight.
+          // Keep its old session restricted; the next chat turn gets a new one.
+          delete sessionMap[c.id]; persist();
+        } else {
+          try { await researchPhase('off'); }
+          catch { failure ??= 'Research stopped, but its restrictions could not be cleared. Reopen this chat before continuing.'; delete sessionMap[c.id]; persist(); }
+        }
       }
       for (const [k, v] of questions) if (v.sessionId === turn.sessionId) questions.delete(k);
       clearTimeout(turn.settleTimer);

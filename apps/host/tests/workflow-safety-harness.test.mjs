@@ -32,4 +32,14 @@ test('actual Harness hides research writes, rejects direct attempts without appr
   assert.ok(audit, JSON.stringify(auditFrames.filter(f => f.type === 'error')));
   assert.match(audit.tool.result, /"total_mismatches":1/);
   assert.match(audit.tool.result, /"total_failed":0/);
+  const stoppedFrames = [];
+  const running = bridge.researchCommand({ chatId: 'research-stop', line: 'SCRIPT:slow 4000', deep: true, workspacePath: ws, mode: 'bypass', thinking: 'Off', onFrame: f => stoppedFrames.push(f) });
+  const deadline = Date.now() + 20000;
+  while (!worker.requests.some(r => r.directive === 'slow')) { assert.ok(Date.now() < deadline, 'research request must start before cancellation'); await new Promise(resolve => setTimeout(resolve, 25)); }
+  const oldSession = bridge.sessionOf('research-stop');
+  assert.ok(oldSession);
+  await bridge.stop('research-stop'); await running;
+  assert.equal(bridge.sessionOf('research-stop'), null, 'cancelled research session remains restricted and is retired');
+  await bridge.runTurn({ chatId: 'research-stop', message: 'SCRIPT:echo fresh after stop', workspacePath: ws, mode: 'manual', onFrame: () => {} });
+  assert.notEqual(bridge.sessionOf('research-stop'), oldSession, 'a late call from the old session cannot inherit restored tools');
 });

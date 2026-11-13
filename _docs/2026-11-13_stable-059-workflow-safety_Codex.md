@@ -103,3 +103,13 @@ passed 2/2; this does not relabel the earlier full run as all green. Hosted full
 Windows and Linux suite results remain separately required. Configuration
 snapshot generation completed with zero changed files or values. Final focused
 checks and typecheck passed. RAM floors and all test assertions remain unchanged.
+
+Review additionally identified late calls after cancellation: restoring ordinary
+capabilities on a cancelled or lost research stream could reopen its old session.
+Those sessions now retain restrictions and are retired; a later normal turn
+receives a fresh session. Only a completed settled research session is restored
+in place. The actual-Harness cancellation/reuse test passed, including Bypass
+research followed by a Manual turn with a different session identity. This is a
+production follow-up requiring a new app build/CI source; native inputs and
+Control files are unchanged. Native compilation and Control packaging retain
+their actual independently frozen source identities.
