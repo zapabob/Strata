@@ -58,6 +58,27 @@ class RerunKeepsSize(unittest.TestCase):
         _, cfg, _ = self.run_setup(["--family", "qwen", "--model", "IQ3_S", "--setup", "--no-start"], [earlier("IQ3_XXS")])
         self.assertEqual(cfg["model_name"], "qwen3.8-flash-next-iq3_s")
 
+    def test_a_named_size_wins_with_equal_mtimes_and_lexical_enumeration(self):
+        import os
+        from unittest import mock
+
+        real_write, real_glob = setup.write_config, Path.glob
+
+        def lexical_glob(folder, pattern, *args, **kwargs):
+            found = real_glob(folder, pattern, *args, **kwargs)
+            return iter(sorted(found, key=str)) if pattern == "strata-*.json" else found
+
+        def tied_write(path, value, *args, **kwargs):
+            result = real_write(path, value, *args, **kwargs)
+            for existing in real_glob(Path(path).parent, "strata-*.json"):
+                os.utime(existing, (1000, 1000))
+            return result
+
+        with mock.patch.object(Path, "glob", lexical_glob), mock.patch.object(setup, "write_config", tied_write):
+            _, cfg, _ = self.run_setup(
+                ["--family", "qwen", "--model", "IQ3_S", "--setup", "--no-start"], [earlier("IQ3_XXS")])
+        self.assertEqual(cfg["model_name"], "qwen3.8-flash-next-iq3_s")
+
     def test_another_family_is_not_touched(self):
         # a Qwen IQ3_XXS install does not pre-select anything for the Unsloth family
         _, cfg, _ = self.run_setup(["--family", "unsloth", "--setup", "--no-start"], [earlier("IQ3_XXS")])

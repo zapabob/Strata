@@ -154,3 +154,19 @@ app build and all eight exact-source workflows. Windows native inputs and the
 The unchanged version-consistency module passed all six tests after the fix.
 The source checks confirmed all 779 Windows native input files and all 401
 packaged Control source files still match their actual frozen build commits.
+
+On 116e5b2b, Windows tools passed 2123 tests and 838 subtests, with 84 skips
+and one failure in the golden setup fixture's output selection. A deterministic
+reproduction gave both configs the same mtime and lexical enumeration: the
+production setup correctly wrote the explicitly requested IQ3_S, but the fixture
+returned the older IQ3_XXS. The fixture now records successful write_config calls
+and reads the last actual output, retaining its fallback for read-only runs. A
+new regression reproduces the equal-time ordering. Production setup, model
+choice, expected values and golden snapshots are unchanged. The completed app
+from 116e5b2b is retained; these unshipped test-only edits will be separately
+bound to the exact installed runtime and installer before release.
+
+The corrected setup fixture and unchanged golden-profile comparisons passed
+13 tests, including the forced equal-mtime regression. Control binding still
+passed all 401 sources. A preliminary local invocation lacked its private driver
+and ran no assertions; its failed receipt is retained and is not a test pass.

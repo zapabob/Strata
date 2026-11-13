@@ -95,7 +95,18 @@ def install(ram, found, argv, answers=None, extra=(), avx512=False, configs=()):
             dst.write_bytes(b"")
             setup.mark(dst)
 
+        completed_configs = []
+        real_write_config = setup.write_config
+
+        def record_write_config(path, value, *args, **kwargs):
+            result = real_write_config(path, value, *args, **kwargs)
+            path = Path(path)
+            if path.parent == t and path.name.startswith("strata-") and path.suffix == ".json":
+                completed_configs.append(path)
+            return result
+
         patches = [
+            mock.patch.object(setup, "write_config", record_write_config),
             mock.patch.object(setup, "ROOT", t),
             mock.patch.object(setup, "GPU_PICK", None),
             mock.patch.object(setup, "data_folder", lambda d, *a, **k: (t / "data", [])),
@@ -142,7 +153,9 @@ def install(ram, found, argv, answers=None, extra=(), avx512=False, configs=()):
                     code = setup.main()
                 except SystemExit as e:
                     code = e.code
-        written = sorted(t.glob("strata-*.json"), key=lambda p: p.stat().st_mtime)
+        # Observe successful writes; old and new configs can share an mtime.
+        # A read-only setup run retains the existing fallback selection.
+        written = completed_configs or sorted(t.glob("strata-*.json"), key=lambda p: p.stat().st_mtime)
         cfg = None
         if written and code == 0:
             cfg = normalize(json.loads(written[-1].read_text(encoding="utf-8")), t)
