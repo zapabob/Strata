@@ -11,7 +11,7 @@ edit('docs/data/release.json', text => {
   const value = JSON.parse(text);
   for (const key of ['product_version', 'control_version', 'engine_version']) value[key] = '0.5.9';
   value.tag = 'v0.5.9'; value.assets = value.assets.map(name => name.replaceAll('0.5.8', '0.5.9'));
-  if (!value.historical_releases.some(row => row.tag === 'v0.5.8')) value.historical_releases.push({ tag: 'v0.5.8', product_version: '0.5.8', assets: ['Strata-0.5.8-windows-x64-setup.exe', 'Strata-0.5.8-windows-x64.tar.7z'] });
+  if (!value.historical_releases.some(row => row.tag === 'v0.5.8')) value.historical_releases.push({ tag: 'v0.5.8', product_version: '0.5.8', assets: ['Strata-0.5.8-windows-x64-setup.exe'] });
   return JSON.stringify(value, null, 1) + '\n';
 });
 const translations = {
