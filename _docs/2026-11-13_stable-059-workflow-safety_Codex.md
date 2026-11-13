@@ -170,3 +170,26 @@ The corrected setup fixture and unchanged golden-profile comparisons passed
 13 tests, including the forced equal-mtime regression. Control binding still
 passed all 401 sources. A preliminary local invocation lacked its private driver
 and ran no assertions; its failed receipt is retained and is not a test pass.
+
+The app from 116e5b2b was normally overwrite-installed: all 29558 managed
+files matched and all 3779 inventoried user files were unchanged during NSIS.
+Sixteen isolated installed-WebView2 checks passed on the second cold-start run
+(first aside wait 22892 ms); the initial 30-second failure remains retained.
+These checks use a synthetic model API and real RustXNG. Native 0.5.9 was
+installed with bundled production trust and a successful one-token model probe;
+all 140 signed payload hashes match. A wrapper omitted JSONL handling and failed
+after successful installation; a separate readback verified state and bytes.
+Earlier native folders remain; 0.5.8 entrypoints and manifest still match its
+published evidence. The legacy model config's unsupported vram-reserve flag
+was preserved; the install probe used its explicit separately validated config.
+
+The first 0.5.9 workflow model run passed admission rejection and a real separate
+/btw answer of 42. The model then passed read-tool display line numbers into
+the CSV comparator; the comparator rejected the header, so the full run failed
+before learning and restored all model settings, tools and prior skills. The
+new parser accepts only a complete consecutive N-colon-space display beginning
+at line 1, strips that formatting and retains all original CSV validation.
+Adversarial tests cover missing/repeated labels, partial views and quoted literal
+numbered text. Nine focused safety tests pass. This distributed fix requires a
+fresh app build, overwrite and real-model verification; prior candidates and
+failed records remain preserved. Native and Control build inputs are unchanged.

@@ -5,6 +5,15 @@ function csv(text, required) {
   const value = () => { row.push(cell.trim()); cell = ''; closed = false; if (row.length > 64) throw new Error('Too many CSV columns.'); };
   const line = () => { value(); if (row.some(Boolean)) rows.push(row); row = []; if (rows.length > 10001) throw new Error('Too many CSV rows.'); };
   text = text.replace(/^\uFEFF/, '');
+  // The read tool renders every physical line as N: content. Accept only a
+  // complete, consecutive display beginning at line 1; partial views fail closed.
+  if (/^1: /.test(text)) {
+    const lines = text.split(/\r?\n/);
+    if (lines.at(-1) === '') lines.pop();
+    if (!lines.every((line, i) => line.startsWith((i + 1) + ': ')))
+      throw new Error('Supply the complete CSV without display line numbers.');
+    text = lines.map((line, i) => line.slice(String(i + 1).length + 2)).join('\n');
+  }
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
     if (quoted) { if (ch === '"' && text[i + 1] === '"') { cell += '"'; i++; } else if (ch === '"') { quoted = false; closed = true; } else cell += ch; continue; }

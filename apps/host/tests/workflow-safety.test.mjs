@@ -31,6 +31,16 @@ test('malformed, truncated, missing-header and oversized CSVs fail without inven
     assert.throws(() => auditInventory({ ...fixture, inventory_csv }));
 });
 
+test('actual model read display retains CSV semantics and requires consecutive complete line labels', () => {
+  const display = value => value.trimEnd().split(/\r?\n/).map((line, i) => (i + 1) + ': ' + line).join('\n') + '\n';
+  const rendered = Object.fromEntries(Object.entries(fixture).map(([key, value]) => [key, display(value)]));
+  assert.deepEqual(auditInventory(rendered), auditInventory(fixture));
+  for (const inventory_csv of [rendered.inventory_csv.replace('2: ', '3: '), rendered.inventory_csv.replace('2: ', ''), rendered.inventory_csv.split('\n').slice(1).join('\n')])
+    assert.throws(() => auditInventory({ ...fixture, inventory_csv }));
+  const quoted = { ...fixture, inventory_csv: 'id,item,version\ndelta,"line one\n2: literal data",0.5.8\nepsilon,Control,0.5.6\nzeta,Terminal,0.5.8\n' };
+  assert.deepEqual(auditInventory({ ...quoted, inventory_csv: display(quoted.inventory_csv) }), auditInventory(quoted));
+});
+
 function workflowHarness() {
   const hooks = new Map(), commands = new Map(), policies = new Map(), agents = new Map(); let guard;
   const ctx = { llm: { streamWithRegistration: value => value }, sessions: agents, on: (name, handler) => hooks.set(name, handler), tools: { guard: fn => { guard = fn; }, register: () => {} }, commands: { register: row => commands.set(row.name, row) } };
