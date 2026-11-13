@@ -113,3 +113,11 @@ research followed by a Manual turn with a different session identity. This is a
 production follow-up requiring a new app build/CI source; native inputs and
 Control files are unchanged. Native compilation and Control packaging retain
 their actual independently frozen source identities.
+
+On bc355f86, hosted full Windows and Linux host checks passed. Mac host passed
+2070 tests with one failure in Time-skip's pre-existing fixed 1400-ms assertion
+against a revision delayed 1500 ms. The replacement uses an explicit external
+barrier: the real revision process is held until the test observes detached
+return and generating state, then is released. Changed-file, apply and rollback
+assertions remain intact. The complete Time-skip module passed locally. This
+test-only repair does not change distributed Control or native sources.

@@ -58,14 +58,25 @@ test('a run starts without the caller waiting, shows its changed files, and appl
     const workspace = join(dir, 'work'); mkdirSync(workspace);
     writeFileSync(join(workspace, 'plan.md'), 'first draft\n');
     const script = join(dir, 'revise.mjs');
-    writeFileSync(script, "import { writeFileSync, appendFileSync } from 'node:fs'; await new Promise(r => setTimeout(r, 1500)); appendFileSync('plan.md', 'second line\\n'); writeFileSync('extra.md', process.env.STRATA_TIMESKIP_PROMPT);");
+    const revisionStarted = join(dir, 'revision-started'), releaseRevision = join(dir, 'release-revision');
+    writeFileSync(script, `import { existsSync, writeFileSync, appendFileSync } from 'node:fs';
+writeFileSync(${JSON.stringify(revisionStarted)}, 'running');
+const deadline = Date.now() + 30000;
+while (!existsSync(${JSON.stringify(releaseRevision)})) {
+  if (Date.now() >= deadline) throw new Error('The test never released the revision');
+  await new Promise(resolve => setTimeout(resolve, 25));
+}
+appendFileSync('plan.md', 'second line\\n'); writeFileSync('extra.md', process.env.STRATA_TIMESKIP_PROMPT);`);
     const state = join(dir, 'state');
     const ts = createTimeSkip({ repoRoot: REPO, python: PYTHON, env: { ...process.env, STRATA_TIMESKIP_DIR: state } });
-    const started = Date.now();
     const result = await ts.startDetached({ workspace, prompt: 'extend the plan', attempts: 1, reviseCommand: `"${process.execPath}" "${script}"` });
     assert.ok(result.ok, JSON.stringify(result));
-    assert.ok(Date.now() - started < 1400, 'the call returned while the revision was still running');
     const id = result.run.id;
+    for (let i = 0; i < 200 && !existsSync(revisionStarted); i++) await sleep(25);
+    assert.ok(existsSync(revisionStarted), 'the actual revision process has started');
+    assert.equal(ts.status(id).phase, 'generating', 'the call returned while the revision is held at the barrier');
+    assert.equal(existsSync(releaseRevision), false, 'completion has not been allowed yet');
+    writeFileSync(releaseRevision, 'continue');
     let run;
     for (let i = 0; i < 100; i++) { run = ts.status(id); if (['completed', 'failed'].includes(run.phase)) break; await sleep(300); }
     assert.equal(run.phase, 'completed', JSON.stringify(run));
