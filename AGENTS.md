@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Current candidate source: app, Terminal, Control and native engine 0.5.9.
+Current candidate source: Hakua product version 0.5.9; app, Terminal, Control and native engine 0.5.9.
 The workflow-safety changes and fresh build, real-model, CI, installation and
 publication evidence are tracked in
 _docs/2026-11-13_stable-059-workflow-safety_Codex.md. Until its completion record

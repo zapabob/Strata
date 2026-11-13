@@ -141,3 +141,16 @@ samples, no unwanted research writes/denials and full user-choice restoration.
 Only bounded outcomes enter public QUALITY.json; private transcripts, settings,
 model paths and skill bodies remain local. No 0.5.9 installation or publication
 is claimed yet.
+
+The Linux full Python suite at 599a8bd9 passed 3845 tests and 495 subtests,
+with 110 skips and two version-consistency failures: Metal retained 0.5.8,
+and AGENTS lacked its required current-product phrase. The real sources and
+metadata are corrected; the existing assertions are unchanged. The version
+preparation recipe now covers Metal. The first app installer is preserved by
+SHA-256 under candidate-599-r1; the corrected commit requires a fresh standard
+app build and all eight exact-source workflows. Windows native inputs and the
+401 packaged Control source files remain unchanged.
+
+The unchanged version-consistency module passed all six tests after the fix.
+The source checks confirmed all 779 Windows native input files and all 401
+packaged Control source files still match their actual frozen build commits.

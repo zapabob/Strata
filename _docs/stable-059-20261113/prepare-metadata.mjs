@@ -6,6 +6,7 @@ for (const name of ['apps/host/package.json', 'apps/host/package-lock.json', 'ap
 for (const name of ['apps/desktop/src-tauri/Cargo.toml', 'apps/desktop/src-tauri/Cargo.lock']) edit(name, text => text.replaceAll('version = "0.5.8"', 'version = "0.5.9"'));
 for (const name of ['VERSION', 'CONTROL_VERSION']) edit(name, () => '0.5.9\n');
 edit('CMakeLists.txt', text => text.replace('project(strata VERSION 0.5.8', 'project(strata VERSION 0.5.9'));
+edit('metal/CMakeLists.txt', text => text.replace('STRATA_VERSION="0.5.8"', 'STRATA_VERSION="0.5.9"'));
 edit('strata_cli/__init__.py', text => text.replace('PRODUCT_VERSION = "0.5.8"', 'PRODUCT_VERSION = "0.5.9"'));
 edit('docs/data/release.json', text => {
   const value = JSON.parse(text);
