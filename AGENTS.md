@@ -1,5 +1,12 @@
 # AGENTS.md
 
+Current candidate source: app, Terminal, Control and native engine 0.5.9.
+The workflow-safety changes and fresh build, real-model, CI, installation and
+publication evidence are tracked in
+_docs/2026-11-13_stable-059-workflow-safety_Codex.md. Until its completion record
+is present, installed/public 0.5.8 remains the last verified release described
+below. Preserve the unchanged resource floors and historical receipts.
+
 Hakua app, Terminal, Control and native engine 0.5.8 are installed and formally
 published. The components were freshly built, signed and tested; Windows
 Authenticode signing of the app installer remains absent. Publication and installation

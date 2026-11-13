@@ -100,7 +100,7 @@ jobs:
           'STRATA_NO_ACQUIRE=1' | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - name: Real Harness regressions (no model weights or service keys)
         working-directory: apps/host
-        run: node --test --test-concurrency=2 tests/agent-context.test.mjs tests/agent-tools.test.mjs tests/agent-turn-guard.test.mjs tests/harness-environment.test.mjs
+        run: node --test --test-concurrency=2 tests/agent-context.test.mjs tests/agent-tools.test.mjs tests/agent-turn-guard.test.mjs tests/harness-environment.test.mjs tests/workflow-safety-harness.test.mjs
 
   linux:
     name: Linux / ${{ matrix.name }}

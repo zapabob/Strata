@@ -1,15 +1,15 @@
 {
  "_about": "Current Hakua Windows fork source release. Upstream references and immutable historical installers are declared independently; the checker never rewrites their URLs.",
- "tag": "v0.5.8",
- "product_version": "0.5.8",
- "control_version": "0.5.8",
- "engine_version": "0.5.8",
+ "tag": "v0.5.9",
+ "product_version": "0.5.9",
+ "control_version": "0.5.9",
+ "engine_version": "0.5.9",
  "installer_names": [
   "Strata-{v}-windows-x64-setup.exe"
  ],
  "assets": [
-  "Strata-0.5.8-windows-x64-setup.exe",
-  "Strata-0.5.8-windows-x64.tar.7z"
+  "Strata-0.5.9-windows-x64-setup.exe",
+  "Strata-0.5.9-windows-x64.tar.7z"
  ],
  "upstream": {
   "tag": "v0.2.13",
@@ -82,6 +82,14 @@
    "product_version": "0.5.7",
    "assets": [
     "Strata-0.5.7-windows-x64-setup.exe"
+   ]
+  },
+  {
+   "tag": "v0.5.8",
+   "product_version": "0.5.8",
+   "assets": [
+    "Strata-0.5.8-windows-x64-setup.exe",
+    "Strata-0.5.8-windows-x64.tar.7z"
    ]
   }
  ]

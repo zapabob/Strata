@@ -518,6 +518,11 @@ export function createAgentBridge({ dataDir, componentsDir = null, bundledDir = 
       plan: null, advancing: false, goalRun: false, lastActivity: Date.now(), heard: Date.now(), engineMark: null, watchdog: null,
       research: researchTopic ? { phase: 'gather', nudged: false, waitingStart: false } : null,
     };
+    async function researchPhase(phase) {
+      const result = await runtime.gw.rpc('commands/execute', { agentId: sessionId, line: `/strata-research ${phase}`, submittedAttachments: [] });
+      if (result?.result?.kind !== 'success' || result.result.text !== `research ${phase}`)
+        throw new AgentUnavailable('Research could not establish its tool restrictions, so it did not continue.', 'research-policy-unavailable');
+    }
     c.turn = turn;
     if (workspacePath) folderClaims.begin(workspacePath, chatId);
     /**
@@ -562,6 +567,10 @@ export function createAgentBridge({ dataDir, componentsDir = null, bundledDir = 
     async function finishTurn(failure) {
       if (turn.finished) return;
       turn.finished = true;
+      if (turn.research) {
+        try { await researchPhase('off'); }
+        catch { failure ??= 'Research stopped, but its restrictions could not be cleared. Reopen this chat before continuing.'; delete sessionMap[c.id]; persist(); }
+      }
       for (const [k, v] of questions) if (v.sessionId === turn.sessionId) questions.delete(k);
       clearTimeout(turn.settleTimer);
       clearInterval(turn.watchdog);
@@ -894,8 +903,11 @@ ${note.text}
               if (prompt !== nudge) { r.phase = 'write'; hideDeltas = false; written.all = ''; reporter.set({ phase: 'waiting', code: 'research-writing', text: 'Writing the answer…', key: 'Writing the answer…', values: [], args: {} }); } else r.nudged = true;
               if (r.phase === 'write' && evidence && !evidence.complete) emit({ type:'delta', own:true, text:'This is a limited investigation: the minimum of three distinct searches and four page reads was not reached.\n\n' });
               r.waitingStart = true;
-              try { await runtime.gw.rpc('session/prompt', { request: { requestId: `research-${randomUUID()}`, sessionId, mode: 'queue', content: [{ type: 'text', text: prompt }] } }); }
-              catch { r.waitingStart = false; hideDeltas = false; finishTurn(null); return; }
+              try {
+                if (r.phase === 'write') await researchPhase('write');
+                await runtime.gw.rpc('session/prompt', { request: { requestId: `research-${randomUUID()}`, sessionId, mode: 'queue', content: [{ type: 'text', text: prompt }] } });
+              }
+              catch (error) { r.waitingStart = false; hideDeltas = false; finishTurn(error.message); return; }
               turn.settleTimer = after(500, armSettle);
               return;
             }
@@ -963,6 +975,7 @@ ${note.text}
       let prompt = automaticSkills.wrap(message);
       if (fresh && history.length) prompt = withEarlierConversation(history, prompt);
       try {
+        if (turn.research) await researchPhase('gather');
         await runtime.gw.rpc('session/prompt', { request: { requestId, sessionId, mode: 'queue', content: [{ type: 'text', text: prompt }, ...imageParts(images)] } });
         activateSkills(automaticSkills);
       } catch (e) {

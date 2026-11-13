@@ -1,5 +1,15 @@
 # Strata · Hakua
 
+<!-- stable-059 -->
+## Wersja stabilna 0.5.9
+
+Monitoruje dostępną pamięć RAM podczas ładowania i generowania modeli lokalnych w Windows. Badanie pozwala tylko wyszukiwać i czytać strony; odpowiedź powstaje bez narzędzi. Audyt CSV oblicza różnice według stałych reguł; zaliczone kontrole nie wymagają dodatkowych dowodów.
+
+[Windows NSIS](https://github.com/zapabob/Strata/releases/download/v0.5.9/Strata-0.5.9-windows-x64-setup.exe) · [tar.7z](https://github.com/zapabob/Strata/releases/download/v0.5.9/Strata-0.5.9-windows-x64.tar.7z) · [SHA256SUMS](https://github.com/zapabob/Strata/releases/download/v0.5.9/SHA256SUMS.txt) · [Verification](_docs/2026-11-13_stable-059-workflow-safety_Codex.md)
+
+App / Terminal / Control / native engine 0.5.9; RustXNG 0.31.1 Full. Build, installation and publication evidence is recorded in the linked verification log. General model quality and full-window generation remain unqualified (releaseQualified=false). Earlier releases and acknowledgements remain below.
+
+
 <!-- stable-058 -->
 ## Wersja stabilna 0.5.8
 

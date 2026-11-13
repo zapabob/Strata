@@ -61,6 +61,7 @@ export const GATE_PLUGIN = fileURLToPath(new URL('./plugins/strata-gate.mjs', im
 export const CONTEXT_PLUGIN = fileURLToPath(new URL('./plugins/strata-context.mjs', import.meta.url));
 export const MODELS_PLUGIN = fileURLToPath(new URL('./plugins/strata-models.mjs', import.meta.url));
 export const BTW_PLUGIN = fileURLToPath(new URL('./plugins/strata-btw.mjs', import.meta.url));
+export const WORKFLOWS_PLUGIN = fileURLToPath(new URL('./plugins/strata-workflows.mjs', import.meta.url));
 export const SEARCH_PLUGIN = fileURLToPath(new URL('./plugins/strata-search.mjs', import.meta.url));
 /** The app's own tool server for the tools a person writes (instructions, commands). */
 export const CUSTOM_TOOLS_SCRIPT = fileURLToPath(new URL('./custom-tools-mcp.mjs', import.meta.url));
@@ -330,6 +331,7 @@ export function buildProfile({ local = [], connections = [], gate = true, tools 
     // Compaction decides from what the model server measured, and its summary requests always fit the window (plugins/strata-context.mjs).
     { insert: [{ id: 'strata-context', name: CONTEXT_PLUGIN, config: {} }] },
     { insert: [{ id: 'strata-btw', name: BTW_PLUGIN, config: {} }] },
+    { insert: [{ id: 'strata-workflows', name: WORKFLOWS_PLUGIN, config: {} }] },
     // Helper agents on a model the person names: every model the app can reach is allowed, and the plugin makes the choice forgiving (plugins/strata-models.mjs).
     ...(subagentRoutes.length ? [{ id: 'subagent-model-selection-settings', config: { enabled: true, allowedModels: subagentRoutes.map(r => ({ provider: r.provider, model: r.model })) } }] : []),
     ...(subagentRoutes.length ? [{ insert: [{ id: 'strata-models', name: MODELS_PLUGIN, config: { routes: subagentRoutes } }] }] : []),

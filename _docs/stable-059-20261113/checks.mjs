@@ -1,0 +1,15 @@
+import { spawn } from 'node:child_process';
+import { resolve } from 'node:path';
+import { mkdirSync, mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { harnessFixtureEnvironment } from '../../apps/host/tests/helpers/harness-environment.mjs';
+const root = resolve(import.meta.dirname, '../../apps/host');
+const mode = process.argv[2];
+const env = mode === 'full' ? { ...process.env } : harnessFixtureEnvironment(mkdtempSync(resolve(tmpdir(), 'strata-059-checks-')));
+if (mode !== 'full') for (const key of ['HOME', 'USERPROFILE', 'APPDATA', 'LOCALAPPDATA', 'XDG_DATA_HOME', 'XDG_STATE_HOME', 'XDG_CONFIG_HOME']) mkdirSync(env[key], { recursive: true });
+if (process.platform === 'win32') env.STRATA_TEST_WINDOWS_PROFILE = process.env.USERPROFILE;
+if (mode === 'harness') env.STRATA_HARNESS_DIR = resolve(root, '../desktop/src-tauri/resources/harness');
+const args = mode === 'typecheck' ? ['node_modules/typescript/bin/tsc', '--noEmit'] : mode === 'full' ? ['scripts/test.mjs'] : ['--test', '--test-concurrency=2', ...process.argv.slice(3)];
+const child = spawn(process.execPath, args, { cwd: root, env, windowsHide: true, stdio: 'inherit' });
+child.once('error', error => { console.error(error); process.exitCode = 1; });
+child.once('exit', code => { process.exitCode = code ?? 1; });

@@ -40,7 +40,7 @@ const BROWSER_LOOKING = new Set(['browser_snapshot', 'browser_take_screenshot', 
 export const READ_ONLY_TOOLS = new Set([
   'read', 'glob', 'grep', 'read_image', 'working_directory', 'todo_write', 'skill', 'present', 'lsp',
   'get_goal', 'create_goal', 'update_goal', 'list_agents', 'list_subagent_models', 'job_list', 'job_output',
-  'ask_user_question', 'exit_plan_mode',
+  'ask_user_question', 'exit_plan_mode', 'audit_inventory',
   // (web_search and web_fetch are not here: the first use in a chat asks, see webDecision.)
   // Delegation: the child it starts is governed by this same gate.
   'subagent', 'subagent_fork', 'send_message', 'interrupt_agent', 'workflow',

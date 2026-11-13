@@ -1,5 +1,15 @@
 # Hakua / Strata
 
+<!-- stable-059 -->
+## Stable 0.5.9
+
+Protects available system RAM throughout Windows local-model loading and generation. Research can only search and read pages, then writes its answer without tools. Inventory CSV audits use calculated comparison results: a passed check needs no additional evidence.
+
+[Windows NSIS](https://github.com/zapabob/Strata/releases/download/v0.5.9/Strata-0.5.9-windows-x64-setup.exe) · [tar.7z](https://github.com/zapabob/Strata/releases/download/v0.5.9/Strata-0.5.9-windows-x64.tar.7z) · [SHA256SUMS](https://github.com/zapabob/Strata/releases/download/v0.5.9/SHA256SUMS.txt) · [Verification](_docs/2026-11-13_stable-059-workflow-safety_Codex.md)
+
+App / Terminal / Control / native engine 0.5.9; RustXNG 0.31.1 Full. Build, installation and publication evidence is recorded in the linked verification log. General model quality and full-window generation remain unqualified (releaseQualified=false). Earlier releases and acknowledgements remain below.
+
+
 <!-- stable-058 -->
 ## Stable 0.5.8
 

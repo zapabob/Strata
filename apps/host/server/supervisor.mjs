@@ -25,6 +25,8 @@ import {localBackendChoice,findLocalBackend,verifyLocalBackend,requireRuntimeKv}
 import {createRunObservation,requestedFromArgs,observationEnabled} from './lifecycle-observation.mjs';
 import {createStartupDiagnostics} from './startup-diagnostics.mjs';
 import {readGGUF,qwen35MissingMtp} from './gguf.mjs';
+import { freemem } from 'node:os';
+import { admitLocalMemory, createLocalMemoryGuard } from './local-memory-guard.mjs';
 export {createStartupDiagnostics} from './startup-diagnostics.mjs';
 
 const LOG_LIMIT = 400;
@@ -50,6 +52,7 @@ const state = {
 };
 
 let child = null;
+let ramGuard = null;
 let observation = null;
 export function runObservation(){return observation?.snapshot()??null;}
 let lastStart = null, privateKey = '', memoryMode = false;
@@ -307,6 +310,13 @@ export async function start({ modelId, modelPath, port = 8080, config, hardware,
     return status();
   }
   if(privateMemory && !['PrismML','TurboQuant'].includes(backend))throw new Error('A verified local memory runtime is required.');
+  // This guard covers this Windows process's physical RAM, not a model-window
+  // promise. Reject before stopping another runtime or changing user settings.
+  if (process.platform === 'win32') {
+    const modelBytes = statSync(modelPath).size;
+    const fullyOffloaded = args[args.indexOf('-ngl') + 1] === '999' && hardware?.gpus?.some(gpu => !gpu.unified && gpu.vramGb * 1024 ** 3 > modelBytes + 1024 ** 3);
+    admitLocalMemory(freemem(), { fullyOffloaded: !!fullyOffloaded, modelBytes, mapped: !args.includes('--no-mmap') });
+  }
   await beforeStart?.();
   if (child) await stop();
   const capture=captureRun?createRunObservation({backend:backend==='Automatic'?'unknown':backend,requested:requestedFromArgs(args),gpuProbe:observationProbe}):null;
@@ -342,6 +352,7 @@ export async function start({ modelId, modelPath, port = 8080, config, hardware,
   });
   const launched = child;
   let spawnError = null;
+  let memoryFailure = null;
   const diagnostics=createStartupDiagnostics(privateKey || config.serving?.apiKey || '');
   launched.on('error', error => { spawnError = error; });
 
@@ -362,6 +373,7 @@ export async function start({ modelId, modelPath, port = 8080, config, hardware,
     capture?.finish(state.status==='stopping'?'stopped':state.status==='starting'?'startup_exit':code===0?'stopped':'error',code);
     if(capture)void capture.sampleGpu();
     if(child!==launched)return; // A late exit from the previous process cannot stop its replacement.
+    ramGuard?.dispose();
     log('supervisor', `engine exited (${signal ?? code})`);
     child = null;
     state.pid = null;
@@ -375,8 +387,24 @@ export async function start({ modelId, modelPath, port = 8080, config, hardware,
     hubRef?.send('engine-status', status());
   });
 
+  if (process.platform === 'win32') {
+    ramGuard = createLocalMemoryGuard({ onPressure: async pressure => {
+      if (child !== launched) return;
+      memoryFailure = new Error('RAM protection stopped the local model before exhausting system memory. Close other applications, reduce the batch size or disable memory mapping, then reload.');
+      log('supervisor', `RAM protection: available=${pressure.availableBytes ?? 'unavailable'} threshold=${Math.round(pressure.thresholdBytes)} floor=${pressure.floorBytes}`);
+      try { await stop(); }
+      finally {
+        // A late result cannot overwrite the status of a replacement engine.
+        if (!child || child === launched) { state.status = 'error'; state.error = memoryFailure.message; hubRef?.send('engine-status', status()); }
+      }
+    } });
+    ramGuard.start();
+  }
+
   try {
-    await waitForHealth(port, timeoutMs, launched, () => spawnError, diagnostics);
+    await waitForHealth(port, timeoutMs, launched, () => memoryFailure ?? spawnError, diagnostics);
+    if (memoryFailure) throw memoryFailure;
+    if (child !== launched) throw new Error('The engine was stopped while loading.');
   } catch (err) {
     // Only offer the predictor diagnosis after proving every trunk tensor. A
     // filename or one missing layer alone cannot distinguish a broken download.
@@ -405,6 +433,7 @@ export async function start({ modelId, modelPath, port = 8080, config, hardware,
 }
 
 export async function stop() {
+  ramGuard?.dispose();
   if(state.status==='starting'&&observation?.snapshot().outcome==='starting')observation.finish('cancelled');
   for(const listener of stopListeners)listener();
   state.metrics=emptyMetrics();
@@ -544,6 +573,7 @@ export function status() {
     command: state.command,
     metrics: state.metrics,
     logCount: state.logs.length,
+    ...(ramGuard ? { memoryGuard: ramGuard.snapshot() } : {}),
   };
 }
 

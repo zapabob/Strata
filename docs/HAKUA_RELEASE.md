@@ -1,6 +1,21 @@
 # Hakua Windows release qualification
 
-## Stable 0.5.8 — coordinated versions and repaired CI
+## 0.5.9 workflow safety candidate
+
+Repairs Windows local-engine physical-memory containment, research capability
+restrictions and inventory CSV comparison. App, Terminal, Control and native
+source versions are coordinated at 0.5.9. Fresh builds, component signatures,
+actual-model workflow checks, exact-source CI, standard overwrite and anonymous
+release readback are tracked individually in the
+[0.5.9 delivery record](../_docs/2026-11-13_stable-059-workflow-safety_Codex.md).
+Do not infer a completed release from this source-version declaration.
+The failed initial 0.5.8 real-model attempt is retained in its
+[verification report](../_docs/2026-11-13_real-model-workflows_Codex.md).
+General model quality, full-window inference and GPU concurrency remain
+unqualified; releaseQualified=false. Historical measurements retain their
+original versions below.
+
+## Historical stable 0.5.8 — coordinated versions and repaired CI
 
 App, Terminal, Control and native engine are all 0.5.8, with newly built Control
 and native signed payloads. The four retained extended context/compaction/search

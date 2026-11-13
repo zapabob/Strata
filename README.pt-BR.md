@@ -1,5 +1,15 @@
 # Strata · Hakua
 
+<!-- stable-059 -->
+## Versão estável 0.5.9
+
+Monitora a RAM disponível durante o carregamento e a geração de modelos locais no Windows. A pesquisa permite apenas buscar e ler páginas; a resposta final é escrita sem ferramentas. Auditorias CSV calculam divergências por regras fixas; verificações aprovadas não exigem evidências adicionais.
+
+[Windows NSIS](https://github.com/zapabob/Strata/releases/download/v0.5.9/Strata-0.5.9-windows-x64-setup.exe) · [tar.7z](https://github.com/zapabob/Strata/releases/download/v0.5.9/Strata-0.5.9-windows-x64.tar.7z) · [SHA256SUMS](https://github.com/zapabob/Strata/releases/download/v0.5.9/SHA256SUMS.txt) · [Verification](_docs/2026-11-13_stable-059-workflow-safety_Codex.md)
+
+App / Terminal / Control / native engine 0.5.9; RustXNG 0.31.1 Full. Build, installation and publication evidence is recorded in the linked verification log. General model quality and full-window generation remain unqualified (releaseQualified=false). Earlier releases and acknowledgements remain below.
+
+
 <!-- stable-058 -->
 ## Versão estável 0.5.8
 
