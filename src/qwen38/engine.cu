@@ -497,6 +497,8 @@ struct Engine {
         }
         const bool prof=(std::getenv("STRATA_Q38_PROFILE")!=nullptr);
         const char* fp8_env=std::getenv("STRATA_FP8_PREFILL");
+        const char* f16_batch_env=std::getenv("STRATA_Q38_SHORT_F16_BATCH");
+        const bool short_f16_batch=f16_batch_env&&std::string_view(f16_batch_env)=="1";
         const bool use_fp8=(fp8_env&&fp8_env[0]=='1');
         const bool can_share_bh=(n_tokens>=4&&!use_fp8
 #if defined(STRATA_Q38_FUSED_WMMA)
@@ -561,7 +563,7 @@ struct Engine {
                 mm_bh(n("attn_v.weight"),L.w_v,bv_p);
                 Q::attention_normalize_batch(bqg_p,bk_p,static_cast<const float*>(L.w_q_norm.d_data),static_cast<const float*>(L.w_k_norm.d_data),bq_p,bgate_p,bk_p,position,n_tokens,admission.eps,admission.rope_base,stream.s);
                 if(prof){Q::ck(cudaStreamSynchronize(stream.s));prof_attn_mm+=std::chrono::duration<double,std::milli>(Clock::now()-tp).count();tp=Clock::now();}
-                kv->enqueue_batch(i/4,position,n_tokens,bq_p,bk_p,bv_p,bgate_p,batt_p,scores.as());
+                kv->enqueue_batch(i/4,position,n_tokens,bq_p,bk_p,bv_p,bgate_p,batt_p,scores.as(),short_f16_batch);
                 if(prof){Q::ck(cudaStreamSynchronize(stream.s));prof_attn_kv+=std::chrono::duration<double,std::milli>(Clock::now()-tp).count();tp=Clock::now();}
                 mm_batch(n("attn_output.weight"),L.w_out_proj,batt_p,by_p,n_tokens);
                 if(prof){Q::ck(cudaStreamSynchronize(stream.s));prof_attn_mm+=std::chrono::duration<double,std::milli>(Clock::now()-tp).count();}
@@ -623,6 +625,7 @@ static void run(Engine& e,const std::vector<int32_t>& prompt,int count,Sampling 
     Q::require(force.empty()||force.size()+1==size_t(count),"force requires one more logits row than forced tokens");
     if(e.orthography)e.orthography->reset(e.japanese,exceptions);
     e.reset();e.prefill_ws.reset_stats();
+    const auto short_f16_calls=e.kv->short_f16_calls(),short_f16_fallbacks=e.kv->short_f16_fallbacks();
     auto start=Clock::now(),prefill=start;int produced=0;size_t read=0;const char* finish="length";
     int decode_steps=0;double decode_forward_ms=0.0,sampling_ms=0.0,reset_ms=0.0;
     std::ofstream out;if(!dump.empty()){out.open(dump,std::ios::binary|std::ios::trunc);Q::require(bool(out),"cannot open logits output");}
@@ -738,6 +741,10 @@ static void run(Engine& e,const std::vector<int32_t>& prompt,int count,Sampling 
     reset_ms=std::chrono::duration<double,std::milli>(end-gen_end).count();
     double pp=std::chrono::duration<double,std::milli>(prefill-start).count(),tg=std::chrono::duration<double,std::milli>(gen_end-prefill).count(),e2e_ms=std::chrono::duration<double,std::milli>(end-start).count();
     const auto gs=e.prefill_ws.stats();
+    if(e.kv->short_f16_calls()!=short_f16_calls||e.kv->short_f16_fallbacks()!=short_f16_fallbacks)
+        std::fprintf(stderr,"SHORT_F16_PREFILL calls=%llu fallbacks=%llu\n",
+            (unsigned long long)(e.kv->short_f16_calls()-short_f16_calls),
+            (unsigned long long)(e.kv->short_f16_fallbacks()-short_f16_fallbacks));
     std::fprintf(stderr,"PREFILL_CANDIDATE fused_wmma_calls=%llu\n",(unsigned long long)gs.fused_wmma_calls);
     auto publish=[&](bool cancelled){if(cancelled)finish="cancel";
         if(protocol){

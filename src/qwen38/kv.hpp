@@ -49,6 +49,7 @@ class KvCache {
     bool poisoned_=false;
     bool conservative_=false;
     uint64_t fences_=0;
+    uint64_t short_f16_calls_=0,short_f16_fallbacks_=0;
 public:
     KvCache(const KvConfig&,int capacity,int layers,cudaStream_t,bool conservative=false);
     void reset();
@@ -60,9 +61,12 @@ public:
     void enqueue(int layer,int position,const float* q,const float* k,const float* v,
                  const float* gate,float* output,float* scores);
     void enqueue_batch(int layer,int pos_start,int n_tokens,const float* q_batch,const float* k_batch,
-                       const float* v_batch,const float* gate_batch,float* output_batch,float* scores);
+                       const float* v_batch,const float* gate_batch,float* output_batch,float* scores,
+                       bool short_f16=false);
     void check();
     uint64_t fences()const{return fences_;}
+    uint64_t short_f16_calls()const{return short_f16_calls_;}
+    uint64_t short_f16_fallbacks()const{return short_f16_fallbacks_;}
     const KvConfig& config()const{return config_;}
     size_t persistent_bytes()const;
     size_t scratch_bytes()const;

@@ -159,6 +159,50 @@ static void spin8_batch_and_split(const Q::KvConfig& c,cudaStream_t s){
     cache.check();
     std::printf("PASS Spin8 batch(1..127,BT=7/8/9,BK=15/16/17)+split_decode view=%s max_attention=%g reset/nan=pass\n",c.view_name(),worst);
 }
+static void f16_short_batch(cudaStream_t s){
+    reserve();
+    constexpr int ctx=257,nt=257;
+    const auto c=Q::KvConfig::admit("f16");
+    Q::KvCache ref(c,ctx,1,s), fast(c,ctx,1,s);
+    Q::Buffer q(size_t(nt)*6144*4),k(size_t(nt)*1024*4),v(k.bytes),g(q.bytes),a(q.bytes),b(q.bytes),scores(24*ctx*4);
+    std::vector<float> hq(size_t(nt)*6144),hk(size_t(nt)*1024),hv(hk.size()),hg(hq.size());
+    for(size_t i=0;i<hq.size();++i){hq[i]=float(std::sin(i*.041));hg[i]=float(std::cos(i*.11));}
+    for(size_t i=0;i<hk.size();++i){hk[i]=float(std::cos(i*.089));hv[i]=float(std::sin(i*.067));}
+    put(q,hq);put(k,hk);put(v,hv);put(g,hg);
+    const auto batch=[&](Q::KvCache& cache,Q::Buffer& out,int pos,int n,bool opt){
+        cache.enqueue_batch(0,pos,n,q.as()+size_t(pos)*6144,k.as()+size_t(pos)*1024,
+            v.as()+size_t(pos)*1024,g.as()+size_t(pos)*6144,out.as()+size_t(pos)*6144,scores.as(),opt);
+        cache.check();
+    };
+    for(auto [pos,n]:{std::pair{0,116},std::pair{116,140},std::pair{256,1}}){
+        batch(ref,a,pos,n,false);batch(fast,b,pos,n,true);
+    }
+    R::demand(fast.short_f16_calls()==2&&fast.short_f16_fallbacks()==1,"F16 dispatch at limit");
+    const auto expected=get<float>(a);
+    const std::vector<double> reference(expected.begin(),expected.end());
+    const double err=compare(get<float>(b),reference,3e-5,4e-5);
+    R::demand(get<uint8_t>(ref.layer(0).key)==get<uint8_t>(fast.layer(0).key),"F16 batch key bytes");
+    R::demand(get<uint8_t>(ref.layer(0).value)==get<uint8_t>(fast.layer(0).value),"F16 batch value bytes");
+    fast.reset();batch(fast,b,0,254,true);batch(fast,b,254,3,true);
+    R::demand(fast.short_f16_calls()==3&&fast.short_f16_fallbacks()==2,"F16 multi-token fallback across limit");
+    compare(get<float>(b),reference,3e-5,4e-5);
+    fast.reset();batch(fast,b,0,255,true);batch(fast,b,255,1,true);batch(fast,b,256,1,true);
+    R::demand(fast.short_f16_calls()==4&&fast.short_f16_fallbacks()==4,"F16 single-token fallback around limit");
+    compare(get<float>(b),reference,3e-5,4e-5);
+    for(auto [buffer,host]:{std::pair{&q,&hq},std::pair{&k,&hk},std::pair{&v,&hv},std::pair{&g,&hg}}){
+        for(float bad:{std::numeric_limits<float>::quiet_NaN(),std::numeric_limits<float>::infinity()}){
+            fast.reset();
+            const float saved=(*host)[0];
+            (*host)[0]=bad;put(*buffer,*host);
+            rejects([&]{batch(fast,b,0,3,true);});
+            (*host)[0]=saved;put(*buffer,*host);
+            fast.reset();batch(fast,b,0,3,true);
+        }
+    }
+    fast.reset();hv[1024]=1e20f;put(v,hv);
+    rejects([&]{batch(fast,b,0,3,true);});
+    std::printf("PASS F16 short batch prefix=116 boundary=256 max_attention=%g nan_inf_reset=pass overflow_rejected=1\n",err);
+}
 static void allocations(const Q::KvConfig& c,cudaStream_t s){
     reserve();size_t previous_scratch=0;for(int capacity:{513,4096}){
         size_t before,total,after;Q::ck(cudaMemGetInfo(&before,&total));Q::KvCache cache(c,capacity,16,s);Q::ck(cudaMemGetInfo(&after,&total));
@@ -224,6 +268,7 @@ static void fused_gdn_finite_check(cudaStream_t s){
     std::puts("PASS fused GDN step+batch state/output finite fence detection");
 }
 int main(){try{Q::host_resources();Q::ck(cudaSetDevice(0));Stream stream;
+    f16_short_batch(stream.s);
     normalization(stream.s);fused_gdn_finite_check(stream.s);
     for(const char* name:{"f16","k8v4","spin8_k8v4","f16_turbo2","f16_turbo3","f16_turbo4"}){
         for(const char* view:{"vector","plus","minus"}){bool spin=std::string(name)=="spin8_k8v4";if(!spin&&std::string(view)!="vector")continue;

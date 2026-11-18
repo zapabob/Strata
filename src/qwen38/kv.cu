@@ -17,6 +17,41 @@ __global__ void store_f16(const float* x,uint8_t* cache,int pos,int ctx,int* sta
     int i=blockIdx.x*256+threadIdx.x;if(i<1024){half value=__float2half_rn(x[i]);if(!isfinite(__half2float(value))){atomicExch(status,1);return;}
         reinterpret_cast<half*>(cache)[(size_t(i/256)*ctx+pos)*256+i%256]=value;}
 }
+// Short prefill only: each CTA holds one causal score row in shared memory.
+// No allocation scales with batch size or context capacity.
+constexpr int short_f16_limit=256;
+__global__ void store_f16_batch(const float* k,const float* v,half* kc,half* vc,int first,int ctx,int* status){
+    const int token=blockIdx.x,head=blockIdx.y,i=threadIdx.x;
+    const size_t src=(size_t(token)*4+head)*256+i,dst=(size_t(head)*ctx+first+token)*256+i;
+    const half key=__float2half_rn(k[src]),value=__float2half_rn(v[src]);
+    if(!isfinite(__half2float(key))||!isfinite(__half2float(value))){atomicExch(status,1);return;}
+    kc[dst]=key;vc[dst]=value;
+}
+__global__ void attend_f16_short(const float* q,const float* gate,const half* k,const half* v,
+                                 float* out,int first,int ctx,const int* status){
+    const int head=blockIdx.x,token=blockIdx.y,i=threadIdx.x,pos=first+token;
+    const size_t qi=(size_t(token)*24+head)*256,ki=size_t(head/6)*ctx*256;
+    if(*status){out[qi+i]=0;return;}
+    __shared__ float query[256],weights[short_f16_limit],work[256],maximum,denom;
+    query[i]=q[qi+i];__syncthreads();
+    const int lane=i%32;
+    for(int t=i/32;t<=pos;t+=8){
+        float dot=0;
+        for(int d=lane;d<256;d+=32)dot=fmaf(query[d],__half2float(k[ki+size_t(t)*256+d]),dot);
+        dot=reduce(dot);if(!lane)weights[t]=dot/16;
+    }
+    __syncthreads();
+    work[i]=i<=pos?weights[i]:-INFINITY;__syncthreads();
+    for(int d=128;d;d/=2){if(i<d)work[i]=fmaxf(work[i],work[i+d]);__syncthreads();}
+    if(!i)maximum=work[0];__syncthreads();
+    const float w=i<=pos?expf(weights[i]-maximum):0;
+    weights[i]=w;work[i]=w;__syncthreads();
+    for(int d=128;d;d/=2){if(i<d)work[i]+=work[i+d];__syncthreads();}
+    if(!i)denom=work[0];__syncthreads();
+    float y=0;
+    for(int t=0;t<=pos;++t)y=fmaf(weights[t]/denom,__half2float(v[ki+size_t(t)*256+i]),y);
+    out[qi+i]=y/(1+expf(-gate[qi+i]));
+}
 // GGML reference Q8_0: positive amax/127, roundf (ties away from zero).
 // Q4_0: signed first absolute maximum / -8, low first16/high second16.
 // Scale is rounded to FP16 for storage AFTER codes use the original FP32 scale.
@@ -390,8 +425,29 @@ void KvCache::rewind(int new_length){
     demand(!poisoned_&&new_length>=0&&new_length<=capacity_,"invalid KV rewind");
     for(auto& l:layers_){demand(new_length<=l.length,"KV rewind cannot advance");l.length=new_length;}
 }
-void KvCache::enqueue_batch(int index,int pos_start,int n_tokens,const float* q_batch,const float* k_batch,const float* v_batch,const float* gate_batch,float* output_batch,float* scores){
+void KvCache::enqueue_batch(int index,int pos_start,int n_tokens,const float* q_batch,const float* k_batch,const float* v_batch,const float* gate_batch,float* output_batch,float* scores,bool short_f16){
     if(n_tokens<=0)return;
+    if(short_f16&&n_tokens>1&&!conservative_&&config_.mode==KvMode::f16&&
+       pos_start>=0&&pos_start<=short_f16_limit&&n_tokens<=short_f16_limit-pos_start){
+        demand(!poisoned_,"KV session requires reset after error");
+        demand(index>=0&&index<int(layers_.size()),"invalid attention layer");
+        auto& l=layers_[index];
+        demand(pos_start==l.length&&n_tokens<=capacity_-pos_start,"KV batch position out of range");
+        demand(q_batch&&k_batch&&v_batch&&gate_batch&&output_batch,"null KV operand");
+        try{
+            finite(q_batch,size_t(n_tokens)*6144,status_.as<int>(),stream_);
+            finite(gate_batch,size_t(n_tokens)*6144,status_.as<int>(),stream_);
+            store_f16_batch<<<dim3(unsigned(n_tokens),4),256,0,stream_>>>(k_batch,v_batch,l.key.as<half>(),l.value.as<half>(),pos_start,capacity_,status_.as<int>());
+            ck(cudaGetLastError());
+            attend_f16_short<<<dim3(24,unsigned(n_tokens)),256,0,stream_>>>(q_batch,gate_batch,l.key.as<half>(),l.value.as<half>(),output_batch,pos_start,capacity_,status_.as<int>());
+            ck(cudaGetLastError());
+            finite(output_batch,size_t(n_tokens)*6144,status_.as<int>(),stream_);
+            l.length+=n_tokens;
+            ++short_f16_calls_;
+        }catch(...){poisoned_=true;throw;}
+        return;
+    }
+    if(short_f16&&config_.mode==KvMode::f16)++short_f16_fallbacks_;
     if(config_.mode==KvMode::spin8_k8v4){
         demand(!poisoned_,"KV session requires reset after error");
         demand(index>=0&&index<int(layers_.size()),"invalid attention layer");
