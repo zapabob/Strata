@@ -53,23 +53,42 @@ __global__ void __launch_bounds__(256) mv(int type,const uint8_t* __restrict__ w
     for(int j=lane;j<n;j+=32)s=fmaf(value(type,w,j),__ldg(x+j),s);
     s=sum(s);if(!lane)y[row]=s;
 }
+__device__ __forceinline__ float q38_sigmf(float x) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 750
+    float t;
+    asm("tanh.approx.f32 %0, %1;" : "=f"(t) : "f"(0.5f * x));
+    return fmaf(0.5f, t, 0.5f);
+#else
+    return 1.0f / (1.0f + expf(-x));
+#endif
+}
+// 2-row-per-warp PQ2_0 GEMV: shares float4 activation __ldg loads across 2 output rows, halving x bandwidth.
 __global__ void __launch_bounds__(128) mv_pq2_0(const uint8_t* __restrict__ w,const float* __restrict__ x,float* __restrict__ y,int n,int rows,size_t stride){
     const int warp=threadIdx.x>>5,lane=threadIdx.x&31;
-    const int row=blockIdx.x*4+warp;if(row>=rows)return;
-    const uint8_t* wp=w+size_t(row)*stride;const int nb=n/128;float s=0;
+    const int row0=(blockIdx.x*4+warp)*2;
+    if(row0>=rows)return;
+    const bool has1=(row0+1)<rows;
+    const uint8_t* wp0=w+size_t(row0)*stride;
+    const uint8_t* wp1=has1?(wp0+stride):wp0;
+    const int nb=n/128;
+    float s0=0.f,s1=0.f;
     for(int b=0;b<nb;++b){
-        const uint8_t* blk=wp+size_t(b)*34;
-        const float d=h(blk);
-        const uint8_t qb=__ldg(blk+2+lane);
         const float4 xv=__ldg(reinterpret_cast<const float4*>(x+b*128+lane*4));
-        const float c0=float(int(qb&3)-1);
-        const float c1=float(int((qb>>2)&3)-1);
-        const float c2=float(int((qb>>4)&3)-1);
-        const float c3=float(int((qb>>6)&3)-1);
-        const float acc=fmaf(c0,xv.x,fmaf(c1,xv.y,fmaf(c2,xv.z,c3*xv.w)));
-        s=fmaf(d,acc,s);
+        const uint8_t* blk0=wp0+size_t(b)*34;
+        const float d0=h(blk0);
+        const uint8_t qb0=__ldg(blk0+2+lane);
+        const float a0=fmaf(float(int(qb0&3)-1),xv.x,fmaf(float(int((qb0>>2)&3)-1),xv.y,fmaf(float(int((qb0>>4)&3)-1),xv.z,float(int((qb0>>6)&3)-1)*xv.w)));
+        s0=fmaf(d0,a0,s0);
+        if(has1){
+            const uint8_t* blk1=wp1+size_t(b)*34;
+            const float d1=h(blk1);
+            const uint8_t qb1=__ldg(blk1+2+lane);
+            const float a1=fmaf(float(int(qb1&3)-1),xv.x,fmaf(float(int((qb1>>2)&3)-1),xv.y,fmaf(float(int((qb1>>4)&3)-1),xv.z,float(int((qb1>>6)&3)-1)*xv.w)));
+            s1=fmaf(d1,a1,s1);
+        }
     }
-    s=sum(s);if(!lane)y[row]=s;
+    s0=sum(s0);if(!lane)y[row0]=s0;
+    if(has1){s1=sum(s1);if(!lane)y[row0+1]=s1;}
 }
 __global__ void __launch_bounds__(256) mv_q8_0(const uint8_t* __restrict__ w,const float* __restrict__ x,float* __restrict__ y,int n,int rows,size_t stride){
     const int row=blockIdx.x*8+threadIdx.x/32,lane=threadIdx.x%32;if(row>=rows)return;
@@ -948,31 +967,56 @@ __global__ void norm(const float* x,const float* w,float* y,int n,float eps){
     float s=0;for(int i=0;i<8;++i)s+=sums[i];float r=rsqrtf(s/n+eps);
     for(int i=threadIdx.x;i<n;i+=256)yr[i]=xr[i]*r*w[i];
 }
-__global__ void elt(float* x,const float* y,int n,bool sw){int i=blockIdx.x*256+threadIdx.x;if(i<n)x[i]=sw?x[i]/(1+expf(-x[i]))*y[i]:x[i]+y[i];}
+__global__ void elt(float* x,const float* y,int n,bool sw){int i=blockIdx.x*256+threadIdx.x;if(i<n)x[i]=sw?(x[i]*q38_sigmf(x[i])*y[i]):(x[i]+y[i]);}
 __global__ void gb(float* al,float* be,const float* dt,const float* a,int n){
     int i=threadIdx.x;if(i<n){
         const size_t off=size_t(blockIdx.x)*n+i;
-        float v=al[off]+dt[i];al[off]=(v>20?v:log1pf(expf(v)))*a[i];be[off]=1/(1+expf(-be[off]));
+        float v=al[off]+dt[i];al[off]=(v>20?v:log1pf(expf(v)))*a[i];be[off]=q38_sigmf(be[off]);
     }
 }
 __global__ void fin(const float* x,size_t n,int* err){size_t i=size_t(blockIdx.x)*256+threadIdx.x;if(i<n&&!isfinite(x[i]))atomicExch(err,1);}
-__global__ void had(const float* x,const float* signs,float* y,bool inverse,bool grouped){
-    __shared__ float b[1024];int j=threadIdx.x,index=blockIdx.x*1024+j,src=index;
+// Kronecker-factored FWHT (H_1024 = H_32 \otimes H_32):
+// Reduces 21 __syncthreads() barriers -> 2 barriers and 20 smem round-trips -> 2 padded (+33) bank-conflict-free transposes!
+__device__ __forceinline__ float fwht_32_warp(float v, int lane) {
+    #pragma unroll
+    for (int s = 1; s < 32; s <<= 1) {
+        const float other = __shfl_xor_sync(0xffffffffu, v, s);
+        v = (lane & s) ? (other - v) : (v + other);
+    }
+    return v;
+}
+__global__ void had(const float* __restrict__ x,const float* __restrict__ signs,float* __restrict__ y,bool inverse,bool grouped){
+    __shared__ float b[32][33];
+    const int j=threadIdx.x, warp=j>>5, lane=j&31, index=blockIdx.x*1024+j;
+    int src=index;
     // tiled [128,16,3] -> grouped [128,3,16], before signs and transform.
     if(grouped){int head=index/128;src=((head%3)*16+head/3)*128+index%128;}
-    b[j]=x[src]*(inverse?1.f:signs[index]);__syncthreads();
-    for(int stride=1;stride<1024;stride*=2){float v=b[j],other=b[j^stride];__syncthreads();b[j]=(j&stride)?other-v:v+other;__syncthreads();}
-    y[index]=b[j]*(1.f/32)*(inverse?signs[index]:1.f);
+    float v = __ldg(x+src) * (inverse ? 1.f : __ldg(signs+index));
+    v = fwht_32_warp(v, lane);
+    b[warp][lane] = v;
+    __syncthreads();
+    // Transpose [32][32] so warp-level H_32 operates along the upper 5 bits (strides 32..512).
+    float vt = b[lane][warp];
+    vt = fwht_32_warp(vt, lane);
+    b[lane][warp] = vt;
+    __syncthreads();
+    y[index] = b[warp][lane] * (1.f/32.f) * (inverse ? __ldg(signs+index) : 1.f);
 }
 __global__ void had_batch(const float* __restrict__ x,const float* __restrict__ signs,float* __restrict__ y,int n,bool inverse,bool grouped){
-    __shared__ float b[1024];
-    const int j=threadIdx.x,index=blockIdx.x*1024+j,tok=blockIdx.y;
+    __shared__ float b[32][33];
+    const int j=threadIdx.x, warp=j>>5, lane=j&31, index=blockIdx.x*1024+j, tok=blockIdx.y;
     int src=index;
     if(grouped){int head=index/128;src=((head%3)*16+head/3)*128+index%128;}
     const size_t base=size_t(tok)*n;
-    b[j]=x[base+src]*(inverse?1.f:signs[index]);__syncthreads();
-    for(int stride=1;stride<1024;stride*=2){float v=b[j],other=b[j^stride];__syncthreads();b[j]=(j&stride)?other-v:v+other;__syncthreads();}
-    y[base+index]=b[j]*(1.f/32)*(inverse?signs[index]:1.f);
+    float v = __ldg(x+base+src) * (inverse ? 1.f : __ldg(signs+index));
+    v = fwht_32_warp(v, lane);
+    b[warp][lane] = v;
+    __syncthreads();
+    float vt = b[lane][warp];
+    vt = fwht_32_warp(vt, lane);
+    b[lane][warp] = vt;
+    __syncthreads();
+    y[base+index] = b[warp][lane] * (1.f/32.f) * (inverse ? __ldg(signs+index) : 1.f);
 }
 // Based on Strata q36 k_attn_prep: Q and output gates interleave per head.
 __global__ void prep(const float* qg,const float* k,const float* v,const float* qw,const float* kw,float* q,float* gate,
@@ -998,14 +1042,32 @@ __global__ void score(const float* q,const half* k,float* s,int pos,int ctx,int 
 }
 __global__ void attend(const float* scores,const half* v,const float* gate,float* out,int pos,int ctx,int heads_per_kv,const int* status){
     if(status&&*status)return;
-    // One block per query head; stable softmax then each lane's value component.
-    __shared__ float tmp[256],maxi,denom;int head=blockIdx.x,i=threadIdx.x;const float* s=scores+size_t(head)*ctx;
+    // One block per query head; cache softmax probs in shared memory (up to 4096 pos) to eliminate 256x redundant expf calls.
+    __shared__ float tmp[256],prob[4096],maxi,inv_denom;
+    int head=blockIdx.x,i=threadIdx.x;const float* s=scores+size_t(head)*ctx;
+    constexpr float kLog2E=1.4426950408889634f;
     float mx=-INFINITY;for(int t=i;t<=pos;t+=256)mx=fmaxf(mx,s[t]);tmp[i]=mx;__syncthreads();
     for(int d=128;d;d/=2){if(i<d)tmp[i]=fmaxf(tmp[i],tmp[i+d]);__syncthreads();}if(!i)maxi=tmp[0];__syncthreads();
-    float z=0;for(int t=i;t<=pos;t+=256)z+=expf(s[t]-maxi);tmp[i]=z;__syncthreads();
-    for(int d=128;d;d/=2){if(i<d)tmp[i]+=tmp[i+d];__syncthreads();}if(!i)denom=tmp[0];__syncthreads();
-    float y=0;for(int t=0;t<=pos;++t)y=fmaf(expf(s[t]-maxi)/denom,__half2float(v[(size_t(head/heads_per_kv)*ctx+t)*256+i]),y);
-    out[head*256+i]=y/(1+expf(-gate[head*256+i]));
+    const bool cached=(pos<4096);
+    float z=0;
+    for(int t=i;t<=pos;t+=256){
+        const float e=exp2f((s[t]-maxi)*kLog2E);
+        if(cached)prob[t]=e;
+        z+=e;
+    }
+    tmp[i]=z;__syncthreads();
+    for(int d=128;d;d/=2){if(i<d)tmp[i]+=tmp[i+d];__syncthreads();}
+    if(!i)inv_denom=1.f/tmp[0];__syncthreads();
+    const int kh=head/heads_per_kv;
+    const float id=inv_denom;
+    float y=0;
+    if(cached){
+        for(int t=0;t<=pos;++t)y=fmaf(prob[t],__half2float(v[(size_t(kh)*ctx+t)*256+i]),y);
+        y*=id;
+    }else{
+        for(int t=0;t<=pos;++t)y=fmaf(exp2f((s[t]-maxi)*kLog2E)*id,__half2float(v[(size_t(kh)*ctx+t)*256+i]),y);
+    }
+    out[head*256+i]=y*q38_sigmf(gate[head*256+i]);
 }
 }
 void preload_ops(){
@@ -1235,7 +1297,7 @@ void matvec(int type,const void* w,const float* x,float* y,int n,int rows,cudaSt
         case 14: launch_mv_256<MvKind::Q6_K, 210>(wp,x,y,n,rows,rb,s); break;
         case 21: launch_mv_256<MvKind::IQ3_S, 110>(wp,x,y,n,rows,rb,s); break;
         case 22: launch_mv_256<MvKind::IQ2_S, 82>(wp,x,y,n,rows,rb,s); break;
-        case 142: mv_pq2_0<<<(rows+3)/4,128,0,s>>>(wp,x,y,n,rows,rb); break;
+        case 142: mv_pq2_0<<<(rows+7)/8,128,0,s>>>(wp,x,y,n,rows,rb); break;
         default: mv<<<grid,256,0,s>>>(type,wp,x,y,n,rows,rb); break;
     }
     ck(cudaGetLastError());

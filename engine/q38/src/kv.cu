@@ -105,19 +105,27 @@ __global__ void attend_batch_gqa_tiled(const float* q,const half* kc,const half*
         }
         __syncthreads();
         if(!warp){
+            constexpr float kScaleL2=1.4426950408889634f/16.f;
             #pragma unroll
             for(int h=0;h<H;++h)for(int b=0;b<BR;++b){
                 float a=0;for(int w=0;w<8;++w)a+=warp_sum[h][b][w];
-                s_val[h][b]=a/16.f;
+                s_val[h][b]=a*kScaleL2;
             }
         }
         __syncthreads();
         #pragma unroll
         for(int h=0;h<H;++h)for(int b=0;b<BR;++b){
-            float m_new=fmaxf(mx[h][b],s_val[h][b]);
-            float alpha=expf(mx[h][b]-m_new),pw=expf(s_val[h][b]-m_new);
-            mx[h][b]=m_new;sumv[h][b]=sumv[h][b]*alpha+pw;
-            acc[h][b]=fmaf(pw,vv,acc[h][b]*alpha);
+            const float sv=s_val[h][b];
+            // FlashAttention-4 (2026) conditional softmax rescaling + base-2 exp2f (MUFU.EX2).
+            if(sv>mx[h][b]){
+                const float alpha=(sumv[h][b]>0.f)?exp2f(mx[h][b]-sv):0.f;
+                mx[h][b]=sv;sumv[h][b]=fmaf(sumv[h][b],alpha,1.f);
+                acc[h][b]=fmaf(acc[h][b],alpha,vv);
+            }else{
+                const float pw=exp2f(sv-mx[h][b]);
+                sumv[h][b]+=pw;
+                acc[h][b]=fmaf(pw,vv,acc[h][b]);
+            }
         }
     }
     #pragma unroll
@@ -448,16 +456,24 @@ __global__ void __launch_bounds__(192) spin8_attend_decode_split_kernel(
             #pragma unroll
             for(int d=16;d>0;d>>=1)p+=__shfl_xor_sync(0xffffffffu,p,d);
             // FlashAttention-2/3 base-2 log-space softmax (mx stored in log2 space for reduce_kernel).
+            // FlashAttention-4 (2026) warp-uniform conditional softmax rescaling + base-2 MUFU.EX2.
             const float sc=p*(1.4426950408889634f/16.f);
-            const float new_mx=fmaxf(mx,sc);
-            const float alpha=(kp_base==kp_start&&k==0)?0.f:exp2f(mx-new_mx);
-            const float w=exp2f(sc-new_mx);
-            denom=fmaf(denom,alpha,w);
-            mx=new_mx;
-            acc[0]=fmaf(acc[0],alpha,w*vv0.x);acc[1]=fmaf(acc[1],alpha,w*vv0.y);
-            acc[2]=fmaf(acc[2],alpha,w*vv0.z);acc[3]=fmaf(acc[3],alpha,w*vv0.w);
-            acc[4]=fmaf(acc[4],alpha,w*vv1.x);acc[5]=fmaf(acc[5],alpha,w*vv1.y);
-            acc[6]=fmaf(acc[6],alpha,w*vv1.z);acc[7]=fmaf(acc[7],alpha,w*vv1.w);
+            if(sc>mx){
+                const float alpha=(kp_base==kp_start&&k==0)?0.f:exp2f(mx-sc);
+                denom=fmaf(denom,alpha,1.f);
+                mx=sc;
+                acc[0]=fmaf(acc[0],alpha,vv0.x);acc[1]=fmaf(acc[1],alpha,vv0.y);
+                acc[2]=fmaf(acc[2],alpha,vv0.z);acc[3]=fmaf(acc[3],alpha,vv0.w);
+                acc[4]=fmaf(acc[4],alpha,vv1.x);acc[5]=fmaf(acc[5],alpha,vv1.y);
+                acc[6]=fmaf(acc[6],alpha,vv1.z);acc[7]=fmaf(acc[7],alpha,vv1.w);
+            }else{
+                const float w=exp2f(sc-mx);
+                denom+=w;
+                acc[0]=fmaf(w,vv0.x,acc[0]);acc[1]=fmaf(w,vv0.y,acc[1]);
+                acc[2]=fmaf(w,vv0.z,acc[2]);acc[3]=fmaf(w,vv0.w,acc[3]);
+                acc[4]=fmaf(w,vv1.x,acc[4]);acc[5]=fmaf(w,vv1.y,acc[5]);
+                acc[6]=fmaf(w,vv1.z,acc[6]);acc[7]=fmaf(w,vv1.w,acc[7]);
+            }
         }
         __syncthreads();
     }

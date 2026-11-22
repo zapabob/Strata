@@ -1,6 +1,6 @@
 param(
-    [ValidateSet("98k", "65k")]
-    [string]$Context = "98k",
+    [ValidateSet("131k", "98k", "65k")]
+    [string]$Context = "131k",
     [int]$Port = 8092,
     [string]$BindHost = "127.0.0.1",
     [double]$LoopExitTol = 0.0,
