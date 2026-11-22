@@ -82,6 +82,23 @@ being generated.
   `releaseQualified=false` because visible answer quality is still not fully
   qualified.
 
+## GPU / RAM / CPU distribution (user request 2026-11-23)
+The fork's `place_experts()` (inkling2_engine.cu:2919) already implements the
+Deep-Research-recommended distribution; no engine source change was needed:
+- **GPU VRAM**: Priority 1 = looped core layers blk.6-17 (executed 3x/token),
+  Priority 2 = outer layers via Fate Zeta-Lagrangian allocation, capped by
+  `--expert-vram` (11.5 GiB in vramfix config).
+- **pinned RAM**: `pp_stage` buffers (2 x STRATA_PP_STAGE_MB, default 64 MB)
+  for prompt staging over PCIe.
+- **CPU**: remaining host-resident experts computed by worker threads
+  (`--cpu-threads`, default 5 physical cores here).
+- `STRATA_VRAM_RESERVE_MB=3328` keeps WDDM shared-memory migration off on the
+  16 GB RTX 5060 Ti; `STRATA_TIER2_FLOOR=0` prioritizes tier1.
+Added launcher params `-PpStageMb/-VramReserveMb/-Tier2Floor` and the
+`98k-vramfix` ValidateSet case (commit 64d376540); the server log confirms
+`expert distribution: GPU(<=--expert-vram) + pinned-RAM(64MB x2) + CPU workers;
+VRAM reserve 3328MB, tier2-floor 0`.
+
 ## Residual
 - No llama.cpp scheduler in this fork, so upstream fix commits cannot be
   cherry-picked directly; the fork's `place_experts` / looped-pass path would
