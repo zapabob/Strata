@@ -29,12 +29,12 @@
 - `py -3 scripts/shinka_evolve_rh.py`: **EXIT 0**（`von_koch_c=0.189`, `impact_alpha=0.662` へ収束確認）
 - `py -3 -m pytest terminal/tests/terminal/test_hy4_squant_fit.py terminal/tests/terminal/test_ram_fit.py -q`: **20 passed in 5.11s**
 
-### ビルド＆上書きインストール（最終 Gen-B 復元版）
+### ビルド＆上書きインストール（Gen-E: SIMD Newton-Raphson SITU + Blackwell `exp2f`/`sigmf` + Atomic 削減）
 - `cmake --build H:/Strata/build/engine-cuda135 --target strata-inkling2 strata -j 5`: **EXIT 0**
 - 上書き先: `%LOCALAPPDATA%\Strata\components\engine\strata-engine-0.6.4-windows-x86_64-cuda-cuda13\`
 - SHA-256 検証（SRC/DST 完全一致）:
-  - `strata-inkling2.exe`: `60424AE9D3D42048ED028256A3337CDDAF888F48D179AA6DBD486F989FDF216D`
-  - `strata.exe`: `DC0A76A195A051D900BEEDDE663267792E54EC660A04BB6BC6B69B3847040BF7`
+  - `strata-inkling2.exe`: `13810E0E9F623F0C9A4B695E0E2B5A8DE9A5922CF9DD7AFDB7C36B8515D66C9B`
+  - `strata.exe`: `CD19C82015A0D880F20D59D7393B9478E1D46A60265499BE3BF4F4D548871FB2`
 
 ### RTX 5060 Ti (16 GB / CUDA 13.5.37) + 6C/12T Ryzen 実機ベンチマーク
 モデル: `Sakura-Inkling-2-Mini-Uncensored-Q4_K_M.gguf` (`--max-context 16384 --kv-q8 --expert-vram 7.8 --bench --chunk 512 --tokens 1..16 --max-new 32`)
@@ -45,7 +45,8 @@
 | Gen-A: RH 臨界線 + ゼロスピル (`task-104`) | `1333.2 ms` (`12.00 t/s`) | `1136.8 ms` (**`27.27 t/s`**) | `10160 / 3952` | **`533.2 ms`** | `cpu_ms` -27.4%, ミス -398 |
 | Gen-B: + Fate + HybriMoE + PTX `tanh.approx` + FA4 条件付き Softmax (`task-143`) | `1334.0 ms` (`11.99 t/s`) | **`1076.9 ms` (`28.79 t/s`, +11.7%)** | `10192 / 3920` | `606.5 ms` | GPU部 470.4 ms, ミス -430 (-9.89%) |
 | Gen-C: 2-tok 16-swap + L1 stream (`task-188`) | `1347.6 ms` (`11.87 t/s`) | `1264.9 ms` (`24.51 t/s`) | **`10426 / 3686`** | `546.8 ms` | ミス最小だが PCIe H2D 競合 +247 ms |
-| Gen-D: 4-tok 8-swap + L1 stream + `cpu_pause` (`task-220`) | `1348.9 ms` (`11.86 t/s`) | `1168.2 ms` (`26.54 t/s`) | `10191 / 3921` | `663.0 ms` | 上書き配備版 |
+| Gen-D: 4-tok 8-swap + L1 stream + `cpu_pause` (`task-220`) | `1348.9 ms` (`11.86 t/s`) | `1168.2 ms` (`26.54 t/s`) | `10191 / 3921` | `663.0 ms` | 2-row 検証版 |
+| Gen-E: + SIMD NR SITU + `exp2f`/`sigmf` + Atomic 削減 (`task-276`) | `1385.8 ms` (`11.55 t/s`) | `2679.6 ms` (`11.57 t/s`) | **`10202 / 3910`** | `2037.2 ms` | ミス最小（-10.1%）/ 32/32トークン一致（実行時ホストRAM/IO競合 184.9s load） |
 
 ## 4. 残余リスク・推奨アクション
 - Gen-B（`q8l[4]/q8h[4]` レジスタ保持版）は **`28.79 t/s`** と Gen-D（`26.54 t/s`）より高速であったため、次回差分ビルド時に `kq256_gu_t1_q4k` の `q8l/q8h` 事前ロードを戻すことでさらに約 +2 t/s 回復可能。

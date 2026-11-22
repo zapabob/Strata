@@ -286,14 +286,23 @@ void kq256_gu_rows(int type, const uint8_t* blob, size_t gu_row, size_t up_off, 
     }
 }
 
-// Padé [7/6] rational approximation of tanh(x) for fused SITU activation.
-static inline float kq_fast_tanh_f32(float x) noexcept {
-    if (x > 5.0f) return 1.0f;
-    if (x < -5.0f) return -1.0f;
-    const float x2 = x * x;
-    const float num = x * (135135.0f + x2 * (17325.0f + x2 * (378.0f + x2)));
-    const float den = 135135.0f + x2 * (62370.0f + x2 * (3150.0f + 28.0f * x2));
-    return num / den;
+// Vectorized 4-lane SSE/FMA Padé [7/6] tanh with 1-step Newton-Raphson reciprocal (_mm_rcp_ps):
+// Replaces 3 serial scalar vdivss (~36 cycles) in SITU with 1 SIMD rcp + 1 FMA NR step (~6 cycles, <1e-6 error).
+static inline __m128 kq_fast_tanh4_ps(__m128 x) noexcept {
+    const __m128 lo = _mm_set1_ps(-5.0f), hi = _mm_set1_ps(5.0f);
+    const __m128 xc = _mm_min_ps(hi, _mm_max_ps(lo, x));
+    const __m128 x2 = _mm_mul_ps(xc, xc);
+    __m128 num = _mm_fmadd_ps(x2, _mm_add_ps(_mm_set1_ps(378.0f), x2), _mm_set1_ps(17325.0f));
+    num = _mm_mul_ps(xc, _mm_fmadd_ps(x2, num, _mm_set1_ps(135135.0f)));
+    __m128 den = _mm_fmadd_ps(x2, _mm_fmadd_ps(x2, _mm_set1_ps(28.0f), _mm_set1_ps(3150.0f)), _mm_set1_ps(62370.0f));
+    den = _mm_fmadd_ps(x2, den, _mm_set1_ps(135135.0f));
+    __m128 r = _mm_rcp_ps(den);
+    r = _mm_mul_ps(r, _mm_fnmadd_ps(den, r, _mm_set1_ps(2.0f)));
+    __m128 res = _mm_mul_ps(num, r);
+    const __m128 ones = _mm_set1_ps(1.0f), nones = _mm_set1_ps(-1.0f);
+    res = _mm_blendv_ps(res, ones, _mm_cmpgt_ps(x, hi));
+    res = _mm_blendv_ps(res, nones, _mm_cmplt_ps(x, lo));
+    return res;
 }
 
 // Evolved T==1 zero-spill fused gate+up Q4_K x Q8_K:
@@ -381,9 +390,12 @@ void kq256_gu_t1_q4k(const uint8_t* blob, size_t gu_row, size_t up_off, int n, c
         const float gs = hsum_float_8(acc_g) + hsum4(acc_mg);
         const float us = hsum_float_8(acc_u) + hsum4(acc_mu);
         if (situ) {
-            const float tg = situ_beta * kq_fast_tanh_f32(gs * inv_beta);
-            const float tu = situ_linear_beta > 0.f ? situ_linear_beta * kq_fast_tanh_f32(us * inv_lb) : us;
-            const float sig = 0.5f * (1.0f + kq_fast_tanh_f32(0.5f * gs));
+            const __m128 vin = _mm_set_ps(0.0f, 0.5f * gs, situ_linear_beta > 0.f ? (us * inv_lb) : 0.0f, gs * inv_beta);
+            alignas(16) float tv[4];
+            _mm_store_ps(tv, kq_fast_tanh4_ps(vin));
+            const float tg = situ_beta * tv[0];
+            const float tu = situ_linear_beta > 0.f ? (situ_linear_beta * tv[1]) : us;
+            const float sig = 0.5f * (1.0f + tv[2]);
             ff0[r] = (tg * sig) * tu;
         } else {
             ff0[r] = (gs / (1.f + std::exp(-gs))) * us;

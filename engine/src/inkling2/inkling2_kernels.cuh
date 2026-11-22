@@ -16,7 +16,6 @@ namespace strata::inkling2 {
 
 inline constexpr int kThreads = 256;
 
-__device__ __forceinline__ float sigmf(float x) { return __fdividef(1.0f, 1.0f + __expf(-x)); }
 __device__ __forceinline__ float fast_tanh(float x) {
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 750
     float y;
@@ -25,6 +24,13 @@ __device__ __forceinline__ float fast_tanh(float x) {
 #else
     const float xc = fmaxf(-9.0f, fminf(9.0f, x));
     return __fdividef(2.0f, 1.0f + __expf(-2.0f * xc)) - 1.0f;
+#endif
+}
+__device__ __forceinline__ float sigmf(float x) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 750
+    return fmaf(0.5f, fast_tanh(0.5f * x), 0.5f);
+#else
+    return __fdividef(1.0f, 1.0f + __expf(-x));
 #endif
 }
 
@@ -1080,7 +1086,9 @@ __global__ void k_attn_q8(const float* __restrict__ Q,
     const int j0 = is_swa ? max(0, pos_q - n_swa + 1) : 0;
     const int j1 = pos_q + 1;
     const float* rt = rel_tab + ((size_t) t * n_head + h) * n_ext;
-    const float neg_sink = -sink[(size_t) t * n_head + h];
+    constexpr float kLog2E = 1.4426950408889634f;
+    const float kq_scale_l2 = kq_scale * kLog2E;
+    const float neg_sink_l2 = -sink[(size_t) t * n_head + h] * kLog2E;
 
     float m = -1e30f;
     float l = 0.0f;
@@ -1101,12 +1109,12 @@ __global__ void k_attn_q8(const float* __restrict__ Q,
 #pragma unroll
         for (int o = 16; o > 0; o >>= 1) dot += __shfl_xor_sync(0xffffffffu, dot, o);
         const int dist = pos_q - j;
-        const float bias = dist < n_ext ? rt[dist] : neg_sink;
-        const float sc = dot * d_k * kq_scale + bias;
+        const float bias = dist < n_ext ? (rt[dist] * kLog2E) : neg_sink_l2;
+        const float sc = fmaf(dot, d_k * kq_scale_l2, bias);
         const char4 vc4 = *reinterpret_cast<const char4*>(vj + base4);
-        // FlashAttention-4 (2026) warp-uniform conditional softmax rescaling: skip expf+rescale when sc <= m (>95% of steps).
+        // FlashAttention-4 (2026) warp-uniform conditional softmax rescaling + base-2 MUFU.EX2 (exp2f).
         if (sc > m) {
-            const float alpha = l > 0.0f ? expf(m - sc) : 0.0f;
+            const float alpha = l > 0.0f ? exp2f(m - sc) : 0.0f;
             l = l * alpha + 1.0f;
             acc0 = fmaf(acc0, alpha, d_v * (float) vc4.x);
             acc1 = fmaf(acc1, alpha, d_v * (float) vc4.y);
@@ -1114,7 +1122,7 @@ __global__ void k_attn_q8(const float* __restrict__ Q,
             acc3 = fmaf(acc3, alpha, d_v * (float) vc4.w);
             m = sc;
         } else {
-            const float p = expf(sc - m);
+            const float p = exp2f(sc - m);
             const float pv = p * d_v;
             l += p;
             acc0 = fmaf(pv, (float) vc4.x, acc0);
@@ -1139,7 +1147,7 @@ __global__ void k_attn_q8(const float* __restrict__ Q,
         float og = 0.0f;
         for (int w = 0; w < 4; ++w) {
             if (s_l[w] > 0.0f) {
-                const float c = expf(s_m[w] - mg);
+                const float c = exp2f(s_m[w] - mg);
                 lg += s_l[w] * c;
                 og += s_acc[w][threadIdx.x] * c;
             }
@@ -1194,13 +1202,15 @@ __global__ void k_attn_q8_gqa3_pp(const float* __restrict__ Q,
     const bool pow2_cap = (cap & (cap - 1)) == 0;
     const int cap_mask = cap - 1;
 
-    float neg_sink[3];
+    constexpr float kLog2E = 1.4426950408889634f;
+    const float kq_scale_l2 = kq_scale * kLog2E;
+    float neg_sink_l2[3];
     const float* rt[3];
 #pragma unroll
     for (int g = 0; g < 3; ++g) {
         const int h = h0 + g;
         rt[g] = rel_tab + ((size_t) t * n_head + h) * n_ext;
-        neg_sink[g] = -sink[(size_t) t * n_head + h];
+        neg_sink_l2[g] = -sink[(size_t) t * n_head + h] * kLog2E;
     }
 
     float m[3], l[3], acc[3][4];
@@ -1224,7 +1234,7 @@ __global__ void k_attn_q8_gqa3_pp(const float* __restrict__ Q,
         const char4 vc4 = *reinterpret_cast<const char4*>(vj + base4);
         const float v0 = (float) vc4.x, v1 = (float) vc4.y, v2 = (float) vc4.z, v3 = (float) vc4.w;
         const int dist = pos_q - j;
-        const float dkkq = d_k * kq_scale;
+        const float dkkq = d_k * kq_scale_l2;
 
         float dot0 = q[0][0] * k0 + q[0][1] * k1 + q[0][2] * k2 + q[0][3] * k3;
         float dot1 = q[1][0] * k0 + q[1][1] * k1 + q[1][2] * k2 + q[1][3] * k3;
@@ -1238,11 +1248,11 @@ __global__ void k_attn_q8_gqa3_pp(const float* __restrict__ Q,
         const float dots[3] = {dot0, dot1, dot2};
 #pragma unroll
         for (int g = 0; g < 3; ++g) {
-            const float bias = dist < n_ext ? rt[g][dist] : neg_sink[g];
-            const float sc = dots[g] * dkkq + bias;
-            // FlashAttention-4 (2026) warp-uniform conditional softmax rescaling.
+            const float bias = dist < n_ext ? (rt[g][dist] * kLog2E) : neg_sink_l2[g];
+            const float sc = fmaf(dots[g], dkkq, bias);
+            // FlashAttention-4 (2026) warp-uniform conditional softmax rescaling + base-2 MUFU.EX2 (exp2f).
             if (sc > m[g]) {
-                const float alpha = l[g] > 0.0f ? __expf(m[g] - sc) : 0.0f;
+                const float alpha = l[g] > 0.0f ? exp2f(m[g] - sc) : 0.0f;
                 l[g] = l[g] * alpha + 1.0f;
                 acc[g][0] = fmaf(acc[g][0], alpha, d_v * v0);
                 acc[g][1] = fmaf(acc[g][1], alpha, d_v * v1);
@@ -1250,7 +1260,7 @@ __global__ void k_attn_q8_gqa3_pp(const float* __restrict__ Q,
                 acc[g][3] = fmaf(acc[g][3], alpha, d_v * v3);
                 m[g] = sc;
             } else {
-                const float p = __expf(sc - m[g]);
+                const float p = exp2f(sc - m[g]);
                 const float pv = p * d_v;
                 l[g] += p;
                 acc[g][0] = fmaf(pv, v0, acc[g][0]);
@@ -1281,7 +1291,7 @@ __global__ void k_attn_q8_gqa3_pp(const float* __restrict__ Q,
             float lg = 0.0f, og = 0.0f;
             for (int w = 0; w < 4; ++w) {
                 if (s_l[g][w] > 0.0f) {
-                    const float c = __expf(s_m[g][w] - mg);
+                    const float c = exp2f(s_m[g][w] - mg);
                     lg += s_l[g][w] * c;
                     og += s_acc[g][w][threadIdx.x] * c;
                 }

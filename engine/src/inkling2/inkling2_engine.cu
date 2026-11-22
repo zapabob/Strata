@@ -1622,7 +1622,7 @@ struct Engine {
             project_f32(x_norm, L.ffn_gate_inp, router_logits, T, hp.n_expert, N);
             k_route_inkling2<<<(unsigned) T, 32, 0, st>>>(
                 router_logits, L.exp_probs_b, ids, ewts, (int) hp.n_expert, Kp, hp.expert_weights_scale,
-                (profile.use_d_hits || hybrid || full_kv_cap < ctx) ? L.d_hits : nullptr);
+                (need_cpu && T == 1) ? nullptr : ((profile.use_d_hits || hybrid || full_kv_cap < ctx) ? L.d_hits : nullptr));
             if (prof_detail) { CK(cudaStreamSynchronize(st)); p_d_route += ms_since(tp_moe_r0); }
         }
 
