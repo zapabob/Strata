@@ -67,9 +67,12 @@ being generated.
 - `--chunk 16` run: tg 26.76 t/s (slightly slower than chunk 512's 30.83),
   same token pattern — the small ubatch workaround adds no benefit; the
   expert-vram increase is the effective mitigation.
-- Remaining suspect for empty chat `content` is the server-side decode path
-  (how generated token IDs are converted to text fed to the parser), being
-  re-tested with the vramfix config (98K server on 8092).
+- RESOLVED: with the vramfix config (`--expert-vram 11.5`) the same Hermes-style
+  chat completion that previously returned empty content now returns a correct
+  answer: question "What is 17 times 23?" -> `content=[391]`, finish=length,
+  predicted 38.9 tok/s (previously content empty at 24.4 tok/s with 7.8).
+  So raising expert-vram fixes both the garbage channel output AND the empty
+  `content`. Evidence: vramfix server on 127.0.0.1:8092, 2026-11-23.
 
 ## Conclusion so far
 - The "tokenizer problem" is NOT a tokenizer/template/parser defect — all
