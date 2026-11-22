@@ -7,7 +7,7 @@ Esta versão mantém todos os recursos do fork e adiciona as otimizações nativ
 ## Versão e downloads
 
 <!-- release-062-stable -->
-Versao atual do aplicativo: **0.7.7** — GitHub Latest: [pagina de lancamento](https://github.com/zapabob/Strata/releases/tag/v0.7.7). Baixe o instalador desktop dos **Assets**; o arquivo se chama `Strata-0.7.5-windows-x64-setup.exe` (o binario do app nao foi recompilado para 0.7.7, apenas o motor mudou). Pacote: `Strata-0.7.5-windows-x64.tar.7z`. Os motores GPU sao componentes opcionais nos mesmos Assets: `strata-engine-0.6.7-windows-x86_64-cuda-cuda13-r2.tar.gz` (Q38 27B/9B + Inkling-2, CUDA 13.5) e `strata-hy4-0.1.64-windows-x86_64-cuda-cuda13.tar.gz`. Sempre abra a pagina e escolha o arquivo exato em Assets. SHA-256 continua sendo a verificacao; `releaseQualified=false`.
+Versao atual do aplicativo: **0.7.7** — GitHub Latest: [pagina de lancamento](https://github.com/zapabob/Strata/releases/tag/v0.7.8). Baixe o instalador desktop dos **Assets**; o arquivo se chama `Strata-0.7.5-windows-x64-setup.exe` (o binario do app nao foi recompilado para 0.7.7, apenas o motor mudou). Pacote: `Strata-0.7.5-windows-x64.tar.7z`. Os motores GPU sao componentes opcionais nos mesmos Assets: `strata-engine-0.6.7-windows-x86_64-cuda-cuda13-r2.tar.gz` (Q38 27B/9B + Inkling-2, CUDA 13.5) e `strata-hy4-0.1.64-windows-x86_64-cuda-cuda13.tar.gz`. Sempre abra a pagina e escolha o arquivo exato em Assets. SHA-256 continua sendo a verificacao; `releaseQualified=false`.
 
 
 ![Hakua / Strata real-model Japanese chat on Qwen3.8-27B](docs/media/native-qwen38-japanese-chat.png)

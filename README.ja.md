@@ -7,7 +7,7 @@
 ## バージョンと配布物
 
 <!-- release-062-stable -->
-現在のアプリリリース: **0.7.7** — GitHub Latest: [リリースページ](https://github.com/zapabob/Strata/releases/tag/v0.7.7)。デスクトップインストーラーはリリースの **Assets** からダウンロードしてください。ファイル名は `Strata-0.7.5-windows-x64-setup.exe` です（app バイナリは 0.7.7 で再ビルドしておらず、エンジンのみ変更）。バンドルは `Strata-0.7.5-windows-x64.tar.7z`。GPU エンジンは同じ Assets の opt-in コンポーネント: `strata-engine-0.6.7-windows-x86_64-cuda-cuda13-r2.tar.gz`（再ビルド Q38 27B/9B + Inkling-2、CUDA 13.5）と `strata-hy4-0.1.64-windows-x86_64-cuda-cuda13.tar.gz`（Hy4-Flash）。必ずリリースページを開いて Assets から正確なファイルを選んでください（ファイル名にバージョンが入っているとは限りません）。SHA-256 ダイジェストが完全性チェックです。`releaseQualified=false`。
+現在のアプリリリース: **0.7.7** — GitHub Latest: [リリースページ](https://github.com/zapabob/Strata/releases/tag/v0.7.8)。デスクトップインストーラーはリリースの **Assets** からダウンロードしてください。ファイル名は `Strata-0.7.5-windows-x64-setup.exe` です（app バイナリは 0.7.7 で再ビルドしておらず、エンジンのみ変更）。バンドルは `Strata-0.7.5-windows-x64.tar.7z`。GPU エンジンは同じ Assets の opt-in コンポーネント: `strata-engine-0.6.7-windows-x86_64-cuda-cuda13-r2.tar.gz`（再ビルド Q38 27B/9B + Inkling-2、CUDA 13.5）と `strata-hy4-0.1.64-windows-x86_64-cuda-cuda13.tar.gz`（Hy4-Flash）。必ずリリースページを開いて Assets から正確なファイルを選んでください（ファイル名にバージョンが入っているとは限りません）。SHA-256 ダイジェストが完全性チェックです。`releaseQualified=false`。
 
 
 ![Hakua / Strata real-model Japanese chat on Qwen3.8-27B](docs/media/native-qwen38-japanese-chat.png)

@@ -7,7 +7,7 @@
 ## 版本与下载
 
 <!-- release-062-stable -->
-当前版本: **0.7.7** — GitHub Latest: [发布页面](https://github.com/zapabob/Strata/releases/tag/v0.7.7)。请从发布的 **Assets** 下载桌面安装程序，文件名为 `Strata-0.7.5-windows-x64-setup.exe`（app 二进制未针对 0.7.7 重新构建，只更换了引擎）。捆绑包: `Strata-0.7.5-windows-x64.tar.7z`。GPU 引擎是同一 Assets 中的可选组件: `strata-engine-0.6.7-windows-x86_64-cuda-cuda13-r2.tar.gz`（重新构建的 Q38 27B/9B + Inkling-2、CUDA 13.5）和 `strata-hy4-0.1.64-windows-x86_64-cuda-cuda13.tar.gz`。请务必打开发布页面并从 Assets 中选择确切文件（文件名不一定包含版本号）。SHA-256 摘要仍是完整性检查。`releaseQualified=false`。
+当前版本: **0.7.7** — GitHub Latest: [发布页面](https://github.com/zapabob/Strata/releases/tag/v0.7.8)。请从发布的 **Assets** 下载桌面安装程序，文件名为 `Strata-0.7.5-windows-x64-setup.exe`（app 二进制未针对 0.7.7 重新构建，只更换了引擎）。捆绑包: `Strata-0.7.5-windows-x64.tar.7z`。GPU 引擎是同一 Assets 中的可选组件: `strata-engine-0.6.7-windows-x86_64-cuda-cuda13-r2.tar.gz`（重新构建的 Q38 27B/9B + Inkling-2、CUDA 13.5）和 `strata-hy4-0.1.64-windows-x86_64-cuda-cuda13.tar.gz`。请务必打开发布页面并从 Assets 中选择确切文件（文件名不一定包含版本号）。SHA-256 摘要仍是完整性检查。`releaseQualified=false`。
 
 
 ![Hakua / Strata real-model Japanese chat on Qwen3.8-27B](docs/media/native-qwen38-japanese-chat.png)
