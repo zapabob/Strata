@@ -98,6 +98,11 @@ Added launcher params `-PpStageMb/-VramReserveMb/-Tier2Floor` and the
 `98k-vramfix` ValidateSet case (commit 64d376540); the server log confirms
 `expert distribution: GPU(<=--expert-vram) + pinned-RAM(64MB x2) + CPU workers;
 VRAM reserve 3328MB, tier2-floor 0`.
+- VERIFIED end-to-end: the 98K server with this distribution answered
+  "What is 17 times 23?" -> `content=[391]` (correct) at 37.4 tok/s,
+  expert cache 89.4% hit, prompt 5402 ms. So GPU/VRAM (looped core + Fate-zeta
+  outer, <=11.5 GiB), pinned RAM (2x64 MB staging) and CPU workers (host
+  experts) cooperate correctly under Hermes.
 
 ## Residual
 - No llama.cpp scheduler in this fork, so upstream fix commits cannot be
