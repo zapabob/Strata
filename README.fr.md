@@ -2,12 +2,12 @@
 
 Note : les chiffres DS4 2,84x / FLA 4,86x / Sakura 22,44 t/s proviennent des journaux de développement Antigravity et n'ont pas été reproduits indépendamment lors de cette session de build. Cette session a mesuré 9,09 t/s de prefill / 11,78 t/s de décodage avec le GGUF canonique à 32K.
 
-Cette version conserve toutes les fonctionnalités du fork et ajoute les optimisations natives du 22/23-11 : produit **0.7.7**, famille de moteurs **0.6.7**, amont v0.2.19. RTX 5060 Ti (sm_120a)/CUDA 13.5 : DS4-9B prefill 2,84x, E2E +22,7 %, FLA GDN + Spin(8) prefill 4,86x, Sakura Inkling-2 65K-98K (22,44 t/s décodage). Tables SM x VRAM de Ryu (kuraneko1, MIT) dans l'Inkling-2 CUDA officiel (PR #6571). Vérification de signature supprimée ; SHA-256 conservé. `releaseQualified=false`.
+Cette version conserve toutes les fonctionnalités du fork et ajoute les optimisations natives du 22/23-11 : produit **0.7.8**, famille de moteurs **0.6.7**, amont v0.2.20. RTX 5060 Ti (sm_120a)/CUDA 13.5 : DS4-9B prefill 2,84x, E2E +22,7 %, FLA GDN + Spin(8) prefill 4,86x, Sakura Inkling-2 65K-98K (22,44 t/s décodage). Tables SM x VRAM de Ryu (kuraneko1, MIT) dans l'Inkling-2 CUDA officiel (PR #6571). Vérification de signature supprimée ; SHA-256 conservé. `releaseQualified=false`.
 
 ## Version et téléchargements
 
 <!-- release-062-stable -->
-Version actuelle : **0.7.7** — GitHub Latest : [page de version](https://github.com/zapabob/Strata/releases/tag/v0.7.8). Téléchargez l'installateur desktop depuis les **Assets** ; le fichier s'appelle `Strata-0.7.5-windows-x64-setup.exe` (le binaire de l'app n'a pas été reconstruit pour 0.7.7, seul le moteur a changé). Bundle : `Strata-0.7.5-windows-x64.tar.7z`. Les moteurs GPU sont des composants optionnels dans les mêmes Assets : `strata-engine-0.6.7-windows-x86_64-cuda-cuda13-r2.tar.gz` (Q38 27B/9B + Inkling-2, CUDA 13.5) et `strata-hy4-0.1.64-windows-x86_64-cuda-cuda13.tar.gz`. Ouvrez toujours la page et choisissez le fichier exact dans Assets. SHA-256 reste le contrôle d'intégrité ; `releaseQualified=false`.
+Version actuelle : **0.7.8** — GitHub Latest : [page de version](https://github.com/zapabob/Strata/releases/tag/v0.7.8). Téléchargez l'installateur desktop depuis les **Assets** ; le fichier s'appelle `Strata-0.7.5-windows-x64-setup.exe` (le binaire de l'app n'a pas été reconstruit pour 0.7.7, seul le moteur a changé). Bundle : `Strata-0.7.5-windows-x64.tar.7z`. Les moteurs GPU sont des composants optionnels dans les mêmes Assets : `strata-engine-0.6.7-windows-x86_64-cuda-cuda13-r2.tar.gz` (Q38 27B/9B + Inkling-2, CUDA 13.5) et `strata-hy4-0.1.64-windows-x86_64-cuda-cuda13.tar.gz`. Ouvrez toujours la page et choisissez le fichier exact dans Assets. SHA-256 reste le contrôle d'intégrité ; `releaseQualified=false`.
 
 
 ![Hakua / Strata real-model Japanese chat on Qwen3.8-27B](docs/media/native-qwen38-japanese-chat.png)
