@@ -26,10 +26,12 @@ Antigravity _session_ へ: この時点の状態と、残りの手順を引き�
 - 旧 tar (Q38 旧) は `H:/Strata/evidence/strata-engine-0.6.7-windows-x86_64-cuda-cuda13.tar.gz`
   SHA 6ef349f9... (公開済み v0.7.6 のもの)。
 
-## 2. 今まさに実行中 (完了待ち)
-- 新しい tar.gz (Q38 版) をバックグラウンドで生成中:
-  `H:/Strata/evidence/strata-engine-0.6.7-windows-x86_64-cuda-cuda13-r2.tar.gz`
-  完了したら size ≈ 1,522,975,898 B、SHA を記録する。
+## 2. 新しい tar.gz (Q38 版) — 完成済み
+- `H:/Strata/evidence/strata-engine-0.6.7-windows-x86_64-cuda-cuda13-r2.tar.gz`
+  size = 1,523,107,958 B、SHA-256 = `eb3bf3f005f0d1058ee107c07844d74351870514a3d7d806cb94e73020b3c6ce`
+  7-Zip integrity test = OK (uncompressed 2,242,094,080 B, compressed 1,523,107,958 B)。
+  この tar が Q38 新ビルド (SHA 9096d22c) を含む 0.6.7 コンポーネントの最終アーカイブ。
+   publishing は手順 4 でこの r2 を使うこと (旧 6ef349f9 の tar は v0.7.6 に添付済み)。
 
 ## 3. Q38 ビルド成功のために worktree で入れた修正 (再現手順)
 `engine/q38/src/CMakeLists.txt` (worktree のみ、main 에는反映しない):
@@ -60,7 +62,8 @@ cmake --build H:/Strata/build/q38-067-cuda135 --target strata-q38 -j 5
 3. main が落ち着いたら worktree の変更をマージ or 別ブランチで push。
    タグ v0.7.7 を作って push。
 4. `gh release create v0.7.7 --repo zapabob/Strata --latest` で
-   新 engine tar (r2) + hy4 0.1.64 + app setup/tar.7z を添付。
+   `H:/Strata/evidence/strata-engine-0.6.7-windows-x86_64-cuda-cuda13-r2.tar.gz`
+   (SHA eb3bf3f0...b3c6ce) + hy4 0.1.64 + app setup/tar.7z を添付。
 5. 公開 SHA リードバック (4 アセットが state=uploaded、digest 一致)。
 6. **実機上書き**: 前回の `v075-install.ps1` 方式 (公開 installer を 7-Zip で展開して
    C:/Users/downl/AppData/Local/Programs/Strata に配置、registry 更新、ユーザーデータ保持確認、
