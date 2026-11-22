@@ -7,9 +7,8 @@
 ## バージョンと配布物
 
 <!-- release-062-stable -->
-現在のアプリリリース: [0.7.7](https://github.com/zapabob/Strata/releases/tag/v0.7.7)（アプリ `0.7.3`、Terminal、Control `0.6.3`、ネイティブエンジンファミリ `0.6.5`）— GitHub Latest です。Windows アプリには 0.6.5 エンジンファミリ（再ビルド Q38 27B+9B、公式 Hy4-Flash 0.1.64）が別の opt-in コンポーネントとして同梱されます。コンポーネント署名検証は撤去され（署名鍵なし）、SHA-256 ダイジェストが完全性チェックです。`releaseQualified=false` は明示のまま、フルウィンドウ推論と一般モデル品質は未検証です。 第 3 の opt-in エンジン `strata-inkling2`（Inkling-2 Mini、GGUF arch `inkling2`）は、kuraneko1/Strata（MIT）の kuraneko1 (_ryu15_) による実装をクレジット明記で移植したものです。
+現在のアプリリリース: **0.7.7** — GitHub Latest: [リリースページ](https://github.com/zapabob/Strata/releases/tag/v0.7.7)。デスクトップインストーラーはリリースの **Assets** からダウンロードしてください。ファイル名は `Strata-0.7.5-windows-x64-setup.exe` です（app バイナリは 0.7.7 で再ビルドしておらず、エンジンのみ変更）。バンドルは `Strata-0.7.5-windows-x64.tar.7z`。GPU エンジンは同じ Assets の opt-in コンポーネント: `strata-engine-0.6.7-windows-x86_64-cuda-cuda13-r2.tar.gz`（再ビルド Q38 27B/9B + Inkling-2、CUDA 13.5）と `strata-hy4-0.1.64-windows-x86_64-cuda-cuda13.tar.gz`（Hy4-Flash）。必ずリリースページを開いて Assets から正確なファイルを選んでください（ファイル名にバージョンが入っているとは限りません）。SHA-256 ダイジェストが完全性チェックです。`releaseQualified=false`。
 
-[0.7.7](https://github.com/zapabob/Strata/releases/tag/v0.7.7) · [setup EXE](https://github.com/zapabob/Strata/releases/download/v0.7.7/Strata-0.7.7-windows-x64-setup.exe) · [tar.7z](https://github.com/zapabob/Strata/releases/download/v0.7.7/Strata-0.7.7-windows-x64.tar.7z) · [SHA256SUMS](https://github.com/zapabob/Strata/releases/download/v0.7.7/SHA256SUMS.txt) · [BUNDLE-SHA256SUMS](https://github.com/zapabob/Strata/releases/download/v0.7.7/BUNDLE-SHA256SUMS.txt)
 
 ![Hakua / Strata real-model Japanese chat on Qwen3.8-27B](docs/media/native-qwen38-japanese-chat.png)
 *`strata-q38.exe` で `qwen3.8-27b-abliterated-3.69bpw-12GB-MTP.gguf` を実行している実環境スクリーンショット（CUDA 13 / RTX 5060 Ti 16 GB）。*

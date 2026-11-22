@@ -53,12 +53,31 @@ being generated.
    time of writing). Embedded template SHA-256 53a9035f...6dc (6868 chars,
    138 lines) — the GGUF carries the official Inkling template verbatim.
 
+## Tokenizer / parser verified healthy (2026-11-23)
+- Decoded the benchmark's generated token IDs with the GGUF tokenizer
+  (terminal/tools/strata_tokenizer.py, system Python 3.12): `1='"'`,
+  `68014='\n\n'`, `2='#'`, `220=' '`, `16='1'`, `142702=<Korean char>` — i.e.
+  the model emits valid multilingual Markdown text, NOT the all-'?' garbage
+  of upstream #32778. Output corruption is avoided with expert-vram 11.5.
+- `serve.inkling_dialect.InklingDialect.feed_channels()` correctly parses both
+  raw text (`('content', '"\n\n# 1. hello\n\n')`) and wrapped
+  `<|message_model|><|content_text|>...<|end_message|>`. Test evidence:
+  H:/Strata/evidence/test-inkling-dialect.py. So the tokenizer, template and
+  channel parser are all healthy.
+- `--chunk 16` run: tg 26.76 t/s (slightly slower than chunk 512's 30.83),
+  same token pattern — the small ubatch workaround adds no benefit; the
+  expert-vram increase is the effective mitigation.
+- Remaining suspect for empty chat `content` is the server-side decode path
+  (how generated token IDs are converted to text fed to the parser), being
+  re-tested with the vramfix config (98K server on 8092).
+
 ## Conclusion so far
-- The "tokenizer problem" is actually a host-expert/looped-pass output
-  corruption (upstream #32710/#32778 class), mitigated here by raising
-  `--expert-vram`. Recommend updating the 98K config from 7.8 to 11.5 if the
-  chunk-16 run confirms stable output; keep `releaseQualified=false` because
-  visible answer quality is still not qualified.
+- The "tokenizer problem" is NOT a tokenizer/template/parser defect — all
+  three verified healthy. It is a host-expert/looped-pass output corruption
+  (upstream #32710/#32778 class) mitigated by raising `--expert-vram` 7.8 ->
+  11.5 (~3x decode). Recommend updating the 98K config accordingly; keep
+  `releaseQualified=false` because visible answer quality is still not fully
+  qualified.
 
 ## Residual
 - No llama.cpp scheduler in this fork, so upstream fix commits cannot be

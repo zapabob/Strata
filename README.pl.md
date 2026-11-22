@@ -13,9 +13,8 @@ To wydanie zachowuje wszystkie funkcje forkowe i dodaje natywne optymalizacje z 
 
 ## Wersja i pobieranie
 
-Bieżące wydanie: [0.7.7](https://github.com/zapabob/Strata/releases/tag/v0.7.7) (Aplikacja `0.7.7`; Terminal, Control `0.6.3`; rodzina silnika natywnego `0.6.7`) — GitHub Latest. Instalator Windows zawiera prywatny Node/Python/Control; silniki GPU są osobnymi komponentami opt-in na stronie wydania: przebudowany Q38 (27B + 9B) oraz oficjalny Hy4-Flash `strata-hy4` 0.1.64. `strata-inkling2` (Inkling-2 Mini, arch `inkling2`) przeniesiony z kuraneko1/Strata (MIT) przez kuraneko1 (_ryu15_) z podaniem źródła. `releaseQualified=false`.
+Bieżące wydanie: **0.7.7** — GitHub Latest: [strona wydania](https://github.com/zapabob/Strata/releases/tag/v0.7.7). Instalator desktop pobierz z **Assets**; plik nazywa się `Strata-0.7.5-windows-x64-setup.exe` (binarny aplikacji nie był przebudowany dla 0.7.7, zmienił się tylko silnik). Pakiet: `Strata-0.7.5-windows-x64.tar.7z`. Silniki GPU to opcjonalne komponenty w tych samych Assets: `strata-engine-0.6.7-windows-x86_64-cuda-cuda13-r2.tar.gz` (Q38 27B/9B + Inkling-2, CUDA 13.5) i `strata-hy4-0.1.64-windows-x86_64-cuda-cuda13.tar.gz`. Zawsze otwieraj stronę wydania i wybieraj dokładny plik z Assets. SHA-256 pozostaje kontrolą integralności; `releaseQualified=false`.
 
-[0.7.7](https://github.com/zapabob/Strata/releases/tag/v0.7.7) · [setup EXE](https://github.com/zapabob/Strata/releases/download/v0.7.7/Strata-0.7.7-windows-x64-setup.exe) · [tar.7z](https://github.com/zapabob/Strata/releases/download/v0.7.7/Strata-0.7.7-windows-x64.tar.7z)
 
 ## Zachowane funkcje forkowe
 

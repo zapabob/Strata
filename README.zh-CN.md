@@ -7,9 +7,8 @@
 ## 版本与下载
 
 <!-- release-062-stable -->
-当前应用版本: [0.7.7](https://github.com/zapabob/Strata/releases/tag/v0.7.7)（应用 `0.7.3`、Terminal、Control `0.6.3`、原生引擎系列 `0.6.5`）— 此为 GitHub Latest。Windows 应用将 0.6.5 引擎系列（重新构建的 Q38 27B+9B、官方 Hy4-Flash 0.1.64）作为独立可选组件提供。组件签名验证已移除（无签名密钥）；SHA-256 摘要仍为完整性检查。`releaseQualified=false` 保持不变，全窗口推理与通用模型质量仍未验证。 第三个可选引擎 `strata-inkling2`（Inkling-2 Mini，GGUF 架构 `inkling2`）移植自 kuraneko1/Strata（MIT），作者 kuraneko1 (_ryu15_)，已注明出处。
+当前版本: **0.7.7** — GitHub Latest: [发布页面](https://github.com/zapabob/Strata/releases/tag/v0.7.7)。请从发布的 **Assets** 下载桌面安装程序，文件名为 `Strata-0.7.5-windows-x64-setup.exe`（app 二进制未针对 0.7.7 重新构建，只更换了引擎）。捆绑包: `Strata-0.7.5-windows-x64.tar.7z`。GPU 引擎是同一 Assets 中的可选组件: `strata-engine-0.6.7-windows-x86_64-cuda-cuda13-r2.tar.gz`（重新构建的 Q38 27B/9B + Inkling-2、CUDA 13.5）和 `strata-hy4-0.1.64-windows-x86_64-cuda-cuda13.tar.gz`。请务必打开发布页面并从 Assets 中选择确切文件（文件名不一定包含版本号）。SHA-256 摘要仍是完整性检查。`releaseQualified=false`。
 
-[0.7.7](https://github.com/zapabob/Strata/releases/tag/v0.7.7) · [安装 EXE](https://github.com/zapabob/Strata/releases/download/v0.7.7/Strata-0.7.7-windows-x64-setup.exe) · [tar.7z](https://github.com/zapabob/Strata/releases/download/v0.7.7/Strata-0.7.7-windows-x64.tar.7z) · [SHA256SUMS](https://github.com/zapabob/Strata/releases/download/v0.7.7/SHA256SUMS.txt) · [BUNDLE-SHA256SUMS](https://github.com/zapabob/Strata/releases/download/v0.7.7/BUNDLE-SHA256SUMS.txt)
 
 ![Hakua / Strata real-model Japanese chat on Qwen3.8-27B](docs/media/native-qwen38-japanese-chat.png)
 *Hakua / Strata 桌面端通过 `strata-q38.exe` 运行 `qwen3.8-27b-abliterated-3.69bpw-12GB-MTP.gguf`（CUDA 13 / RTX 5060 Ti 16 GB）。*
