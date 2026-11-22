@@ -37,7 +37,15 @@
 #include <cstring>
 #include <deque>
 #include <map>
-#if !defined(_WIN32)
+#if defined(_WIN32)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#else
 #include <unistd.h>
 #endif
 #include <memory>
@@ -3044,7 +3052,25 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, std::strin
     size_t actual_used = 0;
     size_t pinned_used = 0;
     size_t max_pin_bytes = (size_t) 7168 << 20;
-#if !defined(_WIN32)
+#if defined(_WIN32)
+    {
+        // Dynamic pinned-memory sizing for Windows 32 GB+ RAM machines:
+        // Pins all tier2 outer experts (~9.5 GiB on Sakura-Inkling-2) when physical + commit headroom allows,
+        // preventing Windows Memory Manager pagefile thrash and enabling 100% DMA-direct async H2D transfers.
+        MEMORYSTATUSEX ms{};
+        ms.dwLength = sizeof(ms);
+        if (GlobalMemoryStatusEx(&ms)) {
+            const size_t avail_phys = (size_t) ms.ullAvailPhys;
+            const size_t avail_commit = (size_t) ms.ullAvailPageFile;
+            const size_t avail_b = std::min(avail_phys, avail_commit);
+            const size_t head_b = (size_t) 5632 << 20;  // keep 5.5 GiB headroom for OS/desktop/runtime
+            if (avail_b > head_b) {
+                const size_t safe_pin = avail_b - head_b;
+                max_pin_bytes = std::clamp<size_t>(safe_pin, (size_t) 6144 << 20, (size_t) 11776 << 20);
+            }
+        }
+    }
+#else
     {
         const long pages = sysconf(_SC_PHYS_PAGES);
         const long psize = sysconf(_SC_PAGESIZE);
