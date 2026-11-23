@@ -90,8 +90,11 @@ def probe(exe: str | None, args: list, cfg: dict | None = None, timeout: float =
 
 
 def drafter_args(cfg: dict, info: dict | None = None) -> list[str]:
+    # The fork's strata-inkling2 engine takes `--draft <file>` only (no `off`
+    # sentinel). When drafting is off, pass no flag at all — never `--draft off`,
+    # which the engine rejects and which used to kill the 98K serve at startup.
     if not wants_drafter(cfg):
-        return ["--draft", "off"]
+        return []
     return ["--draft", "dspark"] if (info or {}).get("drafter") == "dspark" else []
 
 
@@ -189,7 +192,9 @@ def engine_args(cfg: dict, exe: str | None = None, *, announce: bool = True) -> 
     need_draft = "--draft" not in args and want_draft
     info = probe(exe, args, cfg) if (exe and (wants_images or need_draft)) else None
     if "--draft" not in args and not want_draft:
-        args += ["--draft", "off"]
+        # Fork engine has no DSpark drafter and does not accept `--draft off`;
+        # leaving the flag out is the correct "off" for this engine.
+        pass
     elif need_draft:
         add = drafter_args(cfg, info)
         args += add

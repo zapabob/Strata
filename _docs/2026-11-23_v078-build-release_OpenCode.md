@@ -146,6 +146,19 @@
   ("strata host — http://127.0.0.1:47831", hardware/models loaded), GUI stayed
   alive 15 s with no new crash log. Rebuild r4 + re-release/re-install pending.
 
+## Sakura 98K auto-start at power-on (user request 2026-11-23)
+- Goal: on power-on/logon, start the Sakura Inkling-2-Mini 98K server so Hermes
+  Agent (Windows, provider `inkling2`) can connect at 127.0.0.1:8092.
+- `scripts/auto-start-sakura98k.ps1`: waits up to 60 s for the H: model file,
+  skips if port 8092 already has a listener (no double start), reads the
+  persistent user-level STRATA_API_KEY, then calls the standard launcher with
+  `-Context 98k-vramfix -PpStageMb 64 -VramReserveMb 3328 -Tier2Floor 0`.
+- Registered without admin rights via the per-user Startup folder
+  (`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\Strata-Sakura98K-Hermes.bat`).
+  A scheduled task with an ONLOGON trigger was rejected with "access denied"
+  (no elevated shell), so the Startup-folder entry is the supported mechanism.
+- Wrapper validation run in progress (evidence: H:/Strata/evidence/sakura98k-autostart.log).
+
 ## Residual risks
 - Windows Authenticode signing absent; ed25519 signature checks removed by user
   decision; SHA-256 digest verification retained. `releaseQualified=false`:
