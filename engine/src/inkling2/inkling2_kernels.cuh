@@ -190,9 +190,25 @@ __global__ void k_stack_rms_norm(BlkPtrs ptrs, const float* __restrict__ cur,
     const float* src = (d == D - 1) ? (cur + (size_t) t * N) : (ptrs.p[d] + (size_t) t * N);
     float* dst = out + ((size_t) t * D + d) * N;
     float s = 0.0f;
+    if ((N & 3) == 0) {
+        const int n4 = N >> 2;
+        const float4* s4 = (const float4*) src;
+        float4* d4 = (float4*) dst;
+        for (int i = threadIdx.x; i < n4; i += blockDim.x) {
+            const float4 v = s4[i];
+            s = fmaf(v.x, v.x, fmaf(v.y, v.y, fmaf(v.z, v.z, fmaf(v.w, v.w, s))));
+        }
+        s = block_sum(s, sh);
+        const float r = rsqrtf(s / (float) N + eps);
+        for (int i = threadIdx.x; i < n4; i += blockDim.x) {
+            const float4 v = s4[i];
+            d4[i] = make_float4(v.x * r, v.y * r, v.z * r, v.w * r);
+        }
+        return;
+    }
     for (int i = threadIdx.x; i < N; i += blockDim.x) {
         const float v = src[i];
-        s += v * v;
+        s = fmaf(v, v, s);
     }
     s = block_sum(s, sh);
     const float r = rsqrtf(s / (float) N + eps);
@@ -200,23 +216,30 @@ __global__ void k_stack_rms_norm(BlkPtrs ptrs, const float* __restrict__ cur,
 }
 
 /// mix() across depth stack: out[q][t][N] = sum_d softmax(dot(stack_norm[t][d], query[q]) / sqrt(N))[d] * stack_norm[t][d]
-/// grid (n_q, T), block 256. Max depth D <= 8.
+/// grid (n_q, T), block 256. Max depth D <= 8. (float4 vectorized for Blackwell SM120)
 __global__ void k_mix(const float* __restrict__ stack_norm, const float* __restrict__ query, MixOuts out,
                       int D, int N, int n_q, float inv_sqrt_n, int swa_broadcast) {
     __shared__ float sh[32];
     __shared__ float w[16];
     const int q = blockIdx.x, t = blockIdx.y;
     const float* qv = query + (size_t) q * N;
-    float mx = -1e30f;
+    const bool vec4 = ((N & 3) == 0);
+    const int n4 = N >> 2;
+    const float4* q4 = (const float4*) qv;
     for (int d = 0; d < D; ++d) {
         const float* sv = stack_norm + ((size_t) t * D + d) * N;
         float dot = 0.0f;
-        for (int i = threadIdx.x; i < N; i += blockDim.x) dot += sv[i] * qv[i];
-        dot = block_sum(dot, sh) * inv_sqrt_n;
-        if (threadIdx.x == 0) {
-            w[d] = dot;
-            if (dot > mx) mx = dot;
+        if (vec4) {
+            const float4* s4 = (const float4*) sv;
+            for (int i = threadIdx.x; i < n4; i += blockDim.x) {
+                const float4 a = s4[i], b = q4[i];
+                dot = fmaf(a.x, b.x, fmaf(a.y, b.y, fmaf(a.z, b.z, fmaf(a.w, b.w, dot))));
+            }
+        } else {
+            for (int i = threadIdx.x; i < N; i += blockDim.x) dot = fmaf(sv[i], qv[i], dot);
         }
+        dot = block_sum(dot, sh) * inv_sqrt_n;
+        if (threadIdx.x == 0) w[d] = dot;
         __syncthreads();
     }
     if (threadIdx.x == 0) {
@@ -224,17 +247,48 @@ __global__ void k_mix(const float* __restrict__ stack_norm, const float* __restr
         for (int d = 0; d < D; ++d) if (w[d] > m) m = w[d];
         float sum = 0.0f;
         for (int d = 0; d < D; ++d) {
-            w[d] = __expf(w[d] - m);
+            w[d] = exp2f((w[d] - m) * 1.4426950408889634f);
             sum += w[d];
         }
         const float inv = __fdividef(1.0f, sum);
         for (int d = 0; d < D; ++d) w[d] *= inv;
     }
     __syncthreads();
+    if (vec4) {
+        if (swa_broadcast) {
+            float4* o0 = (float4*) (out.p[0] + (size_t) t * N);
+            float4* o1 = (float4*) (out.p[1] + (size_t) t * N);
+            float4* o2 = (float4*) (out.p[2] + (size_t) t * N);
+            for (int i = threadIdx.x; i < n4; i += blockDim.x) {
+                float ax = 0.0f, ay = 0.0f, az = 0.0f, aw = 0.0f;
+                for (int d = 0; d < D; ++d) {
+                    const float wd = w[d];
+                    const float4 v = ((const float4*) (stack_norm + ((size_t) t * D + d) * N))[i];
+                    ax = fmaf(wd, v.x, ax); ay = fmaf(wd, v.y, ay);
+                    az = fmaf(wd, v.z, az); aw = fmaf(wd, v.w, aw);
+                }
+                const float4 res = make_float4(ax, ay, az, aw);
+                o0[i] = res; o1[i] = res; o2[i] = res;
+            }
+        } else {
+            float4* d4 = (float4*) (out.p[q] + (size_t) t * N);
+            for (int i = threadIdx.x; i < n4; i += blockDim.x) {
+                float ax = 0.0f, ay = 0.0f, az = 0.0f, aw = 0.0f;
+                for (int d = 0; d < D; ++d) {
+                    const float wd = w[d];
+                    const float4 v = ((const float4*) (stack_norm + ((size_t) t * D + d) * N))[i];
+                    ax = fmaf(wd, v.x, ax); ay = fmaf(wd, v.y, ay);
+                    az = fmaf(wd, v.z, az); aw = fmaf(wd, v.w, aw);
+                }
+                d4[i] = make_float4(ax, ay, az, aw);
+            }
+        }
+        return;
+    }
     if (swa_broadcast) {
         for (int i = threadIdx.x; i < N; i += blockDim.x) {
             float acc = 0.0f;
-            for (int d = 0; d < D; ++d) acc += w[d] * stack_norm[((size_t) t * D + d) * N + i];
+            for (int d = 0; d < D; ++d) acc = fmaf(w[d], stack_norm[((size_t) t * D + d) * N + i], acc);
             out.p[0][(size_t) t * N + i] = acc;
             out.p[1][(size_t) t * N + i] = acc;
             out.p[2][(size_t) t * N + i] = acc;
@@ -243,7 +297,7 @@ __global__ void k_mix(const float* __restrict__ stack_norm, const float* __restr
         float* dst = out.p[q] + (size_t) t * N;
         for (int i = threadIdx.x; i < N; i += blockDim.x) {
             float acc = 0.0f;
-            for (int d = 0; d < D; ++d) acc += w[d] * stack_norm[((size_t) t * D + d) * N + i];
+            for (int d = 0; d < D; ++d) acc = fmaf(w[d], stack_norm[((size_t) t * D + d) * N + i], acc);
             dst[i] = acc;
         }
     }

@@ -26,9 +26,18 @@ class CacheGenome:
     s_deep: float
     von_koch_c: float
     impact_alpha: float
+    markov_dt1: float = 0.55
+    entropy_gain: float = 0.08
 
-    def as_vec(self) -> Tuple[float, float, float, float]:
-        return (self.s_shallow, self.s_deep, self.von_koch_c, self.impact_alpha)
+    def as_vec(self) -> Tuple[float, ...]:
+        return (
+            self.s_shallow,
+            self.s_deep,
+            self.von_koch_c,
+            self.impact_alpha,
+            self.markov_dt1,
+            self.entropy_gain,
+        )
 
 
 @dataclasses.dataclass

@@ -835,7 +835,11 @@ struct Engine {
     float *router_logits = nullptr, *ewts = nullptr, *eparts = nullptr, *moe_raw = nullptr;
     size_t eparts_bytes = 0;
     float *logits = nullptr;
-    float* h_tok_buf = nullptr;      // pinned [tmax * N] FP32 for token embedding upload
+    float* h_tok_buf = nullptr;      // zero-copy mapped [tmax * N] FP32 for token embedding upload
+    float* h_tok_buf_dev = nullptr;  // device-mapped alias of h_tok_buf (0 H2D memcpy for T==1)
+    static constexpr size_t kTokCacheSlots = 1024;
+    std::vector<int32_t> tok_cache_id;    // [kTokCacheSlots] direct-mapped Zipf hot-vocab cache (-1 = empty)
+    std::vector<float> tok_cache_vec;     // [kTokCacheSlots * N] (~10 MiB RAM, avoids cold mmap faults)
     uint8_t* ckpt_pin = nullptr;     // reusable pinned staging buffer for fast SWA/conv checkpoint D2H
     size_t ckpt_pin_cap = 0;
     uint8_t* rebal_stage = nullptr;  // reusable pinned staging buffer for zero-copy mmap async rebalance
@@ -1254,7 +1258,10 @@ struct Engine {
         d_f32(&ewts, (size_t) max_ent);
         d_f32(&logits, (size_t) verify_max_t * hp.vocab_unpadded);
 
-        CK(cudaMallocHost(&h_tok_buf, (size_t) tmax * N * sizeof(float)));
+        CK(cudaHostAlloc(&h_tok_buf, (size_t) tmax * N * sizeof(float), cudaHostAllocMapped));
+        CK(cudaHostGetDevicePointer(&h_tok_buf_dev, h_tok_buf, 0));
+        tok_cache_id.assign(kTokCacheSlots, -1);
+        tok_cache_vec.resize(kTokCacheSlots * (size_t) N);
         CK(cudaMalloc(&act_bf16, (size_t) tmax * 2 * N * sizeof(uint16_t)));
 
         const int q8_kv_rows = std::min(tmax, 8);
@@ -2464,14 +2471,27 @@ struct Engine {
             for (auto& th : ths) th.join();
         } else {
             for (int t = 0; t < T; ++t) {
-                m->dequant_tok(tokens[t], h_tok_buf + (size_t) t * N);
+                const int32_t tok = tokens[t];
+                float* dst = h_tok_buf + (size_t) t * N;
+                const size_t slot = ((size_t) (uint32_t) tok * 2654435761u) & (kTokCacheSlots - 1);
+                if (tok_cache_id[slot] == tok) {
+                    std::memcpy(dst, tok_cache_vec.data() + slot * (size_t) N, (size_t) N * sizeof(float));
+                } else {
+                    m->dequant_tok(tok, dst);
+                    tok_cache_id[slot] = tok;
+                    std::memcpy(tok_cache_vec.data() + slot * (size_t) N, dst, (size_t) N * sizeof(float));
+                }
             }
         }
         if (T == 1) ++st_tok_step;
-        CK(cudaMemcpyAsync(ffn_inp, h_tok_buf, (size_t) T * N * sizeof(float), cudaMemcpyHostToDevice, st));
         *h_pos0 = (int32_t) pos;
         CK(cudaMemcpyAsync(pos0_d, h_pos0, sizeof(int32_t), cudaMemcpyHostToDevice, st));
-        k_rms_norm<<<(unsigned) T, kThreads, 0, st>>>(ffn_inp, m->tok_embd_norm, cur, N, hp.rms_eps);
+        if (T == 1 && h_tok_buf_dev) {
+            k_rms_norm<<<1, kThreads, 0, st>>>(h_tok_buf_dev, m->tok_embd_norm, cur, N, hp.rms_eps);
+        } else {
+            CK(cudaMemcpyAsync(ffn_inp, h_tok_buf, (size_t) T * N * sizeof(float), cudaMemcpyHostToDevice, st));
+            k_rms_norm<<<(unsigned) T, kThreads, 0, st>>>(ffn_inp, m->tok_embd_norm, cur, N, hp.rms_eps);
+        }
         if (prof) { CK(cudaStreamSynchronize(st)); p_embd_ms += ms_since(tp_e0); }
 
         std::vector<float*> norm_blocks;
