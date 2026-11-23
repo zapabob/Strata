@@ -1587,10 +1587,30 @@ struct Engine {
         const PhysLayer& L = m->layers[(size_t) tk.ip];
         CK(cudaStreamWaitEvent(cst, ev_pp_used[b], 0));
         for (const PpRun& r : tk.runs) {
-            const size_t nbytes = (size_t) (r.cnt - 1) * L.stride + L.L.bytes;
-            CK(cudaMemcpyAsync(pp_stage[b] + (size_t) r.dst_off * L.stride,
-                               L.hblobs + (size_t) r.e0 * L.stride,
-                               nbytes, cudaMemcpyHostToDevice, cst));
+            if (L.hblobs) {
+                const size_t nbytes = (size_t) (r.cnt - 1) * L.stride + L.L.bytes;
+                CK(cudaMemcpyAsync(pp_stage[b] + (size_t) r.dst_off * L.stride,
+                                   L.hblobs + (size_t) r.e0 * L.stride,
+                                   nbytes, cudaMemcpyHostToDevice, cst));
+            } else {
+                const size_t g_bytes = (size_t) L.L.n_ff * L.gu_row;
+                const size_t gu_bytes = (size_t) (2 * L.L.n_ff) * L.gu_row;
+                const size_t d_bytes = (size_t) L.L.n_embd * L.d_row;
+                const bool gu_contig = (L.L.up_off == g_bytes);
+                for (int j = 0; j < (int) r.cnt; ++j) {
+                    const int e = (int) r.e0 + j;
+                    uint8_t* dst = pp_stage[b] + (size_t) (r.dst_off + j) * L.stride;
+                    const uint8_t* gu_src = L.h_gate_up + (size_t) e * gu_bytes;
+                    const uint8_t* d_src = L.h_down + (size_t) e * d_bytes;
+                    if (gu_contig) {
+                        CK(cudaMemcpyAsync(dst, gu_src, gu_bytes, cudaMemcpyHostToDevice, cst));
+                    } else {
+                        CK(cudaMemcpyAsync(dst, gu_src, g_bytes, cudaMemcpyHostToDevice, cst));
+                        CK(cudaMemcpyAsync(dst + L.L.up_off, gu_src + g_bytes, g_bytes, cudaMemcpyHostToDevice, cst));
+                    }
+                    CK(cudaMemcpyAsync(dst + L.L.down_off, d_src, d_bytes, cudaMemcpyHostToDevice, cst));
+                }
+            }
         }
         CK(cudaEventRecord(ev_pp_copy[b], cst));
         ++pp_kick_idx;
@@ -1610,7 +1630,8 @@ struct Engine {
         for (int il = 0; il < hp.n_layer; ++il) {
             const int ip = hp.loop_layer(il);
             const PhysLayer& L = m->layers[(size_t) ip];
-            if (L.n_slots >= ne || L.gu_type == 30 || !L.hblobs) continue;
+            const bool can_stream = (L.hblobs != nullptr) || (L.L.tail_off == 0 && L.h_gate_up && L.h_down);
+            if (L.n_slots >= ne || L.gu_type == 30 || !can_stream) continue;
             const int cap = (int) std::min<size_t>((size_t) ne, pp_stage_bytes / L.stride);
             if (cap <= 0) continue;
             int n_miss = 0;
@@ -1697,7 +1718,8 @@ struct Engine {
                                      cap_g, n_ent, xq, escr, eparts, st);
         };
 
-        if (pp_streaming && need_cpu && L.gu_type != 30 && L.hblobs && pp_stage_bytes >= L.stride) {
+        const bool can_pp_stream = (L.hblobs != nullptr) || (L.L.tail_off == 0 && L.h_gate_up && L.h_down);
+        if (pp_streaming && need_cpu && L.gu_type != 30 && can_pp_stream && pp_stage_bytes >= L.stride) {
             // Zero host-GPU stalls across all 48 layers: k_route_inkling2 tracks exact routing counts in L.d_hits on GPU!
             const int ne = (int) hp.n_expert;
             if (has_gpu) {

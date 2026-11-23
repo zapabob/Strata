@@ -108,6 +108,34 @@
   Note: the 98K Sakura/Hermes server on 127.0.0.1:8092 was stopped to free RAM;
   restart it after the release if Hermes 98K chat is needed again.
 
-## Evidence to collect
-Each step's exact output: manifest check, BUILD_EXIT, installer SHA, NSIS 6/6,
-tar.7z SHA, GitHub Latest + asset digests, real exe SHA + reg + settings SHA.
+## Completion evidence (2026-11-23)
+- `release_manifest --check`: ok (0.7.8, engine 0.6.7).
+- Build: BUILD_EXIT=0 (build-r3.log), installer 127,248,061 B,
+  SHA-256 `5801643fbc1e06deb1e759cfc7a832bcc21ba482c6f1271bf18b81b925a0847f`;
+  host UI built with pinned Node 24.22.3 + public assets, `tsc --noEmit` exit 0,
+  `cargo check --locked` exit 0, verify-release passed before build and bundle.
+- NSIS upgrade/cleanup test 6/6 `ok:true` (v078-build/nsis-upgrade.log).
+- tar.7z 127,251,106 B, SHA-256 `f373c13054147ed41065bd78ac0712592e94ee6958992f616775545a9135e03f`.
+- Tag v0.7.8 pushed; GitHub release v0.7.8 published with 4 assets, all
+  `state=uploaded` and public digests matching local exactly:
+  setup 5801643f..., tar.7z f373c130..., engine 0.6.7 eb3bf3f0...,
+  hy4 0.1.64 fad3a195.... GitHub Latest = v0.7.8.
+- Real-machine overwrite install (v078-install.ps1): 29,714 files copied to
+  C:/Users/downl/AppData/Local/Programs/Strata; strata-desktop.exe SHA-256
+  `d9630231ff296f598803213dd5683b30888b9aff88c7108466178b18a30fbecf`; registry
+  DisplayVersion=0.7.8; user settings SHA `6b7d7b11...` preserved; engine
+  0.6.7 component present; GUI launched `Strata`, RESPONDING=True.
+- Note: the 98K Sakura/Hermes server was stopped before the build to free RAM;
+  restart from configs/strata-sakura-inkling2-98k-vramfix.json if needed again.
+
+## Residual risks
+- Windows Authenticode signing absent; ed25519 signature checks removed by user
+  decision; SHA-256 digest verification retained. `releaseQualified=false`:
+  general model quality, full-window inference and GPU concurrency unqualified.
+- Official v0.2.20 4-tier MoE adopted; fork's Sakura vramfix/Hermes provider and
+  GUI kept. Some upstream speedups measured only by upstream/other agents and
+  were not reproduced here.
+- The installed GPU engine component remains the separately built, digest-
+  verified 0.6.7 CUDA 13.5 package; concurrent in-flight engine source edits
+  (expert-cache declarations, zero-copy mmap expert layouts) are source-only
+  and were not rebuilt into a published component in this release.
