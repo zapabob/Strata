@@ -94,6 +94,13 @@
 - First NSIS build (5 jobs, CARGO_TARGET_DIR=H:/Strata/releases/v078-build/cargo-target)
   was SIGTERM'd by a 600 s tool timeout while linking strata-desktop; dependency
   cache is warm. Restarted with a 1200 s timeout, log build-r2.log.
+- Second build failed at Rust compile: intake-adopted main.rs calls
+  `updater::start(app, token, port)` (official 0.2.20 3-arg API) while the
+  fork's updater.rs kept the old 2-arg signature. Added the unused host_port
+  parameter to both cfg variants (commit 6f1adcd57); `cargo check --locked`
+  then passed (exit 0, only a dead-code warning for the fork's unused
+  `open_helper_window`), so no further Rust API drift remains. Final NSIS
+  rebuild started 2026-11-23, log build-final.log.
 
 ## Evidence to collect
 Each step's exact output: manifest check, BUILD_EXIT, installer SHA, NSIS 6/6,

@@ -305,6 +305,7 @@ struct PhysLayer {
     K::NativeExpertLayout L{};
 #if defined(STRATA_INKLING2_CPU_POOL)
     strata::kernels::cpu::NativeFmt cpu_fmt{};
+    std::vector<strata::kernels::cpu::NativeFmt> zc_fmts;  // zero-copy mmap layouts per expert (0 private commit)
 #endif
     uint8_t* hblobs = nullptr;           // [n_expert][L.bytes] on host (lazy or pre-built)
     bool hblobs_pinned = false;          // true if hblobs was allocated with cudaHostAlloc
@@ -397,6 +398,25 @@ void build_all_expert_blobs(const PhysLayer& L, int ne, uint8_t* dst_base) {
         });
     }
     for (auto& th : ths) th.join();
+}
+
+void build_zc_fmts(PhysLayer& L, int ne) {
+#if defined(STRATA_INKLING2_CPU_POOL)
+    if (!L.zc_fmts.empty() || L.L.tail_off != 0 || !L.h_gate_up || !L.h_down) return;
+    const size_t gu_expert_bytes = (size_t) (2 * L.L.n_ff) * L.gu_row;
+    const size_t d_expert_bytes = (size_t) L.L.n_embd * L.d_row;
+    const size_t up_off = (size_t) L.L.n_ff * L.gu_row;
+    L.zc_fmts.resize((size_t) ne);
+    for (int x = 0; x < ne; ++x) {
+        const uint8_t* gu_src = L.h_gate_up + (size_t) x * gu_expert_bytes;
+        const uint8_t* d_src = L.h_down + (size_t) x * d_expert_bytes;
+        L.zc_fmts[(size_t) x] = L.cpu_fmt;
+        L.zc_fmts[(size_t) x].up_off = up_off;
+        L.zc_fmts[(size_t) x].down_off = (size_t) ((uintptr_t) d_src - (uintptr_t) gu_src);
+    }
+#else
+    (void) L; (void) ne;
+#endif
 }
 
 bool load_model(const std::string& path, Model& m, std::string& err) {
@@ -817,6 +837,9 @@ struct Engine {
     float* h_tok_buf = nullptr;      // pinned [tmax * N] FP32 for token embedding upload
     uint8_t* ckpt_pin = nullptr;     // reusable pinned staging buffer for fast SWA/conv checkpoint D2H
     size_t ckpt_pin_cap = 0;
+    uint8_t* rebal_stage = nullptr;  // reusable pinned staging buffer for zero-copy mmap async rebalance
+    size_t rebal_stage_cap = 0;
+    bool rebal_stage_pinned = false;
     uint16_t* act_bf16 = nullptr;    // [tmax * 2*N] (reused as BF16 or FP16 scratch)
 
     void *xq = nullptr, *xq_k = nullptr, *xq_v = nullptr, *escr = nullptr;
@@ -1083,6 +1106,10 @@ struct Engine {
         cudaFree(d_miss); cudaFree(ecpu);
         cudaFreeHost(h_tok_buf);
         if (ckpt_pin) cudaFreeHost(ckpt_pin);
+        if (rebal_stage) {
+            if (rebal_stage_pinned) cudaFreeHost(rebal_stage);
+            else std::free(rebal_stage);
+        }
         cudaFreeHost(h_ids); cudaFreeHost(h_ewts); cudaFreeHost(h_cpu_sum); cudaFreeHost(h_h); cudaFreeHost(cpu_out); cudaFreeHost(h_miss);
         std::free(acts);
         if (ev_route) cudaEventDestroy(ev_route);
@@ -1761,7 +1788,13 @@ struct Engine {
                     }
                     ++n_miss;
                     C::ExpertJobMulti j;
-                    j.blob = L.hblobs + (size_t) x * L.stride;
+                    if (L.hblobs) {
+                        j.blob = L.hblobs + (size_t) x * L.stride;
+                        j.fmt = nullptr;
+                    } else {
+                        j.blob = L.h_gate_up + (size_t) x * ((size_t) (2 * L.L.n_ff) * L.gu_row);
+                        j.fmt = &L.zc_fmts[(size_t) x];
+                    }
                     j.nact[0] = act0;
                     j.out[0] = cpu_out + (size_t) e * N;
                     j.nt = 1;
@@ -1788,7 +1821,13 @@ struct Engine {
                     int jidx = open_job[x];
                     if (jidx < 0 || jobs[(size_t) jidx].nt == C::MAXT) {
                         C::ExpertJobMulti j;
-                        j.blob = L.hblobs + (size_t) x * L.stride;
+                        if (L.hblobs) {
+                            j.blob = L.hblobs + (size_t) x * L.stride;
+                            j.fmt = nullptr;
+                        } else {
+                            j.blob = L.h_gate_up + (size_t) x * ((size_t) (2 * L.L.n_ff) * L.gu_row);
+                            j.fmt = &L.zc_fmts[(size_t) x];
+                        }
                         jidx = (int) jobs.size();
                         jobs.push_back(j);
                         open_job[x] = jidx;
@@ -1928,14 +1967,54 @@ struct Engine {
         if (cands.empty()) return;
         std::sort(cands.begin(), cands.end(), [](const Cand& a, const Cand& b) { return a.gain > b.gain; });
         const int take = std::min<int>(max_swaps, (int) cands.size());
+        size_t need_stage = 0;
+        for (int i = 0; i < take; ++i) {
+            const PhysLayer& L = m->layers[cands[(size_t) i].li];
+            if (!L.hblobs) need_stage += L.stride;
+        }
+        if (need_stage > 0) {
+            if (has_pending_rebal) {
+                CK(cudaEventSynchronize(ev_rebal));
+                has_pending_rebal = false;
+            }
+            if (need_stage > rebal_stage_cap) {
+                if (rebal_stage) {
+                    if (rebal_stage_pinned) cudaFreeHost(rebal_stage);
+                    else std::free(rebal_stage);
+                    rebal_stage = nullptr;
+                    rebal_stage_cap = 0;
+                    rebal_stage_pinned = false;
+                }
+                if (cudaHostAlloc(&rebal_stage, need_stage, cudaHostAllocDefault) == cudaSuccess) {
+                    rebal_stage_cap = need_stage;
+                    rebal_stage_pinned = true;
+                } else {
+                    (void) cudaGetLastError();
+                    rebal_stage = (uint8_t*) std::malloc(need_stage);
+                    if (rebal_stage) rebal_stage_cap = need_stage;
+                }
+            }
+        }
         std::vector<uint8_t> dirty(m->layers.size(), 0);
+        size_t stage_off = 0;
         for (int i = 0; i < take; ++i) {
             const Cand& c = cands[(size_t) i];
             PhysLayer& L = m->layers[c.li];
+            const uint8_t* src = nullptr;
+            if (L.hblobs) {
+                src = L.hblobs + (size_t) c.hot_x * L.stride;
+            } else if (rebal_stage && stage_off + L.stride <= rebal_stage_cap) {
+                uint8_t* dst = rebal_stage + stage_off;
+                build_expert_blob(L, c.hot_x, dst);
+                src = dst;
+                stage_off += L.stride;
+            } else {
+                continue;
+            }
             L.slot_of[(size_t) c.cold_y] = -1;
             L.slot_of[(size_t) c.hot_x] = c.slot;
             L.exp_in_slot[(size_t) c.slot] = c.hot_x;
-            CK(cudaMemcpyAsync(L.d_blobs + (size_t) c.slot * L.stride, L.hblobs + (size_t) c.hot_x * L.stride,
+            CK(cudaMemcpyAsync(L.d_blobs + (size_t) c.slot * L.stride, src,
                                L.L.bytes, cudaMemcpyHostToDevice, cst));
             dirty[c.li] = 1;
         }
@@ -2017,17 +2096,24 @@ struct Engine {
                 m->host_pinned_allocs.push_back(L.hblobs);
                 L.hblobs_pinned = true;
                 pinned_used += hb_bytes;
+                build_all_expert_blobs(L, ne, L.hblobs);
             } else {
                 (void) cudaGetLastError();
-                L.hblobs = (uint8_t*) std::malloc(hb_bytes);
-                if (!L.hblobs) {
-                    std::fprintf(stderr, "strata-inkling2: host malloc failed during KV growth\n");
-                    std::exit(1);
+                if (L.L.tail_off == 0 && L.h_gate_up && L.h_down) {
+                    L.hblobs = nullptr;
+                    L.hblobs_pinned = false;
+                    build_zc_fmts(L, ne);
+                } else {
+                    L.hblobs = (uint8_t*) std::malloc(hb_bytes);
+                    if (!L.hblobs) {
+                        std::fprintf(stderr, "strata-inkling2: host malloc failed during KV growth\n");
+                        std::exit(1);
+                    }
+                    L.hblobs_pinned = false;
+                    m->host_allocs.push_back(L.hblobs);
+                    build_all_expert_blobs(L, ne, L.hblobs);
                 }
-                L.hblobs_pinned = false;
-                m->host_allocs.push_back(L.hblobs);
             }
-            build_all_expert_blobs(L, ne, L.hblobs);
         };
 
         auto shrink_layer = [&](int ip, int target_slots) -> bool {
@@ -2068,10 +2154,18 @@ struct Engine {
                     m->gpu_allocs.push_back(L.d_blobs);
                     L.n_slots = s;
                     L.exp_in_slot.assign((size_t) s, -1);
+                    std::vector<uint8_t> shrink_tmp;
+                    if (!L.hblobs) shrink_tmp.resize(L.L.bytes);
                     for (int k = 0; k < s; ++k) {
                         const int e = keep[(size_t) k];
-                        CK(cudaMemcpyAsync(L.d_blobs + (size_t) k * L.stride, L.hblobs + (size_t) e * L.stride,
-                                           L.L.bytes, cudaMemcpyHostToDevice, st));
+                        if (L.hblobs) {
+                            CK(cudaMemcpyAsync(L.d_blobs + (size_t) k * L.stride, L.hblobs + (size_t) e * L.stride,
+                                               L.L.bytes, cudaMemcpyHostToDevice, st));
+                        } else {
+                            build_expert_blob(L, e, shrink_tmp.data());
+                            CK(cudaMemcpy(L.d_blobs + (size_t) k * L.stride, shrink_tmp.data(),
+                                          L.L.bytes, cudaMemcpyHostToDevice));
+                        }
                         L.slot_of[(size_t) e] = k;
                         L.exp_in_slot[(size_t) k] = e;
                     }
@@ -3145,17 +3239,25 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, std::strin
                 m.host_pinned_allocs.push_back(L.hblobs);
                 L.hblobs_pinned = true;
                 pinned_used += hb_bytes;
+                build_all_expert_blobs(L, ne, L.hblobs);
             } else {
                 (void) cudaGetLastError();
-                L.hblobs = (uint8_t*) std::malloc(hb_bytes);
-                if (!L.hblobs) {
-                    err = "host malloc failed for layer " + std::to_string(ip);
-                    return false;
+                if (L.L.tail_off == 0 && L.h_gate_up && L.h_down) {
+                    // Zero-copy mmap mode: avoids 11+ GiB private commit heap on 32 GB Windows machines.
+                    L.hblobs = nullptr;
+                    L.hblobs_pinned = false;
+                    build_zc_fmts(L, ne);
+                } else {
+                    L.hblobs = (uint8_t*) std::malloc(hb_bytes);
+                    if (!L.hblobs) {
+                        err = "host malloc failed for layer " + std::to_string(ip);
+                        return false;
+                    }
+                    L.hblobs_pinned = false;
+                    m.host_allocs.push_back(L.hblobs);
+                    build_all_expert_blobs(L, ne, L.hblobs);
                 }
-                L.hblobs_pinned = false;
-                m.host_allocs.push_back(L.hblobs);
             }
-            build_all_expert_blobs(L, ne, L.hblobs);
         }
 
         if (s > 0) {
