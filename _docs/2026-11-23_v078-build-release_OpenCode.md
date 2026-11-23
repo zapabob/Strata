@@ -82,8 +82,18 @@
   (7.5 GiB) and no forced 6 GiB pin floor, preventing the "host malloc failed
   for layer 0" seen during the earlier --expert-vram 11.5 benchmark. Reviewed
   and retained as a safety fix.
-- NSIS build started with 5 jobs, CARGO_TARGET_DIR=H:/Strata/releases/v078-build/cargo-target,
-  log H:/Strata/releases/v078-build/build.log.
+- Official-API GUI alignment (verified with `tsc --noEmit`, exit 0 after fixes):
+  intake-adopted upstream GUI files required APIs the fork lacked; restored
+  `dismissAgent` (store), `engine.shapes` (native.ts), `CatalogVersion.inkling`
+  (native-catalog.ts), `isHy4Selected` (GuidedSetup), `onPauseForUpdate` prop
+  (Chat.tsx, fork stop-and-send semantics), and the 'Context and memory'
+  settings-section type; kept the fork's 'interrupt' BusyPlan alongside the
+  official 'steer'. Commit d9e6a328c. An in-flight `expert_cache.hpp`
+  declaration addition (`slot_capacity`, `scrub_loan_boundary`) was reviewed
+  and retained (consistent with the Sakura host-expert investigation).
+- First NSIS build (5 jobs, CARGO_TARGET_DIR=H:/Strata/releases/v078-build/cargo-target)
+  was SIGTERM'd by a 600 s tool timeout while linking strata-desktop; dependency
+  cache is warm. Restarted with a 1200 s timeout, log build-r2.log.
 
 ## Evidence to collect
 Each step's exact output: manifest check, BUILD_EXIT, installer SHA, NSIS 6/6,
