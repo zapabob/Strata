@@ -67,6 +67,9 @@ export function GuidedSetup() {
     const [pending, setPending] = useState(false), [checkingPlan, setCheckingPlan] = useState(false), [error, setError] = useState(''), [calibrate, setCalibrate] = useState(saved?.calibrate ?? true);
     const writes = useRef(Promise.resolve()), leaving = useRef(false), saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null), titleRef = useRef<HTMLHeadingElement>(null);
     const selectedFamily = families.find(f => f.family === family || f.sizes.some(size => size.sourceFamily === family)) ?? families[0];
+    // Official 0.2.20 API: these families use their own shape engine, so the ordinary
+    // engine-usability warning must not fire while their install/load job is running.
+    const isHy4Selected = selectedFamily?.family === 'hy4-flash' || selectedFamily?.family === 'inkling-2-mini';
     const version = selectedFamily?.sizes.find(s => s.id === size) ?? selectedFamily?.sizes[0];
     const installed = native?.installed?.models.find(m => m.model === version?.id);
     const contextList = version?.multi_file ? deepseekContexts(installed?.contextMax) : native?.catalog?.contexts ?? [131072];

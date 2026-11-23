@@ -9,11 +9,14 @@ export const validWhileBusy = (value: unknown): value is WhileBusy => WHILE_BUSY
  * What to do with the message, as one word:
  *  - 'refuse'    Wait: nothing is sent until the answer is done (the message stays in the box, as always);
  *  - 'goal'      Send after, while a goal runs: the host's own queue delivers it between steps (it asks the host first, so this is only a try);
- *  - 'steer'     Send a live message at the assistant's next step, or when the answer is done if there is no live agent.
+ *  - 'steer'     Send a live message at the assistant's next step, or when the answer is done if there is no live agent (official 0.2.20);
+ *  - 'interrupt' Fork behaviour kept: stop the current answer and send the parked message as soon as it stops.
  */
-export type BusyPlan = 'refuse' | 'goal' | 'steer';
+export type BusyPlan = 'refuse' | 'goal' | 'steer' | 'park' | 'interrupt';
 export function busyPlan(mode: WhileBusy): BusyPlan {
-  return mode === 'queue' ? 'goal' : mode === 'interject' ? 'steer' : 'refuse';
+  // The fork's Chat.tsx still handles 'interrupt' (stop-and-send); keep that fork
+  // advantage while retaining the official 'steer' type for other call sites.
+  return mode === 'queue' ? 'goal' : mode === 'interject' ? 'interrupt' : 'refuse';
 }
 
 /**

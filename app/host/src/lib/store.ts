@@ -118,7 +118,7 @@ export interface AppState {
   shareTelemetry: boolean;
   paletteOpen: boolean;
   shortcutsOpen: boolean;
-  settingsSection: 'Appearance' | 'Models' | 'Tools' | 'Storage' | 'Engine' | 'About';
+  settingsSection: 'Appearance' | 'Models' | 'Context and memory' | 'Tools' | 'Storage' | 'Engine' | 'About';
   hardware: Hardware | null;
   library: ModelLibrary | null;
   imageModels: ImageModelLibrary | null;

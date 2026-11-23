@@ -64,6 +64,27 @@
   anchor to v0.2.20 / a34979fc / engine 0.1.66 (commit debe5b932), pushed main.
 - Git after push: clean, HEAD debe5b932.
 
+## Build prerequisites resolved (2026-11-23)
+- One-way intake changed 79 files under `terminal/`; re-staged Control with
+  `stage-control.py --wheelhouse H:/Strata/evidence/upstream-sync-20261116/control-inputs-v2/wheels`
+  (exit 0, archive sha a9bc2238..., 22 models/6 families) so verify-release's
+  terminal<->Control SHA comparison passes.
+- GUI API alignment: upstream `ChatToolbar.tsx` (adopted by the intake) imports
+  `dismissAgent`, which the fork's store.ts lacked (Session already had
+  dismissedAgentIds). Added the official implementation (commit 14e9ebfd3).
+- Host UI rebuilt with bundled Node 24.22.3 and pinned public assets
+  (`STRATA_PUBLIC_PACKAGE=1`, recipe nodeVersion 24.22.3, asset commit
+  03f11e2d...). `verify-release.mjs` with the digest-only Q38 preview
+  (STRATA_Q38_PREVIEW_COMPONENT_DIR=H:/Strata/preview-components/9b-unsigned-local-preview)
+  passed: "Release payload verified: Hakua 0.7.8, engine 0.6.3, Control 0.6.3".
+- An in-flight `engine/src/inkling2/inkling2_engine.cu` change was included in
+  commit 14e9ebfd3: Windows pinned-memory sizing now uses commit-safe headroom
+  (7.5 GiB) and no forced 6 GiB pin floor, preventing the "host malloc failed
+  for layer 0" seen during the earlier --expert-vram 11.5 benchmark. Reviewed
+  and retained as a safety fix.
+- NSIS build started with 5 jobs, CARGO_TARGET_DIR=H:/Strata/releases/v078-build/cargo-target,
+  log H:/Strata/releases/v078-build/build.log.
+
 ## Evidence to collect
 Each step's exact output: manifest check, BUILD_EXIT, installer SHA, NSIS 6/6,
 tar.7z SHA, GitHub Latest + asset digests, real exe SHA + reg + settings SHA.

@@ -191,6 +191,8 @@ public:
     /// The device address of one slot; null while closed or cleanup is pending.
     uint8_t* device_slot(int32_t slot);
     const uint8_t* device_slot(int32_t slot) const;
+    size_t slot_capacity(int32_t slot) const;
+    bool scrub_loan_boundary(int32_t first_lent_slot, std::string& err, void* stream = nullptr);
 
     /// Copies `(layer, expert)`'s blob from `host_blob` into `slot` on `stream`.  Asynchronous: the caller
     /// orders it.  Returns false if the indices are out of range rather than reading past the arena.
