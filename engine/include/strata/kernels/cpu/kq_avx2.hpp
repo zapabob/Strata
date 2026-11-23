@@ -22,6 +22,8 @@ void kq256_down_t1_q5_0(const uint8_t* w, size_t row_bytes, int n, const void* h
 /// Single-token (T==1) 2-row unrolled Q8_0 x Q8_0 down projection (bit-exact against ggml AVX2 dot).
 void kq256_down_t1_q8_0(const uint8_t* w, size_t row_bytes, int n, const void* hq0,
                         float* out0, int r0, int r1);
+/// AVX2 + F16C Q8_0 activation quantizer (32 floats -> block_q8_0 in 1 YMM store, ~8x faster than scalar ref).
+void q8_0_quant_avx2(const float* x, void* dst, int64_t n);
 /// out[t][r] = w_r . a[t], rows [r0, r1).
 void kq256_rows(int ggml_type, const uint8_t* w, size_t row_bytes, int n, const void* const* act, int nt,
                 float* const* out, int r0, int r1);

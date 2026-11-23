@@ -318,6 +318,7 @@ struct PhysLayer {
     std::vector<int32_t> exp_in_slot;    // [n_slots]
     std::vector<double> score;           // [n_expert]
     std::vector<uint32_t> last_tok;      // [n_expert] ST-MoE last-activated decode token step
+    strata::math::LeCaRController lecar; // LeCaR online multiplicative-weights regret minimizer
 };
 
 struct Model : GpuWeightStore {
@@ -1824,6 +1825,7 @@ struct Engine {
                     L.score[(size_t) x] += 1.0 + 0.6624 * (double) std::max(0.0f, h_ewts[e]) + markov;
                     h_miss[e] = L.slot_of[(size_t) x] < 0 ? 1 : 0;
                     if (!h_miss[e]) continue;
+                    L.lecar.on_miss(x, st_tok_step);
                     if (cpu_miss_prune > 0.0f && h_ewts[e] < prune_thr && (n_gpu_hits + n_miss) > 0) {
                         h_miss[e] = 0;
                         ++cpu_pruned_experts;
@@ -1855,6 +1857,7 @@ struct Engine {
                     L.score[(size_t) x] += 1.0;
                     h_miss[e] = L.slot_of[(size_t) x] < 0 ? 1 : 0;
                     if (!h_miss[e]) continue;
+                    L.lecar.on_miss(x, st_tok_step);
                     ++n_miss;
                     const int t = e / Kp;
                     if (L.cpu_fmt.gu_act != 0 && !quantized[(size_t) t]) {
@@ -1981,14 +1984,18 @@ struct Engine {
             // MoE-CORE / DALI heterogeneous cost weight: Q8_0 down outer layers are ~1.3x heavier on CPU than Q5_0.
             const double weight = is_core ? 3.0 : ((L.L.gu_type == 13) ? 1.43 : ((L.L.d_type == 8) ? 1.30 : 1.0));
             for (int x = 0; x < ne; ++x) order[(size_t) x] = x;
+            auto blended = [&](int x) -> double {
+                const uint32_t lt = (!L.last_tok.empty()) ? L.last_tok[(size_t) x] : 0u;
+                return L.lecar.blend_score(L.score[(size_t) x], lt, st_tok_step);
+            };
             std::sort(order.begin(), order.end(),
-                      [&](int a, int b) { return L.score[(size_t) a] > L.score[(size_t) b]; });
+                      [&](int a, int b) { return blended(a) > blended(b); });
             victims.resize((size_t) S);
             for (int s = 0; s < S; ++s) victims[(size_t) s] = s;
             const int k_lim = std::min(S, std::max(1, max_per_layer));
             std::partial_sort(victims.begin(), victims.begin() + k_lim, victims.end(),
                               [&](int a, int b) {
-                                  return L.score[(size_t) L.exp_in_slot[(size_t) a]] < L.score[(size_t) L.exp_in_slot[(size_t) b]];
+                                  return blended(L.exp_in_slot[(size_t) a]) < blended(L.exp_in_slot[(size_t) b]);
                               });
             int v_idx = 0;
             for (int i = 0; i < S && v_idx < k_lim; ++i) {
@@ -2056,6 +2063,7 @@ struct Engine {
             } else {
                 continue;
             }
+            L.lecar.record_eviction(c.cold_y, st_tok_step, L.lecar.w_lfu < 0.5);
             L.slot_of[(size_t) c.cold_y] = -1;
             L.slot_of[(size_t) c.hot_x] = c.slot;
             L.exp_in_slot[(size_t) c.slot] = c.hot_x;

@@ -295,43 +295,71 @@ __global__ void __launch_bounds__(256) k_f32_gemm(const float* __restrict__ W, c
         }
 }
 
-// ---- cur = sum_h x[h]*pre[h]; then rmsnorm(cur, w) -> fp16 (GEMM input) and optionally fp32
+// ---- cur = sum_h x[h]*pre[h]; then rmsnorm(cur, w) -> fp16 (GEMM input) and optionally fp32 (float4 vectorized for SM120)
 __global__ void k_hc_reduce_norm(const float* __restrict__ x, const float* __restrict__ pre, const float* __restrict__ w, __half* __restrict__ outh, float* __restrict__ outf,
                                  float eps) {
     __shared__ float sh[32];
     const float* xt = x + (size_t)blockIdx.x * NHC * HID;
     const float* p = pre + (size_t)blockIdx.x * NHC;
-    float p0 = p[0], p1 = p[1], p2 = p[2], p3 = p[3];
-    float ss = 0;
-    constexpr int PER = HID / 256;  // blockDim must be 256
-    float v[PER];
+    const float p0 = p[0], p1 = p[1], p2 = p[2], p3 = p[3];
+    float ss = 0.0f;
+    constexpr int HID4 = HID >> 2;          // 768
+    constexpr int PER4 = HID4 / 256;        // 3 float4s per thread (blockDim == 256)
+    const float4* x0 = (const float4*)(xt);
+    const float4* x1 = (const float4*)(xt + HID);
+    const float4* x2 = (const float4*)(xt + 2 * HID);
+    const float4* x3 = (const float4*)(xt + 3 * HID);
+    float4 v[PER4];
 #pragma unroll
-    for (int i = 0; i < PER; ++i) {
-        int d = threadIdx.x + i * 256;
-        float c = xt[d] * p0 + xt[HID + d] * p1 + xt[2 * HID + d] * p2 + xt[3 * HID + d] * p3;
+    for (int i = 0; i < PER4; ++i) {
+        const int d4 = threadIdx.x + i * 256;
+        const float4 a0 = x0[d4], a1 = x1[d4], a2 = x2[d4], a3 = x3[d4];
+        const float4 c = make_float4(
+            fmaf(a0.x, p0, fmaf(a1.x, p1, fmaf(a2.x, p2, a3.x * p3))),
+            fmaf(a0.y, p0, fmaf(a1.y, p1, fmaf(a2.y, p2, a3.y * p3))),
+            fmaf(a0.z, p0, fmaf(a1.z, p1, fmaf(a2.z, p2, a3.z * p3))),
+            fmaf(a0.w, p0, fmaf(a1.w, p1, fmaf(a2.w, p2, a3.w * p3))));
         v[i] = c;
-        ss += c * c;
+        ss = fmaf(c.x, c.x, fmaf(c.y, c.y, fmaf(c.z, c.z, fmaf(c.w, c.w, ss))));
     }
     ss = block_sum(ss, sh);
-    float inv = rsqrtf(ss / HID + eps);
+    const float inv = rsqrtf(ss / HID + eps);
+    const float4* w4 = w ? (const float4*)w : nullptr;
+    float4* of4 = outf ? (float4*)(outf + (size_t)blockIdx.x * HID) : nullptr;
+    __half* oh = outh ? (outh + (size_t)blockIdx.x * HID) : nullptr;
 #pragma unroll
-    for (int i = 0; i < PER; ++i) {
-        int d = threadIdx.x + i * 256;
-        float o = v[i] * inv * (w ? w[d] : 1.0f);
-        if (outh) outh[(size_t)blockIdx.x * HID + d] = __float2half(o);
-        if (outf) outf[(size_t)blockIdx.x * HID + d] = o;
+    for (int i = 0; i < PER4; ++i) {
+        const int d4 = threadIdx.x + i * 256;
+        const float4 ww = w4 ? w4[d4] : make_float4(1.0f, 1.0f, 1.0f, 1.0f);
+        const float4 o = make_float4(v[i].x * inv * ww.x, v[i].y * inv * ww.y, v[i].z * inv * ww.z, v[i].w * inv * ww.w);
+        if (of4) of4[d4] = o;
+        if (oh) {
+            const int base = d4 << 2;
+            oh[base + 0] = __float2half(o.x);
+            oh[base + 1] = __float2half(o.y);
+            oh[base + 2] = __float2half(o.z);
+            oh[base + 3] = __float2half(o.w);
+        }
     }
 }
 
-// ---- x[h] += sub * post[h]   (sub fp32 [T][3072])
+// ---- x[h] += sub * post[h]   (sub fp32 [T][3072], float4 vectorized)
 __global__ void k_hc_post(float* __restrict__ x, const float* __restrict__ sub, const float* __restrict__ post) {
-    const float* s = sub + (size_t)blockIdx.x * HID;
+    const float4* s4 = (const float4*)(sub + (size_t)blockIdx.x * HID);
     const float* p = post + (size_t)blockIdx.x * NHC;
+    const float p0 = p[0], p1 = p[1], p2 = p[2], p3 = p[3];
     float* xt = x + (size_t)blockIdx.x * NHC * HID;
-    for (int d = threadIdx.x; d < HID; d += blockDim.x) {
-        float sv = s[d];
-#pragma unroll
-        for (int h = 0; h < NHC; ++h) xt[h * HID + d] += sv * p[h];
+    float4* x0 = (float4*)(xt);
+    float4* x1 = (float4*)(xt + HID);
+    float4* x2 = (float4*)(xt + 2 * HID);
+    float4* x3 = (float4*)(xt + 3 * HID);
+    constexpr int HID4 = HID >> 2;
+    for (int d4 = threadIdx.x; d4 < HID4; d4 += blockDim.x) {
+        const float4 sv = s4[d4];
+        float4 a0 = x0[d4]; x0[d4] = make_float4(fmaf(sv.x, p0, a0.x), fmaf(sv.y, p0, a0.y), fmaf(sv.z, p0, a0.z), fmaf(sv.w, p0, a0.w));
+        float4 a1 = x1[d4]; x1[d4] = make_float4(fmaf(sv.x, p1, a1.x), fmaf(sv.y, p1, a1.y), fmaf(sv.z, p1, a1.z), fmaf(sv.w, p1, a1.w));
+        float4 a2 = x2[d4]; x2[d4] = make_float4(fmaf(sv.x, p2, a2.x), fmaf(sv.y, p2, a2.y), fmaf(sv.z, p2, a2.z), fmaf(sv.w, p2, a2.w));
+        float4 a3 = x3[d4]; x3[d4] = make_float4(fmaf(sv.x, p3, a3.x), fmaf(sv.y, p3, a3.y), fmaf(sv.z, p3, a3.z), fmaf(sv.w, p3, a3.w));
     }
 }
 

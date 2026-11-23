@@ -554,6 +554,7 @@ void native_quant_act(const NativeFmt& f, const float* x, void* dst) {
     }
     if (act_dump().on) act_dump_record(f.layer, 0, x, f.n_embd);
     if (f.gu_act == 0) { std::memcpy(dst, x, (size_t) f.n_embd * sizeof(float)); return; }
+    if (f.gu_act == 8 && cpu_avx2_ok()) { q8_0_quant_avx2(x, dst, f.n_embd); return; }
     if (q8k_avx2(f.gu_act)) { q8k_quant_avx2(x, dst, f.n_embd); return; }
     if (q8k_avx1(f.gu_act)) { q8k_quant_avx1(x, dst, f.n_embd); return; }
     traits(f.gu_act).from_float(x, dst, f.n_embd);
@@ -568,6 +569,7 @@ void native_quant_h(const NativeFmt& f, const float* h, void* dst) {
     }
     if (act_dump().on) act_dump_record(f.layer, 1, h, f.n_ff);
     if (f.d_act == 0) { std::memcpy(dst, h, (size_t) f.n_ff * sizeof(float)); return; }
+    if (f.d_act == 8 && cpu_avx2_ok()) { q8_0_quant_avx2(h, dst, f.n_ff); return; }
     if (q8k_avx2(f.d_act)) { q8k_quant_avx2(h, dst, f.n_ff); return; }
     if (q8k_avx1(f.d_act)) { q8k_quant_avx1(h, dst, f.n_ff); return; }
     traits(f.d_act).from_float(h, dst, f.n_ff);

@@ -628,4 +628,42 @@ void kq256_down_t1_q8_0(const uint8_t* w, size_t row_bytes, int n, const void* h
     }
 }
 
+// AVX2 + F16C Q8_0 activation quantizer: quantizes 32 floats -> block_q8_0 in 4 YMM loads + 1 YMM store.
+void q8_0_quant_avx2(const float* x, void* dst, int64_t n) {
+    const int64_t nb = n / QK8_0;
+    block_q8_0* y = (block_q8_0*) dst;
+    const __m256 sign_bit = _mm256_set1_ps(-0.0f);
+    for (int64_t ib = 0; ib < nb; ++ib) {
+        const float* xb = x + ib * QK8_0;
+        const __m256 v0 = _mm256_loadu_ps(xb + 0);
+        const __m256 v1 = _mm256_loadu_ps(xb + 8);
+        const __m256 v2 = _mm256_loadu_ps(xb + 16);
+        const __m256 v3 = _mm256_loadu_ps(xb + 24);
+
+        __m256 m01 = _mm256_max_ps(_mm256_andnot_ps(sign_bit, v0), _mm256_andnot_ps(sign_bit, v1));
+        __m256 m23 = _mm256_max_ps(_mm256_andnot_ps(sign_bit, v2), _mm256_andnot_ps(sign_bit, v3));
+        __m256 m = _mm256_max_ps(m01, m23);
+        __m128 m128 = _mm_max_ps(_mm256_castps256_ps128(m), _mm256_extractf128_ps(m, 1));
+        m128 = _mm_max_ps(m128, _mm_movehl_ps(m128, m128));
+        m128 = _mm_max_ss(m128, _mm_movehdup_ps(m128));
+        const float amax = _mm_cvtss_f32(m128);
+
+        const float d = amax / 127.0f;
+        const float id = (d != 0.0f) ? (127.0f / amax) : 0.0f;
+        const uint16_t dh = (uint16_t) _mm_cvtsi128_si32(_mm_cvtps_ph(_mm_set_ss(d), _MM_FROUND_TO_NEAREST_INT));
+        std::memcpy(&y[ib].d, &dh, 2);
+
+        const __m256 vid = _mm256_set1_ps(id);
+        const __m256i i0 = _mm256_cvtps_epi32(_mm256_mul_ps(v0, vid));
+        const __m256i i1 = _mm256_cvtps_epi32(_mm256_mul_ps(v1, vid));
+        const __m256i i2 = _mm256_cvtps_epi32(_mm256_mul_ps(v2, vid));
+        const __m256i i3 = _mm256_cvtps_epi32(_mm256_mul_ps(v3, vid));
+
+        const __m256i p01 = _mm256_permute4x64_epi64(_mm256_packs_epi32(i0, i1), 0xD8);
+        const __m256i p23 = _mm256_permute4x64_epi64(_mm256_packs_epi32(i2, i3), 0xD8);
+        const __m256i q8 = _mm256_permute4x64_epi64(_mm256_packs_epi16(p01, p23), 0xD8);
+        _mm256_storeu_si256((__m256i*) y[ib].qs, q8);
+    }
+}
+
 }  // namespace strata::kernels::cpu
