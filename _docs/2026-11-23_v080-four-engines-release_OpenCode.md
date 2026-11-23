@@ -47,8 +47,32 @@ ee456f23 / 1d74f57a / ab87e2e6 / fc776709.
   (0.8.0, engine 0.6.8); commit fb8e90b16 pushed to main.
 - Restarted the app build (build-r2.log) with the same env/5 jobs.
 
-## Evidence
-(filled in as steps complete)
+## Evidence (v0.8.0 published and installed)
+- Build r2: host inventory rebuilt + verify-release passed; Rust 5m32s;
+  makensis produced installer 127,241,488 B, SHA-256
+  `4f00c03c162efdf4e384cd77eb8ff68da1d04917e7b95c905c4ad21384fa2557`
+  (7-Zip integrity test: 29,720 files, no errors). Parent shell hit the 1200 s
+  timeout just after makensis finished — the installer itself was complete.
+- NSIS upgrade/cleanup test 6/6; tar.7z 127,244,450 B, SHA-256
+  `e0d4d89b5907e7e3b027326e088a2baafdeea20da5d5abdfd6c40ed57e24528a`.
+- Tag v0.8.0 pushed (TAG_PUSH_EXIT=0); GitHub release v0.8.0 published with
+  4 assets, all `uploaded` and public digests matching local exactly:
+  setup 4f00c03c..., tar.7z e0d4d89b..., engine 0.6.8 58da074b...,
+  hy4 0.1.64 fad3a195.... GitHub Latest = v0.8.0.
+- Real-machine overwrite install: 29,714 app files; engine 0.6.8 component
+  deployed (156 files: strata.exe 50c2fdd8, strata-inkling2.exe bc15a68b,
+  strata-q38.exe ab87e2e6, strata-hy4.exe fc776709); registry 0.8.0; user
+  settings SHA `6b7d7b11...` preserved; GUI launched with the host healthy on
+  127.0.0.1:47831 and no new crash log.
+- All 8 READMEs rewritten for 0.8.0 / engine 0.6.8 / upstream v0.2.20 with the
+  four-engine + Gen-H details and the provenance note; `release_manifest --check` ok.
+
+## Post-release note
+During this workflow main advanced again to 232f8cf8b (12:27 JST, "Gen-I/J AVX2
+q8_0_quant_avx2, LeCaR online regret cache, HY4 float4 iHC kernels") and the
+engine binaries were rebuilt at 12:22 (strata.exe 6ac28c84, strata-inkling2.exe
+17759a44). Those binaries are NOT in v0.8.0, which carries the Gen-H set.
+A further patch release would be needed to ship Gen-I/J.
 
 ## Residual risks
 - Windows Authenticode signing absent; SHA-256 digests only; `releaseQualified=false`.
