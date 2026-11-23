@@ -3054,20 +3054,20 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, std::strin
     size_t max_pin_bytes = (size_t) 7168 << 20;
 #if defined(_WIN32)
     {
-        // Dynamic pinned-memory sizing for Windows 32 GB+ RAM machines:
-        // Pins all tier2 outer experts (~9.5 GiB on Sakura-Inkling-2) when physical + commit headroom allows,
-        // preventing Windows Memory Manager pagefile thrash and enabling 100% DMA-direct async H2D transfers.
+        // Commit-safe dynamic pinned-memory sizing for Windows 32 GB RAM machines:
+        // Never force a minimum pin floor above available physical/commit headroom, so host malloc
+        // never fails under Windows commit pressure; when headroom is plentiful, pins up to 10 GiB
+        // for 100% DMA-direct async H2D transfers without pagefile thrash.
         MEMORYSTATUSEX ms{};
         ms.dwLength = sizeof(ms);
         if (GlobalMemoryStatusEx(&ms)) {
             const size_t avail_phys = (size_t) ms.ullAvailPhys;
             const size_t avail_commit = (size_t) ms.ullAvailPageFile;
             const size_t avail_b = std::min(avail_phys, avail_commit);
-            const size_t head_b = (size_t) 5632 << 20;  // keep 5.5 GiB headroom for OS/desktop/runtime
-            if (avail_b > head_b) {
-                const size_t safe_pin = avail_b - head_b;
-                max_pin_bytes = std::clamp<size_t>(safe_pin, (size_t) 6144 << 20, (size_t) 11776 << 20);
-            }
+            const size_t head_b = (size_t) 7680 << 20;  // keep 7.5 GiB headroom for OS + malloc + CUDA driver
+            max_pin_bytes = (avail_b > head_b)
+                ? std::min<size_t>(avail_b - head_b, (size_t) 10240 << 20)
+                : 0;
         }
     }
 #else

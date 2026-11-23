@@ -44,6 +44,26 @@
   equivalent features take the official implementation plus fork advantages;
   fork features/GUI follow official API.
 
+## v0.2.20 intake COMPLETE (2026-11-23)
+- One-way merge applied into H:/Strata/worktrees/intake-0220 (branch intake-0220):
+  8973 paths, 528 adopt_upstream, 164 three-way, 8279 retain_fork, 2 delete,
+  errors 0; 8929 file writes.
+- `verify_oneway_merge.py`: ok=true, fork anchors 16/16, upstream anchors 13/13,
+  digest 8929 checked / 0 failures. Evidence: H:/Strata/evidence/intake-0220-apply/.
+- Synced (worktree): release.json upstream section adopted verbatim from official
+  v0.2.20 (tag v0.2.20, published 2026-11-22, control/engines 0.1.66, full asset
+  list); Cargo.lock strata-desktop 0.7.8 (libloading left 0.7.4); 8 READMEs to
+  0.7.8/v0.2.20/0.1.66 with verified Sakura vramfix wording (30.83 t/s @ 11.5,
+  replacing the unreproduced 22.44 t/s @ 7.8 claim). `release_manifest --check`
+  ok (0.7.8, engine 0.6.7).
+- Fork features verified intact in the merged tree: Sakura vramfix config,
+  distribution launcher (PpStageMb/VramReserveMb/Tier2Floor), serve hy4_kind
+  fix, inkling dialect/template, Hakua UI, kuraneko1 CREDITS, 8 READMEs.
+  Official 4-tier MoE / layer-split code adopted.
+- Merged intake-0220 into main (merge 1500cd451), updated AGENTS.md upstream
+  anchor to v0.2.20 / a34979fc / engine 0.1.66 (commit debe5b932), pushed main.
+- Git after push: clean, HEAD debe5b932.
+
 ## Evidence to collect
 Each step's exact output: manifest check, BUILD_EXIT, installer SHA, NSIS 6/6,
 tar.7z SHA, GitHub Latest + asset digests, real exe SHA + reg + settings SHA.

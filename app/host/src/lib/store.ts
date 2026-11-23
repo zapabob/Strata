@@ -1703,6 +1703,12 @@ function patchSession(id: string, fn: (s: Session) => Session) {
   set({ sessions });
 }
 
+// Official 0.2.20 API: ChatToolbar's onRemove calls this. Keep a dismissed-id
+// tombstone so a late agent frame cannot resurrect an agent the user removed.
+export function dismissAgent(sessionId: string, agentId: string) {
+  patchSession(sessionId, s => ({ ...s, agents: (s.agents ?? []).filter(a => a.id !== agentId), dismissedAgentIds: [...new Set([...(s.dismissedAgentIds ?? []), agentId])].slice(-200) }));
+}
+
 // The demo clock belongs to the session, so hiding the sidebar or navigating
 // away never pauses it. Only start and completion are written to storage.
 const timeSkipTimers = new Map<string, ReturnType<typeof setTimeout>>();
