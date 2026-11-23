@@ -159,6 +159,28 @@
   (no elevated shell), so the Startup-folder entry is the supported mechanism.
 - Wrapper validation run in progress (evidence: H:/Strata/evidence/sakura98k-autostart.log).
 
+## v0.7.9 final publication (supersedes v0.7.8)
+- Tag v0.7.8 was rejected by GitHub as an immutable release ("tag_name was used
+  by an immutable release"), so the crash-fix binaries were published as the
+  next semantic version, **v0.7.9**. Product files and 8 READMEs bumped to
+  0.7.9 (engine family 0.6.7; upstream v0.2.20); `release_manifest --check` ok.
+- Also fixed before the build: the intake-adopted `inkling_kind.py` emitted
+  `--draft off`, which the fork's `strata-inkling2.exe` rejects (`--draft <file>`
+  only); the 98K serve now passes no flag when drafting is off. Control was
+  re-staged (`stage-control.py`) so verify-release passed.
+- Build r3: BUILD_EXIT=0, installer 127,241,043 B, SHA-256
+  `97a98e27652130e92f8b3b502d849edc4a8f0f08301d50742acfe62a6f438162`.
+  NSIS 6/6; tar.7z SHA `7e190befaa72cc11ef1d5779f9e42b5c09ad2e0952a90327422afce09b7fff7d`.
+- GitHub Latest = v0.7.9; all 4 assets `uploaded` with public digests matching
+  local exactly (setup 97a98e27..., tar.7z 7e190bef..., engine 0.6.7 eb3bf3f0...,
+  hy4 0.1.64 fad3a195...). Tag v0.7.9 pushed (TAG_PUSH_EXIT=0).
+- Real-machine overwrite install: 29,714 files, strata-desktop.exe SHA
+  `84e8fcda69277702bea1c4396aa06dbea2305cc9e355b7f4cb2bdda02367b699`,
+  registry 0.7.9, settings SHA `6b7d7b11...` preserved, engine 0.6.7 present,
+  GUI launched. The 11:15 run log shows the host starting normally on
+  127.0.0.1:47831 with no `REASONING_FORMATS` SyntaxError; no new crash log
+  after 09:58, so the installed-GUI crash is fixed.
+
 ## Residual risks
 - Windows Authenticode signing absent; ed25519 signature checks removed by user
   decision; SHA-256 digest verification retained. `releaseQualified=false`:
