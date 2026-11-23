@@ -128,6 +128,24 @@
 - Note: the 98K Sakura/Hermes server was stopped before the build to free RAM;
   restart from configs/strata-sakura-inkling2-98k-vramfix.json if needed again.
 
+## Installed-GUI crash diagnosed and fixed (2026-11-23)
+- User reported the installed GUI crashed. Crash logs
+  (C:/Users/downl/AppData/Local/Strata/logs/desktop-crash-20261123-0057*.log)
+  showed "the Strata App Host stopped before it became healthy: exit code 1".
+- Run log root cause: `model-providers.mjs` (adopted from upstream) imports
+  `REASONING_FORMATS`, `connectionReasoningFormat`, `connectionReasoningEfforts`
+  from `agent/profile.mjs`, which the fork's retained profile.mjs did not export
+  (Node SyntaxError, not caught by tsc/Vite because these are server-side .mjs).
+  A second mismatch: the fork's native-control.mjs imports `writeTuneConfig`,
+  replaced upstream by `withTuneConfig`.
+- Fix (commit e01a455e4): added the official reasoning exports to profile.mjs
+  and restored writeTuneConfig next to withTuneConfig, keeping the fork's Q36
+  tune admission. A full host/server import-export scan (188 .mjs files) now
+  reports 0 missing exports.
+- Verified with patched files copied into the installed app: host started
+  ("strata host — http://127.0.0.1:47831", hardware/models loaded), GUI stayed
+  alive 15 s with no new crash log. Rebuild r4 + re-release/re-install pending.
+
 ## Residual risks
 - Windows Authenticode signing absent; ed25519 signature checks removed by user
   decision; SHA-256 digest verification retained. `releaseQualified=false`:
