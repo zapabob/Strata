@@ -53,6 +53,17 @@ separate qwen35-9b script).
 | 2 | 380.1 ms | 29.38 t/s | 1455.5 ms |
 | 3 | 394.2 ms | 29.24 t/s | 1475.3 ms |
 
+## Qwen3.5-9B from C: (user noted a C: copy; 3 more runs)
+Model: `C:/Users/downl/AppData/Local/Temp/opencode/ds4-model/DeepSeek-9B-Q4_K_M.gguf`
+(the same 5.24 GB Qwen3.5-9B architecture under a clean path).
+| Run | Prefill | Decode | E2E |
+| ---: | --- | --- | ---: |
+| 1 | 57.6 ms | 59.77 t/s | 1145.2 ms |
+| 2 | 57.3 ms | 60.66 t/s | 1129.5 ms |
+| 3 | 58.5 ms | 58.94 t/s | 1163.8 ms |
+H: and C: copies agree within run-to-run noise (pp 57-59 ms, tg 59-63 t/s),
+confirming the earlier H: path with the Japanese folder name was the only issue.
+
 ## Notes
 - Decode varies run-to-run on the MoE targets (19.5-25.1 t/s Sakura,
   14.3-29.3 t/s UD) because expert cache warmth differs; `cpu_ms` tracks it
