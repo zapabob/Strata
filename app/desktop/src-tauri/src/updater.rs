@@ -227,7 +227,7 @@ fn handle(mut stream: TcpStream, app: &AppHandle, token: &str, progress: &Arc<Mu
 /// Open the bridge on a free loopback port. Returns None if the listener cannot be bound (the app then simply has no
 /// in-app update; the Terminal's `strata update --app` still works).
 #[cfg(not(feature = "public-full-package"))]
-pub fn start(app: &AppHandle, token: String) -> Option<Bridge> {
+pub fn start(app: &AppHandle, token: String, _host_port: u16) -> Option<Bridge> {
     let listener = TcpListener::bind(("127.0.0.1", 0)).ok()?;
     let port = listener.local_addr().ok()?.port();
     let progress = Arc::new(Mutex::new(Progress::default()));
@@ -243,7 +243,7 @@ pub fn start(app: &AppHandle, token: String) -> Option<Bridge> {
 
 /// Environment for the App Host: where the bridge is, which app version this is.
 #[cfg(feature = "public-full-package")]
-pub fn start(_app: &AppHandle, _token: String) -> Option<Bridge> {
+pub fn start(_app: &AppHandle, _token: String, _host_port: u16) -> Option<Bridge> {
     None
 }
 
