@@ -111,3 +111,7 @@ node_modules/
 
 # PowerShell module analysis cache written into the packaged host cwd by spawned shells
 Microsoft/
+
+# Local Python virtual environments (any depth)
+.venv/
+**/.venv/
