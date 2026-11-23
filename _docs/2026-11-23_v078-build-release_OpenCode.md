@@ -101,6 +101,12 @@
   then passed (exit 0, only a dead-code warning for the fork's unused
   `open_helper_window`), so no further Rust API drift remains. Final NSIS
   rebuild started 2026-11-23, log build-final.log.
+- build-final failed in `beforeBuildCommand` with a Python `MemoryError` while
+  hashing the Q38 preview component (the 98K Sakura server held 7.31 GB and
+  free RAM was ~8.8 GB at the time). Manual `verify-release.mjs` passed after
+  stopping that server (free RAM 14.5 GB). Build restarted as build-r3.log.
+  Note: the 98K Sakura/Hermes server on 127.0.0.1:8092 was stopped to free RAM;
+  restart it after the release if Hermes 98K chat is needed again.
 
 ## Evidence to collect
 Each step's exact output: manifest check, BUILD_EXIT, installer SHA, NSIS 6/6,
