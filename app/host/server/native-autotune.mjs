@@ -141,3 +141,15 @@ export async function withTuneConfig(directory, cfg, useConfig) {
   try { return await useConfig(path); }
   finally { rmSync(path, { force: true }); }
 }
+
+// The fork's native-control.mjs keeps its own Q36 private-cache admission and
+// reads the config path back, so it still needs the stable-path writer. Keep
+// both APIs: official withTuneConfig above and this fork-compatible writer.
+export function writeTuneConfig(directory, model, cfg) {
+  const dir = join(directory, 'native-tune');
+  mkdirSync(dir, { recursive: true });
+  const path = join(dir, `${model}.json`);
+  const { api_key, port, ...rest } = cfg;
+  writeFileSync(path, JSON.stringify(rest, null, 2), { mode: 0o600 });
+  return path;
+}

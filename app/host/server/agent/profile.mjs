@@ -242,6 +242,31 @@ export const OPENROUTER_EFFORTS = Object.freeze({ off: 'none', low: 'low', mediu
 export const isOpenRouter = conn => conn?.provider === 'openrouter' || (() => { try { return /(^|.)openrouter.ai$/i.test(new URL(conn.baseUrl).hostname); } catch { return false; } })();
 export const effortOf = value => EFFORT_LEVEL[String(value ?? '').toLowerCase()] ?? null;
 
+// Official 0.2.20 API: the adopted model-providers.mjs imports these from the
+// profile. Keep the fork's own effort tables while following the official
+// connection-reasoning dispatch, so API connections keep working.
+export const DEEPSEEK_EFFORTS = Object.freeze({ off: 'none', low: 'low', medium: 'high', high: 'high', max: 'max' });
+const EFFORT_API_LEVELS = Object.freeze({ ...LOCAL_EFFORTS, off: 'none' });
+export const REASONING_FORMATS = Object.freeze(['auto', 'default', 'strata', 'deepseek', 'effort']);
+export function connectionReasoningFormat(conn) {
+  if (conn.protocol !== 'openai-chat') return 'default';
+  if (conn.reasoningFormat && conn.reasoningFormat !== 'auto') return conn.reasoningFormat;
+  if (isOpenRouter(conn)) return 'openrouter';
+  if (conn.provider === 'deepseek') return 'deepseek';
+  return 'effort';
+}
+export function connectionReasoningEfforts(conn, model) {
+  const format = connectionReasoningFormat(conn);
+  if (model.reasoning === false || (model.reasoning !== true && conn.reasoningFormat !== format)) return null;
+  switch (format) {
+    case 'strata': return LOCAL_EFFORTS;
+    case 'openrouter': return OPENROUTER_EFFORTS;
+    case 'deepseek': return DEEPSEEK_EFFORTS;
+    case 'effort': return EFFORT_API_LEVELS;
+    default: return null;
+  }
+}
+
 /**
  * Output budget for an API model. The connection's own maximum output is used when it is known (`maxOutput`, read from the provider's model
  * list). Otherwise a generous 32K, never more than the window minus room for the prompt (a quarter of a small window at most is the prompt's).
