@@ -4,6 +4,9 @@ Nota: os valores DS4 2,84x / FLA 4,86x / Sakura 22,44 t/s vêm dos logs de desen
 
 Esta versão mantém todos os recursos do fork e adiciona as otimizações nativas de 22/11: produto **0.8.0**, família de mecanismos **0.6.8**, upstream v0.2.20. RTX 5060 Ti (sm_120a)/CUDA 13.5: DS4-9B prefill 2,84x, E2E +22,7 %, FLA GDN + Spin(8) prefill 4,86x, Sakura Inkling-2 65K-98K (22,44 t/s decode). Tabelas SM x VRAM de Ryu (kuraneko1, MIT) no Inkling-2 CUDA oficial (PR #6571). Verificação de assinatura removida; SHA-256 permanece. `releaseQualified=false`.
 
+
+Atualizacao Gen-H (commit 21bedf91c): strata-inkling2.exe e strata.exe usam float4 k_stack_rms_norm/k_mix com exp2f, cache Zipf e h_tok_buf mapeado sem copia; moe_up 39,5 para 4,6 ms (-88 %), 32/32 tokens exatos no Sakura 131K.
+
 ## Versão e downloads
 
 <!-- release-062-stable -->

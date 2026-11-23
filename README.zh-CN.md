@@ -4,6 +4,9 @@
 
 本版本保留所有 fork 独有功能，并加入 11/22-23 的原生优化：产品 **0.8.0**，原生引擎系列 **0.6.8**，上游 v0.2.20。RTX 5060 Ti（sm_120a）/ CUDA 13.5：DS4-9B prefill 2.84 倍、E2E +22.7%、FLA GDN + Spin(8) prefill 4.86 倍、Sakura Inkling-2 65K-98K（解码 22.44 t/s）。Ryu（kuraneko1，MIT）的 SM × VRAM 配置表已合并到官方 CUDA Inkling-2（PR #6571）。签名验证已移除，SHA-256 保留。`releaseQualified=false`。
 
+
+Gen-H 更新 (提交 21bedf91c): strata-inkling2.exe 与 strata.exe 采用 float4 k_stack_rms_norm/k_mix + exp2f、Zipf token 缓存与零拷贝映射 h_tok_buf; moe_up 39.5 到 4.6 ms (-88%), Sakura 131K 上 32/32 token 完全一致。
+
 ## 版本与下载
 
 <!-- release-062-stable -->

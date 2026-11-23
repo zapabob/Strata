@@ -13,6 +13,9 @@ v0.8.0 keeps every fork-only feature and ships **four freshly optimized CUDA 13.
 - `strata-hy4.exe`: Blackwell `MUFU.TANH`, `float4` vector loads, ST-MoE decode bootstrap.
 Also included: official v0.2.20 intake (unified 4-tier GPU+RAM+CPU+SSD MoE, multi-GPU layer-split), the Sakura 98K empty-output fix (`--expert-vram 11.5`), Hermes Agent `inkling2` provider with boot-time auto-start, and Ryu's (kuraneko1, MIT) Inkling-2 profile tables (upstream PR #6571). Component signature verification removed (no signing key); SHA-256 digests retained. `releaseQualified=false`.
 
+
+Gen-H update (commit 21bedf91c): strata-inkling2.exe and strata.exe now use float4 k_stack_rms_norm/k_mix with exp2f, a Zipf token cache and zero-copy mapped h_tok_buf - moe_up 39.5 ms to 4.6 ms (-88%) with 32/32 exact tokens on Sakura 131K.
+
 ## Version and downloads
 
 <!-- release-062-stable -->
