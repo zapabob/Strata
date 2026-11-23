@@ -1,5 +1,5 @@
 {
-  "exe": "H:/Strata/build/engine-cuda135/strata-inkling2.exe",
+  "exe": "H:/Strata/engine-stable/strata-inkling2.exe",
   "arch": "inkling2_loop",
   "model_name": "sakura-inkling-2-mini",
   "aliases": [
