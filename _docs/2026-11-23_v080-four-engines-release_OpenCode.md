@@ -34,6 +34,19 @@ ee456f23 / 1d74f57a / ab87e2e6 / fc776709.
 6. Tag v0.8.0 + GitHub release with four assets; public SHA readback.
 7. Overwrite-installed on the real machine including the 0.6.8 engine component.
 
+## Gen-H update and workflow restart (2026-11-23)
+- While the first v0.8.0 build was cancelled at the user's request, main advanced
+  to 21bedf91c ("Add Gen-H float4 k_mix/k_stack_rms_norm, Zipf vocab cache,
+  zero-copy h_tok_buf, and 6D ShinkaEvolve genome"). This rebuilt `strata.exe`
+  (SHA 50c2fdd8) and `strata-inkling2.exe` (SHA bc15a68b); Q38 and HY4 were
+  unchanged. Gen-H `moe_up` 39.5 -> 4.6 ms (-88%), 32/32 exact tokens on Sakura 131K.
+- Rebuilt the 0.6.8 component with those binaries (155 files, verify OK) and
+  repackaged `strata-engine-0.6.8-windows-x86_64-cuda-cuda13.tar.gz`
+  (1,536,648,216 B, SHA-256 58da074bb458bad11b0657207893885821eb96abaf2a672fb89bf34c4c8a2177).
+- Added the Gen-H note to all 8 READMEs; `release_manifest --check` ok
+  (0.8.0, engine 0.6.8); commit fb8e90b16 pushed to main.
+- Restarted the app build (build-r2.log) with the same env/5 jobs.
+
 ## Evidence
 (filled in as steps complete)
 
