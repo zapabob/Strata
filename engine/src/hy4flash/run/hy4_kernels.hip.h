@@ -10,8 +10,16 @@ namespace hy4 {
 constexpr int HID = 3072;
 constexpr int NHC = 4;
 
-__device__ __forceinline__ float sigmoidf_(float x) { return 1.0f / (1.0f + __expf(-x)); }
-__device__ __forceinline__ float siluf_(float x) { return x / (1.0f + __expf(-x)); }
+__device__ __forceinline__ float sigmoidf_(float x) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 750
+    float t;
+    asm("tanh.approx.f32 %0, %1;" : "=f"(t) : "f"(0.5f * x));
+    return 0.5f + 0.5f * t;
+#else
+    return 1.0f / (1.0f + __expf(-x));
+#endif
+}
+__device__ __forceinline__ float siluf_(float x) { return x * sigmoidf_(x); }
 
 __device__ __forceinline__ float block_sum(float v, float* sh /*[32]*/) {
     for (int o = 16; o > 0; o >>= 1) v += __shfl_xor(v, o);
@@ -44,18 +52,49 @@ __global__ void k_embed_hc(const uint8_t* __restrict__ W, const int32_t* __restr
     }
 }
 
-// ---- RMSNorm over D with optional weight; in fp32, out fp32 and/or fp16
+// ---- RMSNorm over D with optional weight; in fp32, out fp32 and/or fp16 (float4 vectorized for Blackwell SM120)
 __global__ void k_rms_rows(const float* __restrict__ in, const float* __restrict__ w, float* __restrict__ outf, __half* __restrict__ outh, int D, float eps) {
     __shared__ float sh[32];
     const float* x = in + (size_t)blockIdx.x * D;
-    float ss = 0;
-    for (int i = threadIdx.x; i < D; i += blockDim.x) ss += x[i] * x[i];
+    float ss = 0.0f;
+    const bool vec4 = ((D & 3) == 0) && (((uintptr_t)x & 15u) == 0) && (!w || (((uintptr_t)w & 15u) == 0));
+    if (vec4) {
+        const int D4 = D >> 2;
+        const float4* x4 = (const float4*)x;
+        for (int i = threadIdx.x; i < D4; i += blockDim.x) {
+            float4 a = x4[i];
+            ss = fmaf(a.x, a.x, fmaf(a.y, a.y, fmaf(a.z, a.z, fmaf(a.w, a.w, ss))));
+        }
+    } else {
+        for (int i = threadIdx.x; i < D; i += blockDim.x) ss = fmaf(x[i], x[i], ss);
+    }
     ss = block_sum(ss, sh);
     float inv = rsqrtf(ss / D + eps);
-    for (int i = threadIdx.x; i < D; i += blockDim.x) {
-        float v = x[i] * inv * (w ? w[i] : 1.0f);
-        if (outf) outf[(size_t)blockIdx.x * D + i] = v;
-        if (outh) outh[(size_t)blockIdx.x * D + i] = __float2half(v);
+    if (vec4 && (!outf || (((uintptr_t)(outf + (size_t)blockIdx.x * D) & 15u) == 0))) {
+        const int D4 = D >> 2;
+        const float4* x4 = (const float4*)x;
+        const float4* w4 = w ? (const float4*)w : nullptr;
+        float4* of4 = outf ? (float4*)(outf + (size_t)blockIdx.x * D) : nullptr;
+        __half* oh = outh ? (outh + (size_t)blockIdx.x * D) : nullptr;
+        for (int i = threadIdx.x; i < D4; i += blockDim.x) {
+            float4 a = x4[i];
+            float4 b = w4 ? w4[i] : make_float4(1.0f, 1.0f, 1.0f, 1.0f);
+            float4 v = make_float4(a.x * inv * b.x, a.y * inv * b.y, a.z * inv * b.z, a.w * inv * b.w);
+            if (of4) of4[i] = v;
+            if (oh) {
+                const int base = i << 2;
+                oh[base + 0] = __float2half(v.x);
+                oh[base + 1] = __float2half(v.y);
+                oh[base + 2] = __float2half(v.z);
+                oh[base + 3] = __float2half(v.w);
+            }
+        }
+    } else {
+        for (int i = threadIdx.x; i < D; i += blockDim.x) {
+            float v = x[i] * inv * (w ? w[i] : 1.0f);
+            if (outf) outf[(size_t)blockIdx.x * D + i] = v;
+            if (outh) outh[(size_t)blockIdx.x * D + i] = __float2half(v);
+        }
     }
 }
 

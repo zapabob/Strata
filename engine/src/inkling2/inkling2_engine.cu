@@ -317,6 +317,7 @@ struct PhysLayer {
     std::vector<int32_t> slot_of;        // [n_expert] on host (-1 = CPU)
     std::vector<int32_t> exp_in_slot;    // [n_slots]
     std::vector<double> score;           // [n_expert]
+    std::vector<uint32_t> last_tok;      // [n_expert] ST-MoE last-activated decode token step
 };
 
 struct Model : GpuWeightStore {
@@ -851,7 +852,10 @@ struct Engine {
     // Hybrid CPU pool staging
     int32_t* h_ids = nullptr;        // [tmax * top_k]
     float* h_ewts = nullptr;         // [tmax * top_k] pinned for T==1 CPU pre-combine
-    float* h_cpu_sum = nullptr;      // [N] pinned pre-combined CPU miss sum for T==1
+    float* h_cpu_sum = nullptr;      // [2 * N] zero-copy mapped double-buffered CPU miss sum for T==1
+    float* h_cpu_sum_dev = nullptr;  // device-mapped alias of h_cpu_sum (0 H2D memcpy submissions)
+    int32_t* h_pos0 = nullptr;       // pinned scalar pos0 staging (avoids pageable stack H2D stall)
+    uint32_t st_tok_step = 0;        // ST-MoE decode token counter
     float* h_h = nullptr;            // [tmax * N]
     float* cpu_out = nullptr;        // [tmax * top_k * N]
     int32_t* h_miss = nullptr;       // [tmax * top_k]
@@ -1110,7 +1114,7 @@ struct Engine {
             if (rebal_stage_pinned) cudaFreeHost(rebal_stage);
             else std::free(rebal_stage);
         }
-        cudaFreeHost(h_ids); cudaFreeHost(h_ewts); cudaFreeHost(h_cpu_sum); cudaFreeHost(h_h); cudaFreeHost(cpu_out); cudaFreeHost(h_miss);
+        cudaFreeHost(h_ids); cudaFreeHost(h_ewts); cudaFreeHost(h_cpu_sum); cudaFreeHost(h_pos0); cudaFreeHost(h_h); cudaFreeHost(cpu_out); cudaFreeHost(h_miss);
         std::free(acts);
         if (ev_route) cudaEventDestroy(ev_route);
         for (int b = 0; b < kMaxPpStages; ++b) {
@@ -1341,11 +1345,13 @@ struct Engine {
         CK(cudaMalloc(&grp_ptr, (size_t) hp.n_expert * sizeof(unsigned long long)));
         CK(cudaMalloc(&tok_d, (size_t) tmax * sizeof(int32_t)));
         CK(cudaMalloc(&pos0_d, sizeof(int32_t)));
+        CK(cudaHostAlloc(&h_pos0, sizeof(int32_t), cudaHostAllocDefault));
         CK(cudaMalloc(&pick_d, (size_t) tmax * sizeof(int32_t)));
 
         CK(cudaMallocHost(&h_ids, (size_t) max_ent * sizeof(int32_t)));
         CK(cudaMallocHost(&h_ewts, (size_t) max_ent * sizeof(float)));
-        CK(cudaMallocHost(&h_cpu_sum, (size_t) N * sizeof(float)));
+        CK(cudaHostAlloc(&h_cpu_sum, (size_t) (2 * N) * sizeof(float), cudaHostAllocMapped));
+        CK(cudaHostGetDevicePointer(&h_cpu_sum_dev, h_cpu_sum, 0));
         CK(cudaEventCreateWithFlags(&ev_route, cudaEventDisableTiming));
         CK(cudaEventCreateWithFlags(&ev_rebal, cudaEventDisableTiming));
         CK(cudaStreamCreateWithFlags(&cst, cudaStreamNonBlocking));
@@ -1799,8 +1805,16 @@ struct Engine {
                 const float prune_thr = cpu_miss_prune * w_max;
                 for (int e = 0; e < Kp; ++e) {
                     const int x = h_ids[e];
-                    // HybriMoE (arXiv:2504.05897) impact-driven scoring: weight hits by router magnitude.
-                    L.score[(size_t) x] += 1.0 + 0.5 * (double) std::max(0.0f, h_ewts[e]);
+                    // HybriMoE (arXiv:2504.05897) + ShinkaEvolve (alpha=0.6624) + ST-MoE (arXiv:2606.15453) Markov boost.
+                    double markov = 0.0;
+                    if (!L.last_tok.empty()) {
+                        const uint32_t prev = L.last_tok[(size_t) x];
+                        if (prev > 0 && st_tok_step > prev) {
+                            markov = strata::math::st_moe_markov_boost(st_tok_step - prev);
+                        }
+                        L.last_tok[(size_t) x] = st_tok_step;
+                    }
+                    L.score[(size_t) x] += 1.0 + 0.6624 * (double) std::max(0.0f, h_ewts[e]) + markov;
                     h_miss[e] = L.slot_of[(size_t) x] < 0 ? 1 : 0;
                     if (!h_miss[e]) continue;
                     if (cpu_miss_prune > 0.0f && h_ewts[e] < prune_thr && (n_gpu_hits + n_miss) > 0) {
@@ -1880,29 +1894,30 @@ struct Engine {
                 }
                 const auto tp_u0 = Clock::now();
                 if (T == 1) {
-                    // Pre-combine all CPU-missed experts into 1 single N-float vector (9 KB vs 72 KB H2D, 0 k_merge_cpu!).
+                    // Zero-copy PCIe-mapped double-buffered CPU miss pre-combine (0 cudaMemcpyAsync H2D calls!).
+                    float* __restrict__ hsum = h_cpu_sum + (size_t) (il & 1) * N;
+                    const float* dsum = h_cpu_sum_dev + (size_t) (il & 1) * N;
                     bool first = true;
                     for (int e = 0; e < Kp; ++e) {
                         if (!h_miss[e]) continue;
                         const float w = h_ewts[e];
-                        const float* src = cpu_out + (size_t) e * N;
+                        const float* __restrict__ src = cpu_out + (size_t) e * N;
                         if (first) {
-                            for (int i = 0; i < N; ++i) h_cpu_sum[i] = w * src[i];
+                            for (int i = 0; i < N; ++i) hsum[i] = w * src[i];
                             first = false;
                         } else {
-                            for (int i = 0; i < N; ++i) h_cpu_sum[i] += w * src[i];
+                            for (int i = 0; i < N; ++i) hsum[i] += w * src[i];
                         }
                     }
                     if (has_gpu) {
-                        CK(cudaMemcpyAsync(ecpu, h_cpu_sum, (size_t) N * sizeof(float), cudaMemcpyHostToDevice, st));
-                        if (prof) { CK(cudaStreamSynchronize(st)); p_moe_up_ms += ms_since(tp_u0); }
+                        if (prof) p_moe_up_ms += ms_since(tp_u0);
                         const auto tp_p0 = Clock::now();
                         const int n4 = ((N & 3) == 0) ? (N >> 2) : N;
                         k_combine_experts_hybrid<<<(unsigned) ((n4 + 255) / 256), 256, 0, st>>>(
-                            eparts, ewts, ids, L.d_slot_of, ecpu, moe_raw, N, Kp);
+                            eparts, ewts, ids, L.d_slot_of, dsum, moe_raw, N, Kp);
                         if (prof) { CK(cudaStreamSynchronize(st)); p_moe_post_ms += ms_since(tp_p0); }
                     } else {
-                        CK(cudaMemcpyAsync(moe_raw, h_cpu_sum, (size_t) N * sizeof(float), cudaMemcpyHostToDevice, st));
+                        CK(cudaMemcpyAsync(moe_raw, hsum, (size_t) N * sizeof(float), cudaMemcpyHostToDevice, st));
                         if (prof) { CK(cudaStreamSynchronize(st)); p_moe_up_ms += ms_since(tp_u0); }
                     }
                     return;
@@ -1938,7 +1953,6 @@ struct Engine {
             sync_d_hits(false);
         }
         ++rh_rebal_step;
-        const double decay = strata::math::rh_critical_decay(rh_rebal_step);
         const auto& hp = m->hp;
         const int64_t ne = hp.n_expert;
         struct Cand {
@@ -1978,13 +1992,15 @@ struct Engine {
                 const double s_hot = L.score[(size_t) hot_cand];
                 const double s_cold = L.score[(size_t) y];
                 const double diff = s_hot - s_cold;
-                // Under RH (von Koch explicit-formula bound O(sqrt(N) log N)), skip swaps within noise floor.
-                const double thr = (s_cold > 0.0) ? strata::math::rh_von_koch_threshold(s_hot, s_cold, rh_rebal_step) : 0.0;
+                // Under RH (von Koch explicit-formula bound O(sqrt(N) log N)), skip swaps within ShinkaEvolve noise floor.
+                const double thr = (s_cold > 0.0) ? strata::math::rh_von_koch_threshold(s_hot, s_cold, rh_rebal_step, 0.1893) : 0.0;
                 if (diff <= thr) break;
                 cands.push_back(Cand{diff * weight, li, s, hot_cand, y});
                 ++v_idx;
             }
-            for (int x = 0; x < ne; ++x) L.score[(size_t) x] *= decay;
+            const double h_norm = strata::math::normalized_shannon_entropy(L.score.data(), (size_t) ne);
+            const double layer_decay = strata::math::rh_entropy_adjusted_decay(rh_rebal_step, h_norm);
+            for (int x = 0; x < ne; ++x) L.score[(size_t) x] *= layer_decay;
         }
         if (cands.empty()) return;
         std::sort(cands.begin(), cands.end(), [](const Cand& a, const Cand& b) { return a.gain > b.gain; });
@@ -2451,9 +2467,10 @@ struct Engine {
                 m->dequant_tok(tokens[t], h_tok_buf + (size_t) t * N);
             }
         }
+        if (T == 1) ++st_tok_step;
         CK(cudaMemcpyAsync(ffn_inp, h_tok_buf, (size_t) T * N * sizeof(float), cudaMemcpyHostToDevice, st));
-        const int32_t pos32 = (int32_t) pos;
-        CK(cudaMemcpyAsync(pos0_d, &pos32, sizeof(int32_t), cudaMemcpyHostToDevice, st));
+        *h_pos0 = (int32_t) pos;
+        CK(cudaMemcpyAsync(pos0_d, h_pos0, sizeof(int32_t), cudaMemcpyHostToDevice, st));
         k_rms_norm<<<(unsigned) T, kThreads, 0, st>>>(ffn_inp, m->tok_embd_norm, cur, N, hp.rms_eps);
         if (prof) { CK(cudaStreamSynchronize(st)); p_embd_ms += ms_since(tp_e0); }
 
@@ -3227,6 +3244,7 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, std::strin
         int s = slots[(size_t) ip];
         L.slot_of.assign((size_t) ne, -1);
         L.score.assign((size_t) ne, 0.0);
+        L.last_tok.assign((size_t) ne, 0u);
         if (!L.d_hits) {
             CK(cudaMalloc(&L.d_hits, (size_t) ne * sizeof(uint32_t)));
             CK(cudaMemset(L.d_hits, 0, (size_t) ne * sizeof(uint32_t)));

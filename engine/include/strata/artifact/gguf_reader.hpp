@@ -657,6 +657,36 @@ inline ModelFamily model_family(const GgufFile& g) {
     return arch ? model_family_from_arch(arch->s) : ModelFamily::Unknown;
 }
 
+inline std::string read_qwen35moe_layer_int(const GgufFile& g, const char* key,
+                                           int64_t block_count, int64_t n_mtp_layers,
+                                           int64_t qsa_interval, int64_t& dst) {
+    const MetaValue* v = g.get(key);
+    if (!v) return {};
+    if (v->is_num()) {
+        dst = (int64_t) v->u;
+        return {};
+    }
+    if (v->type == MetaType::ARRAY && !v->items.empty()) {
+        const int64_t n_main = block_count > n_mtp_layers ? (block_count - n_mtp_layers) : block_count;
+        int64_t found = -1;
+        for (int64_t i = 0; i < (int64_t) v->items.size() && i < n_main; ++i) {
+            if (qsa_interval > 0 && ((i + 1) % qsa_interval) != 0) continue;
+            if (!v->items[(size_t) i].is_num()) continue;
+            const int64_t val = (int64_t) v->items[(size_t) i].u;
+            if (val > 0) {
+                if (found < 0) found = val;
+                else if (found != val) return std::string(key) + " varies across full-attention layers";
+            }
+        }
+        if (found > 0) {
+            dst = found;
+            return {};
+        }
+        return std::string(key) + " has no positive value on full-attention layers";
+    }
+    return std::string(key) + " is neither a number nor an array";
+}
+
 /// Qwen3.6-35B-A3B's guard: every key the geometry is read from must be present (core::geometry_from_gguf),
 /// and the few that the layer pattern depends on must have the values the model has.
 inline std::string check_architecture_qwen35moe(const GgufFile& g) {

@@ -127,6 +127,7 @@ struct ExpertRef {  // per (moe_layer, expert id); offsets relative to the arena
 
 struct PeerGpu {
     int dev = 0;
+    bool can_p2p = false;
     uint8_t* d_sec4 = nullptr;
     uint64_t vram_bytes = 0, n_experts = 0;
     std::vector<ExpertRef> experts;  // [41*512], tier=0 on this peer, tier=4 elsewhere
@@ -138,6 +139,11 @@ struct GpuModel {
     std::string path;
     int primary_gpu = 0;
     bool has_vision = false;
+    bool draft_enabled = false;
+    double vram_experts_gb_cap = 0.0;
+    double ram_experts_gb_cap = 0.0;
+    std::string layer_split_spec;
+    int planned_chunk = 0;
     std::vector<int> peer_devs;   // secondary GPU device ids for multi-GPU expert split (--gpus 0,1,...)
     std::vector<PeerGpu> peers;
     uint8_t* d_trunk = nullptr;   // Section 1
@@ -337,7 +343,19 @@ inline void hy4_setenv(const char* k, const char* v, int) {
 #endif
 }
 
-inline int plan_memory(int max_ctx, int chunk, size_t total, const std::string& model_path, bool multi_gpu = false) {
+inline double wddm_vram_floor_gb(size_t total_vram) {
+#if defined(_WIN32)
+    return (total_vram >= (15ull << 30)) ? 1.5 : 1.0;
+#else
+    (void)total_vram;
+    return 0.4;
+#endif
+}
+
+inline int plan_memory(int max_ctx, int chunk, size_t total, const std::string& model_path,
+                       bool multi_gpu = false, bool has_vision = false, int n_peers = 0,
+                       size_t min_peer_tot = 0, size_t free_vram = 0, bool draft_on = false) {
+    (void)has_vision; (void)n_peers; (void)min_peer_tot; (void)free_vram; (void)draft_on;
     const double GB = 1e9, tot = (double)total / GB;
     double trunk = 5.92, sec4_gb = 0.0;
     if (!model_path.empty()) {

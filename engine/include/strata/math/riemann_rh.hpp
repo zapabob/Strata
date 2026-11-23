@@ -67,11 +67,48 @@ inline double rh_critical_decay(uint64_t step) noexcept {
 
 // RH von Koch explicit-formula hysteresis floor:
 // Avoids evicting a resident expert on O(sqrt(N)) random fluctuations while admitting
-// genuine Zipf-head experts immediately.
-inline double rh_von_koch_threshold(double score_hot, double score_cold, uint64_t step) noexcept {
+// genuine Zipf-head experts immediately. c_vk defaults to 0.20 (ShinkaEvolve optimal: ~0.1893).
+inline double rh_von_koch_threshold(double score_hot, double score_cold, uint64_t step,
+                                    double c_vk = 0.20) noexcept {
     const double s = std::max(0.0, score_hot + score_cold);
     const double denom = std::log((double) step + 2.718281828459045);
-    return 0.20 * std::sqrt(s) / std::max(1.0, denom);
+    return c_vk * std::sqrt(s) / std::max(1.0, denom);
+}
+
+// Normalized Shannon routing entropy H(p) / ln(n) in [0, 1] for a layer's expert score distribution.
+inline double normalized_shannon_entropy(const double* scores, size_t n) noexcept {
+    if (!scores || n <= 1) return 0.5;
+    double total = 0.0;
+    for (size_t i = 0; i < n; ++i) {
+        if (scores[i] > 0.0) total += scores[i];
+    }
+    if (total <= 1e-12) return 0.5;
+    double h = 0.0;
+    const double inv_total = 1.0 / total;
+    for (size_t i = 0; i < n; ++i) {
+        if (scores[i] > 0.0) {
+            const double p = scores[i] * inv_total;
+            h -= p * std::log(p);
+        }
+    }
+    return std::clamp(h / std::log((double) n), 0.0, 1.0);
+}
+
+// Information-theoretic Shannon-entropy-modulated RH critical-line decay:
+// Peaked Zipf routing (low H_norm) increases retention; flat/shifting regimes (high H_norm) adapt faster.
+inline double rh_entropy_adjusted_decay(uint64_t step, double norm_entropy) noexcept {
+    const double base = rh_critical_decay(step);
+    const double shift = 0.08 * (0.5 - std::clamp(norm_entropy, 0.0, 1.0));
+    return std::clamp(base + shift, 0.50, 0.96);
+}
+
+// ST-MoE (arXiv:2606.15453, June 2026) consecutive-token Markov temporal-recurrence boost:
+// Rewards experts exhibiting short-horizon sequential stability (dt <= 2 tokens) while RH von Koch
+// hysteresis still suppresses 1-off noise.
+inline double st_moe_markov_boost(uint32_t dt) noexcept {
+    if (dt == 1u) return 0.55;
+    if (dt == 2u) return 0.25;
+    return 0.0;
 }
 
 // Truncated Riemann zeta function zeta_E(s) = sum_{k=1}^{E} k^{-s}.

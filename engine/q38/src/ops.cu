@@ -959,13 +959,43 @@ __global__ void __launch_bounds__(256) mv_q8_1row(MvTargets t, const BlockQ8_1* 
         if (!lane) *y_out = v;
     }
 }
-__global__ void norm(const float* x,const float* w,float* y,int n,float eps){
+__global__ void norm(const float* __restrict__ x,const float* __restrict__ w,float* __restrict__ y,int n,float eps){
     __shared__ float sums[8];
     const float* xr=x+size_t(blockIdx.x)*n; float* yr=y+size_t(blockIdx.x)*n;
-    float v=0;for(int i=threadIdx.x;i<n;i+=256)v+=xr[i]*xr[i];v=sum(v);
-    if(!(threadIdx.x%32))sums[threadIdx.x/32]=v;__syncthreads();
-    float s=0;for(int i=0;i<8;++i)s+=sums[i];float r=rsqrtf(s/n+eps);
-    for(int i=threadIdx.x;i<n;i+=256)yr[i]=xr[i]*r*w[i];
+    float v=0.f;
+    if((n&3)==0 && (((uintptr_t)xr|(uintptr_t)w|(uintptr_t)yr)&15u)==0){
+        const int n4=n>>2;
+        const float4* x4=(const float4*)xr;
+        for(int i=threadIdx.x;i<n4;i+=256){
+            float4 a=x4[i];
+            v=fmaf(a.x,a.x,fmaf(a.y,a.y,fmaf(a.z,a.z,fmaf(a.w,a.w,v))));
+        }
+    } else {
+        for(int i=threadIdx.x;i<n;i+=256)v=fmaf(xr[i],xr[i],v);
+    }
+    v=sum(v);
+    if(!(threadIdx.x&31))sums[threadIdx.x>>5]=v;
+    __syncthreads();
+    if(threadIdx.x<32){
+        float s=(threadIdx.x<8)?sums[threadIdx.x]:0.f;
+        #pragma unroll
+        for(int o=4;o>0;o>>=1)s+=__shfl_down_sync(0xffffffffu,s,o);
+        if(threadIdx.x==0)sums[0]=rsqrtf(s/n+eps);
+    }
+    __syncthreads();
+    const float r=sums[0];
+    if((n&3)==0 && (((uintptr_t)xr|(uintptr_t)w|(uintptr_t)yr)&15u)==0){
+        const int n4=n>>2;
+        const float4* x4=(const float4*)xr;
+        const float4* w4=(const float4*)w;
+        float4* y4=(float4*)yr;
+        for(int i=threadIdx.x;i<n4;i+=256){
+            float4 a=x4[i], b=w4[i];
+            y4[i]=make_float4(a.x*r*b.x, a.y*r*b.y, a.z*r*b.z, a.w*r*b.w);
+        }
+    } else {
+        for(int i=threadIdx.x;i<n;i+=256)yr[i]=xr[i]*r*w[i];
+    }
 }
 __global__ void elt(float* x,const float* y,int n,bool sw){int i=blockIdx.x*256+threadIdx.x;if(i<n)x[i]=sw?(x[i]*q38_sigmf(x[i])*y[i]):(x[i]+y[i]);}
 __global__ void gb(float* al,float* be,const float* dt,const float* a,int n){

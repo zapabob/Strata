@@ -707,6 +707,7 @@ public:
     std::vector<VSlot> vslots;
     std::vector<int> vslot_of;        // [41*512]: slot index in [0, vcache_nslots) or -1
     std::vector<double> vscore;       // [41*512]: decayed routing score (scaled by vcache_inv_scale)
+    std::vector<uint32_t> vlast_step; // [41*512]: ST-MoE last-activated decode step (Markov locality)
     std::vector<uint8_t> vram_flag;   // [41*512]: 1 = evaluated on GPU (static or vcache), 0 = evaluated on CPU
     std::vector<uint8_t> v_use_buf;   // [Tc*16]: per-pair CPU mask for CpuExperts::submit
     double vcache_inv_scale = 1.0;
@@ -732,6 +733,7 @@ public:
         vslots.assign(vcache_nslots, VSlot{});
         vslot_of.assign(41 * 512, -1);
         vscore.assign(41 * 512, 0.0);
+        vlast_step.assign(41 * 512, 0u);
         v_use_buf.assign((size_t)Tc * 16, 0);
         for (int i = 0; i < 41 * 512; ++i) {
             const int r = i < (int)g.expert_rank.size() ? g.expert_rank[i] : 511;
@@ -881,7 +883,19 @@ public:
             else ++vc_misses;
             if (!vcache_frozen) {
                 const double rw = w_arr ? (0.5 + 4.0 * std::max(0.0f, w_arr[i])) : 1.0;
-                vscore[gi] += rw * vcache_inv_scale;
+                // ST-MoE (arXiv:2606.15453) consecutive-token Markov temporal-recurrence boost:
+                double markov = 0.0;
+                if (!vlast_step.empty()) {
+                    const uint32_t cur_st = (uint32_t)(vcache_steps + 1);
+                    const uint32_t prev_st = vlast_step[gi];
+                    if (prev_st > 0 && cur_st > prev_st) {
+                        const uint32_t dt = cur_st - prev_st;
+                        if (dt == 1u) markov = 0.55;
+                        else if (dt == 2u) markov = 0.25;
+                    }
+                    vlast_step[gi] = cur_st;
+                }
+                vscore[gi] += (rw + markov) * vcache_inv_scale;
                 if (max_c > 0 && g.experts[gi].tier == 2 && !vram_flag[gi] && cpu.resident(l, e)) {
                     // Check not already inflight
                     bool infl = false;
