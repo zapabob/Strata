@@ -29,7 +29,7 @@ examples:
 """
 
 
-PICTURE_WORDS = {"off": "off", "on": "on", "cpu": "on (the reader runs on the processor)", "gpu": "on (the reader runs on the graphics card)"}
+PICTURE_WORDS = S.PICTURE_WORDS
 
 
 def _choice(label: str, options: tuple[str, ...]):
@@ -90,13 +90,13 @@ def add_parsers(sp: argparse._SubParsersAction) -> list[argparse.ArgumentParser]
                    help="with --data-dir: move the models you already have into the new folder. Without it nothing is moved: your models stay "
                         "where they are and stay usable, and the new folder gets the new downloads")
     g.add_argument("--context", type=_context, metavar="SIZE", help="how much text it remembers at once: 32k, 64k, 128k, 256k or a number of tokens (DeepSeek-V4.1-Flash: up to 512k and 1m)")
-    g.add_argument("--kv", type=_choice("a memory format", S.KV_MODES), metavar="FORMAT", help="family-supported KV; dense native: auto, f16, k8v4, spin8_k8v4, f16_turbo2/3/4")
+    g.add_argument("--kv", type=_choice("a memory format", S.KV_MODES), metavar="FORMAT", help="conversation memory format: int8 (default), q4_0, k8v4, fp16 (Inkling-2-Mini: fp16, fp8, k8v8, k8v4; dense native: auto, f16, spin8_k8v4, f16_turbo2/3/4)")
     g.add_argument("--output-language", choices=("ja", "model-default"), help="owned dense native output language preference")
     g.add_argument("--vision", type=_choice("a picture setting", S.VISION_MODES), metavar="off|on|gpu|cpu",
                    help="let the model read pictures. Default: on when the model can read pictures and the engine has the picture reader. "
                         "'on' picks the reader by your graphics memory: the CPU reader under 24 GB, the GPU reader from 24 GB (any make); "
                         "gpu / cpu choose one; off turns pictures off")
-    g.add_argument("--parallel", type=_parallel, metavar="N", help="requests answered at the same time, 1 to 8 (default: fit to your graphics card; one request at a time with the DFlash2 drafter)")
+    g.add_argument("--parallel", type=_parallel, metavar="N", help="requests answered at the same time, 1 to 64 (Inkling-2-Mini runs up to 64; the Qwen engine keeps 16 on NVIDIA and AMD cards and 8 elsewhere; Hy4-Flash answers one; default: fit to your graphics card; one request at a time with the DFlash2 drafter)")
     g.add_argument("--mtp", type=_choice("a draft layer setting", S.MTP_MODES), metavar="on|off",
                    help="the draft layer that makes answers faster. off starts without it: about 1 GB less graphics memory and less RAM, "
                         "slower answers; use it when the engine stops at start on a small card or a PC with little RAM. Default: on")
@@ -464,8 +464,7 @@ def apply_defaults(s: S.LaunchSettings, catalog) -> tuple[S.LaunchSettings, list
     notices += gpu_notices(s, comp)
     notices += S.check_access(s)
     vram = comp.main_vram_gb or None
-    if not (s.family and catalog.strata.multi_family(s.family)):     # (DeepSeek's own words are parallel_notices above: Qwen's card table does not apply)
-        notices += S.check_parallel(s, vram_gb=vram)
+    notices += S.check_parallel(s, vram_gb=vram, ram_gb=comp.ram_gb, vendor=comp.engine_vendor)
     return s, notices
 
 

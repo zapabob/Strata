@@ -112,7 +112,7 @@ export function NativeSettings({ model }: {
                 fields?: NativeField[];
                 settingsIssues?: { field: string; message: string }[];
                 refusalProjection?: RefusalProjectionSettings;
-            }>(`/api/native/models/${model}/settings`, { values: parsed, mcp: tools });
+            }>(`/api/native/models/${model}/settings`, { values: parsed, mcp: tools, base: JSON.parse(original ?? "{}").values });
             if (!current()) return;
             const result = nativeSettingsResponse(input);
             if (input.fields) setModelFields(input.fields);

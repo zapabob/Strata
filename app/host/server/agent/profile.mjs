@@ -231,6 +231,8 @@ export function compactionThreshold(context, outputBudget, env = process.env) {
 export const LOCAL_EFFORTS = Object.freeze({ off: null, low: 'low', medium: 'medium', high: 'high', max: 'high' });
 /** Thinking levels for Tencent Hy4-Flash: Off, High (default), Max (passes max through to strata-hy4's max reasoning budget). */
 export const HY4_LOCAL_EFFORTS = Object.freeze({ off: null, low: 'high', medium: 'high', high: 'high', max: 'max' });
+/** Inkling-2-Mini thinks (0.2.21). The server's levels: none/off 0, minimal 0.1, low 0.2, medium 0.7, high 0.9, xhigh and max 0.99. The menu's words go through as they are (Off sends enable_thinking false and no effort), Max as "max" (the other local models' server maps Max to high). */
+export const INKLING_LOCAL_EFFORTS = Object.freeze({ off: null, low: 'low', medium: 'medium', high: 'high', max: 'max' });
 /** The menu's words to the Harness's level names. */
 export const EFFORT_LEVEL = Object.freeze({ off: 'off', low: 'low', medium: 'medium', high: 'high', max: 'max' });
 /**
@@ -240,7 +242,6 @@ export const EFFORT_LEVEL = Object.freeze({ off: 'off', low: 'low', medium: 'med
 export const OPENROUTER_EFFORTS = Object.freeze({ off: 'none', low: 'low', medium: 'medium', high: 'high', max: 'xhigh' });
 /** Whether a connection is OpenRouter (the catalog entry, or its address), whatever address it is reached at. */
 export const isOpenRouter = conn => conn?.provider === 'openrouter' || (() => { try { return /(^|.)openrouter.ai$/i.test(new URL(conn.baseUrl).hostname); } catch { return false; } })();
-export const effortOf = value => EFFORT_LEVEL[String(value ?? '').toLowerCase()] ?? null;
 
 // Official 0.2.20 API: the adopted model-providers.mjs imports these from the
 // profile. Keep the fork's own effort tables while following the official
@@ -258,6 +259,7 @@ export function connectionReasoningFormat(conn) {
 export function connectionReasoningEfforts(conn, model) {
   const format = connectionReasoningFormat(conn);
   if (model.reasoning === false || (model.reasoning !== true && conn.reasoningFormat !== format)) return null;
+  if (/^hy4-flash/i.test(String(model?.id ?? '')) && (format === 'strata' || format === 'effort')) return HY4_LOCAL_EFFORTS;
   switch (format) {
     case 'strata': return LOCAL_EFFORTS;
     case 'openrouter': return OPENROUTER_EFFORTS;
@@ -266,6 +268,10 @@ export function connectionReasoningEfforts(conn, model) {
     default: return null;
   }
 }
+export const effortOf = value => {
+  const key = String(value ?? '').toLowerCase();
+  return key === 'xhigh' ? 'max' : (EFFORT_LEVEL[key] ?? null);
+};
 
 /**
  * Output budget for an API model. The connection's own maximum output is used when it is known (`maxOutput`, read from the provider's model
@@ -335,6 +341,8 @@ export function buildProfile({ local = [], connections = [], gate = true, tools 
     // does not authenticate gets a fixed placeholder; one that does gets its real key, by reference.
     env[keyEnv] = inst.key || 'strata-local';
     const context = inst.context ?? 32768;
+    const isInklingModel = inst.arch === 'inkling2_loop' || /^inkling-2-mini/i.test(String(inst.modelId ?? ''));
+    const isHy4Model = inst.arch === 'hy4flash' || /^hy4-flash/i.test(String(inst.modelId ?? ''));
     providers[route] = {
       displayName: inst.label ? `Strata (local) ${inst.label}` : 'Strata (local)',
       api: 'openai-completions',
@@ -345,18 +353,20 @@ export function buildProfile({ local = [], connections = [], gate = true, tools 
       streamIdleTimeoutMs: 60 * 60_000,
       // The Strata server reads the thinking level from `chat_template_kwargs` (enable_thinking, reasoning_effort) or from a top-level
       // reasoning_effort; a top-level `enable_thinking` (pi-ai's `qwen` format) is ignored, so the model went on thinking with the menu on Off.
+      // Inkling-2-Mini thinks like the others (0.2.21): its thinking comes back as reasoning_content, and Off sends none.
       compat: THINKING_COMPAT,
       ...(inst.privateConversationCache ? { headers: { 'x-strata-conversation-cache': '1' } } : {}),
       models: [{
         id: inst.modelId, name: inst.label || inst.modelId, contextWindow: context, maxTokens: localOutputBudget(context),
         input: inst.vision ? ['text', 'image'] : ['text'],
-        reasoning: true, reasoningEfforts: /^hy4-flash/i.test(String(inst.modelId ?? '')) ? HY4_LOCAL_EFFORTS : LOCAL_EFFORTS,
+        reasoning: true,
+        reasoningEfforts: isHy4Model ? HY4_LOCAL_EFFORTS : isInklingModel ? INKLING_LOCAL_EFFORTS : LOCAL_EFFORTS,
       }],
     };
     compaction.push({ provider: route, model: inst.modelId, headroomTokens: compactionHeadroom(context, localOutputBudget(context)), thresholdRatio: thresholdRatio() });
     slots = Math.max(slots, Number.isFinite(inst.slots) && inst.slots >= 1 ? Math.floor(inst.slots) : 1);
     const shaped = addShaped(route, providers[route], inst.baseUrl);
-    routes.push({ route, fp: fingerprint(providers[route], env[keyEnv]), kind: 'local', connectionName: 'this computer', instanceId: inst.id, modelId: inst.modelId, name: inst.label || inst.modelId, contextWindow: context, vision: !!inst.vision, ...(shaped ? { shaped } : {}) });
+    routes.push({ route, fp: fingerprint(providers[route], env[keyEnv]), kind: 'local', connectionName: 'this computer', instanceId: inst.id, modelId: inst.modelId, arch: inst.arch ?? null, name: inst.label || inst.modelId, contextWindow: context, vision: !!inst.vision, ...(shaped ? { shaped } : {}) });
   });
 
   connections.forEach(conn => {

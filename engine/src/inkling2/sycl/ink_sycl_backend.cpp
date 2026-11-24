@@ -13,6 +13,7 @@
 #include <vector>
 
 #define INK_SYCL_WITH_MODEL_FILE 1
+#include "ink_sy_fit.h"
 #include "ink_sy_runner.h"
 
 namespace {
@@ -63,35 +64,49 @@ public:
     }
 
     bool init(const InkModelFile& model, const BackendOpts& opts, std::string& err) override {
-        ink_sycl::set_primary_gpu_index(opts.gpu_index);
+        if (kv_dtype_is_int_quant(opts.kv_dtype)) {
+            err = "sycl: --kv k8v4/k8v8 is not supported on the SYCL backend (allocates fp16-sized pages); use --kv fp8 or fp16";
+            return false;
+        }
+        ink_sycl::apply_gpu_index(opts.gpu_index, opts.gpus);
         kv_dtype_ = opts.kv_dtype;
         const int par = std::max(1, std::min(64, opts.parallel));
         const int ctx = std::max(256, opts.max_ctx);
         const int batch_cap = std::max(256, std::max(opts.chunk, par));
-        // Compute exact runner + KV + DSpark + Vision + XMX/Hybrid reserve so 8-16 GB Arc cards NEVER OOM!
-        size_t kv_est = 0;
+        // Exact runner + KV + DSpark + Vision + XMX/Hybrid reserve (ink_sy_fit.h), so an 8-16 GB Arc card is told BEFORE the runner allocates
+        // that the --parallel / --max-context asked for does not fit (a start used to die with "dalloc ...: out of device memory").
         const auto& mc = model.m.c;
+        ink_sycl::InkSyFitGeom fit;
         const int core_len = mc.core_end - mc.core_start;
         for (int v = 0; v < mc.n_visits; ++v) {
             const int ip = (v < mc.core_start) ? v
                          : (v < mc.core_start + core_len * mc.num_passes)
                              ? (mc.core_start + (v - mc.core_start) % core_len)
                              : (mc.core_end + (v - mc.core_start - core_len * mc.num_passes));
-            const size_t stride = (size_t)(mc.is_swa[ip] ? mc.swa_win : ctx);
-            kv_est += 2ull * (size_t)par * stride * (size_t)mc.n_kv * (size_t)mc.head_dim * 2ull;
+            fit.visit_is_swa.push_back(mc.is_swa[ip] ? 1 : 0);
         }
-        const size_t dsp_kv = (opts.enable_dspark && model.m.dspark.present)
-            ? (3ull * 2ull * (size_t)par * (size_t)ctx * 1024ull * 2ull) : 0ull;
-        const size_t sc_est = (size_t)mc.n_visits * (size_t)par * 3ull * (2048ull + 2ull * (size_t)mc.hidden) * 8ull;
-        const size_t act_est = (size_t)batch_cap * 512ull * 1024ull + (128ull << 20);
-        const size_t vis_est = !opts.vision_path.empty() ? (700ull << 20) : 0ull;
-        const size_t hyb_xmx_est = (320ull << 20);  // Elastic VRAM cache ring (<=256 MiB) + XMX scratch (~32 MiB) + ping-pong
-        const size_t extra_reserve = kv_est + dsp_kv + sc_est + act_est + vis_est + hyb_xmx_est;
+        fit.swa_win = mc.swa_win;
+        fit.n_kv = mc.n_kv;
+        fit.head_dim = mc.head_dim;
+        fit.hidden = mc.hidden;
+        fit.dspark = opts.enable_dspark && model.m.dspark.present;
+        fit.vision = !opts.vision_path.empty();
+        const size_t extra_reserve = ink_sycl::ink_sy_runner_reserve(fit, par, ctx, opts.chunk);
         ink_sycl::ensure_l0_v1_default();
         if (model.kind == ModelSourceKind::Strata) {
             if (!mod_.load(model.path, opts.vram_experts_gb, err, extra_reserve, opts.gpus, opts.gpu_ids, opts.ep_split)) return false;
         } else {
             if (!mod_.load_from_model_file(model, opts.vram_experts_gb, err, extra_reserve)) return false;
+        }
+        {
+            const size_t gpu_mem = ink_sycl::dev_caps().global_mem;
+            const size_t used = ink_sycl::dev_bytes_allocated();
+            const size_t avail = gpu_mem > used ? gpu_mem - used : 0;
+            const std::string why = ink_sycl::ink_sy_fit_message(fit, par, ctx, opts.chunk, avail);
+            if (!why.empty()) {
+                err = why;
+                return false;
+            }
         }
         if (!runner_.init(mod_, par, ctx, batch_cap, opts.enable_dspark, err)) {
             return false;
@@ -189,6 +204,10 @@ public:
     }
 
     bool selfcheck(std::string& err) override {
+        ink_sycl::apply_gpu_index(pending_gpu_index_, pending_gpus_);
+        if (mod_.path.empty() && runner_.mod == nullptr) {
+            return selfcheck_device(err);
+        }
         StepBatch b;
         b.push(0, 0, 1, true);
         std::vector<float> lg((size_t)mod_.man.c.vocab_unpadded);
@@ -201,16 +220,64 @@ public:
         return true;
     }
 
+    bool selfcheck_device(std::string& err) {
+        constexpr int N = 32, K = 64, M = 2;
+        std::vector<float> w((size_t)N * K), x((size_t)M * K);
+        for (size_t i = 0; i < w.size(); ++i) w[i] = std::sin((float)(i % 97)) * 0.5f - 0.25f;
+        for (size_t i = 0; i < x.size(); ++i) x[i] = std::cos((float)(i % 89)) * 0.5f;
+        float* wd = sycl::malloc_device<float>(w.size(), ink_sycl::Q());
+        float* xd = sycl::malloc_device<float>(x.size(), ink_sycl::Q());
+        float* yd = sycl::malloc_device<float>((size_t)M * N, ink_sycl::Q());
+        if (!wd || !xd || !yd) {
+            if (wd) sycl::free(wd, ink_sycl::Q());
+            if (xd) sycl::free(xd, ink_sycl::Q());
+            if (yd) sycl::free(yd, ink_sycl::Q());
+            err = "sycl selfcheck: device USM allocation failed";
+            return false;
+        }
+        ink_sycl::h2d_sync(wd, w.data(), w.size() * sizeof(float));
+        ink_sycl::h2d_sync(xd, x.data(), x.size() * sizeof(float));
+        ink_sycl::dzero(yd, (size_t)M * N * sizeof(float));
+        ink_sycl::k_linear_f32_sg16(wd, N, K, xd, yd, M);
+        std::vector<float> y((size_t)M * N, 0.0f);
+        ink_sycl::d2h(y.data(), yd, y.size() * sizeof(float));
+        ink_sycl::wait();
+        sycl::free(wd, ink_sycl::Q());
+        sycl::free(xd, ink_sycl::Q());
+        sycl::free(yd, ink_sycl::Q());
+        for (int m = 0; m < M; ++m) {
+            for (int n = 0; n < N; ++n) {
+                float ref = 0.0f;
+                for (int k = 0; k < K; ++k) ref += w[(size_t)n * K + k] * x[(size_t)m * K + k];
+                const float got = y[(size_t)m * N + n];
+                if (!std::isfinite(got) || std::fabs(ref - got) > 1e-4f * std::max(1.0f, std::fabs(ref))) {
+                    err = "sycl selfcheck F32 SG16 linear mismatch at (" + std::to_string(m) + "," + std::to_string(n) +
+                          "): ref=" + std::to_string(ref) + " got=" + std::to_string(got);
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
 private:
+    friend std::unique_ptr<InkBackend> make_sycl_backend(const BackendOpts* opts);
     ink_sycl::InkSyModel mod_;
     ink_sycl::InkSyRunner runner_;
     std::vector<uint8_t> slot_used_;
     int active_slots_ = 0;
     KvDtype kv_dtype_ = KvDtype::FP16;
+    int pending_gpu_index_ = 0;
+    int pending_gpus_ = 1;
 };
 
-std::unique_ptr<InkBackend> make_sycl_backend() {
-    return std::make_unique<SyclInkBackend>();
+std::unique_ptr<InkBackend> make_sycl_backend(const BackendOpts* opts) {
+    auto b = std::make_unique<SyclInkBackend>();
+    if (opts) {
+        b->pending_gpu_index_ = opts->gpu_index;
+        b->pending_gpus_ = opts->gpus;
+    }
+    return b;
 }
 
 }  // namespace ink2

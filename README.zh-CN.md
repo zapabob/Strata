@@ -1,8 +1,8 @@
-## 0.8.0 变更
+## 0.8.1 变更
 
 注：DS4 2.84倍／FLA 4.86倍／Sakura 22.44 t/s 等数值来自 Antigravity 开发日志，本次构建会话未独立复现。本次会话实测为正规 GGUF、32K 上下文下 prefill 9.09 t/s／decode 11.78 t/s（证据：H:/Strata/evidence/inkling2-benchmark-result.txt）。
 
-本版本保留所有 fork 独有功能，并加入 11/22-23 的原生优化：产品 **0.8.0**，原生引擎系列 **0.6.8**，上游 v0.2.20。RTX 5060 Ti（sm_120a）/ CUDA 13.5：DS4-9B prefill 2.84 倍、E2E +22.7%、FLA GDN + Spin(8) prefill 4.86 倍、Sakura Inkling-2 65K-98K（解码 22.44 t/s）。Ryu（kuraneko1，MIT）的 SM × VRAM 配置表已合并到官方 CUDA Inkling-2（PR #6571）。签名验证已移除，SHA-256 保留。`releaseQualified=false`。
+本版本保留所有 fork 独有功能，并加入 11/22-23 的原生优化：产品 **0.8.1**，原生引擎系列 **0.7.0**，上游 v0.2.21。RTX 5060 Ti（sm_120a）/ CUDA 13.5：DS4-9B prefill 2.84 倍、E2E +22.7%、FLA GDN + Spin(8) prefill 4.86 倍、Sakura Inkling-2 65K-98K（解码 22.44 t/s）。Ryu（kuraneko1，MIT）的 SM × VRAM 配置表已合并到官方 CUDA Inkling-2（PR #6571）。签名验证已移除，SHA-256 保留。`releaseQualified=false`。
 
 
 Gen-H 更新 (提交 21bedf91c): strata-inkling2.exe 与 strata.exe 采用 float4 k_stack_rms_norm/k_mix + exp2f、Zipf token 缓存与零拷贝映射 h_tok_buf; moe_up 39.5 到 4.6 ms (-88%), Sakura 131K 上 32/32 token 完全一致。
@@ -10,7 +10,7 @@ Gen-H 更新 (提交 21bedf91c): strata-inkling2.exe 与 strata.exe 采用 float
 ## 版本与下载
 
 <!-- release-062-stable -->
-当前版本: **0.8.0** — GitHub Latest: [发布页面](https://github.com/zapabob/Strata/releases/tag/v0.8.0)。请从发布的 **Assets** 下载桌面安装程序，文件名为 `Strata-0.8.0-windows-x64-setup.exe`（app 二进制未针对 0.8.0 重新构建，只更换了引擎）。捆绑包: `Strata-0.8.0-windows-x64.tar.7z`。GPU 引擎是同一 Assets 中的可选组件: `strata-engine-0.6.8-windows-x86_64-cuda-cuda13.tar.gz`（重新构建的 Q38 27B/9B + Inkling-2、CUDA 13.5）和 `strata-hy4-0.1.64-windows-x86_64-cuda-cuda13.tar.gz`。请务必打开发布页面并从 Assets 中选择确切文件（文件名不一定包含版本号）。SHA-256 摘要仍是完整性检查。`releaseQualified=false`。
+当前版本: **0.8.1** — GitHub Latest: [发布页面](https://github.com/zapabob/Strata/releases/tag/v0.8.1)。请从发布的 **Assets** 下载桌面安装程序，文件名为 `Strata-0.8.1-windows-x64-setup.exe`（app 二进制未针对 0.8.1 重新构建，只更换了引擎）。捆绑包: `Strata-0.8.1-windows-x64.tar.7z`。GPU 引擎是同一 Assets 中的可选组件: `strata-engine-0.7.0-windows-x86_64-cuda-cuda13.tar.gz`（重新构建的 Q38 27B/9B + Inkling-2、CUDA 13.5）和 `strata-hy4-0.1.64-windows-x86_64-cuda-cuda13.tar.gz`。请务必打开发布页面并从 Assets 中选择确切文件（文件名不一定包含版本号）。SHA-256 摘要仍是完整性检查。`releaseQualified=false`。
 
 
 ![Hakua / Strata real-model Japanese chat on Qwen3.8-27B](docs/media/native-qwen38-japanese-chat.png)

@@ -17,6 +17,7 @@
 #include "strata/quant/dequant.hpp"
 #include "strata/quant/types.hpp"
 #if defined(STRATA_INKLING2_CPU_POOL)
+#include "strata/kernels/cpu/kq_avx2.hpp"
 #include "strata/kernels/cpu/native_expert.hpp"
 #include "strata/kernels/cpu/pool.hpp"
 #endif
@@ -1904,21 +1905,22 @@ struct Engine {
                 }
                 const auto tp_u0 = Clock::now();
                 if (T == 1) {
-                    // Zero-copy PCIe-mapped double-buffered CPU miss pre-combine (0 cudaMemcpyAsync H2D calls!).
+                    // Gen-K L1-cached AVX2 pre-combine + single sequential write to WC-mapped h_cpu_sum
+                    // (eliminates ~2,200 uncached Write-Combining read-modify-write flushes per 32 tokens!).
                     float* __restrict__ hsum = h_cpu_sum + (size_t) (il & 1) * N;
                     const float* dsum = h_cpu_sum_dev + (size_t) (il & 1) * N;
+                    alignas(32) float l1_acc_stack[4096];
+                    std::vector<float> l1_acc_heap;
+                    float* __restrict__ acc_buf = (N <= 4096) ? l1_acc_stack : (l1_acc_heap.resize((size_t) N), l1_acc_heap.data());
                     bool first = true;
                     for (int e = 0; e < Kp; ++e) {
                         if (!h_miss[e]) continue;
                         const float w = h_ewts[e];
                         const float* __restrict__ src = cpu_out + (size_t) e * N;
-                        if (first) {
-                            for (int i = 0; i < N; ++i) hsum[i] = w * src[i];
-                            first = false;
-                        } else {
-                            for (int i = 0; i < N; ++i) hsum[i] += w * src[i];
-                        }
+                        C::vec_weighted_accum_avx2(acc_buf, src, w, (int) N, first);
+                        first = false;
                     }
+                    std::memcpy(hsum, acc_buf, (size_t) N * sizeof(float));
                     if (has_gpu) {
                         if (prof) p_moe_up_ms += ms_since(tp_u0);
                         const auto tp_p0 = Clock::now();
@@ -2003,8 +2005,8 @@ struct Engine {
                 if (L.slot_of[(size_t) hot_cand] >= 0) continue;
                 const int s = victims[(size_t) v_idx];
                 const int y = L.exp_in_slot[(size_t) s];
-                const double s_hot = L.score[(size_t) hot_cand];
-                const double s_cold = L.score[(size_t) y];
+                const double s_hot = blended(hot_cand);
+                const double s_cold = blended(y);
                 const double diff = s_hot - s_cold;
                 // Under RH (von Koch explicit-formula bound O(sqrt(N) log N)), skip swaps within ShinkaEvolve noise floor.
                 const double thr = (s_cold > 0.0) ? strata::math::rh_von_koch_threshold(s_hot, s_cold, rh_rebal_step, 0.1893) : 0.0;
@@ -3329,12 +3331,79 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, std::strin
         }
 
         if (s > 0) {
-            tmp.resize(L.L.bytes);
-            for (int k = 0; k < s; ++k) {
-                const uint8_t* src = L.hblobs ? (L.hblobs + (size_t) k * L.stride) : (build_expert_blob(L, k, tmp.data()), tmp.data());
-                CK(cudaMemcpy(L.d_blobs + (size_t) k * L.stride, src, L.L.bytes, cudaMemcpyHostToDevice));
-                L.slot_of[(size_t) k] = k;
-                L.exp_in_slot[(size_t) k] = k;
+            if (L.hblobs) {
+                for (int k = 0; k < s; ++k) {
+                    CK(cudaMemcpyAsync(L.d_blobs + (size_t) k * L.stride,
+                                       L.hblobs + (size_t) k * L.stride, L.L.bytes, cudaMemcpyHostToDevice, E.cst));
+                    L.slot_of[(size_t) k] = k;
+                    L.exp_in_slot[(size_t) k] = k;
+                }
+                CK(cudaStreamSynchronize(E.cst));
+            } else {
+                // Gen-K 6-core parallel double-buffered pinned DMA uploader:
+                // overlaps multi-threaded expert blob packing with PCIe 3.0 x8 async H2D transfers.
+                const int batch_k = std::min(s, 8);
+                const size_t buf_bytes = (size_t) batch_k * L.stride;
+                uint8_t* pin[2] = {nullptr, nullptr};
+                const bool pin_ok = (cudaHostAlloc(&pin[0], buf_bytes, cudaHostAllocDefault) == cudaSuccess) &&
+                                    (cudaHostAlloc(&pin[1], buf_bytes, cudaHostAllocDefault) == cudaSuccess);
+                if (pin_ok) {
+                    const int hw = (int) std::thread::hardware_concurrency();
+                    const int nt_pack = std::clamp(hw > 0 ? hw / 2 : 4, 1, 6);
+                    cudaEvent_t ev_buf[2] = {nullptr, nullptr};
+                    CK(cudaEventCreateWithFlags(&ev_buf[0], cudaEventDisableTiming));
+                    CK(cudaEventCreateWithFlags(&ev_buf[1], cudaEventDisableTiming));
+                    bool armed[2] = {false, false};
+                    int b_idx = 0;
+                    for (int k0 = 0; k0 < s; k0 += batch_k) {
+                        const int cnt = std::min(batch_k, s - k0);
+                        if (armed[b_idx]) CK(cudaEventSynchronize(ev_buf[b_idx]));
+                        if (cnt > 1 && nt_pack > 1) {
+                            const int n_th = std::min(nt_pack, cnt);
+                            std::vector<std::thread> ths;
+                            ths.reserve((size_t) n_th);
+                            for (int ti = 0; ti < n_th; ++ti) {
+                                const int j0 = (cnt * ti) / n_th;
+                                const int j1 = (cnt * (ti + 1)) / n_th;
+                                ths.emplace_back([&, j0, j1]() {
+                                    for (int j = j0; j < j1; ++j) {
+                                        build_expert_blob(L, k0 + j, pin[b_idx] + (size_t) j * L.stride);
+                                    }
+                                });
+                            }
+                            for (auto& th : ths) th.join();
+                        } else {
+                            for (int j = 0; j < cnt; ++j) {
+                                build_expert_blob(L, k0 + j, pin[b_idx] + (size_t) j * L.stride);
+                            }
+                        }
+                        CK(cudaMemcpyAsync(L.d_blobs + (size_t) k0 * L.stride, pin[b_idx],
+                                           (size_t) cnt * L.stride, cudaMemcpyHostToDevice, E.cst));
+                        CK(cudaEventRecord(ev_buf[b_idx], E.cst));
+                        armed[b_idx] = true;
+                        for (int j = 0; j < cnt; ++j) {
+                            L.slot_of[(size_t) (k0 + j)] = k0 + j;
+                            L.exp_in_slot[(size_t) (k0 + j)] = k0 + j;
+                        }
+                        b_idx ^= 1;
+                    }
+                    CK(cudaStreamSynchronize(E.cst));
+                    cudaEventDestroy(ev_buf[0]);
+                    cudaEventDestroy(ev_buf[1]);
+                    cudaFreeHost(pin[0]);
+                    cudaFreeHost(pin[1]);
+                } else {
+                    (void) cudaGetLastError();
+                    if (pin[0]) cudaFreeHost(pin[0]);
+                    if (pin[1]) cudaFreeHost(pin[1]);
+                    tmp.resize(L.L.bytes);
+                    for (int k = 0; k < s; ++k) {
+                        build_expert_blob(L, k, tmp.data());
+                        CK(cudaMemcpy(L.d_blobs + (size_t) k * L.stride, tmp.data(), L.L.bytes, cudaMemcpyHostToDevice));
+                        L.slot_of[(size_t) k] = k;
+                        L.exp_in_slot[(size_t) k] = k;
+                    }
+                }
             }
             CK(cudaMemcpy(L.d_slot_of, L.slot_of.data(), (size_t) ne * sizeof(int32_t), cudaMemcpyHostToDevice));
             total_vram_experts += s;

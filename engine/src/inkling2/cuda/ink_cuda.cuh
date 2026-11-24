@@ -17,7 +17,7 @@
 #include <cublas_v2.h>
 
 // MERGED from kuraneko1/Strata (MIT, kuraneko1/_ryu15_): two-axis SM x VRAM
-// automatic profile selection. See docs/third-party/inkling2-kuraneko/CREDITS.md.
+// automatic profile selection. Credit: kuraneko1 (_ryu15_), kuraneko1/Strata (MIT).
 #include "strata/inkling2/profile_rules.hpp"
 
 #include <cstddef>
@@ -26,14 +26,18 @@
 #include <cstdlib>
 #include <cstring>
 #include <chrono>
+#include <stdexcept>
+#include <string>
+#include "strata/core/device_error_exit.hpp"
+#include "strata/platform/cgroup_mem.hpp"
 
 #define INK_CK(call)                                                                                                  \
     do {                                                                                                              \
         cudaError_t _e = (call);                                                                                      \
         if (_e != cudaSuccess) {                                                                                      \
-            std::fprintf(stderr, "strata-inkling CUDA error %d (%s) at %s:%d\n", (int)_e, cudaGetErrorString(_e),     \
-                         __FILE__, __LINE__);                                                                         \
-            std::exit(3);                                                                                             \
+            char _what[256];                                                                                          \
+            std::snprintf(_what, sizeof(_what), "strata-inkling CUDA error %d at %s:%d", (int)_e, __FILE__, __LINE__);\
+            strata::core::exit_device_error(_what, cudaGetErrorString(_e));                                           \
         }                                                                                                             \
     } while (0)
 
@@ -41,8 +45,9 @@
     do {                                                                                                              \
         cublasStatus_t _s = (call);                                                                                   \
         if (_s != CUBLAS_STATUS_SUCCESS) {                                                                            \
-            std::fprintf(stderr, "strata-inkling cuBLAS error %d at %s:%d\n", (int)_s, __FILE__, __LINE__);           \
-            std::exit(3);                                                                                             \
+            char _what[256];                                                                                          \
+            std::snprintf(_what, sizeof(_what), "strata-inkling cuBLAS error %d at %s:%d", (int)_s, __FILE__, __LINE__); \
+            strata::core::exit_device_error(_what, "cublas error");                                                   \
         }                                                                                                             \
     } while (0)
 
@@ -52,10 +57,35 @@ inline double now_s() {
     return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
+// A device allocation that did not fit. While start-up code runs with ink_alloc_throws() set (the backend's init), a failed
+// allocation throws this so the backend can retry with a smaller workspace (#6644 #6792); everywhere else it ends the engine
+// the way every other CUDA error does.
+struct InkAllocFailure : std::runtime_error {
+    explicit InkAllocFailure(const std::string& m) : std::runtime_error(m) {}
+};
+inline bool& ink_alloc_throws() {
+    static thread_local bool v = false;
+    return v;
+}
+// Names the request and the card's free memory ("CUDA error 2 at ink_cuda.cuh:54" alone cannot be acted on).
+inline void ink_alloc_failed(cudaError_t e, size_t bytes, const char* file, int line) {
+    size_t vf = 0, vt = 0;
+    cudaGetLastError();
+    cudaMemGetInfo(&vf, &vt);
+    char _what[300];
+    std::snprintf(_what, sizeof(_what), "strata-inkling CUDA error %d at %s:%d (allocating %.0f MiB; %.0f of %.0f MiB free)",
+                  (int)e, file, line, (double)bytes / 1048576.0, (double)vf / 1048576.0, (double)vt / 1048576.0);
+    if (ink_alloc_throws()) throw InkAllocFailure(_what);
+    strata::core::exit_device_error(_what, cudaGetErrorString(e));
+}
+
 template <typename T>
 inline T* dalloc(size_t count) {
     T* p = nullptr;
-    if (count > 0) INK_CK(cudaMalloc(&p, count * sizeof(T)));
+    if (count > 0) {
+        const cudaError_t e = cudaMalloc(&p, count * sizeof(T));
+        if (e != cudaSuccess) ink_alloc_failed(e, count * sizeof(T), __FILE__, __LINE__);
+    }
     return p;
 }
 
@@ -107,6 +137,10 @@ inline cudaError_t ink_cuda_mem_info(size_t* vfree, size_t* vtot, int dev = -1) 
                 unsigned long long kb = 0;
                 if (std::sscanf(line, "MemAvailable: %llu kB", &kb) == 1) {
                     size_t avail = (size_t)kb * 1024ull;
+                    const auto cg = strata::platform::cgroup_mem::probe_cgroup_room((uint64_t)*vtot);
+                    if (cg.limited && cg.available_bytes != strata::platform::cgroup_mem::kUnlimited) {
+                        avail = std::min<size_t>(avail, (size_t)cg.available_bytes);
+                    }
                     if (avail > *vfree) *vfree = std::min(avail, *vtot);
                     break;
                 }
@@ -172,10 +206,13 @@ enum InkFmt : int {
     FMT_S8_K  = 8,
     FMT_SF4   = 15,
     FMT_MX8   = 16,
+    FMT_GGUF_RAW = 20,
     FMT_Q8ROW = 100,
     FMT_F32   = 101,
     FMT_BF16  = 102,
     FMT_F16   = 103,
+    FMT_Q8_0  = 104,   // GGUF Q8_0 table as stored, row by row: [N][K/32] fp16 scales, then [N][K] int8 (the embedding; CUDA backend only)
+    FMT_Q8_0F = 105,   // GGUF Q8_0 dense matrix in mma fragment order for k_ink_gemm_q8f (CUDA, sm_80+): see the loader
 };
 
 __host__ __device__ constexpr int ink_sb_bytes(int fmt) {
@@ -332,9 +369,11 @@ __device__ __forceinline__ float ue8m0_to_f32(uint8_t e) {
     return __uint_as_float((uint32_t)e << 23);
 }
 
-// Exact SITU(beta=4.0, lb=25.0) double-softcapped MoE activation
+// Exact SITU(beta=4.0, lb=25.0) double-softcapped MoE activation (non-finite guard prevents NaN propagation!)
 __device__ __forceinline__ float situ_f32(float g, float u) {
-    const float sig = 1.0f / (1.0f + __expf(-g));
+    if (!isfinite(g) || !isfinite(u)) return 0.0f;
+    const float gc = fminf(fmaxf(g, -80.0f), 80.0f);
+    const float sig = 1.0f / (1.0f + __expf(-gc));
     const float ga = kInkSituBeta * tanhf(g * (1.0f / kInkSituBeta)) * sig;
     const float ua = kInkSituLb * tanhf(u * (1.0f / kInkSituLb));
     return ga * ua;

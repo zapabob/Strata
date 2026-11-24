@@ -1,0 +1,3557 @@
+{
+  "generated_at": "2026-11-24T12:01:49.140373+00:00",
+  "mode": "apply",
+  "base": "v0.2.20",
+  "ours": "HEAD",
+  "theirs": "upstream/main",
+  "preserved_counts": {
+    "fork_preserved": 8369,
+    "identical": 4778
+  },
+  "strategy_counts": {
+    "adopt_upstream": 392,
+    "clean_3way": 54,
+    "custom_resolver:resolve_readme": 1,
+    "keep_fork_version": 7,
+    "custom_resolver:resolve_agent_bridge": 1,
+    "custom_resolver:resolve_llm_shape": 1,
+    "custom_resolver:resolve_profile_mjs": 1,
+    "custom_resolver:resolve_host_index": 1,
+    "custom_resolver:resolve_native_control": 1,
+    "custom_resolver:resolve_native_gateway": 1,
+    "custom_resolver:resolve_run_config_check": 1,
+    "custom_resolver:resolve_skill_files": 1,
+    "custom_resolver:resolve_native_settings_tsx": 1,
+    "custom_resolver:resolve_native_ts": 1,
+    "custom_resolver:resolve_store_ts": 1,
+    "custom_resolver:resolve_chat_tsx": 1,
+    "custom_resolver:resolve_prefer_upstream": 1,
+    "adopt_upstream_override": 13,
+    "custom_resolver:resolve_release_json": 1,
+    "custom_resolver:resolve_metal_cmake": 1,
+    "custom_resolver:resolve_native_expert": 1,
+    "prefer_upstream_hunks": 14,
+    "custom_resolver:resolve_frontend_py": 1,
+    "custom_resolver:resolve_inkling_kind_py": 1,
+    "custom_resolver:resolve_server_py": 1,
+    "custom_resolver:resolve_launch_cmd_py": 1,
+    "custom_resolver:resolve_test_tui2_versions": 1
+  },
+  "total_updated": 502,
+  "actions": [
+    {
+      "path": ".github/ISSUE_TEMPLATE/bug_report.yml",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "7c0b5ceef65f97316288b71e4b79351d191cde951a02ee0cd617aeef207fc55b"
+    },
+    {
+      "path": ".github/SECURITY.md",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "f10704802a95768b4ba2fdf10b92173be41d2102abcf1222d2e1b8c97b31adcb"
+    },
+    {
+      "path": ".github/ci/inkling/b70_gate.sh",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "a529d08ccc9a893a3ad3aba1059ef56d68f25d066dcf2ef93c474ac27c1f30f0"
+    },
+    {
+      "path": ".github/ci/inkling/c32_chat.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "e0151fdf3ce86edd82cb442c4568778707a2dca3db3739a8bf0a9e646295d914"
+    },
+    {
+      "path": ".github/ci/inkling/chat_check.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "80edae1a91927e4642bb654e3ff9880b65150e3b8e39e2cd92c11413d5f5152b"
+    },
+    {
+      "path": ".github/ci/inkling/longctx_chat.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "239fb9ee9bd02454b94519fd673ffa5e6d5cf8c2176aaaaa66ff7a92a3845a6a"
+    },
+    {
+      "path": ".github/ci/inkling/serve_chat.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "ecb75aad678d84ce093dd917bfecf91dd321b77f748af7c54f2908f02c22e4be"
+    },
+    {
+      "path": ".github/ci/inkspeed/b70_mixsplit.sh",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "5724a8ee57391ea471acf40c6a06d0c0d9dcc1966fd6afe493eddccf5da28321"
+    },
+    {
+      "path": ".github/ci/inkspeed/b70_speed.sh",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "3980f78ee018805c8c2db7273120dccfa4584a169ba7c5985d5856f02aae4dbc"
+    },
+    {
+      "path": ".github/workflows/intel-runner.yml",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "a77333adf3782b07ec93bcfe5c7bf185252fab13e2302555c195d2e70fe4d22a"
+    },
+    {
+      "path": "AGENTS.md",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "5a72122c444af614753713bacc9af6cf946c26ed78b2337b432e7f70e720dd20"
+    },
+    {
+      "path": "README.md",
+      "category": "both_modified",
+      "strategy": "custom_resolver:resolve_readme",
+      "hunks_resolved": 13,
+      "sha256": "7b2d3a7ca54cdc6ee0ec490a8511cc4db8c3c069dc754de09c2d757b07bcbee3"
+    },
+    {
+      "path": "app/desktop/package.json",
+      "category": "both_modified",
+      "strategy": "keep_fork_version",
+      "hunks_resolved": 1,
+      "sha256": "18cf86ee2a078c8111c98556de6f6630321d7c344f5b9e9a51bf837061eca890"
+    },
+    {
+      "path": "app/desktop/src-tauri/Cargo.lock",
+      "category": "both_modified",
+      "strategy": "keep_fork_version",
+      "hunks_resolved": 1,
+      "sha256": "9e3f09c66e1404b911006efa8a218fe8a3d2d0a17a644affa9566d561a143f9e"
+    },
+    {
+      "path": "app/desktop/src-tauri/Cargo.toml",
+      "category": "both_modified",
+      "strategy": "keep_fork_version",
+      "hunks_resolved": 1,
+      "sha256": "7cc3615ecd69ab0ad3bdbaff63d1aefa86b38df51810c9ef75a0c45e03aa80ce"
+    },
+    {
+      "path": "app/host/package-lock.json",
+      "category": "both_modified",
+      "strategy": "keep_fork_version",
+      "hunks_resolved": 2,
+      "sha256": "e63909311c3b08da238d2ab89d1d0619606a9c13a1979a6843cc8033bc2c27c1"
+    },
+    {
+      "path": "app/host/package.json",
+      "category": "both_modified",
+      "strategy": "keep_fork_version",
+      "hunks_resolved": 1,
+      "sha256": "3031a34d8b449c84327f019421a73d92b693953d24f04535521430bf1f53b162"
+    },
+    {
+      "path": "app/host/server/agent/agent-bridge.mjs",
+      "category": "both_modified",
+      "strategy": "custom_resolver:resolve_agent_bridge",
+      "hunks_resolved": 2,
+      "sha256": "3760123379ab610a0c051db859c9414c17f4566c0116e6ae824c29d32f1752de"
+    },
+    {
+      "path": "app/host/server/agent/engine-progress.mjs",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "be7d84252ae2fd73a18c5e10a295f1f790b3619d83abf7af3416efd145ede39f"
+    },
+    {
+      "path": "app/host/server/agent/llm-shape.mjs",
+      "category": "both_modified",
+      "strategy": "custom_resolver:resolve_llm_shape",
+      "hunks_resolved": 2,
+      "sha256": "d5ec858ef293d296bb3e44a45bb42e908cb564e7806969bbd3b3fe9234710235"
+    },
+    {
+      "path": "app/host/server/agent/profile.mjs",
+      "category": "both_modified",
+      "strategy": "custom_resolver:resolve_profile_mjs",
+      "hunks_resolved": 5,
+      "sha256": "65dbdb746e08a5d71a4710cf3b28b0d748834008cba075694dc25e60d1a910eb"
+    },
+    {
+      "path": "app/host/server/agent/user-questions.mjs",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "1d5568a9b5ac5cba047b817ae6baf77b977688c21e5b8c0a65d5978d4803368b"
+    },
+    {
+      "path": "app/host/server/chat-store.mjs",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "5de9746a23d94520cd9a59ac3061169c6a15b21515abf0df732cec5391f10419"
+    },
+    {
+      "path": "app/host/server/engine-step.mjs",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "e42ed8123daa262f80998be20738d5694d630acbc1af8990d2496202f47154f0"
+    },
+    {
+      "path": "app/host/server/index.mjs",
+      "category": "both_modified",
+      "strategy": "custom_resolver:resolve_host_index",
+      "hunks_resolved": 12,
+      "sha256": "fc21bccd1567f8033ed891dc30c7e746f385bef4029f096806e7522b0b71f2de"
+    },
+    {
+      "path": "app/host/server/model-ids.mjs",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "9667285b77623cc42d98b301889e6ca974f6173b839f6db0da3b7c1485de4f17"
+    },
+    {
+      "path": "app/host/server/native-control.mjs",
+      "category": "both_modified",
+      "strategy": "custom_resolver:resolve_native_control",
+      "hunks_resolved": 3,
+      "sha256": "630b5b1cc6d0709586c88e3bee7be679d5dd81bbe1e33d4ed12583420b9d6cc8"
+    },
+    {
+      "path": "app/host/server/native-gateway.mjs",
+      "category": "both_modified",
+      "strategy": "custom_resolver:resolve_native_gateway",
+      "hunks_resolved": 1,
+      "sha256": "c445c25ed9307c6740f6d1afe54b796a17568cf3f28dd23d098b4849f9a77ad9"
+    },
+    {
+      "path": "app/host/server/native-settings.mjs",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "4a8fe7bdada28f08a4c31eb592bd93234b10fefb7dedf0ab812550b5b624b8e7"
+    },
+    {
+      "path": "app/host/server/run-config-check.mjs",
+      "category": "both_modified",
+      "strategy": "custom_resolver:resolve_run_config_check",
+      "hunks_resolved": 2,
+      "sha256": "f3d650f2391b0efa52ed5128b387ea1455cabd614ec528774360b862728c0bc8"
+    },
+    {
+      "path": "app/host/server/skill-files.mjs",
+      "category": "both_modified",
+      "strategy": "custom_resolver:resolve_skill_files",
+      "hunks_resolved": 2,
+      "sha256": "f54103ea32796eef4755179363f23f8772447d534c2dabb19b36ec702cc9d5cb"
+    },
+    {
+      "path": "app/host/server/skill-selection.mjs",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "e66bdfc5ae31be06ccdd5ced15fa8a859b7684a6764854c30289f7480ad31582"
+    },
+    {
+      "path": "app/host/src/components/ApprovalCard.tsx",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "1ddbd676d128c0d1f4ee901ee83aa5916db6669c962bf0cd4561b984d2b076b4"
+    },
+    {
+      "path": "app/host/src/components/ComposerControls.tsx",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "7033664a2a0ab8b714a272a958d9413be392ea6d4dd3f46c51bef38ed0266b3d"
+    },
+    {
+      "path": "app/host/src/components/NativeSettings.tsx",
+      "category": "both_modified",
+      "strategy": "custom_resolver:resolve_native_settings_tsx",
+      "hunks_resolved": 1,
+      "sha256": "52ed18892e31d1d125b269bff294f873bab546fd30c4003ebafa46994fdda731"
+    },
+    {
+      "path": "app/host/src/components/QuestionCard.tsx",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "fee95a6e6186930de06be6b94798970a5ca45ee4d55dc9534cc0891b8c123a7f"
+    },
+    {
+      "path": "app/host/src/components/SettingsUpdates.tsx",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "00f9845a6db0e118471ed6a5aebdeb8555150d986b7fa13e2eacbe5388f21ca1"
+    },
+    {
+      "path": "app/host/src/lib/agent-ask.ts",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "8cb2ae37816b85698572e833faa60bcbfae462873639c909fa6ac3e995857f4c"
+    },
+    {
+      "path": "app/host/src/lib/native.ts",
+      "category": "both_modified",
+      "strategy": "custom_resolver:resolve_native_ts",
+      "hunks_resolved": 1,
+      "sha256": "79bba530f81ddc2c5fe3c90d5a6773a88164254bdc01f53ce2057bc857563996"
+    },
+    {
+      "path": "app/host/src/lib/store.ts",
+      "category": "both_modified",
+      "strategy": "custom_resolver:resolve_store_ts",
+      "hunks_resolved": 2,
+      "sha256": "b0f8b61aceeef83d32df191bef94e675bab1ecd7241e128a18dab6a2ed1c3e5d"
+    },
+    {
+      "path": "app/host/src/locales/ui-de.json",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "c4ed6d1ffe58500759a37aff7a15e4f1bcc901764b075d30a8b8821bf413ccdd"
+    },
+    {
+      "path": "app/host/src/locales/ui-en.json",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "15b0726d715c369104d1d14501a4a53a88c2470ddd51917ef461e13c97625c11"
+    },
+    {
+      "path": "app/host/src/locales/ui-es.json",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "6a53e77370d360961763dfe67a2123cb1f846354e9f3f9e1a2c2f0777dde4717"
+    },
+    {
+      "path": "app/host/src/locales/ui-fr.json",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "76fd03d092a56d99fdfea1580389940ecf8ae5546ea67bddad5f590c251a4204"
+    },
+    {
+      "path": "app/host/src/locales/ui-he.json",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "49b3573754b3a922c39c81434fac55ffa439595cd7478f7eddc3ff93e8433f80"
+    },
+    {
+      "path": "app/host/src/locales/ui-ja.json",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "5338113dbb7906235181c2cb8b210cfeac12a4eff7f965ac2b751a0e921bfea1"
+    },
+    {
+      "path": "app/host/src/locales/ui-ko.json",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "ec60bc4ff1ecb401d9acf1d27053df767d2a95b8b78b54d60d6c52977d5af43d"
+    },
+    {
+      "path": "app/host/src/locales/ui-pt.json",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "c749bbe408749cdfd4f134b0ab052396b8d21206129d5a37ca1ab0644a030693"
+    },
+    {
+      "path": "app/host/src/locales/ui-ru.json",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "a1df52e5e4d686d8906b77e1a5b47dcc539d61c7e617695f36feebd87ff5d907"
+    },
+    {
+      "path": "app/host/src/locales/ui-zh.json",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "a42fcf0d7ebdf15ea5a6fc6dea52be27ccc0b418df5ebcd925aba006f4435ba6"
+    },
+    {
+      "path": "app/host/src/screens/Chat.tsx",
+      "category": "both_modified",
+      "strategy": "custom_resolver:resolve_chat_tsx",
+      "hunks_resolved": 2,
+      "sha256": "79a717ed967898d5f29be7400f0e275dc716d6b425e52674a551fea376da428c"
+    },
+    {
+      "path": "app/host/src/screens/Skills.tsx",
+      "category": "both_modified",
+      "strategy": "custom_resolver:resolve_prefer_upstream",
+      "hunks_resolved": 1,
+      "sha256": "50e1ce2446a2c344a18c7087b38645d8fb34752f342ce9845be4d558603ae584"
+    },
+    {
+      "path": "app/host/src/styles/app.css",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "e855f9455f9903c1f2effb844f3b13d5593ba30447aa4d75ccbaf020f413badc"
+    },
+    {
+      "path": "app/host/tests/agent-skills.test.mjs",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "f4d068e9e6d0c1a2b06964fdd93e1d91ee1d3413914bfbf2d7d718d8783bf604"
+    },
+    {
+      "path": "app/host/tests/engine-progress-6794.test.mjs",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "bd8221262cc1b79b6a1cb1ef5cbac6c71322e909f2689e57af4e0d76da2c6dbd"
+    },
+    {
+      "path": "app/host/tests/engine-step.test.mjs",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "97bc338575516d9426a42b54df81f2f156f76263241858d18dd4898aebe888a6"
+    },
+    {
+      "path": "app/host/tests/hy4-family.test.mjs",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "08663de7d59a9bcad714a017970c371b8cbe8215cbaadbe141467dbe6863647e"
+    },
+    {
+      "path": "app/host/tests/inkling-family.test.mjs",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "80f72a14dedfae38c69ab8d3a40bbc4c632b833d906d2dde243553076965a0de"
+    },
+    {
+      "path": "app/host/tests/native-gateway-model-id.test.mjs",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "15cda73e5f651e524bd334479f7fe83099ddbe5221d96cec7d84c6cecbe6f48a"
+    },
+    {
+      "path": "app/host/tests/packaged-control.test.mjs",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "4eff551ec1552493b389dc410b6d0e703198229f44c63f8ed94f60c0d0254a01"
+    },
+    {
+      "path": "app/host/tests/pass2-gui-fixes.test.mjs",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "3193bb39136d9b2ba2f509dc27909a587ce6770f599884a2eef98b64415b1919"
+    },
+    {
+      "path": "app/host/tests/qa1-storage.test.mjs",
+      "category": "both_modified",
+      "strategy": "keep_fork_version",
+      "hunks_resolved": 1,
+      "sha256": "fd74085dc702bff5b1cf85483059c0187bd088d58f21db9702c7fb5dfafdd3ed"
+    },
+    {
+      "path": "app/host/tests/run-config-check.test.mjs",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "72b48877f4f98076954b6f976d9ee165d0b2652987d9952889ce94915ab4e680"
+    },
+    {
+      "path": "app/host/tests/settings-hand-edit-6772.test.mjs",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "ac2dbe1c86844a30b261be0c926f73503fc284b3937d5a10683f6a06e44ded6b"
+    },
+    {
+      "path": "app/host/tests/skill-head.test.mjs",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "97e22be34ce55ed4572e605000d4454b5e36a9ed6432be118fac1be7ff7055a5"
+    },
+    {
+      "path": "app/host/tests/skill-live-6857.test.mjs",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "17bb5cd5e38a53d8a635838163f058cf0cda8eb3aa2d0c598b0b996835e3bfda"
+    },
+    {
+      "path": "app/host/tests/split-qa2-skills.test.mjs",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "1ab8b214795b5c72dc4a27b0cb498201665b92cb803e4ca93a37d14a816e6b52"
+    },
+    {
+      "path": "docs/AI_REFERENCE.md",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "8199e179760b87e2639357b8a4c58fcb11a585b9c623440ada4da71e2cdfe388"
+    },
+    {
+      "path": "docs/AI_SETUP.md",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "aef04c58025ad2594cf2737436603c3421e2578af9ff0b6d645b6ea57c76494a"
+    },
+    {
+      "path": "docs/AMD_HIP.md",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "a7f42f9b3cd3360cbaff6fa20d9c04e1e02622c5bf03f65857b34348a804fabb"
+    },
+    {
+      "path": "docs/BATCHING.md",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "ae8d2eae63255fda0cbd4d8f2f9ff7e23cd43241831adebe50f53880c40fd10e"
+    },
+    {
+      "path": "docs/CAPABILITIES.md",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "4540f824d4c8fbd757d4fcb5ba815375ddc7e722b37e00abfb94d31b3640ae31"
+    },
+    {
+      "path": "docs/DETAILS.md",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "0d5464555757495575e743896d47f8790928c0b3e3247bd513c855f5771c1a6a"
+    },
+    {
+      "path": "docs/DOCKER.md",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "5d5e0f9b2e06d3b71dab69d5fb7412278c3e8e3d4ec80f3847151b96bbaedbc0"
+    },
+    {
+      "path": "docs/INSTALL.md",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "bd7219595938e6a589c624ccb265ab870f9c6d2fcf4308d7d9a41386e5560f4a"
+    },
+    {
+      "path": "docs/INTEL.md",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "e43f2683f9c46d4cda01b446a115aeed1ab2ff86f0176a9c56d5740e091d4104"
+    },
+    {
+      "path": "docs/MEDIA_KIT.md",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "b8dd1a09f7fe44890e33731c85d45ba6073985b819ca2da7291a62035db18e66"
+    },
+    {
+      "path": "docs/MODELS.md",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "a160a7a2e7d1a05aacb7b49624403e74b8667e9ed24bf4691add30ca749a8354"
+    },
+    {
+      "path": "docs/MULTI_GPU.md",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "e33bbbb87fc7327d7d10948c1518772ba9d3e06221f65259298f1e703b02b559"
+    },
+    {
+      "path": "docs/NVIDIA_V100.md",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "801afafbbbe25af5afdf33da2c6d23c1183e1597964c4485387dbac13249567d"
+    },
+    {
+      "path": "docs/README.md",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "86ea5d2f56822416a4b6d5aa8e832d8abcf5d1d587eeb8a54780650a08459d9b"
+    },
+    {
+      "path": "docs/RELEASE_GRID.md",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "da9d9bfd1e9544d82617f34e870a5110db1db1e7175a59bc4357996cc843e749"
+    },
+    {
+      "path": "docs/RESEARCH_RUNS.md",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "80efb552159c122bfc81cb9c11fb958c23a827fbcdfd85bfe1ab68aaab0adc22"
+    },
+    {
+      "path": "docs/SETTINGS.md",
+      "category": "both_modified",
+      "strategy": "adopt_upstream_override",
+      "hunks_resolved": 0,
+      "sha256": "586248b8735df59044cf359fa1a2b9fda13d940d906ec6a020a6af80384a9429"
+    },
+    {
+      "path": "docs/SOURCE_INSTALL.md",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "142c4df21b363039785609c613d7e3f4188abd08ea94878c575c0e4853593905"
+    },
+    {
+      "path": "docs/STRIX_HALO.md",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "3a7173bfb3cd5850689530d24f5e59b05bf8d173ef4a965ec81cf773bdaa4897"
+    },
+    {
+      "path": "docs/TERMINAL_LAUNCH.md",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "4bc9aab70dc218307932da5490752d9d570412078d25cede78b8e8d1be7fa6fb"
+    },
+    {
+      "path": "docs/TROUBLESHOOTING.md",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "5b65f2defb4b468901b57ea7d655261ef7be742d541709ef77c97e6502e8dfc1"
+    },
+    {
+      "path": "docs/bench-results/2026-11-07-community-rtx-4060-ti-plus-rtx-3090-ud-q5-k-xl/README.md",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "03daadf519e22595827a523bc1c59dadf011bf25e23e4151d5ed39cb03115862"
+    },
+    {
+      "path": "docs/bench-results/2026-11-07-community-rtx-4060-ti-plus-rtx-3090-ud-q5-k-xl/engine-log-excerpt.txt",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "15e7432d39301b347ec75a05282177cb96c054e5229c3fcecb0bb1567f758014"
+    },
+    {
+      "path": "docs/bench-results/2026-11-07-community-rtx-4060-ti-plus-rtx-3090-ud-q5-k-xl/results.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "8b548c5f10f4c413689fc940f5cfd83b386890ebb4dfa4d2e98d9334ab3e8da0"
+    },
+    {
+      "path": "docs/bench-results/2026-11-20-standard-rtx-3090-7c2c22d0/README.md",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "fadcad413b0456c018915cd969835e57799d9528ac983159adff926ad036a009"
+    },
+    {
+      "path": "docs/bench-results/2026-11-20-standard-rtx-3090-7c2c22d0/config.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "11139f808250278b685996a017c69983118439ec22a5d3ec7dac0bb7b833cee1"
+    },
+    {
+      "path": "docs/bench-results/2026-11-20-standard-rtx-3090-7c2c22d0/outputs.jsonl",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "c984f08077b0389e227a0bc6a7d9672cf5207f144ab9a3ca5db7c50b51c513be"
+    },
+    {
+      "path": "docs/bench-results/2026-11-20-standard-rtx-3090-7c2c22d0/provenance/chat_template.jinja",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "12827f24b742ea4e80cdc12dbcf9622227056b9f797252a3149263d4f9aaadce"
+    },
+    {
+      "path": "docs/bench-results/2026-11-20-standard-rtx-3090-7c2c22d0/provenance/corpus-build.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "bc6c1f81d86863c3dc36a31f58010701d8ab05180f69f86c6978214409e43af2"
+    },
+    {
+      "path": "docs/bench-results/2026-11-20-standard-rtx-3090-7c2c22d0/provenance/corpus-manifest.sha256",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "e75eff8b9feea04f745520b392c4c17d97aefc1ba185e222aa6740efa8f68407"
+    },
+    {
+      "path": "docs/bench-results/2026-11-20-standard-rtx-3090-7c2c22d0/results.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "b8f66b021cda4500b6db2d48ce33d89ecc55660d8b0a2008a4cd309d816617cb"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rtx-4090-qwen3-8-flash-next-unsloth-ud-iq3-xxs/README.md",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "38d7685ee41c319b70c66fa539a2194f30522fa40f9b322724d20626a80cf2e3"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rtx-4090-qwen3-8-flash-next-unsloth-ud-iq3-xxs/engine-log-excerpt.txt",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "67cba6c80a8cb2ffec3beb79e97018262b0e02fa43289a4b78ec48dd96da4431"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rtx-4090-qwen3-8-flash-next-unsloth-ud-iq3-xxs/results.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "2b1b1ebe9aef4297df68ee27d6d1d9f55bf20e4587dc5f60c7459b1c55944a01"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/README.md",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "0a8652a048251bf78f191d5cddec7135d5a723259794aac9c4bf2201f55a79cb"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/standard/hy4-flash-sq-64/README.md",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "a4f9aa7cdd53f97c889e45bb636c6ec00155451a57cd1a19556dc41706acc3a6"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/standard/hy4-flash-sq-64/config.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "cd0d286d81a93430ef40b945bee84129324a90aa16b7039d92660a4981765bcf"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/standard/hy4-flash-sq-64/outputs.jsonl",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "c4af1114caeecc79103e3009110ff449a46bed1cb2a4c91933090a731d1ae910"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/standard/hy4-flash-sq-64/provenance/chat_template.jinja",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "63ddd5de294df36f10c8f2c8e5f7b2a9dc2011c8481335422f04554256aee4ad"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/standard/hy4-flash-sq-64/provenance/corpus-build.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "bc6c1f81d86863c3dc36a31f58010701d8ab05180f69f86c6978214409e43af2"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/standard/hy4-flash-sq-64/provenance/corpus-manifest.sha256",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "e75eff8b9feea04f745520b392c4c17d97aefc1ba185e222aa6740efa8f68407"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/standard/hy4-flash-sq-64/results.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "c09bd34f230e7b51a0aaba322c5887e1e7f236bb2f80f4e1c8d6afbc5a1d1236"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/standard/inkling-2-mini-sq-10/README.md",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "454d3fe9c93e996bc37440743dd027a9c7be79efea7e991d73f44a0eb0c47393"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/standard/inkling-2-mini-sq-10/config.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "3a87735c30530010cdb2d81cd09e347f9f27e886a7fac849efeffeb6724aee25"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/standard/inkling-2-mini-sq-10/outputs.jsonl",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "e9f52a72cc84fb80bee594623f331b43fa83968c866363f41a3c5f77613bfa46"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/standard/inkling-2-mini-sq-10/provenance/chat_template.jinja",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "53a9035f3255945704b5857657cfb00c1165090c0641c4f782a0cbf268cc16dc"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/standard/inkling-2-mini-sq-10/provenance/corpus-build.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "bc6c1f81d86863c3dc36a31f58010701d8ab05180f69f86c6978214409e43af2"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/standard/inkling-2-mini-sq-10/provenance/corpus-manifest.sha256",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "e75eff8b9feea04f745520b392c4c17d97aefc1ba185e222aa6740efa8f68407"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/standard/inkling-2-mini-sq-10/results.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "0851e2c7b96344722e0c2564963ac6760409662289f665caeb13665be671e99d"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/standard/inkling-2-mini-sq-15/README.md",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "98790e0106ea04e66d9cb55ef1c140f83f328fccf644636499dd97fbc6d7bb11"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/standard/inkling-2-mini-sq-15/config.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "3a87735c30530010cdb2d81cd09e347f9f27e886a7fac849efeffeb6724aee25"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/standard/inkling-2-mini-sq-15/outputs.jsonl",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "687f75d67f24d905d5ae1ed01a76ef4081894a789fa58e1f5041cc025245263b"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/standard/inkling-2-mini-sq-15/provenance/chat_template.jinja",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "53a9035f3255945704b5857657cfb00c1165090c0641c4f782a0cbf268cc16dc"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/standard/inkling-2-mini-sq-15/provenance/corpus-build.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "bc6c1f81d86863c3dc36a31f58010701d8ab05180f69f86c6978214409e43af2"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/standard/inkling-2-mini-sq-15/provenance/corpus-manifest.sha256",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "e75eff8b9feea04f745520b392c4c17d97aefc1ba185e222aa6740efa8f68407"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/standard/inkling-2-mini-sq-15/results.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "7ca4e73a04b7c8767b6c56e9ae96c9ebd605c6f911613b331b72793f0392a709"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/standard/qwen38-flash-next-iq3_s/README.md",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "6194ce714aa55e42d482c13497caeb8503a703b6fa13de32cd6587b41f0af939"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/standard/qwen38-flash-next-iq3_s/config.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "cde6a66e6fcd83226c3897865f0423f66c610b80e559026da46cb5c3300afec9"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/standard/qwen38-flash-next-iq3_s/outputs.jsonl",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "eeb3d294b4da634cd2d3409e1c5b1997d4543a05442b8cb6a48497f6e88407f2"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/standard/qwen38-flash-next-iq3_s/provenance/chat_template.jinja",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "12827f24b742ea4e80cdc12dbcf9622227056b9f797252a3149263d4f9aaadce"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/standard/qwen38-flash-next-iq3_s/provenance/corpus-build.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "bc6c1f81d86863c3dc36a31f58010701d8ab05180f69f86c6978214409e43af2"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/standard/qwen38-flash-next-iq3_s/provenance/corpus-manifest.sha256",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "e75eff8b9feea04f745520b392c4c17d97aefc1ba185e222aa6740efa8f68407"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/standard/qwen38-flash-next-iq3_s/results.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "9bb84d79ceae1631bb626f0cb589b0d7305415912927137786a5626fe1f275d8"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/tasks/bench_models.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "80994e2a754e459b3f2076e008e5eeb2d04606fbd70b8823b6cf992547f96dc0"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/tasks/hy4-flash-sq-64.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "33ef462535d426c636c3a54d02d642519f26718157bcee3dcba334b6bf5dfb32"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/tasks/inkling-2-mini-sq-10.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "467554e35fcaa2b0f9b5d44aa175dcb2b349411151a3c1044b5de04a8c1c65d7"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/tasks/inkling-2-mini-sq-15.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "baa805b3a99de5d161eac575d2fd2c85f36efb5bac2bed4486b44d9982d57017"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-community-rx-9070-xt/tasks/qwen38-flash-next-iq3_s.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "22bacfc53ae8eabebcba39fa819f28bd14eabd71912dbba9618a70fef0613512"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-standard-rtx-5060-ti-31ebb369/README.md",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "b02ead23de9ccc0296674cbacb6ca4ca05fe7901504a1913cfd8f7a24343243a"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-standard-rtx-5060-ti-31ebb369/config.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "d163fdc9ee27cb32d6c9091ee7589bdd5254a5e9bc636cfb1ab6c758f98233fe"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-standard-rtx-5060-ti-31ebb369/engine.log",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "5d382bb02eec0a0c3e6f45a5e054d1438f18d6f76b13137629a44d8d5c95d2bf"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-standard-rtx-5060-ti-31ebb369/outputs.jsonl",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "f1d9cd01d2f3dd64c2597557151c6e9454b276f3e95bab418d3d07fb273b4bd7"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-standard-rtx-5060-ti-31ebb369/provenance/chat_template.jinja",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "12827f24b742ea4e80cdc12dbcf9622227056b9f797252a3149263d4f9aaadce"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-standard-rtx-5060-ti-31ebb369/provenance/corpus-build.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "bc6c1f81d86863c3dc36a31f58010701d8ab05180f69f86c6978214409e43af2"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-standard-rtx-5060-ti-31ebb369/provenance/corpus-manifest.sha256",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "e75eff8b9feea04f745520b392c4c17d97aefc1ba185e222aa6740efa8f68407"
+    },
+    {
+      "path": "docs/bench-results/2026-11-22-standard-rtx-5060-ti-31ebb369/results.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "244c142c13ae5bdcaf2f639e766f126adef3631d8b822d48d086ca1a1ac44777"
+    },
+    {
+      "path": "docs/bench-results/2026-11-23-standard-rx-9070-xt-3900x-0e6041d3/OPERATOR-NOTES.md",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "05212ded01ad1c93538cc4d79fbe67e5a227f352f1608c1e396723cfab59ea2a"
+    },
+    {
+      "path": "docs/bench-results/2026-11-23-standard-rx-9070-xt-3900x-0e6041d3/README.md",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "d9804bc2a5c37790f79fc5274aeae9d6e285d6e0d48c322a6af4f9b38388f724"
+    },
+    {
+      "path": "docs/bench-results/2026-11-23-standard-rx-9070-xt-3900x-0e6041d3/config.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "11c3795dc0d14bd02234029f9b1e13f5cc7bbf4aad890531bb67a78842a49fb1"
+    },
+    {
+      "path": "docs/bench-results/2026-11-23-standard-rx-9070-xt-3900x-0e6041d3/outputs.jsonl",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "23ddc4054b64000f699435c5abc16ea56916a3399a8c842208fd73ad25e3b871"
+    },
+    {
+      "path": "docs/bench-results/2026-11-23-standard-rx-9070-xt-3900x-0e6041d3/provenance/chat_template.jinja",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "12827f24b742ea4e80cdc12dbcf9622227056b9f797252a3149263d4f9aaadce"
+    },
+    {
+      "path": "docs/bench-results/2026-11-23-standard-rx-9070-xt-3900x-0e6041d3/provenance/corpus-build.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "bc6c1f81d86863c3dc36a31f58010701d8ab05180f69f86c6978214409e43af2"
+    },
+    {
+      "path": "docs/bench-results/2026-11-23-standard-rx-9070-xt-3900x-0e6041d3/provenance/corpus-manifest.sha256",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "e75eff8b9feea04f745520b392c4c17d97aefc1ba185e222aa6740efa8f68407"
+    },
+    {
+      "path": "docs/bench-results/2026-11-23-standard-rx-9070-xt-3900x-0e6041d3/results.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "c9829f776cfaa59548f9998f8ce10127aba5e47ebfd4199b605b04a91bd9b917"
+    },
+    {
+      "path": "docs/bench-results/2026-11-23-standard-rx-9070-xt-3900x-1e463ce6/OPERATOR-NOTES.md",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "565066cad8c56b9e90db22ac0c48bce9b834eb01d4fec33d5888ae45b8abbf41"
+    },
+    {
+      "path": "docs/bench-results/2026-11-23-standard-rx-9070-xt-3900x-1e463ce6/README.md",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "4831e668a240a3281d7d6fae19605f2ed1fff0c759662e9a8bfde28934bd62ab"
+    },
+    {
+      "path": "docs/bench-results/2026-11-23-standard-rx-9070-xt-3900x-1e463ce6/config.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "11c3795dc0d14bd02234029f9b1e13f5cc7bbf4aad890531bb67a78842a49fb1"
+    },
+    {
+      "path": "docs/bench-results/2026-11-23-standard-rx-9070-xt-3900x-1e463ce6/outputs.jsonl",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "3f6135ac5f62d37842b868d99ff9a463da65611e38e9f5ce64cad0f913378370"
+    },
+    {
+      "path": "docs/bench-results/2026-11-23-standard-rx-9070-xt-3900x-1e463ce6/provenance/chat_template.jinja",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "12827f24b742ea4e80cdc12dbcf9622227056b9f797252a3149263d4f9aaadce"
+    },
+    {
+      "path": "docs/bench-results/2026-11-23-standard-rx-9070-xt-3900x-1e463ce6/provenance/corpus-build.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "bc6c1f81d86863c3dc36a31f58010701d8ab05180f69f86c6978214409e43af2"
+    },
+    {
+      "path": "docs/bench-results/2026-11-23-standard-rx-9070-xt-3900x-1e463ce6/provenance/corpus-manifest.sha256",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "e75eff8b9feea04f745520b392c4c17d97aefc1ba185e222aa6740efa8f68407"
+    },
+    {
+      "path": "docs/bench-results/2026-11-23-standard-rx-9070-xt-3900x-1e463ce6/results.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "cc8c2d037ec6721ac6360e6c4aa5b57b9a7416b5ecc3e1963a4e183acfbed223"
+    },
+    {
+      "path": "docs/bench-results/2026-11-23-standard-rx-9070-xt-3900x-bbb73d60/OPERATOR-NOTES.md",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "bf2667d5967b654ae944f9870c169d178ee1ef3c267eaa9359d5e77ac434c995"
+    },
+    {
+      "path": "docs/bench-results/2026-11-23-standard-rx-9070-xt-3900x-bbb73d60/README.md",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "bf1526503041501f36fa97a9062196222e067eb0a024816ea7b11b7254152811"
+    },
+    {
+      "path": "docs/bench-results/2026-11-23-standard-rx-9070-xt-3900x-bbb73d60/config.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "11c3795dc0d14bd02234029f9b1e13f5cc7bbf4aad890531bb67a78842a49fb1"
+    },
+    {
+      "path": "docs/bench-results/2026-11-23-standard-rx-9070-xt-3900x-bbb73d60/outputs.jsonl",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "9e45f54ed8fd207a5dd6142035b6b46099f2f3f5eaadd1883a3f88c4a110b23d"
+    },
+    {
+      "path": "docs/bench-results/2026-11-23-standard-rx-9070-xt-3900x-bbb73d60/provenance/chat_template.jinja",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "12827f24b742ea4e80cdc12dbcf9622227056b9f797252a3149263d4f9aaadce"
+    },
+    {
+      "path": "docs/bench-results/2026-11-23-standard-rx-9070-xt-3900x-bbb73d60/provenance/corpus-build.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "bc6c1f81d86863c3dc36a31f58010701d8ab05180f69f86c6978214409e43af2"
+    },
+    {
+      "path": "docs/bench-results/2026-11-23-standard-rx-9070-xt-3900x-bbb73d60/provenance/corpus-manifest.sha256",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "e75eff8b9feea04f745520b392c4c17d97aefc1ba185e222aa6740efa8f68407"
+    },
+    {
+      "path": "docs/bench-results/2026-11-23-standard-rx-9070-xt-3900x-bbb73d60/results.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "5677a0779964eae9dc1ed31b1fd33623683b7d39cf1039220560771743649108"
+    },
+    {
+      "path": "docs/bench-results/README.md",
+      "category": "both_modified",
+      "strategy": "adopt_upstream_override",
+      "hunks_resolved": 0,
+      "sha256": "acf797b6c5812ddcda14611f5d631ff8d3ca8510a9b92491e27c2ad0d79b6ede"
+    },
+    {
+      "path": "docs/data/release.json",
+      "category": "both_modified",
+      "strategy": "custom_resolver:resolve_release_json",
+      "hunks_resolved": 1,
+      "sha256": "50eb116f24304f168d3930f019322534e6a96e90ec965491d84027118c50be5c"
+    },
+    {
+      "path": "docs/lang/README.de.md",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "0b2457f7868820b89704d88a3c4cff8866db107480437d0944a7f074332a87cd"
+    },
+    {
+      "path": "docs/lang/README.es.md",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "1512e771ab7b83c9faac60eaf8d82396bde362aee45bc0c3e0f2800787541aa3"
+    },
+    {
+      "path": "docs/lang/README.fr.md",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "bf77674c27fd10aaa4d563478329a5afa51002be20f6d4cc17060dc1120b2b6f"
+    },
+    {
+      "path": "docs/lang/README.ja.md",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "121ce6cbf287cdd44c93a31f7284bd90b71a3da249bb5b2546d86fed9bd713b1"
+    },
+    {
+      "path": "docs/lang/README.pl.md",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "882f206322deb2ed7e8105376a7649966fb04d5ddda20155f22fa3b982119af6"
+    },
+    {
+      "path": "docs/lang/README.pt-BR.md",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "85fc9d1e0dec803a763828d4950f67538057685c99a21e6137962682d75e78dc"
+    },
+    {
+      "path": "docs/lang/README.zh-CN.md",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "97068ffb08e3fc4dd201ae0645b5c5688962cec5fe856bf1775ae2efebcbeb73"
+    },
+    {
+      "path": "docs/media/models/README.md",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "888bd45448796dda1b88b6ba5c5e9d9626c5ca60acf4e4f5d0ec4a3d0c480c2e"
+    },
+    {
+      "path": "docs/media/models/hunyuan.svg",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "510e7bb438506b5aadfaf8b9551d1606efd5b4171161a64a64204c72a453658a"
+    },
+    {
+      "path": "docs/media/models/thinking-machines-white.png",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "9477a6cf0ec86e870c0e6b8fe265269bc5cdfe906548cefa47ed008821faec11"
+    },
+    {
+      "path": "docs/media/models/thinking-machines.png",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "f4d4f2738b523627693e1e035a600aefbacd1817f634cd26abadb97958f92ad4"
+    },
+    {
+      "path": "docs/media/sponsors/README.md",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "700b16d18fc732fd36e1765ebb4d4032478940fbe36cec7f8a78a096572eb79c"
+    },
+    {
+      "path": "docs/media/sponsors/linger-logo-color.svg",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "6f82f8241be9fee6615f16b7f4aec6133f5cf867946fa457c5aca406af712b30"
+    },
+    {
+      "path": "docs/media/sponsors/linger-logo-white.svg",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "f05c75671eb0887ce7f98cba5c20c1059031b8744b30a7b09a15ab30147e9791"
+    },
+    {
+      "path": "docs/media/sponsors/olares-logo-color.svg",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "9008e55f4dd0a6557e9dc0cfaf7d35b90437a89f6988f7f6bb947b7a6b4ec667"
+    },
+    {
+      "path": "docs/media/sponsors/olares-logo-white.svg",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "801b7a7ad83a6520129a8dadad6edbfbde88db735953b60f9506859924c8baa6"
+    },
+    {
+      "path": "engine/CMakeLists.txt",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "1ee77e634c839686d8713efe13f4ed308d741711e3df5cfb4e3189a914ef64be"
+    },
+    {
+      "path": "engine/cmake/backends/cpu.cmake",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "5a2140d8c051a605613b6e72467158284d6a78605201c77245e5ef90a4f139cc"
+    },
+    {
+      "path": "engine/cmake/backends/quant.cmake",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "5d4961f7d4fada71e16ce5c3e0cf2462c9835141bd2bc8ce2396a6ecde860f1d"
+    },
+    {
+      "path": "engine/cmake/strata_ggml.cmake",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "1778a22f0cd57fb781f3f869987c842b3ecb78613bb9637535a06cc53697d73e"
+    },
+    {
+      "path": "engine/cmake/strata_gpu_engine.cmake",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "c2d308e679aacd3715d4adbc8d13ba740ec4475aee817e7a078d12cc3ab1c193"
+    },
+    {
+      "path": "engine/include/strata/core/adapt_coverage_rules.hpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "ce916499fbbe7332eb9f2f30e012136e8b6defc710deccdda6a0c1be5567ff07"
+    },
+    {
+      "path": "engine/include/strata/core/arch_probe.hpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "73b8bff5766d44078ecdabc623895c9813badb5255793d8844ef9b12890d756e"
+    },
+    {
+      "path": "engine/include/strata/core/conversation_cache.hpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "247f051fd4c56586a30bc37bd15bc78f07ce7637d639f2e2172c141d30ae0a54"
+    },
+    {
+      "path": "engine/include/strata/core/conversation_spill.hpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "86416dd2aee0eea7f71142a6cc5857e4237a52a4e27756b85482d638f825614f"
+    },
+    {
+      "path": "engine/include/strata/core/gfx12_chunk.hpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "5b03d1fa7f70edc7cf770ba665d54e09022e1d4e1301ffbdf395fda692c0cb24"
+    },
+    {
+      "path": "engine/include/strata/core/ink_caps.hpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "1489a8f59854c8397b7ed363a02820c709e833110938d32e51fc1b8eb46fe890"
+    },
+    {
+      "path": "engine/include/strata/core/ink_chunk.hpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "da05c239915c8332c6e3553a5f386ea74eec88fdf98edb41b1c7fc4106fe788f"
+    },
+    {
+      "path": "engine/include/strata/core/ink_dspark_layout.hpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "d0bcc0412aa6fab1b0ac2c07925d2a50487f9c904dfa4db758f0b2af7d9a4da9"
+    },
+    {
+      "path": "engine/include/strata/core/ink_expert_policy.hpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "019ad5404f924dcce85effe9000a91037a3af5b6471e02bbac2e92b30958deba"
+    },
+    {
+      "path": "engine/include/strata/core/ink_kv_grow.hpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "d0c668f8ef379faa2d7c1bbd75dda00f63e29defd9dc2ef7708e82ea8b88bf87"
+    },
+    {
+      "path": "engine/include/strata/core/ink_kv_reserve.hpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "e2b9d756a77a03dbeda7e5bceef37e57f94f983df95323ec83bd3e5007469f71"
+    },
+    {
+      "path": "engine/include/strata/core/ink_names.hpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "99e6cadd1025120f5e9b832bc46d95beba192ec1b7eb72c00b1ec19f48614969"
+    },
+    {
+      "path": "engine/include/strata/core/ink_pin_rule.hpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "4a6fcd2448c54e1165859ba44ec3af7d9db733f9dba0afdda6af23158994cef6"
+    },
+    {
+      "path": "engine/include/strata/core/ink_widen.hpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "3316b5a8d494ae0b9c2510a9a1874bcde49553f46ab9f5afcc91fdeda5728f05"
+    },
+    {
+      "path": "engine/include/strata/core/low_vram_rules.hpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "cd515b35e2f89aa8a9b884241a1c2c356dd05ebd10fe55280660f78235c2b38e"
+    },
+    {
+      "path": "engine/include/strata/core/mapped_pages.hpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "b598e3388177ef9c78a251aa84adc1cef7b9e797dba834b9bb1cfe6725624030"
+    },
+    {
+      "path": "engine/include/strata/core/nv_defaults.hpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "90c9b8f35d79170f4cc0d83b10e1326eeffa287b8d4c73b15514fec66befcf83"
+    },
+    {
+      "path": "engine/include/strata/core/watchdog_limits.hpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "3d9fc58f91aee397eb3815c6adc4ba0ef24ce110dc821e6c99235adbe416cb77"
+    },
+    {
+      "path": "engine/include/strata/inkling2/inkling2_loop.hpp",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "fa35856ed78ab628fe63598cabb9d6658f1e05a863de1e1ee556b779d87812e6"
+    },
+    {
+      "path": "engine/include/strata/kernels/native_mmvq.hpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "315de8947961c5154778c6b4665c16291253a6869ad63959bb680dbb15cfdd1d"
+    },
+    {
+      "path": "engine/include/strata/platform/commit.hpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "d19c407ee4483c14a52854e9680da7a5739a1506b57c1c8e840b9f8ea3169533"
+    },
+    {
+      "path": "engine/include/strata/program/split_rules.hpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "33d5245ae579cbf6a8248a7e5cea8098982002b87a5cd8f62f1c479ca1cad787"
+    },
+    {
+      "path": "engine/include/strata/quant/dot_x4_policy.hpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "4c2a4c7302ef7c7073c8b43b3acf5ddc5eac4aba3140d76d63bb46b45da77127"
+    },
+    {
+      "path": "engine/include/strata/quant/sk_codecs.hpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "3b8ff5a4a0cce5d623392882b18dcf90f4ce7fb14e14a484d2b96a764aa790e3"
+    },
+    {
+      "path": "engine/metal/CMakeLists.txt",
+      "category": "both_modified",
+      "strategy": "custom_resolver:resolve_metal_cmake",
+      "hunks_resolved": 1,
+      "sha256": "babb22c45129fe70d8f96194475cdbac915556862daf4ca2682d8558af0dfcd9"
+    },
+    {
+      "path": "engine/src/core/adapt_coverage_rules_test.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "6a708064cb493eb73e574526ba7e2809baee7ade87589b90acaaf5111c7f3c86"
+    },
+    {
+      "path": "engine/src/core/conversation_cache_test.cpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "1acdd1f41b45cf3279a7c99ef79c475f2832f6d097455780420eb0ffc5b61d54"
+    },
+    {
+      "path": "engine/src/core/conversation_spill_test.cpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "cdadb35fb06e07db042a9eaee7a17f60be8693e4dce62250b6618f9b45517502"
+    },
+    {
+      "path": "engine/src/core/dot_x4_policy_test.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "476fa992face2a4849dedca395b02e10884cf39fec3e5b2b57806059fd26519f"
+    },
+    {
+      "path": "engine/src/core/gfx12_extra_test.cpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "b20f671701e60ad66b7afd11278af5998b2093edc08bbc18216c96f7e260dbea"
+    },
+    {
+      "path": "engine/src/core/low_vram_rules_test.cpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "0951ecf094ea17de87db65675d60e6203acef3923230eaae9aa1d13a9cd3e458"
+    },
+    {
+      "path": "engine/src/core/nv_defaults.cpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "f96214a35c62fe5cd8eb201caf5d0734135cd8ebbf9ac92816c492d7d946fc31"
+    },
+    {
+      "path": "engine/src/core/nv_defaults_test.cpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "b290a11a8974a18269e9f10506099c073a520252ef0979bef10961b31cc6c8e3"
+    },
+    {
+      "path": "engine/src/core/watchdog_limits_test.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "9c4356e81f4df832717006da824c6038485dafedda4ca3148484ee276b07428f"
+    },
+    {
+      "path": "engine/src/hy4flash/metal/hy4_metal_main.cpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "a08ece8582622a538db26523aea86aa52d14b9e327fa8295683224c8cd40a3e1"
+    },
+    {
+      "path": "engine/src/hy4flash/run/hy4_gpu.h",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "c2acdcfda4c1ad840b4b7256eda7e8f8f312413073a8312a58f55ef9fdbde54a"
+    },
+    {
+      "path": "engine/src/hy4flash/run/hy4_gpu_model.hip.h",
+      "category": "both_modified",
+      "strategy": "adopt_upstream_override",
+      "hunks_resolved": 0,
+      "sha256": "c6be456758aaf663fc7d7a84e8f6f8a5ba835ca009076818215a014c8c5e198d"
+    },
+    {
+      "path": "engine/src/hy4flash/run/hy4_graph.hip.h",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "b8530b895a1002a778fd049f3eca8498f31ebd9973689dd9fb1626c64c8d8e84"
+    },
+    {
+      "path": "engine/src/hy4flash/run/hy4_main.hip.cpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "329dc778f1a3c7bef39e973f78817d85a4be3bd5766f49b955bc096ff281051a"
+    },
+    {
+      "path": "engine/src/hy4flash/run/hy4_plan_math.h",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "c87bdd47923e06fbd2763d0f58b7bda07c76f85c44974d867f2bde7e647e0fe5"
+    },
+    {
+      "path": "engine/src/hy4flash/run/hy4_uma_pool.h",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "4e56722061f69465bd0cf9dc12c7469d4f1e2cf3bb914c9e08a27323bb30278b"
+    },
+    {
+      "path": "engine/src/hy4flash/sycl/sy_main.cpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "20707b26dbaa21c21c2bb68e4ddc82e5c974b1eb34dafae8f6f974fa4b3a0e24"
+    },
+    {
+      "path": "engine/src/inkling2/CMakeLists.txt",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "33db59dae1a7253b4db120b087c1cb3d1f72c15ac68bd2c79f0173470cdde187"
+    },
+    {
+      "path": "engine/src/inkling2/cuda/CMakeLists.txt",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "aadac30b7a9fcb6c6728d6fbd3be72e326b3069e6af8abdf0c3eb4396467b71b"
+    },
+    {
+      "path": "engine/src/inkling2/cuda/ink_cuda.cuh",
+      "category": "both_modified",
+      "strategy": "adopt_upstream_override",
+      "hunks_resolved": 0,
+      "sha256": "6e0742086c0d8b3df800e4cc83b53a3d7b5c09047e8f7b7d2cf9eefc37c2dfb0"
+    },
+    {
+      "path": "engine/src/inkling2/cuda/ink_cuda_backend.cu",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "4083883b617da9ddd855c70071a4af87c8c8d9bb266282214065a6e2076b8f45"
+    },
+    {
+      "path": "engine/src/inkling2/cuda/ink_dspark.cuh",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "f84249d4e6ab5cd77b11d03bfef29b4416ed4e2710c65ff6e4e662f72f158e5c"
+    },
+    {
+      "path": "engine/src/inkling2/cuda/ink_hybrid.cuh",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "eb11cb4b1a7dfd8fa0806daf8768ce82ee6a8d226cc8af278492dba016ae5626"
+    },
+    {
+      "path": "engine/src/inkling2/cuda/ink_kernels.cuh",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "1a8cdd8b6fe3685c8bc6cb0afaf805a38882ba68fe496072927c59fc9aeb98f0"
+    },
+    {
+      "path": "engine/src/inkling2/cuda/ink_moe_cuda.cuh",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "22ddbea79a2ac3848dbcc9b613ea1f7ebbd4851a11108913a821ff305d4280fc"
+    },
+    {
+      "path": "engine/src/inkling2/cuda/ink_moe_fp4_sm120.cu",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "dde43610525e2d48ca68cd581571f7f228d84225317e8c76925ea5a861ee23b0"
+    },
+    {
+      "path": "engine/src/inkling2/cuda/ink_moe_prefill.cuh",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "b00584c2e5d4a19aeeb0ab4cc60da5d1a8b06f712d2543b936d721fb444d7d54"
+    },
+    {
+      "path": "engine/src/inkling2/cuda/ink_runner.cuh",
+      "category": "both_modified",
+      "strategy": "adopt_upstream_override",
+      "hunks_resolved": 0,
+      "sha256": "8808b3c29dd240d936131b8669952389644fb3afe84447cbb4192a0b6f722137"
+    },
+    {
+      "path": "engine/src/inkling2/cuda/ink_sm120a.cmake",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "354ea94e1615da4f100fa61b0f8da947f90ef78dc9dc25938e730b4c50b050fa"
+    },
+    {
+      "path": "engine/src/inkling2/cuda/ink_topk.cuh",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "a16e41fc3a972ebabcd704aa76c18297e08347859c4ff6c4a602946fa2ab0c4d"
+    },
+    {
+      "path": "engine/src/inkling2/ep_dual_gpu.cu",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "502f503b11dafbd35e09d1fe09df659a76301887f8534d3880520d7c9e32d811"
+    },
+    {
+      "path": "engine/src/inkling2/hip/ink_hip_backend.hip.cpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "325fafffb5b40973c5b99830ba19dd359ea0bef5cb23f3fd77c3f81a2d62914e"
+    },
+    {
+      "path": "engine/src/inkling2/hip/ink_hip_codecs.hip.h",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "20ffb35bd2fe85ce32836a1db845a4972e83e0953116a1e03938ff22aeec34d5"
+    },
+    {
+      "path": "engine/src/inkling2/hip/ink_hip_common.hip.h",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "d38f25f4081019116bf45f4aee6e74583e429c3e60c0b8da556b3c03297fb2e9"
+    },
+    {
+      "path": "engine/src/inkling2/hip/ink_hip_hybrid.hpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "d973d80c48a866e4d124ae9634b87be765c09b84726805eb1b4f239e0c6706f0"
+    },
+    {
+      "path": "engine/src/inkling2/hip/ink_hip_ops.hip.h",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "8a71a79427afaf6d724d70e0cc2d2d658df226ba16bcd4346b5d0eea12a696fa"
+    },
+    {
+      "path": "engine/src/inkling2/hip/ink_hip_promote_policy.h",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "472a31f6bdebb7808f455e1f1e516bf6b0428a945cebb3089303f8c156819a53"
+    },
+    {
+      "path": "engine/src/inkling2/hip/ink_hip_test.hip.cpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "5938f0f0511dd5d00df510f7ce445f438173a07aaf7cb10c0da9e379ebdcd62c"
+    },
+    {
+      "path": "engine/src/inkling2/hip/ink_hip_tree.hip.h",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "cda47f438646f99cc64c62f58d231e2905e1cec0d1efa9d4995e88b9c719e69a"
+    },
+    {
+      "path": "engine/src/inkling2/ink_backend.h",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "cfe3f7691bbf7e6e9e663408ded9650079c7d4d9597439bb5019e7f9771875ec"
+    },
+    {
+      "path": "engine/src/inkling2/ink_batch.h",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "a283da3db8f11d9cec9f069690434424600ec0655d80f935bc033270820c0088"
+    },
+    {
+      "path": "engine/src/inkling2/ink_cpu_backend.cpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "2bf931649bdeb1fc640f654f431a4a079b61c9795d6e58bf003f99dac06ca96b"
+    },
+    {
+      "path": "engine/src/inkling2/ink_gguf_loader.h",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "9d0650ebf50155f007de1e29867e5dffcdb90d7119281c5b37f35ca267dd6207"
+    },
+    {
+      "path": "engine/src/inkling2/ink_host_avx2.cpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "d7efe91eac238bb0c6a0310f8d4e9416391ccfb4dee811da5587401d17ad9d7a"
+    },
+    {
+      "path": "engine/src/inkling2/ink_host_avx2.h",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "d9b3460578f314b8bb60c64a7d57178c438742ef51ea3509d0a1fce73750b92f"
+    },
+    {
+      "path": "engine/src/inkling2/ink_host_avx512.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "7f57ab369d8657d4cbab9564b29c9bd218a84d262e36cf1c2be6bdba489da35f"
+    },
+    {
+      "path": "engine/src/inkling2/ink_host_avx512.h",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "87c4cc832afa8b13cbece255a1c59bbb6d24e2ab631b4795e04a2fff9c0a130c"
+    },
+    {
+      "path": "engine/src/inkling2/ink_host_avx512_gate.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "a9e19453a94dff5d44d76ddb5e1f8f23ea604998ebfa1ee3f7b6c6a4794f42c1"
+    },
+    {
+      "path": "engine/src/inkling2/ink_main.cpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "abdbb9f45b6f675f93bf59868f58ffbeb161292b95ff989c1f35e72240de6234"
+    },
+    {
+      "path": "engine/src/inkling2/ink_manifest.h",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "609d828a7a967b7dcbdd6ee8ee5f21d1ab925106b3d9ada811ef609d352870a3"
+    },
+    {
+      "path": "engine/src/inkling2/ink_prefix_mock.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "f0853778bdee2e6cb352f523626dffca350292c429a2053ab9b65a91be697ec2"
+    },
+    {
+      "path": "engine/src/inkling2/ink_q8f_pack.h",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "2e394ab645a2943baaf8a7ed3583aa1eaf0e8b40c26aa6f5be7c60953fe9b4f1"
+    },
+    {
+      "path": "engine/src/inkling2/ink_safetensors_loader.h",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "559fe8504b627678890692b8c5568acb9da49f62e032b2d06c340624e687881f"
+    },
+    {
+      "path": "engine/src/inkling2/ink_serve.h",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "8dba156b7ba7a7fc81f6fad5ccd73df989301d92b4deed502a332d00b714345d"
+    },
+    {
+      "path": "engine/src/inkling2/inkling2_loop.cpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "02068da3fe6522e54913a5bf47d5a67209500513adfa5c7c4484aebf61da429d"
+    },
+    {
+      "path": "engine/src/inkling2/metal/ink_metal_backend.mm",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "d8f66c03a6048961587e49a06b7ff0fe4ec3073a8b5bd8364626a9b441e24b2e"
+    },
+    {
+      "path": "engine/src/inkling2/metal/ink_metal_codecs.metal",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "d1218a56f6d85b0dc5568da4c249861817b1ca7050253e168643142d8ecde7f9"
+    },
+    {
+      "path": "engine/src/inkling2/metal/ink_metal_dspark.metal",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "57a9caf610f24141bf30fd41088bdd5298fd24ba1ec7a9352f41116f29ea505e"
+    },
+    {
+      "path": "engine/src/inkling2/metal/ink_metal_main.cpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "7568aacaa92f86f320e3d335d541de41e8408f90ad338c7ee86b1e9bdaf6b8a9"
+    },
+    {
+      "path": "engine/src/inkling2/metal/ink_metal_mpp.metal",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "b56fb93ac80b4b79cf3074509d5715556c06513cf778fa8fc999f318914c2ef9"
+    },
+    {
+      "path": "engine/src/inkling2/metal/ink_metal_runner.h",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "4c82504df29f80cbf3ac0b367c8412b65de349bb3c098928ad9b48424ab6911b"
+    },
+    {
+      "path": "engine/src/inkling2/metal/test_metal_batch_logits_live.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "81862a4f9c8f39fadea81427226c96aa8bfecfec33987c0a31fb07c3307897b9"
+    },
+    {
+      "path": "engine/src/inkling2/metal/test_metal_prompt_ckpt_live.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "c99f996f38a4b47d5a07842040dcbc086f4aec527b6c461b5b586d36d5fdb97b"
+    },
+    {
+      "path": "engine/src/inkling2/sycl/ink_sy_codecs.h",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "eaa805f957623ed4c223dbae2cf9732dd51350a066ea53eeb82dd4c17e5fa746"
+    },
+    {
+      "path": "engine/src/inkling2/sycl/ink_sy_common.h",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "3e50a64e26e65575946397301384f2fd446b87315d1462baf9be475861e56fb9"
+    },
+    {
+      "path": "engine/src/inkling2/sycl/ink_sy_fit.h",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "cbf15533851b18ed107baa5709faa25c7d9c316607a36a09d6f4ffcf222ed3a7"
+    },
+    {
+      "path": "engine/src/inkling2/sycl/ink_sy_main.cpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "219b6aeb70d2ebb2b86a63b5e5a31238cdaa2e81dfa5931eeece1ae0ca526c3c"
+    },
+    {
+      "path": "engine/src/inkling2/sycl/ink_sy_ops.h",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "b8f4d0cbcdd38d8803615f839c83d575faccae6afbd1ae7835ec7c2cdb4febec"
+    },
+    {
+      "path": "engine/src/inkling2/sycl/ink_sy_runner.h",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "300a5f2cd001c2556b1c8ad9b77dba7f05d1636cc38074976d7ba5bcd2c3158a"
+    },
+    {
+      "path": "engine/src/inkling2/sycl/ink_sy_xmx.h",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "1e9b2d1cf2e1cb0b3aa77a5f74031894c51befb2b717fd8ecd9f8556f9cdc7b7"
+    },
+    {
+      "path": "engine/src/inkling2/sycl/ink_sycl_backend.cpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "5a661836f30884db90ea5093341dc16673d101a45fd7ecb820fdee85ff835a09"
+    },
+    {
+      "path": "engine/src/inkling2/test_metal_ckpt_contract.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "3bab16b89184f2578965c606780316c1d076d0eff5dde4661eb69a17915b051d"
+    },
+    {
+      "path": "engine/src/inkling2/test_shared_prefix.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "c1a39e5dfefc4fdc57e97207bf3325515ca7730b686c80b5597d0596a8719bf9"
+    },
+    {
+      "path": "engine/src/kernels/cpu/native_expert.cpp",
+      "category": "both_modified",
+      "strategy": "custom_resolver:resolve_native_expert",
+      "hunks_resolved": 2,
+      "sha256": "102c2e78553ad75bef25536e33beadafc2eea6c6b50945ffab6c978b9305b883"
+    },
+    {
+      "path": "engine/src/kernels/cpu/pool_determinism.cpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "96e24cc3e6a6f7bada52dde824f734e092d36f8b0d531bf1e5a887ceba281ea0"
+    },
+    {
+      "path": "engine/src/kernels/cuda/fused_gr.cu",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "4dda7a94c2c32e049c2a4662f811e52d25a9251a42d8ab06845489437bd89084"
+    },
+    {
+      "path": "engine/src/kernels/cuda/rdna_gr.cu",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "3ac58be4272d84d2f0c03980f90f10d371879a329d5462bdd2cf289d8d8f8eb2"
+    },
+    {
+      "path": "engine/src/kernels/fused_gr_bench.cpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "fdbdc12e379fa0d0eb66ceac0660431f7feab2fc59349d63ecdc515b7f07d538"
+    },
+    {
+      "path": "engine/src/prefill/kernels.cu",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "859c41c8ee5d1e9eebe97ff7ef7756acdd2bd30c72f7ed39d160037060c68572"
+    },
+    {
+      "path": "engine/src/program/generate.cpp",
+      "category": "both_modified",
+      "strategy": "prefer_upstream_hunks",
+      "hunks_resolved": 7,
+      "sha256": "2af80b5f7d542050345694681bbb2110983b2b46539c7273b4b64bb7e77a6ca7"
+    },
+    {
+      "path": "engine/src/quant/sk_codecs.cpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "55d315e9c4e97bff218f685662042f1daef4a22ad703a0003d1517b7c2eb601e"
+    },
+    {
+      "path": "engine/src/quant/sk_codecs_base.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "717995cf02e7855a515d1d8552bc9b51715ff8e26251ace47f43ef8c700d5c63"
+    },
+    {
+      "path": "engine/src/quant/sk_dispatch.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "8b6ea24900221354b393d822862aa3ebe5ee3d276d44e664252276bc1718b5e1"
+    },
+    {
+      "path": "engine/src/quant/sk_tiers.hpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "d05a6c921c4cf9030419962855221245dbeaee1131eed7831cf228262fbb15fe"
+    },
+    {
+      "path": "engine/src/quant/x86/sk_codecs_avx2.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "ae167e48a8be0a47b11126fa8bf7d895829b030242e37a8b39336d0b184c4e50"
+    },
+    {
+      "path": "engine/src/quant/x86/sk_codecs_avx512.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "57c1711d8d80fd9c9ed6ccd54c4a4eeb3e42cd278fa272a64af8abd562e2026c"
+    },
+    {
+      "path": "engine/sycl/include/strata/core/verify_env.hpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "251e64ae5662fb4435ec1ce527972fa662ffb3d4b68fa6436fbb2d75cf050682"
+    },
+    {
+      "path": "engine/sycl/serve/server_intel.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "8f70c633ce72e83ae139642c0ffd2e1c7f1c598fd58b720be91996349989af21"
+    },
+    {
+      "path": "engine/sycl/src/core/verify_env_test.cpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "b661a7c7165c8421a65682b76efdb0a39183502ebf15fac8d566b875d4371ae7"
+    },
+    {
+      "path": "engine/sycl/src/program/generate.cpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "29d9650522c4611159a11e9b151ef8f336606c0282f138cc52cc28612d792327"
+    },
+    {
+      "path": "engine/tests/cmake/ink_sm120a_test.cmake",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "56f3fc287a51983469fc40fb7711143efc11c360432bd86476cd622a50436c88"
+    },
+    {
+      "path": "engine/tests/core/arch_probe_test.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "a27315f5dcb20990963115fde77d10c6556ddea7de8c78561413f55b46154e2d"
+    },
+    {
+      "path": "engine/tests/core/dot_x4_bench.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "c16310b3dcd3c58ac07bbd12a5cb8a8301e842e9bd6c3d00ef25f4c68b235639"
+    },
+    {
+      "path": "engine/tests/core/ink_batch_budget_test.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "ebcda983b6ed44c0509dc9eb28d6fff15bc2f4e0b911251850ee4d7021ccf660"
+    },
+    {
+      "path": "engine/tests/core/ink_caps_test.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "a195a599e614b7b01846e26a5702ecccb8d7e909d345de2d8598bb50e10a5ce0"
+    },
+    {
+      "path": "engine/tests/core/ink_chunk_test.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "b1affcdf2e0f2fb84fc551ad43480bcd0496ee68990f55cd293058c594dee5c8"
+    },
+    {
+      "path": "engine/tests/core/ink_dspark_layout_test.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "9c1d8d1279d7bb02f6a0ba37eb3c830dab4d20bbb6c4c36a49625174459233e6"
+    },
+    {
+      "path": "engine/tests/core/ink_expert_policy_test.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "af5f98da0d3bf0686b23d30359f9cbc36352c8c53376f261a9ab9b9bc945082e"
+    },
+    {
+      "path": "engine/tests/core/ink_hip_promote_policy_test.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "09c54c99ab1cbdb73db35b4b7eefefe92346dabafe3ef501ae8254ea59ee8257"
+    },
+    {
+      "path": "engine/tests/core/ink_host_simd_bench.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "02808c056a9bccb17d61a2b5679cf3a7d7685575b8e5d83c9845ed9b6bf1cf6b"
+    },
+    {
+      "path": "engine/tests/core/ink_host_simd_test.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "b2a7284d1b311fba2c3840bd046c4c7d123a73f573e4668ae9b44b077085bc3a"
+    },
+    {
+      "path": "engine/tests/core/ink_host_sk_test.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "f49e2d69ae4867ab3937e54afb113df350b1a9c4b6feb107ce7408431414d580"
+    },
+    {
+      "path": "engine/tests/core/ink_kv_grow_test.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "3c2f2f481d42fa681edba6be43d3591cbd09de3e11edbc6ca47947cc220830b0"
+    },
+    {
+      "path": "engine/tests/core/ink_kv_reserve_test.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "a7ad2b5a510b2f37cbdbcbeb5e539b865d783a9a4d71af0e55befe9bf2789f67"
+    },
+    {
+      "path": "engine/tests/core/ink_names_test.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "c26c695b8621fb3581de2abe936fb89a4ee7eeb74824165bbdb66bfaf99caf32"
+    },
+    {
+      "path": "engine/tests/core/ink_pin_rule_test.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "66d9ee647944b68a37c47a2c2de3e48ec81a9bdb2cb28852358b48455c95de26"
+    },
+    {
+      "path": "engine/tests/core/ink_sample_old.inc",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "4844b782a0c412bc96bd8fcbec2526ea03529e9bcffc23f6c86dadf2755664f3"
+    },
+    {
+      "path": "engine/tests/core/ink_sample_topk_test.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "74cc27733ddf4dd576e265effa65678e7069e283af9bef74495cf32e5adbac4b"
+    },
+    {
+      "path": "engine/tests/core/ink_sy_fit_test.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "9f19f1637e6618ebe41e7e2fd5b32d6496d25c20be7fba57f78b0695958ba0ee"
+    },
+    {
+      "path": "engine/tests/core/ink_widen_test.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "c2141e88fa6c5a8acd15f1e8d17390239a9f339cad600b93cd54466745cbfecd"
+    },
+    {
+      "path": "engine/tests/core/kv_dtype_guard_test.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "692dda4011a23c46acb3e4abcd6fa3291e8c3ebc0ab6368a827fd1612ebe400e"
+    },
+    {
+      "path": "engine/tests/core/mapped_pages_test.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "34fb12be5a92c2fa671a9fefa9b9fc98bb83969be350fa16539b4c0805051cba"
+    },
+    {
+      "path": "engine/tests/cuda/ink_q8f_gemm_test.cu",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "7196f06571558ed419f14fbe3bdb9c793a543e18d93b21c87355559a2211f325"
+    },
+    {
+      "path": "engine/tests/cuda/ink_topk_gpu_test.cu",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "505629146bdfe88af785cdc2fd0ae1a8cbdb249df304c82b50a6eab043771fc0"
+    },
+    {
+      "path": "engine/tests/hip/prefill_gr_write_norm_parity.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "83e1fb2b20ae520ea5582ab754b63d5fb79dee0ebfd671ef32f1af07ae1f3f6f"
+    },
+    {
+      "path": "engine/tests/hy4flash/hy4_plan_math_test.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "f2639338d03d14e29d20de30464c8a4e4428d21e2116b2f4c0a9452ae3a95d66"
+    },
+    {
+      "path": "engine/tests/hy4flash/hy4_uma_pool_test.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "eca2b1b13974f7ba145abc7c6935ae949374f0688d007b293a0164d496a52d6a"
+    },
+    {
+      "path": "engine/tests/platform/host_limits_test.cpp",
+      "category": "both_modified",
+      "strategy": "adopt_upstream_override",
+      "hunks_resolved": 0,
+      "sha256": "fde6cc064bc1bfd9adbdcc119469c029ff0fba2e171980122861191d3ee39207"
+    },
+    {
+      "path": "engine/tests/program/split_rules_test.cpp",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "42ea2489dff8021d5a1aab70566aad731c6c4904f43602c26ecb7a4ba5b41f37"
+    },
+    {
+      "path": "engine/tests/quant/ink_expert_split_test.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "34e9e483169b4f2ee8b02ce42f4a02028a32ae7da70d01e9cd54f4a00452119d"
+    },
+    {
+      "path": "engine/tests/quant/sk_tier_bench.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "fe2be791dbf491414727791fabc3c0071cc5b2d7bf7c5a40f87107552665ed5c"
+    },
+    {
+      "path": "engine/tests/quant/sk_tier_test.cpp",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "8e7864a43125288081c3f51adc8651f0aa12e206a675cfb970da7c9f32415c76"
+    },
+    {
+      "path": "terminal/data/inkling-sources.json",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "9f9722ddfb83adfa9d54ecfa9fdb4d547dca643b9063d6beea12adb43f2e0241"
+    },
+    {
+      "path": "terminal/data/settings-register.json",
+      "category": "both_modified",
+      "strategy": "adopt_upstream_override",
+      "hunks_resolved": 0,
+      "sha256": "0e46fa303fa1271edd32393362c441aa0df7df407d6288e107933222d03a15a8"
+    },
+    {
+      "path": "terminal/serve/frontend.py",
+      "category": "both_modified",
+      "strategy": "custom_resolver:resolve_frontend_py",
+      "hunks_resolved": 2,
+      "sha256": "afabe0e7b9d4c1ffa208a74d133ab8f002db974fd7829936e77884b62bd88dce"
+    },
+    {
+      "path": "terminal/serve/inkling_dialect.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "167fe73acdd6d5ce3734a37fa538c5e25e6e081f5d38d452eed641a49153b3bb"
+    },
+    {
+      "path": "terminal/serve/inkling_kind.py",
+      "category": "both_modified",
+      "strategy": "custom_resolver:resolve_inkling_kind_py",
+      "hunks_resolved": 2,
+      "sha256": "3d9b853e36768a22c189a432a117fdcdc7bb67e727cb20a0270fb4c253fa325a"
+    },
+    {
+      "path": "terminal/serve/server.py",
+      "category": "both_modified",
+      "strategy": "custom_resolver:resolve_server_py",
+      "hunks_resolved": 32,
+      "sha256": "f5dfa0d2da034fe64cdb3f3c75a1dc296b2cbdf175268f94eb2449198236c349"
+    },
+    {
+      "path": "terminal/serve/server_parts/base.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "cbed7f84234c6f167d036af1f00afbcf2ab6ed483136762712f064c7034ab839"
+    },
+    {
+      "path": "terminal/serve/server_parts/engines.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "446fa01c97de60b5d44bcd46093b2daf125f177d914c91cd7e94667e93895b2d"
+    },
+    {
+      "path": "terminal/serve/server_parts/http_api.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "aba0b1ff49ae2b7153a9c57b8ab3f84e051ad804f1e7d4e638435f89ed19b3b7"
+    },
+    {
+      "path": "terminal/serve/test_abort_sync.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "3d77d25b019994eeecddb6271cd6bcb444ab72ca7673933152c6f006700a3e3e"
+    },
+    {
+      "path": "terminal/serve/test_api_keys.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "751d5172f9e6586fcf1aa0d5fb7bef34b502710bfc3e4ae5536894b23dcaf362"
+    },
+    {
+      "path": "terminal/serve/test_crash_loop_restart.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "f42c358d7b062a09a147c8240188667b753913011d1aed1e0c37d0a7c1d2d4dc"
+    },
+    {
+      "path": "terminal/serve/test_inkling_dialect.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "74b55e0f6c962e436155004be5aba04da8b3f1f2679f396585bfe2f5a3bb2a0f"
+    },
+    {
+      "path": "terminal/serve/test_inkling_e2e.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "647e207384b6fa4587d670eb376e02b89f00727b0bf10e309755f903cd32876d"
+    },
+    {
+      "path": "terminal/serve/test_inkling_forced_call.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "998d326b042dfdc402b907180d4a91b72e6101adc62d486b8585a4f27be20c05"
+    },
+    {
+      "path": "terminal/serve/test_inkling_image_usage.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "6efd29df6c27ec0c6a1b235258f484824aae695077fd366a337ea769daf1702c"
+    },
+    {
+      "path": "terminal/serve/test_inkling_model_routing.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "35e4a5e9819c658b8d950bd40ddb660fb123450e3336ea8989c423e7eaf6b889"
+    },
+    {
+      "path": "terminal/serve/test_inkling_prefix_chain.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "d272167d3e2afa8bb76498b8f9b183d0ec5c77067ae6f9d800196240469cf6f7"
+    },
+    {
+      "path": "terminal/serve/test_inkling_reasoning_budget.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "df6287f70bf01ad1ad0fda030e495792f63cf04e3bc52a79b46cff806572254b"
+    },
+    {
+      "path": "terminal/serve/test_inkling_reasoning_fields.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "09180e0a73b7cd70275538368582ba2fb3262eee029687c712c490d9a5db47ad"
+    },
+    {
+      "path": "terminal/serve/test_inkling_serve_e2e.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "dba8ff7f1c60d6b265d634cb9522420be94c8d09f09ce353c1ec0c756e875f70"
+    },
+    {
+      "path": "terminal/serve/test_inkling_slot_routing.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "9c185276c6635ada1bbde79206131908abd32b8ec11cebd7e478e3d7e4f26cd6"
+    },
+    {
+      "path": "terminal/serve/test_inkling_thinking_default.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "1710c8c9cf8162c69da9e66b0875f12aa5d20681d1f622c47e300fa691f8fd88"
+    },
+    {
+      "path": "terminal/serve/test_intel_serve_sampling_keys.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "96384b93132eb9e6703a750dbcbf157bded408aed8ab64e8b973e4e904c3a399"
+    },
+    {
+      "path": "terminal/serve/test_parallel.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "69fcc805d47ca97d8ac3777baa245b08f447b362c34d14acb79a822b300ded74"
+    },
+    {
+      "path": "terminal/serve/test_pass2_serve_fixes.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "1305e9fd46e5dce6bcfa85924ce148d322b4798def6bb8df20ae893ccbda2e1c"
+    },
+    {
+      "path": "terminal/serve/test_server.py",
+      "category": "both_modified",
+      "strategy": "prefer_upstream_hunks",
+      "hunks_resolved": 1,
+      "sha256": "3e82c6f879200ae0ed109d95f6d7e937304393e354d16fb1110e8a87260d23e6"
+    },
+    {
+      "path": "terminal/serve/test_vision_cache.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "0ed496f39368d07f06054e7502ee948a6444549654abc8c87d8e99c7385fcc87"
+    },
+    {
+      "path": "terminal/serve/test_vision_elastic.py",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "e2dabc9805c396f0068ba8fb72a776d797baec88f42540b80cdb4e7b31f20b28"
+    },
+    {
+      "path": "terminal/serve/web/app.js",
+      "category": "both_modified",
+      "strategy": "prefer_upstream_hunks",
+      "hunks_resolved": 1,
+      "sha256": "e8e46d4603166fa6e0689b477544d743421cab8979c4e01d9e80268cd0fe165c"
+    },
+    {
+      "path": "terminal/serve/web/index.html",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "4fc70d9148af939e451b9943c872d715f67b983ba824b47c091ed54ddad6c625"
+    },
+    {
+      "path": "terminal/serve/web/locales/de.json",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "900b02d9475db6bcd7078aa6763f090a766bf2f2e019c5aff7b0d662d236375d"
+    },
+    {
+      "path": "terminal/serve/web/locales/en.json",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "316ad507109556bf6e18d92a349593d87ec1fc5a3b8214acdf3a653a547f49a3"
+    },
+    {
+      "path": "terminal/serve/web/locales/es.json",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "567b5749ee932283aa8c4de28dc28fd89c2347ad8105d047617bdd43d038c6ca"
+    },
+    {
+      "path": "terminal/serve/web/locales/fr.json",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "53bdffe30f94b52edeecb6a494391cf296fe1447c729e54097d04ea9ca4c0c89"
+    },
+    {
+      "path": "terminal/serve/web/locales/he.json",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "c4b1d40eba450986a4413ba15f715a643431828e419f1d62f6ca8950edd400f1"
+    },
+    {
+      "path": "terminal/serve/web/locales/ja.json",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "32f85d09432c5d853ad79169f7ad2b68699569fb0c5e3d775e6f57aba0b43551"
+    },
+    {
+      "path": "terminal/serve/web/locales/ko.json",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "ed7b80759647d7146b137ed90fdd164018ab4d5bed1147d6b27a6db8fd2e0385"
+    },
+    {
+      "path": "terminal/serve/web/locales/pt.json",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "2ec495674c8966672603dd8fdcb0d1ee2ed60d596e43a403e883f49cbd4235d5"
+    },
+    {
+      "path": "terminal/serve/web/locales/ru.json",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "d4a801a90e183927e50e929fd0629c6a52b2d1406d096279fe520c8308ceb321"
+    },
+    {
+      "path": "terminal/serve/web/locales/zh.json",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "638b1b9f6386a73d2b64fc33ca81f939d3001efcccca9c11367f95c15580eff0"
+    },
+    {
+      "path": "terminal/setup.py",
+      "category": "both_modified",
+      "strategy": "prefer_upstream_hunks",
+      "hunks_resolved": 18,
+      "sha256": "96ebbd6b9779f661ed33ab70860ba31be1659a0de693677f38781f54d8f62a8c"
+    },
+    {
+      "path": "terminal/strata_cli/__init__.py",
+      "category": "both_modified",
+      "strategy": "keep_fork_version",
+      "hunks_resolved": 1,
+      "sha256": "8dac1d64099b4e54cf77987f9df65f517698ac33ee79769983618d55a00eb75d"
+    },
+    {
+      "path": "terminal/strata_cli/launch/adopt.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "34c7238d0b6ae4e483640a9c64a3d8906e03472fa5297fb5fb6bc4ab084a82ff"
+    },
+    {
+      "path": "terminal/strata_cli/launch/app.py",
+      "category": "both_modified",
+      "strategy": "prefer_upstream_hunks",
+      "hunks_resolved": 1,
+      "sha256": "a3760ac3876a9b5499eb08efb69e97613f214470a8e6391b31279ed655841ca9"
+    },
+    {
+      "path": "terminal/strata_cli/launch/cmd.py",
+      "category": "both_modified",
+      "strategy": "custom_resolver:resolve_launch_cmd_py",
+      "hunks_resolved": 2,
+      "sha256": "b5cae9eaf4683a156e1dbeb52ab53ca50c2b0be6a3d16d1c133881995fb85bad"
+    },
+    {
+      "path": "terminal/strata_cli/launch/modelstate.py",
+      "category": "both_modified",
+      "strategy": "prefer_upstream_hunks",
+      "hunks_resolved": 1,
+      "sha256": "9ffdc767e59e28ec3f38f26b712dccaf16b8678f3dde115de3c1b6c80804a31f"
+    },
+    {
+      "path": "terminal/strata_cli/launch/runner.py",
+      "category": "both_modified",
+      "strategy": "prefer_upstream_hunks",
+      "hunks_resolved": 13,
+      "sha256": "85419a94a5d8666feb063de9c9946610f1a06367a2ada1aa5adc76dc4bea5203"
+    },
+    {
+      "path": "terminal/strata_cli/launch/screens.py",
+      "category": "both_modified",
+      "strategy": "prefer_upstream_hunks",
+      "hunks_resolved": 5,
+      "sha256": "ffcb5fb68f1e98b90a36949567c6cb29209a19383a47a6184b55098ca2aad80c"
+    },
+    {
+      "path": "terminal/strata_cli/launch/settings.py",
+      "category": "both_modified",
+      "strategy": "prefer_upstream_hunks",
+      "hunks_resolved": 2,
+      "sha256": "6fa6f388797a2f330ba9c0b5a404315a086c6e118915153b29a62ad8892d5395"
+    },
+    {
+      "path": "terminal/strata_cli/update_cmd.py",
+      "category": "both_modified",
+      "strategy": "prefer_upstream_hunks",
+      "hunks_resolved": 1,
+      "sha256": "3b78d7891cd0d0ba2dd38e155d9436303e300da0d944ab7145d6e663a08dd09f"
+    },
+    {
+      "path": "terminal/strata_control/discovery.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "a18498a05cadf9d7770501c79a018b4f51a713fbd1e24ea8047b5bc02d5dc4d3"
+    },
+    {
+      "path": "terminal/strata_control/drafting.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "5d9c847a879f9f7ba1089d6e44c95a251761ce17fd05a3402d428f0c93dd4c72"
+    },
+    {
+      "path": "terminal/strata_control/engine_component.py",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "4c30522447c336504226f846d3b47b4686e96e0dadac120cf14ce80467fe6c0a"
+    },
+    {
+      "path": "terminal/strata_control/feed.py",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "295555e9337d037ddc8f88b76608808f26bae9e39349c16e33d8cce8b6786e92"
+    },
+    {
+      "path": "terminal/strata_control/inkling_family.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "e6c92326ee92b80056217ab2e42dea61909a53d67ae3e1849affb6976de75293"
+    },
+    {
+      "path": "terminal/strata_control/inkling_fit.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "3068cc22157d5bc708162da43f6cba8f333410755dccf33eda4f5312391a2474"
+    },
+    {
+      "path": "terminal/strata_control/inkling_probe.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "ad4852178ec195a3e5473abe9fca574e28d85ccf95e7de2f868945fb970cff09"
+    },
+    {
+      "path": "terminal/strata_control/inkling_probe_prompts.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "bba207334d1e945c5191831e4b1d427d88c95dc2c00680a06ad684f6ac4eb28e"
+    },
+    {
+      "path": "terminal/strata_control/models.py",
+      "category": "both_modified",
+      "strategy": "prefer_upstream_hunks",
+      "hunks_resolved": 1,
+      "sha256": "37c3e12bf97158cf9be48ca22a665bc59df514380ad76d504baede30d270577f"
+    },
+    {
+      "path": "terminal/strata_control/tune_knobs.py",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "51f995e3ac16b3f627e93793180db242c058e814067dabc972b78e2fb4052212"
+    },
+    {
+      "path": "terminal/strata_control/updater.py",
+      "category": "both_modified",
+      "strategy": "prefer_upstream_hunks",
+      "hunks_resolved": 2,
+      "sha256": "06e19a623580172c346a0a6e2e52715df16ca78a45f5f1707a42d45e1a325e15"
+    },
+    {
+      "path": "terminal/tests/data/inkling/chat_template.jinja",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "53a9035f3255945704b5857657cfb00c1165090c0641c4f782a0cbf268cc16dc"
+    },
+    {
+      "path": "terminal/tests/snapshot/golden/arc_a750/iq3_s.json",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "ef53fed5d4d79946d7b5df6a851bd1dc286c448bcc6c63323323fed609fd4fdc"
+    },
+    {
+      "path": "terminal/tests/snapshot/golden/arc_a750/ud_iq4_xs_v31.json",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "e58c6dabc71f2b8e78db7cd7950f0fd367210faaf4e361115bd93407d608941e"
+    },
+    {
+      "path": "terminal/tests/snapshot/golden/arc_a750/ud_q4_k_xl.json",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "34c02f926f6336930adebc4fe97a00d09984bfc4e22c38a0264b0d1abd86ce61"
+    },
+    {
+      "path": "terminal/tests/snapshot/golden/dgx_spark/iq3_s.json",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "6a3f217abf3984b3d6a2281f1142b03c5229c3ba53cce2255be1dde5e6379ab5"
+    },
+    {
+      "path": "terminal/tests/snapshot/golden/dgx_spark/ud_iq4_xs_v31.json",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "8a4aef3c1cc9c8bd26cb9d197401b9ef7c0d223b4e415e4d6404a07398449c06"
+    },
+    {
+      "path": "terminal/tests/snapshot/golden/dgx_spark/ud_q4_k_xl.json",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "5d8e5a46a2cabad46a61c7b5cf7019680866109d970d0be01dad0b0400f58ed6"
+    },
+    {
+      "path": "terminal/tests/snapshot/golden/mac_large/iq3_s.json",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "58b187b6ddf5dbc6143789022220a4fae5e307081b8891cb10d8348a4ea44112"
+    },
+    {
+      "path": "terminal/tests/snapshot/golden/mac_large/ud_iq4_xs_v31.json",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "6426c2bdcf761bc4fcd73045791ff9fc9c6a1aadaba02f31dd975c8249ba4c61"
+    },
+    {
+      "path": "terminal/tests/snapshot/golden/mac_large/ud_q4_k_xl.json",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "ff9813de5e9536edd7d70d93e0205f27ffa9151d358ef73ddb0415dbcfbea62d"
+    },
+    {
+      "path": "terminal/tests/snapshot/golden/mac_small/iq3_s.json",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "f89900f2c042c4e34f5803fa4a2553582727c351bd067205e2126ef7689916f6"
+    },
+    {
+      "path": "terminal/tests/snapshot/golden/mac_small/ud_iq4_xs_v31.json",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "68d4d7b711ec8a465476c87223ffd8d95200934775f763ffd519c502d1160b8f"
+    },
+    {
+      "path": "terminal/tests/snapshot/golden/mac_small/ud_q4_k_xl.json",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "de674901f02024b206e8f806a74d47887d9c11615955c4504efde1bc88346f2b"
+    },
+    {
+      "path": "terminal/tests/snapshot/golden/nv_12gb_streaming/iq3_s.json",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "328bdc2cb06d723a56e3ea27f571924b7f88e5de64ca2d842453e77745d08cea"
+    },
+    {
+      "path": "terminal/tests/snapshot/golden/nv_12gb_streaming/ud_iq4_xs_v31.json",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "5cdf5afd03eeceabb2cca2c64c9e68188fab556651f84e9e72d65c6af5fd0da7"
+    },
+    {
+      "path": "terminal/tests/snapshot/golden/nv_12gb_streaming/ud_q4_k_xl.json",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "2694c2f356326e4921af6991e2162c5dbfebeda3768f1e660ea3106391f960e6"
+    },
+    {
+      "path": "terminal/tests/snapshot/golden/nv_resident/iq3_s.json",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "b0377292341906092b7ce5ddd0aed6addca7473102afa9315fa9fd7e4fe40223"
+    },
+    {
+      "path": "terminal/tests/snapshot/golden/nv_resident/ud_iq4_xs_v31.json",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "35d4fbf1d12209d77c0f712c5d708c0ef7d5178a883d4e7500e97e711d51a720"
+    },
+    {
+      "path": "terminal/tests/snapshot/golden/nv_resident/ud_q4_k_xl.json",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "070d62311a84746597e31f7dda5caf1bfd8cf4db9389533fbb84135df70dbfbd"
+    },
+    {
+      "path": "terminal/tests/snapshot/golden/r9700_linux/iq3_s.json",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "d146ca92ee7403bb2a5ba258d569965cdaa0482999bcf818c4708992a88ced14"
+    },
+    {
+      "path": "terminal/tests/snapshot/golden/r9700_linux/ud_iq4_xs_v31.json",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "044c5afc18ea568be756fa103625ab50e230943dd0af551491bd7647cd5a4975"
+    },
+    {
+      "path": "terminal/tests/snapshot/golden/r9700_linux/ud_q4_k_xl.json",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "ddde8aeb0450fe708e2ba479941f1e6e105664a040c11ae8586448ad73f32cf6"
+    },
+    {
+      "path": "terminal/tests/snapshot/golden/strix_halo_win/iq3_s.json",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "e907fce872d67f1f3028624c086caf2c87b6166e3a7ff2d2e787918d7086d595"
+    },
+    {
+      "path": "terminal/tests/snapshot/golden/strix_halo_win/ud_iq4_xs_v31.json",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "ba8075dbeddaa3e16979dc3602e860a8517db4c456a53960ee161cbc3ef12d9a"
+    },
+    {
+      "path": "terminal/tests/snapshot/golden/strix_halo_win/ud_q4_k_xl.json",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "f4603acdc8561e3e6acafe2ccbea0fb63c8af8091251766edb8fd630ad1b4df0"
+    },
+    {
+      "path": "terminal/tests/terminal/test_apptui_user_words_0221.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "69253fec25b7f41821353d1be60d941558d0fc6331225b29a163407c88f9f588"
+    },
+    {
+      "path": "terminal/tests/terminal/test_arc_feed_models.py",
+      "category": "both_modified",
+      "strategy": "adopt_upstream_override",
+      "hunks_resolved": 0,
+      "sha256": "ecda6cdc120955cfb8c83f8cf4d57f568d75237acb3178e5b82035541b0df80f"
+    },
+    {
+      "path": "terminal/tests/terminal/test_discovery.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "354f7508be5209a0a785d07289f1e8006dd18a3509e5d8b68f5ea2917087355a"
+    },
+    {
+      "path": "terminal/tests/terminal/test_docker_files.py",
+      "category": "both_modified",
+      "strategy": "adopt_upstream_override",
+      "hunks_resolved": 0,
+      "sha256": "c44a61f719fe86ff60bc5d4e144c7897322fbdc06d2bbd931b213cd1bdfabccd"
+    },
+    {
+      "path": "terminal/tests/terminal/test_feed_aarch64.py",
+      "category": "both_modified",
+      "strategy": "adopt_upstream_override",
+      "hunks_resolved": 0,
+      "sha256": "d31e99ddb66d8349a9282076536fe0b3720ecd8c5b493c2928a9a358a3f2bb8c"
+    },
+    {
+      "path": "terminal/tests/terminal/test_fixapp_0217_restart_stops_first.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "0c23b9aa2fa3ec39614434cbe2831b3be4f43f7e38ddf74ac84abb902a170a28"
+    },
+    {
+      "path": "terminal/tests/terminal/test_hip_mixed_cards.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "20567290f176536b2e075d604d2f4d1162f35cc3ab33353404e0a76508a8af7e"
+    },
+    {
+      "path": "terminal/tests/terminal/test_inkling_drafting_default.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "1bc85783788f584195e38c4b6fada7ecfc6d919fa2e839e78f48f16f209b4a7f"
+    },
+    {
+      "path": "terminal/tests/terminal/test_inkling_fit.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "3ea9e1bffb1e932ee7add15057dfa734fd47d97a03fc2314bff9f11d7199c5d7"
+    },
+    {
+      "path": "terminal/tests/terminal/test_inkling_fit_converted.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "1df83d4a15f42b91784d40fb36a3f880e8405efa58f31eaf401542be0c4ac974"
+    },
+    {
+      "path": "terminal/tests/terminal/test_inkling_fit_dense.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "e74fa38fe1c31fe9f4b26db40b8219bbf0bdb38fcf4f2e652aa631b2894abaae"
+    },
+    {
+      "path": "terminal/tests/terminal/test_inkling_fit_dspark.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "48156f36058ebea5767ba27584c87e2567b83c9982e5a7509fe58cb6cf629ed8"
+    },
+    {
+      "path": "terminal/tests/terminal/test_inkling_fit_free.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "7e38557cef51ef9da05e16e0d5cd0efa333e8b3c10a4f36d33c4bdf7d5487e86"
+    },
+    {
+      "path": "terminal/tests/terminal/test_inkling_fit_slots.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "a75e3469a617c90a2d213f84f721d92b1460a0b3336268d1fca9276453e75979"
+    },
+    {
+      "path": "terminal/tests/terminal/test_inkling_gguf_import.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "b95e716c11224f3a0a7646c563f23cb468ca8bfd19e36d04f23cf18305503396"
+    },
+    {
+      "path": "terminal/tests/terminal/test_inkling_gguf_pin.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "585dc9ca6893771846826f0770b91fa177542b46cbbb7916958d3869ddeddce3"
+    },
+    {
+      "path": "terminal/tests/terminal/test_inkling_kv_headroom.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "6a439bba84244176baea2863d8fc11b73f56ad767108f82134fa2795a7313a2e"
+    },
+    {
+      "path": "terminal/tests/terminal/test_inkling_launch_parallel.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "5d08c016fa641ada39c5f715405bde61c042cdcbcca2a5edd8fbfa3df56fb876"
+    },
+    {
+      "path": "terminal/tests/terminal/test_inkling_probe.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "3c9b14ab3728ab9ccb35d4031a635d2f92e37b02428f0fc623b4c8c07827aea0"
+    },
+    {
+      "path": "terminal/tests/terminal/test_inkling_unsloth_4gb.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "8f6260c4efe3cf26bf321721a8441a06b928722d8311598cea345b90a271444b"
+    },
+    {
+      "path": "terminal/tests/terminal/test_launch.py",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "2cde2010bedb22bf3e8db78bfa38869d15d76888af664b80790a5cd5f6e071ee"
+    },
+    {
+      "path": "terminal/tests/terminal/test_launch_drafting_probe_0221.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "af34f6d18602d02cad62c8769c27e317693ff1e025e43856eb1388043e5382e4"
+    },
+    {
+      "path": "terminal/tests/terminal/test_launch_install.py",
+      "category": "both_modified",
+      "strategy": "adopt_upstream_override",
+      "hunks_resolved": 0,
+      "sha256": "c4d96f6e2f36f884967c0b1669443e788719eac1faecfc11dd32a4581371c2a8"
+    },
+    {
+      "path": "terminal/tests/terminal/test_no_debugger_children.py",
+      "category": "both_modified",
+      "strategy": "prefer_upstream_hunks",
+      "hunks_resolved": 1,
+      "sha256": "3d17fbc5dbe8a2bee03588432df1dcf5d1ece25281a9c53f44ab7b88fae0d00b"
+    },
+    {
+      "path": "terminal/tests/terminal/test_parallel_cap_0221.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "a8c6e7be73ee61069ddccad219cf475b044472751957dbf5d37e5ab931e4ffd8"
+    },
+    {
+      "path": "terminal/tests/terminal/test_pass2_tui_cli_fixes.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "194c0c74c9173b3f9026c752593a4617f9a3309451a9568a4e36b1a3e2e60620"
+    },
+    {
+      "path": "terminal/tests/terminal/test_private_files.py",
+      "category": "both_modified",
+      "strategy": "adopt_upstream_override",
+      "hunks_resolved": 0,
+      "sha256": "94123061bc09feeb585cfe3938777a65039d810b636f95c8e3e5e44649fd2cb5"
+    },
+    {
+      "path": "terminal/tests/terminal/test_shell_completion_6086.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "aaa55ac7f8ed4f26ff4a87bcb27cbe9e912640f19935409dc29d3d6b3b1d6567"
+    },
+    {
+      "path": "terminal/tests/terminal/test_speed_switches.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "0fda2289e178c391f36a72edd5aad493281023e571c266f7a48b6d6df0492fc3"
+    },
+    {
+      "path": "terminal/tests/terminal/test_sweep_6629.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "2a628334a889809e7fd488c973f7feed9359e0bc6c1bee5caeb4479eb33a6fab"
+    },
+    {
+      "path": "terminal/tests/terminal/test_sycl_build_script.py",
+      "category": "both_modified",
+      "strategy": "adopt_upstream_override",
+      "hunks_resolved": 0,
+      "sha256": "8b8324edfe430ff4af5d7eab040ead68c2e19b784f5648350022c6fb4b02bdbf"
+    },
+    {
+      "path": "terminal/tests/terminal/test_tui2_023_versions.py",
+      "category": "both_modified",
+      "strategy": "custom_resolver:resolve_test_tui2_versions",
+      "hunks_resolved": 7,
+      "sha256": "5a80476c398c1000c4fc56df0526d022bd4195f0237415e71d6afba3f95e1bd8"
+    },
+    {
+      "path": "terminal/tests/terminal/test_update_inkling_config_6589.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "0e0bc1aa2adf8f33efe82bb3d5fe0f08940f223be7b96e18aaa5254830b90166"
+    },
+    {
+      "path": "terminal/tests/terminal/test_updater.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "2cea1f1572b68d39329b27d93d333dcc23066bb7ce8e59eb2c23c7f3ed5630ff"
+    },
+    {
+      "path": "terminal/tools/check_inkling_prefix.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "cced978f9ac073793e9a1683ac739ea20d2aaf2d103cbf4e705c4d380926a985"
+    },
+    {
+      "path": "terminal/tools/inkling_mock_engine.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "324aecc9ae8cb122f564bcba21d8786b91e357d05d89572bdf4d70b69b29248c"
+    },
+    {
+      "path": "terminal/tools/qwen4_intake.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "eaa34764841e64b9d987b521a28fb611187c078a399140c2c5405ae788815588"
+    },
+    {
+      "path": "terminal/tools/strata_mcp.py",
+      "category": "both_modified",
+      "strategy": "prefer_upstream_hunks",
+      "hunks_resolved": 3,
+      "sha256": "50f2d55b317d735e807271c0d597425dd4e18604340ed903f2a5930ae016c659"
+    },
+    {
+      "path": "terminal/tools/test_docker_entrypoint.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "c36f71fe2e7252fb9ba86c9fa31f35a208667e58df2933d425a1d9eb1a76697d"
+    },
+    {
+      "path": "terminal/tools/test_metal_g13_index_pattern.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "0c79cac8ad9d1aad7c2839bf66548841a32d94b59443e59c1422402ccef866de"
+    },
+    {
+      "path": "terminal/tools/test_qwen4_intake.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "d4954661d0f2417c662906f894d63e87cea77f831b9c588ad93111d6dc26a9ed"
+    },
+    {
+      "path": "terminal/tools/test_setup_amd.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "2a22857c871e550122ef7d4d35428ca658c0aa202878453f8e4544559f9a675b"
+    },
+    {
+      "path": "terminal/tools/test_setup_golden.json",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "3ecea589e7e5a10c9384c2a5b8ce5e38757c3e826604a57708e9ff9389785e17"
+    },
+    {
+      "path": "terminal/tools/test_setup_golden.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "e44e40175a87f5407dc926c2a7490662bd36fec2ac2eea75b188a20bbe744f78"
+    },
+    {
+      "path": "terminal/tools/test_setup_hy4.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "c30157f40c230c1d9947af3086a924c677479172f24b7e45ffc06805ee40cdfb"
+    },
+    {
+      "path": "terminal/tools/test_setup_mac.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "e9d82ba0838c90520bca291a41ec712cfb2d8da6149a3694ac6df3eb92e1f3cc"
+    },
+    {
+      "path": "terminal/tools/test_setup_model_pins.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "349546760fca33100b65cee3b47601aaa70b446f8689e326d29c63ae3b4b5a53"
+    },
+    {
+      "path": "terminal/tools/test_setup_qwen36.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "ad8c5902171f627e1302689da7f8cd63f814533ca79edca4ce3200338759ea78"
+    },
+    {
+      "path": "terminal/tools/test_setup_small_card.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "3b085fb87cd7e935f89999595b773d890b8815f681a5337a48769c340a824bc1"
+    },
+    {
+      "path": "terminal/tools/test_strata_mcp_track5a.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "ddb2ad287dc547054ea212324b02fc148e3953fd52a70de7a41c55fd74dba545"
+    },
+    {
+      "path": "terminal/tools/test_sycl_build_guard.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "243025f5e13499493a5ddb97a2ba26b42d26078c3784a0256ed5337e8dadde05"
+    },
+    {
+      "path": "terminal/tools/vision/CMakeLists.txt",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "896d559557471f2a7a563c310be15dead2e9b402859e3b760730a5686484a83d"
+    },
+    {
+      "path": "tools/docker/Dockerfile.src",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "a0337a8043e0e75ce8b4d5f8e706559bd791dd60cb38806ec0cbe9d9a5fbb990"
+    },
+    {
+      "path": "tools/docker/compose/.env.example",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "0348470f996aeb0c53d708d89247c20284b985a9a4f17b312ecf887f21502f39"
+    },
+    {
+      "path": "tools/docker/compose/docker-compose.amd.yml",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "19da6a3608a6f9de06b8846c49fe43b20da01cf31ff16e3eee47db298afd21f2"
+    },
+    {
+      "path": "tools/docker/compose/docker-compose.intel.yml",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "c01670aee9309c6b8c9aabdc8563ca5ee737af4b7178b936c745da5282808632"
+    },
+    {
+      "path": "tools/docker/compose/docker-compose.nvidia.yml",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "51f50302f357627eb98db6802afe27abb44f7e8dfedb8cebf19b8934c85eede3"
+    },
+    {
+      "path": "tools/docker/entrypoint.sh",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "ce022f876d9f2866b44d4b503a63d167d184bce6de3f46ad050813c46c09923f"
+    },
+    {
+      "path": "tools/docker/healthcheck.sh",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "2387d3d738f083da672f225bded84ba41f1d31959370a181c95ce5819028a9ef"
+    },
+    {
+      "path": "tools/packaging/ENGINE-COMPONENT.md",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "f35fce80cd9aa5f5251ad4c488915e54d8eecf52075edb86a0fe102c206801de"
+    },
+    {
+      "path": "tools/packaging/README.md",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "76d0f6414b36fc49cc323b0fbdc15e0e18f0b194dd4cb1e6305e2633e9ebbf9c"
+    },
+    {
+      "path": "tools/packaging/UPDATES.md",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "3ba5341c58e22cd8034d43b9b9736b3636723ab296fa430e46fa07445f739811"
+    },
+    {
+      "path": "tools/packaging/build_cuda_linux.sh",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "241077ea2acbcbc74325723783c02caf83abe5845d0f8cac8e76ab37c5e44431"
+    },
+    {
+      "path": "tools/packaging/build_hip_linux.sh",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "f2393aa269e31552554da34b4788f7809e85ee7a283cdb10ac0aa29eaf856e57"
+    },
+    {
+      "path": "tools/packaging/feed_tool.py",
+      "category": "both_modified",
+      "strategy": "clean_3way",
+      "hunks_resolved": 0,
+      "sha256": "1f7141d4cb7c688e01a36806e134cbb351d8be8a6c1e85f59dbc680e71c0021e"
+    },
+    {
+      "path": "tools/release_grid/build/build_metal_feed.sh",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "166d647e0b553d4fd67328cc8bd609cc9b4e32daa9fd08e4c860349f68cddc08"
+    },
+    {
+      "path": "tools/release_grid/build/metal_inner.sh",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "17a9db4dd16e161828ad99e9bd5d26893e5b9db39ff694b8e89770605a563c6c"
+    },
+    {
+      "path": "tools/release_grid/cell_runner.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "ec8a0f294fff125ec2297abd10377d3dec4cf24fc012f6f8e1dd218ec86ad679"
+    },
+    {
+      "path": "tools/release_grid/cells.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "f0ee14f0d21153026d7d141f062c4f0148a2f332da3579a44983fa5cbbf74f03"
+    },
+    {
+      "path": "tools/release_grid/fetch_models.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "07c0dc495961a0165015018afd099b5a9d01ef3027c943150bd718d3122ffe94"
+    },
+    {
+      "path": "tools/release_grid/grid.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "ee3cf69411c082b6426e2f5de666266262d24715a13bd73338c5f37f2cf92f34"
+    },
+    {
+      "path": "tools/release_grid/grid_lib.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "5755a45edb5d61f0b5df0b22039bd1ffce6303561389f85ee7a0880bc7d673ad"
+    },
+    {
+      "path": "tools/release_grid/models.lock.json",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "caac10fc62ab27da3af0fdf3f34e821f06cdf51f1c65e28754b094c5622eebcb"
+    },
+    {
+      "path": "tools/release_grid/strix/strix_rc0_cell.ps1",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "ab87c187fda234aea8334260263d76609ff524f8abe88651891f34a292542e75"
+    },
+    {
+      "path": "tools/release_grid/usage/usage_suite.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "bec2832337bcd66dc49e64023082d8a8e09d70b8dedced132afe1618f24ebbb7"
+    },
+    {
+      "path": "tools/release_grid/vram_hog.cu",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "a92df2b6ee2fa933edcf4d4ff87dfef5587251e4dc229d1278c846378cb3d7cf"
+    },
+    {
+      "path": "tools/settings_register.py",
+      "category": "adopt_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "9bf0b1409ef967eef93a6916adb860345e6d57eec026be77ec45e3a790da53e7"
+    },
+    {
+      "path": "tools/test_release_grid.py",
+      "category": "add_upstream",
+      "strategy": "adopt_upstream",
+      "hunks_resolved": 0,
+      "sha256": "92d2e18977707c4ac2a69d1b1c561a54dc9ebeb08aba9e4904eef12ad5e691cb"
+    }
+  ]
+}

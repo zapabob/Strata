@@ -1,6 +1,10 @@
-// Windows HIP auto-chunk cap (#1630) and the commit-limit verdict (#1607): no GPU, no Windows needed.
+// Windows HIP auto-chunk cap (#1630), the commit-limit verdict (#1607) and the commit with the page files' room to grow
+// (#5742): no GPU, no Windows needed.
+#include <algorithm>
+#include <cstdint>
 #include <cstdio>
 
+#include "strata/platform/commit.hpp"
 #include "strata/platform/host_limits.hpp"
 
 using namespace strata::platform::host_limits;
@@ -29,6 +33,41 @@ int main() {
     CHECK(v.warn);
     CHECK(v.text.find("1607") != std::string::npos);
     CHECK(!commit_verdict(0, 0, 10 * G, 4 * G).warn);                 // unknown limit (not Windows)
+    // #5742: the commit left plus the room the page files may still grow by.  The reporter: 21.67 GiB left of a
+    // 47.9 GiB limit with a page file at 8 of its 32 GB (24 GB of room), 32.25 GiB of RAM free
+    {
+        using strata::platform::commit_available;
+        const uint64_t left = 21670ull * G / 1000, room = 24 * G, phys = 32250ull * G / 1000;
+        CHECK(commit_available(left, 0) == left);                       // no room (STRATA_COMMIT_GROWTH=0, off Windows)
+        CHECK(commit_available(left, room) == left + room);
+        CHECK(std::min(phys, commit_available(left, room)) == phys);    // RAM, no longer the page file's size now, bounds it
+        CHECK(std::min(phys, commit_available(left, 0)) == left);       // as before: the 21.67 GiB
+        CHECK(commit_available(UINT64_MAX - 1, 5) == UINT64_MAX);       // saturates
+        CHECK(commit_available(UINT64_MAX, UINT64_MAX) == UINT64_MAX);
+        // the planned-allocation warning reads the same sum: 4 GiB left of 47.9 with 24 GiB of room and a 3.5 GiB plan
+        CHECK(commit_verdict(4 * G, 48 * G, 3584ull << 20, 4 * G).warn);
+        CHECK(!commit_verdict(commit_available(4 * G, room), commit_available(48 * G, room), 3584ull << 20, 4 * G).warn);
+    }
+    // #6748: 16.16 GiB of RAM free, 9.27 GiB of commit left: the expert pool's host budget is the commit (before: the RAM, then "host malloc failed")
+    {
+        using strata::platform::host_ram_budget;
+        CHECK(host_ram_budget(16160ull * G / 1000, 9270ull * G / 1000) == 9270ull * G / 1000);
+        CHECK(host_ram_budget(9 * G, 40 * G) == 9 * G);          // the commit has room: the RAM bounds it, as before
+        CHECK(host_ram_budget(9 * G, 0) == 9 * G);               // commit unknown (not Windows): the RAM
+        CHECK(host_ram_budget(0, 5 * G) == 0);
+    }
+#if defined(_WIN32)
+    // this machine: the reading the engine now takes (it can only grow the commit, never shrink it)
+    {
+        MEMORYSTATUSEX s{};
+        s.dwLength = sizeof s;
+        CHECK(GlobalMemoryStatusEx(&s) != 0);
+        const uint64_t grow = strata::platform::commit_growth((uint64_t) s.ullTotalPhys);
+        CHECK(strata::platform::commit_available((uint64_t) s.ullAvailPageFile, grow) >= (uint64_t) s.ullAvailPageFile);
+        std::printf("host_limits_test: this machine: %.1f GiB of commit left of %.1f, the page files may grow by %.1f GiB\n",
+                    (double) s.ullAvailPageFile / G, (double) s.ullTotalPageFile / G, (double) grow / G);
+    }
+#endif
     if (failed == 0) std::printf("host_limits_test: ok\n");
     return failed ? 1 : 0;
 }

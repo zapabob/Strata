@@ -37,6 +37,9 @@
 #include "strata/core/gfx12_chunk.hpp"
 #include "strata/core/nv_chunk.hpp"
 #include "strata/core/nv_defaults.hpp"
+#include "strata/core/watchdog_limits.hpp"
+#include "strata/core/adapt_coverage_rules.hpp"
+#include "strata/core/low_vram_rules.hpp"
 #include "strata/kernels/gfx_arch.hpp"
 #include "strata/core/batch_telemetry.hpp"
 #include "strata/core/dma_batch.hpp"
@@ -1061,6 +1064,7 @@ struct Options {
     int64_t adapt_warm_rounds = 0;
     int adapt_iv(int64_t rounds) const { return adapt_warm_every > 0 && rounds < adapt_warm_rounds ? adapt_warm_every : adapt_every; }   ///< the interval in force at verify round `rounds`
     float adapt_decay = 0.7f;   ///< the usage counts are multiplied by this after each adaptation (--adapt-decay)
+    bool adapt_decay_given = false;   ///< --adapt-decay was on the command line (#4870 coverage default does not override it)
     /// an expert is swapped into the VRAM tier only when its decayed routing count beats the one it replaces by more than
     /// this (--adapt-min-gain; both the blocking and the asynchronous tier)
     float adapt_min_gain = 1.5f;
@@ -1092,6 +1096,7 @@ struct Options {
     /// The vision path: keep a per-cell (t, h, w) rotary position table so --serve can take GENI requests.
     bool vision = false;
     int adapt_swaps = 96;
+    bool adapt_swaps_given = false;
     /// --serve: how many conversation checkpoints to keep between requests (0 = every request reads its whole
     /// prompt again, the v0.1.2 behaviour).  One is the GDN recurrence of the 36 layers, the QSA indexer tails and
     /// the PLE history (~118 MB of host RAM); the KV cache itself is positional and stays where it is.
@@ -1921,6 +1926,9 @@ std::atomic<int64_t> g_req_vram_free_mib{-1};
 /// The free VRAM the serve start-up line reported ("MiB of VRAM free with everything loaded"; -1 before it or when it did not run): the first
 /// request's note is said only when the free memory fell since then or is under 512 MiB (strata/core/vram_request_notice.hpp).
 std::atomic<int64_t> g_startup_vram_free_mib{-1};
+/// 0.2.21 (QPERF): the auto expert cache's own measurement of what the load allocates after the cache.  Free MiB once the slots were written (-1: no
+/// auto cache), the draft head and the other priced buffers bound after it, and what was priced for the rest.  The start-up line prints the difference.
+std::atomic<int64_t> g_cache_free_after_write_mib{-1}, g_cache_priced_bound_mib{0}, g_cache_priced_late_mib{0};
 /// AMD on Linux: the driver's paused-GPU counter (ms, strata/core/gpu_pause_time.hpp) when the current request began;
 /// -1 before the first request, when not available, and in every other build.  Read once per request, never per step.
 std::atomic<int64_t> g_req_gpu_pause_ms{-1};
@@ -4048,7 +4056,7 @@ int main(int argc, char** argv) {
         else if (a == "--mtp-window") o.mtp_window = std::atoll(next("--mtp-window"));
         else if (a == "--pcie-frac") o.pcie_frac = std::atof(next("--pcie-frac"));
         else if (a == "--adapt-every") { o.adapt_every = std::atoi(next("--adapt-every")); o.adapt_every_given = true; }
-        else if (a == "--adapt-decay") o.adapt_decay = strata::program::adapt_decay_checked(std::atof(next("--adapt-decay")));   // #1284: outside 0..1 -> 0.7, said
+        else if (a == "--adapt-decay") { o.adapt_decay = strata::program::adapt_decay_checked(std::atof(next("--adapt-decay"))); o.adapt_decay_given = true; }   // #1284: outside 0..1 -> 0.7, said
         else if (a == "--adapt-min-gain") o.adapt_min_gain = (float) std::atof(next("--adapt-min-gain"));
         else if (a == "--adapt-async") { o.adapt_async = std::atoi(next("--adapt-async")) != 0 ? 1 : 0; o.adapt_async_given = o.adapt_async; }
         else if (a == "--spec-min-p") o.spec_min_p = std::atof(next("--spec-min-p"));
@@ -4179,7 +4187,7 @@ int main(int argc, char** argv) {
             if (!parse_i64_list(next("--eos-ids"), o.eos_ids, e)) { std::fprintf(stderr, "--eos-ids: %s\n", e.c_str()); return 2; }
             o.stop_eos = true;
         }
-        else if (a == "--adapt-swaps") o.adapt_swaps = std::atoi(next("--adapt-swaps"));
+        else if (a == "--adapt-swaps") { o.adapt_swaps = std::atoi(next("--adapt-swaps")); o.adapt_swaps_given = true; }
         else if (a == "--expert-cache-cpu-order") o.expert_cache_cpu_order = true;
         else if (a == "--expert-cache-per-layer") o.expert_cache_per_layer = true;
         else if (a == "--peer-device") o.peer_device = std::atoi(next("--peer-device"));
@@ -5006,6 +5014,29 @@ int main(int argc, char** argv) {
         ld.metal_build = true;   // (Metal's windows hold 8 rows and it has no 12-row window: "metal window: window size out of range")
 #endif
         o.lookup_max_t = strata::core::default_lookup_max_t(ld);
+    }
+    // #6747: STRATA_GDN_SPLIT=1 (the sm_70 table's) holds kVerifyMaxT rows and has no batched commit, so it cannot run a lookup window past
+    // kVerifyMaxT: the 12-token default of the 8-row build ended the engine on the first request.  Drop the table's switch, or (a user's own
+    // STRATA_GDN_SPLIT=1) clamp the lookup window; never exit.
+    if (o.lookup_max_t > (int) strata::kernels::kVerifyMaxT) {
+        const char* gs = std::getenv("STRATA_GDN_SPLIT");
+        const auto fix = strata::core::gdn_split_window_fix(gs != nullptr && gs[0] == '1', strata::core::gdn_split_is_default(),
+                                                           o.lookup_max_t, (int) strata::kernels::kVerifyMaxT);
+        if (fix.drop_default_split) {
+#if defined(_WIN32)
+            _putenv_s("STRATA_GDN_SPLIT", "");
+#else
+            unsetenv("STRATA_GDN_SPLIT");
+#endif
+            strata::core::gdn_split_default_flag() = false;
+            std::fprintf(stderr, "strata generate: STRATA_GDN_SPLIT=1 (the sm_70 default) is dropped: a --lookup-max-t %d window is wider than this build's %d rows "
+                                 "and needs the batched GDN commit (STRATA_GDN_SPLIT=1 with --lookup-max-t %d, or a -DSTRATA_WINDOW_MAX_T=16 build, keeps the switch)\n",
+                         o.lookup_max_t, (int) strata::kernels::kVerifyMaxT, (int) strata::kernels::kVerifyMaxT);
+        } else if (fix.lookup_max_t != o.lookup_max_t) {
+            std::fprintf(stderr, "strata generate: STRATA_GDN_SPLIT=1 holds %d rows per window: --lookup-max-t %d is clamped to %d (unset STRATA_GDN_SPLIT for the wide window)\n",
+                         (int) strata::kernels::kVerifyMaxT, o.lookup_max_t, fix.lookup_max_t);
+            o.lookup_max_t = fix.lookup_max_t;
+        }
     }
     if (o.lookup_max_t > 0 && o.suffix_draft > 0 && o.spec >= 2) {
         if (o.mtp_max_t == 0) o.mtp_max_t = o.spec;
@@ -7486,6 +7517,49 @@ int main(int argc, char** argv) {
                 }
             }
         }
+        // #6758: fewer cards (split_rules.hpp).  The same model predicts this placement without its first stages, down to
+        // the last card alone.  The search does not predict these cases.  This block only prints a line, as the NEAR TIE
+        // block does.
+        if (const double fewer_pct = strata::program::split_rules::fewer_cards_pct_resolve(std::getenv("STRATA_SPLIT_FEWER_PCT"));
+            fewer_pct > 0.0 && best_ms > 0.0) {
+            // STRATA_SPLIT_FEWER_PCT is a number in percent (`fewer_cards_pct_resolve` reads it with strtod).  0 disables
+            // this block.
+            // `predict` reports a failed carve through `err` and `carve_ok`.  This advice must not stop a start.  Thus the
+            // block restores `err` and sets `carve_ok` to true after the predictions.
+            const std::string err_was = err;
+            std::vector<double> without;
+            for (int drop = 1; drop < ns; ++drop) {
+                double hm = 0;
+                int64_t held = 0;
+                without.push_back(predict(strata::program::split_rules::without_first(best, drop), hm, held));
+            }
+            const bool carve_fine = carve_ok;
+            carve_ok = true;
+            err = err_was;
+            {   // `predict` writes its fill to `used` and `held_cnt`.  This call writes the fill of the chosen placement again.
+                double hm = 0;
+                int64_t held = 0;
+                (void) predict(best, hm, held);
+            }
+            const int leave = carve_fine ? strata::program::split_rules::fewer_cards(best_ms, without, fewer_pct) : 0;
+            if (leave > 0) {
+                // The line gives each card with its engine number and its model name.  The server puts the faster card last
+                // (#1352).  Thus CUDA1 here can be "gpu": 0 in the server config, and a number alone can identify the wrong card.
+                std::string gone, kept;
+                std::vector<int> kept_devs;
+                for (int i = 0; i < ns; ++i) {
+                    const int dev = i == 0 ? 0 : stages[(size_t) i - 1]->dev;
+                    if (i >= leave) kept_devs.push_back(dev);
+                    std::string& s = i < leave ? gone : kept;
+                    s += (s.empty() ? "CUDA" : ", CUDA") + std::to_string(dev);
+                    cudaDeviceProp prop{};
+                    if (cudaGetDeviceProperties(&prop, dev) == cudaSuccess) s += std::string(" (") + prop.name + ")";
+                    else (void) cudaGetLastError();
+                }
+                const double ms = without[(size_t) leave - 1];
+                std::fprintf(stderr, "%s\n", strata::program::split_rules::fewer_cards_advice(gone, kept, kept_devs, ms, best_ms, ks).c_str());
+            }
+        }
     }
     for (size_t i = 0; i < split_at.size(); ++i)
         if (split_at[i] >= g.n_layers) {
@@ -8947,6 +9021,11 @@ int main(int argc, char** argv) {
                      (long long) o.prefill_chunk, (long long) mib, (long long) (160 + (o.prefill_chunk * 680) / 1024));
         return mib + 64;   // a margin for the allocator
     };
+    // Track 6A + #6128/#5915: remember post-cache unpriced + priced VRAM needs so sized_slots and the post-alloc
+    // shrink loop (after cudaMemset(xcache)) never leave Windows WDDM below the free-VRAM safety floor.
+    bool wddm_discrete = false;
+    int64_t post_cache_extra_b = 0;   // prefill_mib + mtp_bind + late_alloc_b (added to reserve + pipe_first)
+    int64_t post_cache_late_b = 0;    // the late_alloc_b part of it (0 when it was not priced)
     if (o.expert_cache < 0) {
         size_t free_b = 0, total_b = 0;
         free_b = strata::core::device_free_bytes(); (void) total_b;
@@ -9035,8 +9114,12 @@ int main(int argc, char** argv) {
         // verifier warm up, ~245 MiB on every card measured) came out of the reserve, so a card ended 240 MiB under the reserve it was asked to
         // keep (459 MiB free at --vram-reserve-mib 700: under the 512 MiB line the serve check warns about, #2065).  The cache now leaves it too.
         // Not on a card that could not keep min_slots after it, and not under STRATA_DEFAULTS=026 (the v0.2.6 sizing).
+        // On Windows WDDM discrete GPUs, price kWddmLateAllocMib (384 MiB) so post-load free VRAM stays above the WDDM floor.
+        const int64_t late_mib = strata::core::wddm_late_alloc_mib(wddm_discrete, strata::qwen_defaults_026(), strata::core::kLateAllocMib);
         strata::core::AutoCacheSlots auto_slots = strata::core::auto_cache_slots(
-            (int64_t) free_b, reserve, blob, min_slots, strata::qwen_defaults_026() ? 0 : strata::core::kLateAllocMib);
+            (int64_t) free_b, reserve, blob, min_slots, late_mib);
+        post_cache_late_b = auto_slots.late_priced ? (late_mib << 20) : 0;
+        post_cache_extra_b = (prefill_mib << 20) + mtp_bind + post_cache_late_b;
         int64_t slots = auto_slots.slots;
         if (!profile.empty()) slots = std::min<int64_t>(slots, (int64_t) profile.size());
 #if defined(STRATA_GPU_METAL)
@@ -9053,10 +9136,12 @@ int main(int argc, char** argv) {
         }
 #endif
         o.expert_cache = (int) std::max<int64_t>(slots, 0);
+        std::string late_note = auto_slots.late_priced
+            ? (", +" + std::to_string(late_mib) + " MiB for what is allocated after the cache") : std::string();
         std::fprintf(stderr, "strata generate: expert cache auto: %.2f GiB free, %d MiB reserved (+%lld MiB for the "
                              "draft head%s) -> %d slots\n",
                      (double) free_b / 1073741824.0, o.vram_reserve_mib, (long long) (mtp_bind >> 20),
-                     auto_slots.late_priced ? ", +256 MiB for what is allocated after the cache" : "", o.expert_cache);
+                     late_note.c_str(), o.expert_cache);
 #if defined(STRATA_USE_HIP) && !defined(_WIN32)
         // An APU's "VRAM" is system RAM: the device-free figure above counts the whole GPU-addressable pool and does not
         // subtract ordinary CPU allocations (the host expert arena), so a cache sized from it alone can ask the OOM killer
@@ -9473,8 +9558,16 @@ int main(int argc, char** argv) {
             cudaDeviceSynchronize();
             size_t free_b = 0, total_b = 0;
             free_b = strata::core::device_free_bytes(); (void) total_b;
-            const int64_t want = ((int64_t) o.vram_reserve_mib << 20) + pipe_first;
-            if ((int64_t) free_b >= want - (64ll << 20)) break;
+            // #6128: include mtp_bind, owned prefill buffers, and unpriced late allocations (cuBLAS, verify, graph
+            // capture) in `want` so shrinking stops ONLY when post-load free VRAM stays >= vram_reserve_mib!
+            const int64_t want = ((int64_t) o.vram_reserve_mib << 20) + pipe_first + post_cache_extra_b;
+            // 32 MiB under WDDM (0 before 0.2.21): the slot count rounds down, so the free figure after the write is a few MiB under `want` by
+            // construction (902 against 904 MiB on the RTX 5070), and a shortage of 2 MiB then took a 64 MiB margin plus a re-write of the cache
+            const int64_t slack = wddm_discrete ? (32ll << 20) : (64ll << 20);
+            g_cache_free_after_write_mib.store((int64_t) (free_b >> 20));
+            g_cache_priced_bound_mib.store((pipe_first + post_cache_extra_b - post_cache_late_b) >> 20);
+            g_cache_priced_late_mib.store(post_cache_late_b >> 20);
+            if ((int64_t) free_b >= want - slack) break;
             // short by (want - free); a figure of 0 only says "at least": the first two such reads give back 1 GiB
             // each (under WDDM the free figure read before the allocation runs ~0.7 GiB high), later ones a quarter
             int64_t give = want - (int64_t) free_b + (64ll << 20);
@@ -11011,7 +11104,8 @@ int main(int argc, char** argv) {
                                                                                      : "STRATA_GFX12_CHUNK";
         const char* force16 = std::getenv(chunk_env_name);
         const int64_t extra_slots = std::max<int64_t>(0, lend_slots(cand) - lend_slots(8192));
-        const uint64_t extra_mib = ((uint64_t) extra_slots * strata::kernels::cpu::expert_layout().max_blob) >> 20;
+        const uint64_t extra_mib = strata::core::prefill_loan_ram_mib(
+            ((uint64_t) extra_slots * strata::kernels::cpu::expert_layout().max_blob) >> 20, o.resident_cpu_experts);   // #6687: half without pinned experts
         const auto hm = strata::core::sample_host_memory();   // the cgroup / --memory-limit-mib cap counts too
         const uint64_t avail_mib = hm ? hm->available >> 20 : mem_sample().avail_mib;
         // --resident-experts pins its RAM copy after this point, and that copy also holds the lent slots' experts: what
@@ -11023,16 +11117,18 @@ int main(int argc, char** argv) {
             pin_mib = ((total > cached ? total - cached : 0) +
                        (uint64_t) std::max<int64_t>(0, lend_slots(8192)) * strata::kernels::cpu::expert_layout().max_blob) >> 20;
         }
-        if (avail_mib > 0 && avail_mib < pin_mib + extra_mib + 6144 && !(force16 != nullptr && std::strcmp(force16, "1") == 0)) {
+        const uint64_t ram_reserve_mib = strata::core::prefill_ram_reserve_mib(
+            std::getenv("STRATA_PREFILL_RAM_RESERVE_MIB"), o.resident_cpu_experts);
+        if (avail_mib > 0 && avail_mib < pin_mib + extra_mib + ram_reserve_mib && !(force16 != nullptr && std::strcmp(force16, "1") == 0)) {
             const int64_t next = strata::core::gfx12_chunk_step_down(cand);
             auto_ceiling = std::min<int64_t>(auto_ceiling, next);
             o.prefill_auto_max = std::min<int64_t>(o.prefill_auto_max, next);
             o.prefill_chunk = std::min<int64_t>(o.prefill_chunk, next);
             std::fprintf(stderr, "strata generate: %s: prompt chunks stay at %lld: %lld would lend %lld more cache slots "
                                  "(%llu MiB more held in RAM during a prompt), and %llu MiB of RAM is available for %llu MiB "
-                                 "of resident experts plus that (#2090; %s=1 takes the default ceiling anyway)\n",
+                                 "of resident experts plus that and %llu MiB reserve (#2090/#6687; %s=1 or STRATA_PREFILL_RAM_RESERVE_MIB=N overrides)\n",
                          o.prefill_raise_who, (long long) next, (long long) cand, (long long) extra_slots, (unsigned long long) extra_mib,
-                         (unsigned long long) avail_mib, (unsigned long long) pin_mib, chunk_env_name);
+                         (unsigned long long) avail_mib, (unsigned long long) pin_mib, (unsigned long long) ram_reserve_mib, chunk_env_name);
             cand = next;
             continue;
         }
@@ -11797,6 +11893,27 @@ int main(int argc, char** argv) {
                                     ? "A larger automatic RAM copy (the lend region comes after the ranked experts), or a smaller --prefill,"
                                     : "A larger --resident-budget-gib (the lend region comes after the ranked experts), or a smaller --prefill,")
                              : "A smaller --prefill, or auto,");
+        // Issue #4870: coverage-based adaptive tier defaults (15%..65% VRAM coverage -> 2 / 192 / 0.92 when not given).
+        // Apply before reserve_exchanges so resident RAM exchange buffers match the faster mid-coverage swap rate.
+        {
+            const int64_t total_pairs = g.n_layers * g.n_expert;
+            int64_t live_slots = xcache.slots();
+            for (const auto& stp : stages) live_slots += stp->cache.slots();
+            const double cov = total_pairs > 0 ? (double) live_slots / (double) total_pairs : 0.0;
+            if (o.adapt_every > 0 && o.adapt_swaps > 0 && live_slots > 0 && live_slots < total_pairs &&
+                strata::core::adapt_mid_coverage_applies(cov, std::getenv("STRATA_ADAPT_MID"), strata::core::adapt_mid_default_on())) {   // CUDA on, HIP off since 0.2.21 (adapt_coverage_rules.hpp)
+                const int prev_ev = o.adapt_every, prev_sw = o.adapt_swaps;
+                const float prev_dc = o.adapt_decay;
+                if (!o.adapt_every_given) o.adapt_every = 2;
+                if (!o.adapt_swaps_given) o.adapt_swaps = 192;
+                if (!o.adapt_decay_given) o.adapt_decay = 0.92f;
+                if (o.adapt_every != prev_ev || o.adapt_swaps != prev_sw || o.adapt_decay != prev_dc)
+                    std::fprintf(stderr, "strata generate: #4870 mid-coverage expert cache (%lld of %lld slots, %.1f%%): "
+                                         "adaptive defaults every %d -> %d, swaps %d -> %d, decay %.2f -> %.2f\n",
+                                 (long long) live_slots, (long long) total_pairs, 100.0 * cov,
+                                 prev_ev, o.adapt_every, prev_sw, o.adapt_swaps, prev_dc, o.adapt_decay);
+            }
+        }
         if (resident_ok) {
             // --adapt-async: twice the exchange buffers - the second half bounces the copies in whose source is not
             // page-locked (an asynchronous copy instead of the driver's staged, synchronous one)
@@ -13910,9 +14027,22 @@ int main(int argc, char** argv) {
             if (segpool != nullptr || ckpt_pool.on()) (void) cudaDeviceSynchronize();
             // #342: before make_room evicts oldest-first, the copies of this conversation a turn back go (they hold
             // nothing the outgoing chain does not, apart from the tail this conversation rewrote)
-            if (const size_t dropped = conversations.drop_superseded(src.ids, src.imgs, src.checks, src.cvec))
-                std::fprintf(stderr, "strata serve: conversation cache: dropped %zu superseded cop%s of this "
-                             "conversation; parked=%zu\n", dropped, dropped == 1 ? "y" : "ies", conversations.size());
+            {
+                std::vector<size_t> gone;
+                const size_t dropped = conversations.drop_superseded(src.ids, src.imgs, src.checks, src.cvec, &gone);
+                if (dropped)
+                    std::fprintf(stderr, "strata serve: conversation cache: dropped %zu superseded cop%s of this "
+                                 "conversation; parked=%zu\n", dropped, dropped == 1 ? "y" : "ies", conversations.size());
+                // a longer snapshot of the same conversation makes the older ones useless, in RAM and on the SSD tier alike
+                // (never spilled, and a spilled one is deleted with its index file)
+                if (spill.enabled()) {
+                    const auto on_ssd = spill.drop_superseded(src.ids, src.imgs, src.cvec);
+                    gone.insert(gone.end(), on_ssd.begin(), on_ssd.end());
+                }
+                for (const size_t n : gone)
+                    std::fprintf(stderr, "strata serve: conversation cache: dropped superseded snapshot %zu tokens (extended by %zu)\n",
+                                 n, src.ids.size());
+            }
             // A layer split parks one image per stage: the first stage's (with the draft layer's K/V) and one per
             // later stage (without it - the draft ring is saved once).  The checkpoints are MOVED apart into their
             // stage parts for the capture and put back together whichever way this ends (no running state copied).
@@ -14563,7 +14693,65 @@ int main(int argc, char** argv) {
             std::fprintf(stderr, "strata serve: STRATA_ROUTE_TAIL_SKIP=%d is ON: a missed expert that every token of a verify window routes at rank %d or "
                                  "lower is skipped (answers differ slightly); it is off when STRATA_ROUTE_TAIL_SKIP is not set or is 0\n",
                          strata::core::tail_skip_rank(), strata::core::tail_skip_rank());
-        if (o.adapt_every > 0 && o.adapt_swaps > 0 && !all_experts_resident)
+        // Issue #4870 + Track 6A + #6509 (v0.2.20): coverage-based adaptive defaults.
+        // - Mid-coverage (15%..65% of total layer-experts): faster 2 / 192 / 0.92 curve (+8% hit rate; decode +6..9% on an RTX A4000 (CUDA), but
+        //   up to 8% slower on an RX 7900 XT, slower in 10 of 13 cells, #6791), so since 0.2.21 it is on for the CUDA build and off for the HIP build;
+        //   STRATA_ADAPT_MID=1 / 0 forces either; --adapt-every / --adapt-swaps / --adapt-decay win over all of it.
+        // - Tiny-cache (< 15% resident): anti-thrash dampening via low_vram_adapt_swaps + Zipf-head profile pinning.
+        const int64_t total_expert_pairs = g.n_layers * g.n_expert;
+        int64_t live_gpu_slots = xcache.slots();
+        for (const auto& stp : stages) live_gpu_slots += stp->cache.slots();
+        {
+            const double cov = total_expert_pairs > 0 ? (double) live_gpu_slots / (double) total_expert_pairs : 0.0;
+            if (!all_experts_resident && live_gpu_slots > 0 && o.adapt_every > 0 && o.adapt_swaps > 0 &&
+                strata::core::adapt_mid_coverage_applies(cov, std::getenv("STRATA_ADAPT_MID"), strata::core::adapt_mid_default_on())) {
+                const int prev_ev = o.adapt_every, prev_sw = o.adapt_swaps;
+                const float prev_dc = o.adapt_decay;
+                if (!o.adapt_every_given) o.adapt_every = 2;
+                if (!o.adapt_swaps_given) o.adapt_swaps = 192;
+                if (!o.adapt_decay_given) o.adapt_decay = 0.92f;
+                if (o.adapt_every != prev_ev || o.adapt_swaps != prev_sw || o.adapt_decay != prev_dc)
+                    std::fprintf(stderr, "strata serve: #4870 mid-coverage expert cache (%lld of %lld slots, %.1f%%): "
+                                         "adaptive defaults every %d -> %d, swaps %d -> %d, decay %.2f -> %.2f\n",
+                                 (long long) live_gpu_slots, (long long) total_expert_pairs, 100.0 * cov,
+                                 prev_ev, o.adapt_every, prev_sw, o.adapt_swaps, prev_dc, o.adapt_decay);
+            } else if (cov < 0.15 && strata::core::tiny_cache_rules_enabled(std::getenv("STRATA_TINY_CACHE"))) {   // opt-in since 0.2.21 (#6782 / #6799)
+                const int damp = strata::core::low_vram_adapt_swaps(o.adapt_swaps, o.adapt_swaps_given, live_gpu_slots, total_expert_pairs);
+                if (damp != o.adapt_swaps) {
+                    std::fprintf(stderr, "strata serve: tiny expert cache (%lld of %lld slots, %.1f%%): dampening adaptive swaps %d -> %d "
+                                         "to avoid PCIe thrashing (--adapt-swaps N overrides)\n",
+                                 (long long) live_gpu_slots, (long long) total_expert_pairs, 100.0 * cov,
+                                 o.adapt_swaps, damp);
+                    o.adapt_swaps = damp;
+                }
+            }
+        }
+        std::vector<uint8_t> pinned_pair;
+        if (!profile.empty() && !host_res.empty() && live_gpu_slots > 0 && !all_experts_resident) {
+            const char* pin_env = std::getenv("STRATA_CACHE_PIN_FRAC");
+            const int64_t pin_n = (strata::core::tiny_cache_rules_enabled(std::getenv("STRATA_TINY_CACHE")) || (pin_env != nullptr && pin_env[0] != '\0'))
+                                      ? strata::core::low_vram_pin_slots(live_gpu_slots, total_expert_pairs, pin_env) : 0;   // pinning: opt-in since 0.2.21
+            if (pin_n > 0) {
+                pinned_pair.assign((size_t) total_expert_pairs, 0);
+                int64_t pinned_ct = 0;
+                for (size_t i = 0; i < profile.size() && pinned_ct < pin_n; ++i) {
+                    const size_t idx = (size_t) profile[i].first * (size_t) g.n_expert + (size_t) profile[i].second;
+                    if (idx < host_res.size() && host_res[idx] >= 0 && pinned_pair[idx] == 0) {
+                        pinned_pair[idx] = 1;
+                        ++pinned_ct;
+                    }
+                }
+                if (pinned_ct > 0) {
+                    drive.d.fetch_pin = pinned_pair.data();
+                    std::fprintf(stderr, "strata serve: tiny expert cache: pinned top %lld of %lld profile experts against eviction "
+                                         "(STRATA_CACHE_PIN_FRAC=0 turns it off)\n",
+                                 (long long) pinned_ct, (long long) live_gpu_slots);
+                } else {
+                    pinned_pair.clear();
+                }
+            }
+        }
+        if (o.adapt_every > 0 && o.adapt_swaps > 0 && !all_experts_resident && live_gpu_slots > 0)
             drive.d.usage.assign((size_t) (g.n_layers * g.n_expert), 0.0f);
         PcieAuto pcie_auto;
         if (o.pcie_frac_auto && !all_experts_resident && o.batch == 0 && o.peer_device < 0 && (n_stages == 1 || pcie_auto_split_ok())) {
@@ -15648,6 +15836,13 @@ int main(int argc, char** argv) {
             g_startup_vram_free_mib.store(free_mib);   // the first request's note compares with this
             if (free_mib >= 256) {
                 std::fprintf(stderr, "strata serve: %lld MiB of VRAM free with everything loaded\n", (long long) free_mib);
+                if (g_cache_free_after_write_mib.load() >= 0)   // QPERF: what the load took after the expert cache, against what the cache sizing priced
+                    std::fprintf(stderr, "strata serve: after the expert cache was written %lld MiB were free; %lld MiB were taken since (priced: %lld MiB of draft "
+                                         "head and buffers + %lld MiB for the rest), %lld MiB of it for the rest\n",
+                                 (long long) g_cache_free_after_write_mib.load(),
+                                 (long long) (g_cache_free_after_write_mib.load() - free_mib), (long long) g_cache_priced_bound_mib.load(),
+                                 (long long) g_cache_priced_late_mib.load(),
+                                 (long long) (g_cache_free_after_write_mib.load() - free_mib - g_cache_priced_bound_mib.load()));
 #ifdef _WIN32
                 if (free_mib < 512 && o.prefill_auto)   // #1275: said, never changed (the chunk is the operator's to cap)
                     std::fprintf(stderr, "strata serve: that is little room for the verify windows' buffers under WDDM; if the "
@@ -15814,12 +16009,16 @@ int main(int argc, char** argv) {
         // GPU spinning forever.  STRATA_WATCHDOG_S=0 turns it off.  Issue #31: before it does, it reports what every
         // part was doing (stall_report), so one occurrence says where the wait is.
         {
-            const char* ws = std::getenv("STRATA_WATCHDOG_S");
-            const int limit = ws ? std::atoi(ws) : 60;   // one step (a prompt layer, a verify window) takes seconds
+            // #6861: parsed with strtol (watchdog_limits.hpp): atoi of a value outside int printed "no progress for -1195029860 s"
+            bool ws_bad = false, wio_bad = false;
+            const int limit = strata::core::watchdog_seconds(std::getenv("STRATA_WATCHDOG_S"), 60, &ws_bad);   // one step (a prompt layer, a verify window) takes seconds
             // #1407: while the OS is still reading the file tier (major faults / bytes read advance), a silent step is
             // slow, not stuck; it gets up to STRATA_WATCHDOG_IO_S (default 10 x the limit) of such time. 0 = no allowance.
-            const char* wio = std::getenv("STRATA_WATCHDOG_IO_S");
-            const int io_limit = wio ? std::atoi(wio) : limit * 10;
+            const int io_limit = strata::core::watchdog_seconds(std::getenv("STRATA_WATCHDOG_IO_S"), limit * 10, &wio_bad);
+            if (ws_bad || wio_bad)
+                std::fprintf(stderr, "strata serve: %s%s is not a whole number of seconds (0 to 604800): using %d s%s\n", ws_bad ? "STRATA_WATCHDOG_S" : "",
+                             wio_bad ? (ws_bad ? " and STRATA_WATCHDOG_IO_S" : "STRATA_WATCHDOG_IO_S") : "", ws_bad ? 60 : io_limit,
+                             ws_bad && wio_bad ? " (and 10 x that for the file tier)" : "");
             if (limit > 0)
                 std::thread([limit, io_limit] {
                     strata::platform::name_this_thread("strata-watchdog");
@@ -15857,9 +16056,9 @@ int main(int argc, char** argv) {
                         }
                         // a blocking step's explicit allowance (session files): still within it, not yet stuck
                         if (strata::core::progress_now_ms() < p.allow_until_ms.load()) continue;
-                        std::fprintf(stderr, "strata serve: no progress for %d s during a request (%s) - stopping "
+                        std::fprintf(stderr, "strata serve: no progress for %lld s during a request (%s) - stopping "
                                              "the engine so the server starts it again (issue #29)%s\n",
-                                     limit, stage_text().c_str(),
+                                     (long long) std::chrono::duration_cast<std::chrono::seconds>(now - since).count(), stage_text().c_str(),
                                      launch_blocking() ? "; CUDA_LAUNCH_BLOCKING=1 is set, and no verify window can "
                                                          "finish with it (#1341)" : "");
                         stall_report(stderr, p.ticks.load() - ticks_at);
@@ -23853,6 +24052,19 @@ int main(int argc, char** argv) {
         const int64_t files0 = src.file_reads(), ram0 = src.ram_reads();
         const uint64_t fbytes0 = src.file_blob_bytes(), fall0 = src.file_read_bytes();
         const double fms0 = src.file_ms();
+        {
+            // Issue #4870: coverage-based adaptive defaults in non-serve decode path as well.
+            const int64_t total_pairs = g.n_layers * g.n_expert;
+            int64_t live_slots = xcache.slots();
+            for (const auto& stp : stages) live_slots += stp->cache.slots();
+            const double cov = total_pairs > 0 ? (double) live_slots / (double) total_pairs : 0.0;
+            if (o.adapt_every > 0 && o.adapt_swaps > 0 && live_slots > 0 && live_slots < total_pairs &&
+                strata::core::adapt_mid_coverage_applies(cov, std::getenv("STRATA_ADAPT_MID"), strata::core::adapt_mid_default_on())) {
+                if (!o.adapt_every_given) o.adapt_every = 2;
+                if (!o.adapt_swaps_given) o.adapt_swaps = 192;
+                if (!o.adapt_decay_given) o.adapt_decay = 0.92f;
+            }
+        }
         if (o.adapt_every > 0 && o.adapt_swaps > 0) drive.d.usage.assign((size_t) (g.n_layers * g.n_expert), 0.0f);
         const char* fetch_off = d_res == nullptr ? "no residency table" : o.spec_split ? "--spec-split"
                               : multi_gpu ? "a layer split" : drive.d.peer != nullptr ? "a peer tier"

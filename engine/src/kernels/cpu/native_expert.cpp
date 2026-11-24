@@ -2,6 +2,7 @@
 // Default keeps the existing dispatch. WindowInvariant preserves that dispatch's single-token arithmetic
 // while retaining shared weight decoding where the grouped kernel gives the same result.
 #include "strata/kernels/cpu/native_expert.hpp"
+#include "strata/quant/dot_x4_policy.hpp"
 #include "strata/kernels/cpu/expert.hpp"
 #include "strata/kernels/cpu/iq_avx512.hpp"
 #include "strata/kernels/cpu/iq_avx2.hpp"
@@ -810,6 +811,13 @@ void native_gu_rows_impl(const NativeFmt& f, const uint8_t* blob, const void* co
         return;
     }
     const Tr dot = traits(f.gu_type);
+#if defined(STRATA_OWN_CPU_QUANT)
+    static const bool x4_on = strata::quant::dot_x4_enabled(std::getenv("STRATA_DOT_X4"), std::getenv("STRATA_NO_DOT_X4"));   // opt-in since 0.2.21 (#6552: slower than the 1-row dots on DRAM-bound experts)
+    const strata::quant::DotX4Kernel* x4 =
+        (x4_on && (Arithmetic == NativeArithmetic::Default || flavour_avx2()))
+            ? strata::quant::dot_x4_kernel((strata::quant::Type) f.gu_type, strata::quant::Arith::Avx2)
+            : nullptr;
+#endif
     // BW-G: the weights a few rows ahead are requested while this row is computed (row_prefetch.hpp); the same bits
     const int pf_rows = row_pf_bytes() > 0 ? (int) ((size_t) (row_pf_bytes() + (int) f.gu_row - 1) / f.gu_row) : 0;
     const int pf_hint = row_pf_hint();
@@ -883,6 +891,11 @@ void native_down_rows_impl(const NativeFmt& f, const uint8_t* blob, const void* 
         kq256_down_t1_q8_0(blob + f.down_off, f.d_row, (int) f.n_ff, hq[0], out[0], r0, r1);
         return;
     }
+    if (cpu_avx2_ok() && f.d_type == 12 && nt == 1 && f.tail_off == 0 &&
+        (Arithmetic == NativeArithmetic::Default || flavour_avx2())) {
+        kq256_down_t1_q4k(blob + f.down_off, f.d_row, (int) f.n_ff, hq[0], out[0], r0, r1);
+        return;
+    }
     if (cpu_avx2_ok() && kq && nt >= 2 && (f.d_type == 7 || f.d_type == 8) &&
         (Arithmetic == NativeArithmetic::Default || (flavour_avx2()))) {   // Q5_1 / Q8_0 down: bit-exact, any group size
         kq256_rows(f.d_type, blob + f.down_off, f.d_row, (int) f.n_ff, hq, nt, out, r0, r1);
@@ -950,6 +963,13 @@ void native_down_rows_impl(const NativeFmt& f, const uint8_t* blob, const void* 
         return;
     }
     const Tr dot = traits(f.d_type);
+#if defined(STRATA_OWN_CPU_QUANT)
+    static const bool x4_on = strata::quant::dot_x4_enabled(std::getenv("STRATA_DOT_X4"), std::getenv("STRATA_NO_DOT_X4"));   // opt-in since 0.2.21 (#6552: slower than the 1-row dots on DRAM-bound experts)
+    const strata::quant::DotX4Kernel* x4 =
+        (x4_on && (Arithmetic == NativeArithmetic::Default || flavour_avx2()))
+            ? strata::quant::dot_x4_kernel((strata::quant::Type) f.d_type, strata::quant::Arith::Avx2)
+            : nullptr;
+#endif
     const int pf_rows = row_pf_bytes() > 0 ? (int) ((size_t) (row_pf_bytes() + (int) f.d_row - 1) / f.d_row) : 0;
     const int pf_hint = row_pf_hint();
     if (pf_rows > 0 && row_pf_prologue() != 0)

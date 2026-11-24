@@ -80,9 +80,18 @@ def drafting_choice_available(ctx) -> bool:
     return drafting.hardware_support(backend, archs).can_run
 
 
-def flow_for(ctx) -> list[str]:
-    """The steps of this computer: the Cards step exists only when two or more graphics cards can be used; the Speed step only for DeepSeek; the Drafting
-    step only for Qwen3.8-Flash-Next on a computer that can run DFlash2."""
+def flow_for(ctx, family: str | None = None) -> list[str]:
+    """The steps of this computer: the Cards step exists only when two or more graphics cards can be used; the Drafting step only for
+    Qwen3.8-Flash-Next on a computer that can run DFlash2; Tencent Hy4-Flash skips Qwen-only steps (drafting, parallel, tuning, advanced)."""
+    fam = family if family is not None else getattr(getattr(ctx, "settings", None), "family", None)
+    if fam == "hy4-flash":
+        if len(ctx.computer.usable_gpus) >= 2:
+            return ["model", "cards", "folder", "context", "pictures", "access", "save"]
+        return ["model", "folder", "context", "pictures", "access", "save"]
+    if fam == "inkling-2-mini":
+        if len(ctx.computer.usable_gpus) >= 2:
+            return ["model", "folder", "cards", "context", "pictures", "drafting", "parallel", "access", "save"]
+        return ["model", "folder", "context", "pictures", "drafting", "parallel", "access", "save"]
     ids = [sid for sid, _ in STEPS]
     if len(ctx.computer.usable_gpus) < 2:
         ids.remove("cards")
@@ -975,8 +984,38 @@ class ContextScreen(Base):
         items.append(Item(["Custom…"], key="custom"))
         self.query_one(Menu).set_items(items, sel)
 
+    def _inkling_backend(self) -> str | None:
+        comp = getattr(self.ctx, "computer", None)
+        ev = str(getattr(comp, "engine_vendor", None) or "").lower()
+        if ev == "amd":
+            return "hip"
+        if ev == "intel":
+            return "sycl"
+        if ev == "apple":
+            return "metal"
+        if ev == "nvidia":
+            return "cuda"
+        cat = getattr(self.ctx, "catalog", None)
+        return cat.installed_backend() if cat is not None and hasattr(cat, "installed_backend") else None
+
     def refresh_body(self) -> None:
         s = self.ctx.settings
+        if s.family == "hy4-flash":
+            self.query_one("#kvline", Static).update(Text("Conversation memory: managed automatically by Hy4-Flash", style=MUTE))
+            return
+        if s.family == "inkling-2-mini":
+            be = self._inkling_backend()
+            modes = S.inkling_kv_modes(be)
+            eff, _ = S.safe_inkling_kv(s.kv, be)
+            cur = eff or "fp16"
+            if s.kv and eff != s.kv:
+                s.kv = eff
+            label = {"fp16": "FP16 (default, lossless)", "fp8": "FP8 (half KV memory)",
+                     "k8v8": "K8V8 (8-bit K+V, CUDA)", "k8v4": "K8V4 (mixed 8/4-bit, CUDA)"}.get(cur, cur)
+            avail = "/".join(modes)
+            self.query_one("#kvline", Static).update(Text(
+                f"Conversation memory: {label} ({avail})   press m to change", style=MUTE))
+            return
         kv = self.kv()
         label = {"int8": "8-bit (recommended: what the published numbers were measured with)",
                  "q4_0": "4-bit (half the memory, a little less precise on long documents)",
@@ -1001,6 +1040,15 @@ class ContextScreen(Base):
 
     def action_memory(self) -> None:
         s = self.ctx.settings
+        if s.family == "hy4-flash":
+            return
+        if s.family == "inkling-2-mini":
+            order = list(S.inkling_kv_modes(self._inkling_backend()))
+            cur = s.kv if s.kv in order else order[0]
+            s.kv = order[(order.index(cur) + 1) % len(order)]
+            self.build()
+            self.paint()
+            return
         order = ["int8", "q4_0"]
         cur = s.kv or "int8"
         s.kv = order[(order.index(cur) + 1) % len(order)] if cur in order else "int8"
@@ -1189,6 +1237,7 @@ class DraftingScreen(Base):
     help_text = "Drafting is how the model guesses the next words ahead to make answers faster. One drafter runs at a time."
 
     CHOICES = (("auto", "Auto (recommended)"), ("mtp", "MTP"), ("dflash2", "DFlash2"), ("off", "Off"))
+    INKLING_CHOICES = (("auto", "DSpark Block-8 (recommended)"), ("off", "Off"))
 
     def body(self) -> ComposeResult:
         yield Static(Text("How should the model guess ahead?", style=f"bold {ACCENT}"), markup=False)
@@ -1196,6 +1245,15 @@ class DraftingScreen(Base):
 
     def on_mount(self) -> None:
         s = self.ctx.settings
+        if s.family == "inkling-2-mini":
+            items = [Item([label, Cell("DSpark" if key == "auto" else "no drafter", MUTE)], key=key)
+                     for key, label in self.INKLING_CHOICES]
+            shown = "off" if s.drafting == "off" else "auto"
+            sel = [key for key, _ in self.INKLING_CHOICES].index(shown)
+            self.query_one(Menu).columns = [("", 30), ("", 0)]
+            self.query_one(Menu).set_items(items, sel)
+            self.paint()
+            return
         from strata_cli.launch import modelstate
         now = {"dflash2": "DFlash2", "mtp": "MTP", "off": "Off"}[modelstate.resolved_drafting(None, s.family)]
         items = [Item([label, Cell(now, "") if key == "auto" else Cell("", "")], key=key) for key, label in self.CHOICES]
@@ -1206,10 +1264,15 @@ class DraftingScreen(Base):
         self.paint()
 
     def explain(self) -> Text:
+        if self.ctx.settings.family == "inkling-2-mini":
+            return Text("DSpark is Inkling-2-Mini's built-in block drafter. Choose Off to pass --draft off (uses less VRAM and skips speculative drafting).", style=MUTE)
         return Text("")
 
     def commit(self) -> None:
         key = self.menu().current.key
+        if self.ctx.settings.family == "inkling-2-mini":
+            self.ctx.settings.drafting = "off" if key == "off" else None
+            return
         from strata_cli.launch import modelstate
         # Auto stays "nobody chose" (a saved preset writes nothing) unless the model's file or this launch holds another choice: then Auto is written, so it wins
         base = self.ctx.base_config() or {}
@@ -1721,16 +1784,20 @@ class SaveScreen(Base):
         s = self.ctx.settings
         from strata_cli.launch import modelstate
         r = next((x for x in self.ctx.rows if (x.family, x.model) == (s.family, s.model)), None)
-        from strata_cli.launch.runner import faster_by_default
+        cards = self.ctx.cards_line()
+        ctx_kv = (f", memory {s.kv or 'fp16'}" if is_inkling else "" if is_hy4 else f", memory {s.kv or 'int8'}")
         lines = [("Model", (r.title if r else (s.model or "?")) + (" (your files)" if s.model_path else "")),
-                 ("Context", S.context_label(s.context) + f", memory {s.kv or 'int8'}"),
-                 ("Pictures", "on" if s.vision != "off" else "off"),
-                 *([("Speed", S.speed_words(s.speed or ("faster" if faster_by_default(self.ctx.computer, s) else "full"),
-                                            s.speed is None))] if s.family == "deepseek41" and speed_choice_available(self.ctx) else []),
-                 *([("Drafting", dict(DraftingScreen.CHOICES).get(s.drafting or ("off" if modelstate.layer_off_without_choice(self.ctx.base_config()) else "auto"), "Auto (recommended)"))] if drafting_choice_available(self.ctx) else []),
-                 ("Parallel", f"{s.parallel} at a time" if s.parallel else f"fit to your card ({S.fit_parallel(self.ctx.computer.main_vram_gb)})"),
-                 ("Tuning", ({"quick": "quick (about 5-10 min)", "thorough": "thorough (about 10-15 min)", "skip": "skipped"} if s.family == "deepseek41"
-                              else {"quick": "quick (about 20 min)", "thorough": "thorough (up to 2 h)", "skip": "skipped"})[s.tune]),
+                 *([("Cards", cards)] if cards else []),                       # T8: Main / Helper / Off of each card
+                 ("Context", S.context_label(s.context) + ctx_kv),
+                 ("Pictures", "on" if s.vision not in ("off", "no") else "off"),
+                 *([("Drafting", "off" if s.drafting == "off" else "DFly2 (built-in)")] if is_hy4 else
+                   [("Drafting", "off" if s.drafting == "off" else "DSpark Block-8 (built-in)")] if is_inkling else
+                   [("Drafting", dict(DraftingScreen.CHOICES).get(s.drafting or ("off" if modelstate.layer_off_without_choice(self.ctx.base_config()) else "auto"), "Auto (recommended)"))] if drafting_choice_available(self.ctx) else []),
+                 *([("Parallel", f"{s.parallel} at a time" if s.parallel else f"fit to your card ({8 if (self.ctx.computer.main_vram_gb or 0) >= 22 else 4 if (self.ctx.computer.main_vram_gb or 0) >= 15 else 1})")] if is_inkling else
+                   [] if is_hy4 else [
+                     ("Parallel", f"{s.parallel} at a time" if s.parallel else f"fit to your card ({fit_parallel_for(self.ctx.catalog, s, self.ctx.computer.main_vram_gb)})"),
+                     ("Tuning", {"quick": "quick (about 20 min)", "thorough": "thorough (up to 2 h)", "skip": "skipped"}[s.tune]),
+                 ]),
                  ("Access", f"{S.ACCESS_WORDS[s.access]}, port {s.port}" + (", API key on" if s.api_key else ", no API key")),
                  ("Storage", s.data_dir or str(self.ctx.default_folder()))]
         if s.extra:

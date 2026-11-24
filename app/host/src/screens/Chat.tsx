@@ -47,7 +47,7 @@ import { Markdown } from '../components/Markdown';
 import { Btn, Icon, IconBtn, ErrorNotice, type IconName } from '../components/ui';
 import { composerCap, scrollBehavior } from '../lib/responsive';
 import { relTime, cx, duration, tokens, tps } from '../lib/format';
-import { newSession, addQuote, clearQuotes, removeQuote, createSubagentExample, parkMessage, takeParked, pushToast, setPreviewTabClosed, branchFrom, continueLast, markRead, retryLast, selectSession, rewindTo, sendMessage, stopStreaming, useStore, } from '../lib/store';
+import { getState, newSession, addQuote, clearQuotes, removeQuote, createSubagentExample, parkMessage, takeParked, pushToast, setPreviewTabClosed, branchFrom, continueLast, markRead, retryLast, selectSession, rewindTo, sendMessage, stopStreaming, useStore, } from '../lib/store';
 import { CopyBtn, CopyMenuItem, MenuCloseContext } from '../components/CopyBtn';
 import { KEYS_UP, PILL_DISTANCE, distanceFromBottom, followAfterScroll, wheelLeavesBottom } from '../lib/follow-scroll';
 import { getSlashCommands } from '../lib/commands';
@@ -456,7 +456,14 @@ export function ChatScreen() {
             textarea.current?.focus({ preventScroll: true });
     }, [setupVisible, readyForChat, session?.id, messageCount]);
     function submit() {
+        // While a QuestionCard is waiting above the composer, direct keyboard input to the question card instead of refusing with "still answering" (#6668).
+        if (session && getState().agentAsks[session.id]?.length) {
+            const askInput = document.querySelector<HTMLInputElement>('.askq .askq__own:not(:disabled)');
+            askInput?.focus();
+            return;
+        }
         let text = draft.trim();
+        if (text === '/pause-for-update') { updateDraft(''); void pauseForUpdate(); return; }
         if (!text && !queuedPhotos.length)
             return;
         if (/^\/btw(?:\s|$)/i.test(text)) { updateDraft(''); void sendMessage(text); return; }
@@ -649,6 +656,7 @@ function Composer({ onSearch, searchControls, draft, setDraft, loaded, streaming
     const canChat = loaded || native?.instances.some(i => i.status === 'ready');
     const whileBusy = useStore(s => s.whileBusy), parkedList = useStore(s => (session ? s.parked[session.id] : undefined)) ?? NO_PARKED;
     const quoteList = useStore(s => (session ? s.quotes[session.id] : undefined)) ?? NO_QUOTES;
+    const awaitingQuestion = useStore(s => !!(session && s.agentAsks[session.id]?.length));
     const remote=useStore(s=>s.remoteModel);
     const supervised=useStore(s=>s.library?.mode==='real'&&!!s.library.loaded&&s.engine?.engine.running===true);
     const commands = useSlashCommands(clearDraft, setDraft, onSearch, session?.preferences?.agent!==false&&(supervised||!!native?.instances.some(i=>i.status==='ready')||!!(session?.preferences?.remoteModel??remote)));
@@ -686,9 +694,9 @@ function Composer({ onSearch, searchControls, draft, setDraft, loaded, streaming
           <GoalBar chatId={session?.id}/>
           {tr(quoteList.length ? <div className="quotes">{tr(quoteList.map(q => <div className="quote" key={q.id}><button type="button" className="quote__body" title={tr("Go to the quoted message")} onClick={() => document.querySelector(`[data-message-id="${CSS.escape(q.messageId)}"]`)?.scrollIntoView({ block: 'center', behavior: scrollBehavior() })}><span className="xs muted">{tr(q.role === 'user' ? "Quoting you" : "Quoting the assistant")}</span><span className="quote__text">{q.text}</span></button><IconBtn name="x" size={14} title={tr("Remove this quote")} onClick={() => removeQuote(session!.id, q.id)}/></div>))}</div> : null)}
           {tr(parkedList.length ? <div className="parked" role="status">{tr(parkedList.map((text, i) => <div className="parked__item" key={`${i}-${text}`}><span className="xs muted">{tr("Waiting to send")}</span><span className="parked__text" title={text}>{text}</span><IconBtn name="x" size={14} title={tr("Take back")} onClick={() => { const back = takeParked(session!.id, i); if (back !== undefined && !draft.trim()) setDraft(back); }}/></div>))}</div> : null)}
-          <div className="st-composer" style={{ boxShadow: 'var(--st-sh-bar)' }}>
+          <div className="st-composer" data-awaiting-answer={awaitingQuestion || undefined} style={{ boxShadow: 'var(--st-sh-bar)' }}>
           {tr(photos.length ? <ChatPhotos photos={photos} onRemove={id => removeChatPhoto(id, session?.id)}/> : null)}
-          <textarea ref={textareaRef} rows={1} value={draft} aria-label={tr("Message Strata")} placeholder={tr(canChat ? 'Message Strata…' : 'Try /time-skip, or load a model to chat…')} onFocus={() => setSlashDismissed(false)} onBlur={() => ime.current.reset()} onCompositionStart={() => ime.current.compositionStart()} onCompositionEnd={(e) => ime.current.compositionEnd(e.timeStamp)} onPaste={(e) => {
+          <textarea ref={textareaRef} rows={1} value={draft} disabled={awaitingQuestion} aria-label={tr("Message Strata")} placeholder={tr(awaitingQuestion ? 'Answer the question above to continue…' : canChat ? 'Message Strata…' : 'Try /time-skip, or load a model to chat…')} onFocus={() => setSlashDismissed(false)} onBlur={() => ime.current.reset()} onCompositionStart={() => ime.current.compositionStart()} onCompositionEnd={(e) => ime.current.compositionEnd(e.timeStamp)} onPaste={(e) => {
             // A picture on the clipboard (a screenshot, a copied image) is attached like a dropped file; text pastes as usual.
             const files = pastedFiles(e.clipboardData);
             if (!files.length)

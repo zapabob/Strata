@@ -1,8 +1,8 @@
 # AGENTS.md
 
-Version 0.2.20, engine 0.1.66. The public model families are
+Version 0.2.21, engine 0.1.67. The public model families are
 Qwen3.8-Flash-Next and Qwen3.6-35B-A3B. Read **[docs/AI_REFERENCE.md](docs/AI_REFERENCE.md)** for model availability, APIs, hardware limits and
-Current release: Hakua product version 0.6.3; app, Terminal, Control and native engine 0.6.3.
+Current release: Hakua product version 0.8.1; app 0.8.1, Control 0.6.3, native engine 0.7.0 (upstream v0.2.21 / 0.1.67 3-way merged + Gen-K Ryzen 5 4500 / RTX 5060 Ti optimizations: Sakura 98K median tg 20.25 -> 33.54 t/s [+65.6%], warm load 62.84s -> 11.87s [5.3x], UD 16K median tg 16.23 -> 35.99 t/s [+121.7%], warm load 72.69s -> 3.86s [18.8x], 32/32 bit-exact parity; unsigned local build, `releaseQualified=false`). See `_docs/2026-11-24_v081-upstream-0221-genk-release_Antigravity.md`.
 Formal v0.6.3 is published as GitHub Latest (unsigned local candidate; see the release notes). See `_docs/2026-11-17_stable-062-release_Antigravity.md` for 0.6.2 details.
 ## Historical 0.6.1 records
 Previous stable release: Hakua product version 0.6.1; app, Terminal, Control and native engine 0.6.1.
@@ -169,7 +169,7 @@ Strata has three parts:
 
 - **The app** (`app/desktop`, the Tauri shell; `app/host`, the Node host and the web UI). It is for people who do
   not want a terminal. One installer per system ([latest release](https://github.com/Niko1221/Strata/releases/latest)):
-  `Strata-0.2.20-windows-x64-setup.exe`, `Strata-0.2.20-linux-x86_64.AppImage`, `Strata-0.2.20-macos-arm64.dmg`.
+  `Strata-0.2.21-windows-x64-setup.exe`, `Strata-0.2.21-linux-x86_64.AppImage`, `Strata-0.2.21-macos-arm64.dmg`.
   The Windows and Linux installers carry no engine: the app downloads the engine for the graphics card on first
   start, or installs a file the user already has. The Mac dmg keeps its small Metal engine inside.
 - **The Terminal** (`strata.py`, `strata_cli/`, `strata_control/`): the `strata` command. It sets up a model, serves

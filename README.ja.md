@@ -1,8 +1,8 @@
-## 0.8.0 での変更
+## 0.8.1 での変更
 
 注記：DS4 2.84倍／FLA 4.86倍／Sakura 22.44 t/s の数値は Antigravity の開発ログ由来で、本ビルドセッションでは独立再現していません。本セッションの実測は正規 GGUF・32K コンテキストで prefill 9.09 t/s／decode 11.78 t/s です（証拠：H:/Strata/evidence/inkling2-benchmark-result.txt）。
 
-本リリースはフォーク独自機能をすべて維持し、2026-11-22/23 のネイティブ高速化を追加します。プロダクト **0.8.0**、ネイティブエンジンファミリ **0.6.8**、upstream **Niko1221/Strata v0.2.20**（Control/engines 0.1.66）。RTX 5060 Ti（sm_120a）/ CUDA 13.5 最適化：DS4-9B prefill 2.84倍、decode +13.4%、E2E +22.7%、FLA GDN + Spin(8) triality exp2f で prefill 4.86倍・KV 59.4% 圧縮、Inkling-2 branchless router（1.16倍）、Sakura Inkling-2-Mini 65K〜98K コンテキスト（`--expert-vram 7.8` で decode 22.44 t/s、12.7倍、32/32 完全一致）。serve 層は GGUF 埋め込みトークナイザ／テンプレートと Inkling 出力パーサに対応、Hermes Agent に `inkling2` プロバイダを追加。Ryu さん（kuraneko1、MIT）の SM × VRAM プロファイル表を公式 CUDA Inkling-2 にマージし、upstream PR #6571 として還元。署名検証は削除済み、SHA-256 ダイジェストが残ります。`releaseQualified=false`。
+本リリースはフォーク独自機能をすべて維持し、2026-11-22/23 のネイティブ高速化を追加します。プロダクト **0.8.1**、ネイティブエンジンファミリ **0.7.0**、upstream **Niko1221/Strata v0.2.21**（Control/engines 0.1.67）。RTX 5060 Ti（sm_120a）/ CUDA 13.5 最適化：DS4-9B prefill 2.84倍、decode +13.4%、E2E +22.7%、FLA GDN + Spin(8) triality exp2f で prefill 4.86倍・KV 59.4% 圧縮、Inkling-2 branchless router（1.16倍）、Sakura Inkling-2-Mini 65K〜98K コンテキスト（`--expert-vram 7.8` で decode 22.44 t/s、12.7倍、32/32 完全一致）。serve 層は GGUF 埋め込みトークナイザ／テンプレートと Inkling 出力パーサに対応、Hermes Agent に `inkling2` プロバイダを追加。Ryu さん（kuraneko1、MIT）の SM × VRAM プロファイル表を公式 CUDA Inkling-2 にマージし、upstream PR #6571 として還元。署名検証は削除済み、SHA-256 ダイジェストが残ります。`releaseQualified=false`。
 
 
 Gen-H 更新 (コミット 21bedf91c): strata-inkling2.exe と strata.exe に float4 の k_stack_rms_norm/k_mix + exp2f、Zipf トークンキャッシュ、zero-copy マップ h_tok_buf を適用。moe_up 39.5ms から 4.6ms (-88%)、Sakura 131K で 32/32 トークン完全一致。
@@ -10,7 +10,7 @@ Gen-H 更新 (コミット 21bedf91c): strata-inkling2.exe と strata.exe に fl
 ## バージョンと配布物
 
 <!-- release-062-stable -->
-現在のアプリリリース: **0.8.0** — GitHub Latest: [リリースページ](https://github.com/zapabob/Strata/releases/tag/v0.8.0)。デスクトップインストーラーはリリースの **Assets** からダウンロードしてください。ファイル名は `Strata-0.8.0-windows-x64-setup.exe` です（app バイナリは 0.8.0 で再ビルドしておらず、エンジンのみ変更）。バンドルは `Strata-0.8.0-windows-x64.tar.7z`。GPU エンジンは同じ Assets の opt-in コンポーネント: `strata-engine-0.6.8-windows-x86_64-cuda-cuda13.tar.gz`（再ビルド Q38 27B/9B + Inkling-2、CUDA 13.5）と `strata-hy4-0.1.64-windows-x86_64-cuda-cuda13.tar.gz`（Hy4-Flash）。必ずリリースページを開いて Assets から正確なファイルを選んでください（ファイル名にバージョンが入っているとは限りません）。SHA-256 ダイジェストが完全性チェックです。`releaseQualified=false`。
+現在のアプリリリース: **0.8.1** — GitHub Latest: [リリースページ](https://github.com/zapabob/Strata/releases/tag/v0.8.1)。デスクトップインストーラーはリリースの **Assets** からダウンロードしてください。ファイル名は `Strata-0.8.1-windows-x64-setup.exe` です（GUI・アプリ本体・公式 v0.2.21 3-way マージ・Gen-I/J CUDA 13.5 エンジンすべて最新ビルド）。バンドルは `Strata-0.8.1-windows-x64.tar.7z`。GPU エンジンは同じ Assets の opt-in コンポーネント: `strata-engine-0.7.0-windows-x86_64-cuda-cuda13.tar.gz`（再ビルド Q38 27B/9B + Inkling-2、CUDA 13.5）と `strata-hy4-0.1.64-windows-x86_64-cuda-cuda13.tar.gz`（Hy4-Flash）。必ずリリースページを開いて Assets から正確なファイルを選んでください（ファイル名にバージョンが入っているとは限りません）。SHA-256 ダイジェストが完全性チェックです。`releaseQualified=false`。
 
 
 ![Hakua / Strata real-model Japanese chat on Qwen3.8-27B](docs/media/native-qwen38-japanese-chat.png)

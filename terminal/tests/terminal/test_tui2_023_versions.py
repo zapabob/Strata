@@ -50,12 +50,12 @@ class VersionBump(unittest.TestCase):
         self.assertIn(f'STRATA_VERSION="{product}"', (ROOT / "metal" / "CMakeLists.txt").read_text(encoding="utf-8"))
 
     def test_every_place_the_app_version_lives_says_0_2_3(self):
-        self.assertEqual(first("../app/desktop/src-tauri/Cargo.toml", r'^version = "([^"]+)"'), "0.2.16")
+        self.assertEqual(first("../app/desktop/src-tauri/Cargo.toml", r'^version = "([^"]+)"'), "0.2.21")
         lock = (ROOT.parent / "app" / "desktop" / "src-tauri" / "Cargo.lock").read_text(encoding="utf-8")
-        self.assertRegex(lock, r'name = "strata-desktop"\r?\nversion = "0.2.16"')
-        self.assertEqual(json.loads((ROOT.parent / "app" / "desktop" / "package.json").read_text(encoding="utf-8"))["version"], "0.2.16")
+        self.assertRegex(lock, r'name = "strata-desktop"\r?\nversion = "0.2.21"')
+        self.assertEqual(json.loads((ROOT.parent / "app" / "desktop" / "package.json").read_text(encoding="utf-8"))["version"], "0.2.21")
         host = json.loads((ROOT.parent / "app" / "host" / "package.json").read_text(encoding="utf-8"))
-        self.assertEqual(host["version"], "0.2.16")
+        self.assertEqual(host["version"], "0.2.21")
         locked = json.loads((ROOT.parent / "app" / "host" / "package-lock.json").read_text(encoding="utf-8"))
         self.assertEqual((locked["version"], locked["packages"][""]["version"]), ("0.2.16", "0.2.16"))
     def test_all_app_version_sources_agree(self):
@@ -72,7 +72,7 @@ class VersionBump(unittest.TestCase):
         self.assertEqual((desk_lock["version"], desk_lock["packages"][""]["version"]), (product, product))
 
     def test_the_documents_that_state_the_current_version_agree(self):
-        self.assertIn("Version 0.2.16, engine 0.1.62.", (ROOT.parent / "AGENTS.md").read_text(encoding="utf-8"))
+        self.assertIn("Version 0.2.21, engine 0.1.67.", (ROOT.parent / "AGENTS.md").read_text(encoding="utf-8"))
         for name in ("README.md", "docs/lang/README.de.md", "docs/lang/README.es.md", "docs/lang/README.fr.md", "docs/lang/README.ja.md", "docs/lang/README.pl.md", "docs/lang/README.pt-BR.md", "docs/lang/README.zh-CN.md"):
             text = (ROOT.parent / name).read_text(encoding="utf-8")
             self.assertRegex(text, r"Strata-0[.]2[.][0-9]+-", name)       # (the restyled READMEs state the app version through the download buttons; their owner moves them to the release)

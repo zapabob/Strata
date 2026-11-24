@@ -52,7 +52,7 @@ import * as engine from './engine.mjs';
 import * as monitor from './monitor.mjs';
 import * as serving from './serving.mjs';
 import * as store from './store.mjs';
-import { createChatStore, storeFailure } from './chat-store.mjs';
+import { createChatStore, drainChatStore, storeFailure, validChatId } from './chat-store.mjs';
 import { makePrivateDir } from './private-file.mjs';
 import * as supervisor from './supervisor.mjs';
 import { detectBackend, currentBackend, streamChat, inferenceLine } from './inference.mjs';
@@ -65,7 +65,7 @@ import { createUploads } from './chat-uploads.mjs';
 import { createNativeDrops } from './native-drop.mjs';
 import { createVisionProbe, effectiveVision, readsPicturesByDefault } from './vision-probe.mjs';
 import { RequestQueue } from './request-queue.mjs';
-import { selectSkills, skillInstructions } from './skill-selection.mjs';
+import { selectSkills, skillInstructions, withSkills, historyWithSkills } from './skill-selection.mjs';
 import { previewSkillMarkdown } from './skill-import.mjs';
 import { createChatWebSearch, referenceHistory } from './chat-web-search.mjs';
 import { createRustxngRuntime } from './rustxng-runtime.mjs';
@@ -139,6 +139,14 @@ const insideApp = path => { const rel = relative(ROOT, resolve(path)); return re
 const hub = new EventHub();
 /** The chats, as files in the profile's data folder (chat-store.mjs). */
 const chatStore = createChatStore({ dir: store.DATA_DIR, privateDir: makePrivateDir });
+const inFlightChatSaves = new Set();
+const trackChatSave = fn => {
+  const p = Promise.resolve().then(fn);
+  const done = p.then(() => {}, () => {});
+  inFlightChatSaves.add(done);
+  done.finally(() => inFlightChatSaves.delete(done));
+  return p;
+};
 const modelProviders = createModelProviders({ directory: store.DATA_DIR, knownThinks: (connection, modelId) => visionProbe.knownThinks(connection, modelId), changed: value => hub.send('providers', withPictureAnswers(value)) });
 const imageModels = createImageModels({ dataDir: store.DATA_DIR, modelsDir: () => store.MODELS_DIR, real: models.REAL, changed: value => hub.send('image-models', value) });
 /* The installed app ships Strata Control (python + strata_control) next to the host; a source checkout has none and keeps its older paths. */
@@ -279,7 +287,7 @@ const agent = createAgentBridge({
   bundledDir: resolve(HERE, '..', '..', 'harness'),
   defaultLocalId: () => native.defaultInstanceId(),
   localInstances: () => native.readyInstances().map(i => ({
-    id: i.id, label: i.label, baseUrl: `http://127.0.0.1:${i.port}/v1`, modelId: i.apiModelId,
+    id: i.id, label: i.label, baseUrl: `http://127.0.0.1:${i.port}/v1`, modelId: i.apiModelId, arch: i.arch ?? null,
     context: i.metrics?.engine?.max_context ?? i.context ?? undefined, key: i.key, vision: i.vision,
     // The engine's request slots: helper agents never outnumber them.
     slots: i.metrics?.live?.slots?.length || i.parallel || 1,
@@ -747,7 +755,7 @@ async function runRemoteTurn({ selection, message, history, images = [], thinkin
     const appliedSkills = selectSkills(skillState, message, workspaceId);
     entry = serving.open({ client: 'Strata chat', endpoint: connection.protocol === 'anthropic' ? '/messages' : connection.protocol === 'openai-responses' ? '/responses' : '/chat/completions', model: `${connection.name} · ${model.name}`, cancel: () => controller.abort(new DOMException('Cancelled by the user', 'AbortError')) });
     serving.mark(entry.id, { state: 'generating' });
-    const result = await modelProviders.stream({ selection, message, history: referenceHistory(history, webReferences), images, thinking, signal: requestSignal, systemPrompt: ['You are Strata, a helpful assistant. Answer clearly. Do not claim to have read files or performed actions unless their results are included in the conversation.', skillInstructions(appliedSkills)].filter(Boolean).join('\n\n'), onFrame: frame => {
+    const result = await modelProviders.stream({ selection, message: withSkills(skillState, message, workspaceId), history: historyWithSkills(skillState, referenceHistory(history, webReferences), workspaceId), images, thinking, signal: requestSignal, systemPrompt: ['You are Strata, a helpful assistant. Answer clearly. Do not claim to have read files or performed actions unless their results are included in the conversation.', userRules.promptBlock()].filter(Boolean).join('\n\n'), onFrame: frame => {
       if (frame.type === 'start') noteSkillUse(appliedSkills);
       if (frame.type === 'done') serving.mark(entry.id, { tokensIn: frame.tokensIn, tokensOut: frame.tokensOut, usageSource: frame.usageSource });
       onFrame({ ...frame, requestId: entry.id, model: model.name, contextMax: model.contextMax, remoteModel: true, ...(frame.type === 'start' ? { skills: appliedSkills.map(s => s.name) } : {}) });
@@ -821,8 +829,7 @@ async function runTurn({ message, history = [], onFrame, signal, client, workspa
   if(native.hasLive()||nativeModelId){
     let instance;try{instance=native.resolveInstance(nativeModelId??native.state().defaultId);}catch(e){const message=plainNoModel(e.message);onFrame({type:'error',message});return {error:message};}const started=Date.now(),cancel=new AbortController();
     const entry=serving.open({client:client??'Strata chat',endpoint:'/chat/completions',model:instance.apiModelId,instanceId:instance.id,gpuIds:instance.gpus.map(String),cancel:()=>cancel.abort()});
-    try{serving.mark(entry.id,{state:'generating'});const applied=selectSkills(skillState,message,workspaceId);const result=await proxyCompletion({baseUrl:`http://127.0.0.1:${instance.port}/v1`,modelId:instance.apiModelId,authorization:instance.key,message,history,images,extra:{strata_mcp:useTools===true,...(thinkingBudget>0&&String(thinking).toLowerCase()!=='off'?{reasoning_budget_tokens:thinkingBudget}:{}),reasoning_effort:({off:'none',max:'high'}[String(thinking).toLowerCase()]??String(thinking).toLowerCase())},systemPrompt:[SYSTEM_PROMPT,userRules.promptBlock(),skillInstructions(applied)].filter(Boolean).join('\n\n'),signal:signal?AbortSignal.any([signal,cancel.signal]):cancel.signal,onFrame:frame=>onFrame({...frame,requestId:entry.id,model:instance.label,contextMax:instance.metrics?.engine?.max_context??instance.context,skills:applied.map(s=>s.name)})});serving.mark(entry.id,{...result,usageSource:result.usageSource});serving.finish(entry.id,{tokensOut:result.tokensOut,durationMs:Date.now()-started});return result;}catch(e){serving.finish(entry.id,{durationMs:Date.now()-started,error:e.message});onFrame({type:'error',message:e.message,requestId:entry.id});return {error:e.message};}
-    try{serving.mark(entry.id,{state:'generating'});const applied=selectSkills(skillState,message,workspaceId);const result=await proxyCompletion({baseUrl:`http://127.0.0.1:${instance.port}/v1`,modelId:instance.apiModelId,servingPolicy:instance.servingPolicy,authorization:instance.key,message,history:referenceHistory(history,webReferences),images,extra:{...(sessionId?{strata_cache_session:createHash('sha256').update(String(sessionId)).digest('hex')}:{}),strata_mcp:!webReferences&&useTools===true,...(thinkingBudget>0&&String(thinking).toLowerCase()!=='off'?{reasoning_budget_tokens:thinkingBudget}:{}),reasoning_effort:({off:'none',max:'high'}[String(thinking).toLowerCase()]??String(thinking).toLowerCase())},systemPrompt:getEffectiveSystemPrompt(applied),signal:signal?AbortSignal.any([signal,cancel.signal]):cancel.signal,onFrame:frame=>onFrame({...frame,requestId:entry.id,model:instance.label,contextMax:instance.metrics?.engine?.max_context??instance.context,skills:applied.map(s=>s.name)})});serving.mark(entry.id,{...result,usageSource:result.usageSource});serving.finish(entry.id,{tokensOut:result.tokensOut,durationMs:Date.now()-started});return result;}catch(e){serving.finish(entry.id,{durationMs:Date.now()-started,error:e.message});onFrame({type:'error',message:e.message,requestId:entry.id});return {error:e.message};}
+    try{serving.mark(entry.id,{state:'generating'});const applied=selectSkills(skillState,message,workspaceId);const hy4Local=instance.arch==='hy4flash'||/^hy4-flash/i.test(String(instance.model??instance.apiModelId??''));const inklingLocal=instance.arch==='inkling2_loop'||/^inkling-2-mini/i.test(String(instance.model??instance.apiModelId??''));const thinkKey=String(thinking).toLowerCase();const effortWord=hy4Local?(thinkKey==='xhigh'?'max':({off:'none',minimal:'high',low:'high',medium:'high',high:'high',max:'max'}[thinkKey]??'high')):inklingLocal?({off:'none',xhigh:'max',minimal:'minimal'}[thinkKey]??thinkKey):({off:'none',max:'high'}[thinkKey]??(thinkKey==='xhigh'?'high':thinkKey));const result=await proxyCompletion({baseUrl:`http://127.0.0.1:${instance.port}/v1`,modelId:instance.apiModelId,servingPolicy:instance.servingPolicy,authorization:instance.key,message:withSkills(skillState,message,workspaceId),history:historyWithSkills(skillState,referenceHistory(history,webReferences),workspaceId),images,extra:{...(sessionId?{strata_cache_session:createHash('sha256').update(String(sessionId)).digest('hex')}:{}),strata_mcp:!webReferences&&useTools===true,...(thinkingBudget>0&&thinkKey!=='off'?{reasoning_budget_tokens:thinkingBudget}:{}),reasoning_effort:effortWord},systemPrompt:getEffectiveSystemPrompt([]),signal:signal?AbortSignal.any([signal,cancel.signal]):cancel.signal,onFrame:frame=>onFrame({...frame,requestId:entry.id,model:instance.label,contextMax:instance.metrics?.engine?.max_context??instance.context,skills:applied.map(s=>s.name)})});serving.mark(entry.id,{...result,usageSource:result.usageSource});serving.finish(entry.id,{tokensOut:result.tokensOut,durationMs:Date.now()-started});return result;}catch(e){serving.finish(entry.id,{durationMs:Date.now()-started,error:e.message});onFrame({type:'error',message:e.message,requestId:entry.id});return {error:e.message};}
   }
   runtimeState();
   let instance;
@@ -852,7 +859,7 @@ async function runTurn({ message, history = [], onFrame, signal, client, workspa
       // Scope is resolved again at dispatch: a disabled skill never stays active
       // merely because the request waited in the queue.
       const appliedSkills = selectSkills(skillState, message, workspaceId);
-      const systemPrompt = getEffectiveSystemPrompt(appliedSkills);
+      const systemPrompt = getEffectiveSystemPrompt([]);
       serving.mark(entry.id, { state: 'generating' });
       const contextMax = instance.memory.context;
       const modelMonitor=models.REAL?monitor:{
@@ -864,9 +871,9 @@ async function runTurn({ message, history = [], onFrame, signal, client, workspa
       };
       try {
         result = await streamChat({
-          message,
-          history: referenceHistory(history,webReferences),
-          disableTools:plainOnly||!!webReferences,
+          message: withSkills(skillState, message, workspaceId),
+          history: historyWithSkills(skillState, referenceHistory(history, webReferences), workspaceId),
+          disableTools: plainOnly || !!webReferences,
           systemPrompt,
           modelLabel: v.label,
           candidates: readableCandidates(),
@@ -1196,8 +1203,10 @@ async function api(req, res, path, method, url) {
     try {
       if (!id && method === 'GET') return json(res, 200, chatStore.list());
       if (id === 'import' && method === 'POST') {
-        const body = JSON.parse((await readRaw(req, 512 * 1024 * 1024)).toString('utf8') || '{}');
-        const result = await chatStore.importMany(body.sessions);
+        const result = await trackChatSave(async () => {
+          const body = JSON.parse((await readRaw(req, 512 * 1024 * 1024)).toString('utf8') || '{}');
+          return chatStore.importMany(body.sessions);
+        });
         for (const imported of result.imported) hub.send('chats', { id: imported, rev: chatStore.rev(imported), from });
         return json(res, 200, result);
       }
@@ -1209,14 +1218,16 @@ async function api(req, res, path, method, url) {
         return undefined;
       }
       if (id && method === 'PUT') {
-        const text = (await readRaw(req, 256 * 1024 * 1024)).toString('utf8');
-        const base = req.headers['x-strata-base-rev'];
-        const saved = await chatStore.save(id, text, { baseRev: typeof base === 'string' && /^\d+$/.test(base) ? Number(base) : null });
+        const saved = await trackChatSave(async () => {
+          const text = (await readRaw(req, 256 * 1024 * 1024)).toString('utf8');
+          const base = req.headers['x-strata-base-rev'];
+          return chatStore.save(id, text, { baseRev: typeof base === 'string' && /^\d+$/.test(base) ? Number(base) : null });
+        });
         hub.send('chats', { id, rev: saved.rev, from });
         return json(res, 200, saved);
       }
       if (id && method === 'DELETE') {
-        const removed = await chatStore.remove(id);
+        const removed = await trackChatSave(() => chatStore.remove(id));
         hub.send('chats', { id, deleted: true, from });
         return json(res, 200, removed);
       }
@@ -1954,14 +1965,16 @@ async function api(req, res, path, method, url) {
       if (!name) throw new Error('Give the skill a name.');
       if (!instructions) throw new Error('Write the instructions the assistant should follow.');
       if(instructions.length>40000)throw new Error('Skill instructions must contain 1–40000 characters.');
-      // The form's own choices are kept: a skill created with "Skill enabled" off stays off (QA F04), and its trigger phrases are saved with it.
+      const onlyIn = body.onlyIn || null;
+      if (onlyIn !== null && !workspaces.some(w => w.id === onlyIn)) throw new Error('Choose an available workspace.');
+      // Keep the creation options with the skill, including its workspace scope.
       const triggers = body.triggers === undefined ? [] : skillEdit({ triggers: body.triggers }).triggers;
       const off = body.enabled === false, saved = store.get();
       const id = writeCreatedSkill(CREATED_SKILLS, { name, description: String(body.description ?? '').trim().slice(0, 400), body: instructions }, {
         beforePublish: id => {
           const newId = `my-${id}`;
           store.update({
-            skillPreferences: { ...saved.skillPreferences, [newId]: { enabled: !off, onlyIn: body.onlyIn??null } },
+            skillPreferences: { ...saved.skillPreferences, [newId]: { enabled: !off, onlyIn: onlyIn } },
             skillEdits: { ...saved.skillEdits, [newId]: { ...saved.skillEdits?.[newId], triggers } },
           }, { durable: true });
         },
@@ -1969,7 +1982,11 @@ async function api(req, res, path, method, url) {
       });
       const newId = `my-${id}`;
       const before = new Map(skillState.map(s => [s.id, s]));
-      skillState = skills().map(s => before.has(s.id) ? { ...s, enabled: before.get(s.id).enabled, onlyIn: before.get(s.id).onlyIn ?? null, useCount: before.get(s.id).useCount, lastUsedAt: before.get(s.id).lastUsedAt } : { ...s, enabled: s.id === newId && off ? false : s.enabled, onlyIn: s.id===newId?body.onlyIn??null:null, useCount: 0, lastUsedAt: null });
+      skillState = skills().map(s => {
+        const existing = before.get(s.id);
+        if (existing) return { ...s, enabled: existing.enabled, onlyIn: existing.onlyIn ?? null, useCount: existing.useCount, lastUsedAt: existing.lastUsedAt };
+        return { ...s, enabled: s.id === newId ? !off : s.enabled, onlyIn: s.id === newId ? onlyIn : null, useCount: 0, lastUsedAt: null };
+      });
       syncAgentSkills();
       hub.send('skills', skillState);
       return json(res, 201, { id: newId, skills: skillState });
@@ -2720,6 +2737,7 @@ server.listen(PORT, HOST, () => {
   if (control && process.env.STRATA_PACKAGED === '1') Promise.resolve(native.refresh(false)).catch(() => { /* the page's own read tells the person */ });
 });
 
+const CHAT_DRAIN_MS = Math.min(15000, Math.max(500, Number(process.env.STRATA_SHUTDOWN_CHAT_DRAIN_MS) || 5000));
 let stopping=false;
 const shutdown = async () => {
   if(stopping)return;stopping=true;
@@ -2728,10 +2746,13 @@ const shutdown = async () => {
   clearInterval(taskTimer);tasks.close();
   const timeout=setTimeout(()=>process.exit(0),control?45000:10000);timeout.unref();   // stopping an engine through Control: drained (15 s), then ended; the shell's deadline is longer
   server.close();
+  // #6661: drain any in-flight or queued chat saves to disk before tearing down sockets and exiting.
+  await drainChatStore(chatStore, { inFlight: inFlightChatSaves, timeoutMs: typeof CHAT_DRAIN_MS === 'number' ? CHAT_DRAIN_MS : 3000 });
   // SSE responses need their terminating HTTP chunk before remaining sockets are forced closed.
   await hub.close();
   server.closeAllConnections?.();
   await Promise.allSettled([localShare.stop(),cloudflare.stop(),native.close(),agent.close(),supervisor.stop(),rustxng.close()]);
+  await drainChatStore(chatStore, { timeoutMs: 1000 });
   process.exit(0);
 };
 // Every ordinary way of being told to stop takes the clean path: Ctrl+C, kill, the terminal closing (SIGHUP), Ctrl+Break.

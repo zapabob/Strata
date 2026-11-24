@@ -268,6 +268,24 @@ def key_matches(given: str, key) -> bool:
     return ok
 
 
+def matched_key(given: str, key):
+    """The configured key a request's header presents, or None.  The same comparison as key_matches (both header
+    byte-forms, #725; every key compared whatever the outcome, #213), but it answers WHICH key passed: #5004's
+    per-key limits ("api_keys") need the key's identity, not only its right to be here.  A hit on several keys
+    (the same key written twice) keeps the first - a policy is looked up by the key string either way."""
+    raw = given.encode("latin-1", "replace")
+    hit = None
+    for k in key_list(key):
+        ok = hmac.compare_digest(raw, k.encode())
+        try:
+            ok |= hmac.compare_digest(raw, k.encode("latin-1"))
+        except UnicodeEncodeError:
+            pass
+        if ok and hit is None:
+            hit = k
+    return hit
+
+
 def origin_allowed(origin: str, host, names, origins=()) -> bool:
     """A browser page's Origin that may use the model without an API key: this server's own page (the Origin is the
     request's own Host), a page on one of the names this server answers to (any port), or an origin the config lists
@@ -314,7 +332,7 @@ SHARED_KEYS = ("reasoning_effort", "reasoning_budget_tokens", "temperature", "to
                "experimental_speed_projection")
 
 
-def load_shared_settings(path, warn=print) -> dict:
+def load_shared_settings(path, warn=print, *, hy4: bool = False) -> dict:
     """The Chat settings kept next to a config between starts, read so that one bad key cannot erase the others.
 
     The strict reader below belongs to POST /settings, where a client is there to be told which key is wrong and can
@@ -339,7 +357,7 @@ def load_shared_settings(path, warn=print) -> dict:
     out = {}
     for key, value in doc.items():
         try:
-            out.update(clean_shared_defaults({key: value}))
+            out.update(clean_shared_defaults({key: value}, hy4=hy4))
         except ValueError as e:
             warn(f"[strata] one Chat setting in {path} is skipped ({e}); the others still apply")
     return out
@@ -357,6 +375,10 @@ def clean_shared_defaults(d, hy4: bool = False) -> dict:
             continue
         number = isinstance(value, (int, float)) and not isinstance(value, bool)
         if key == "reasoning_effort":
+            if hy4 and value == "xhigh":
+                value = "max"
+            elif hy4 and value == "no_think":
+                value = "none"
             if value not in ("none", "low", "medium", "high") + (("max",) if hy4 else ()):    # Hy4's template also has max
                 raise ValueError("reasoning_effort: none, low, medium, high or max" if hy4
                                  else "reasoning_effort: none, low, medium or high")

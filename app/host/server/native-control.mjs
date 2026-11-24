@@ -12,7 +12,7 @@ import { existsSync, readdirSync, readFileSync, writeFileSync, mkdirSync, realpa
 import { join, resolve, dirname, basename, sep, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:net';
-import { draftingHint, NATIVE_FIELDS, APP_OWNED_FIELDS, withoutDraftLayer, resolveDrafter, validateNativeSettings, validateMcpServers, publicMcpServers, publicNativeEnv, restoreNativeEnv, speedSwitchRows } from './native-settings.mjs';
+import { draftingHint, NATIVE_FIELDS, APP_OWNED_FIELDS, withoutDraftLayer, resolveDrafter, validateNativeSettings, validateMcpServers, publicMcpServers, publicNativeEnv, restoreNativeEnv, mergeEnvChanges, speedSwitchRows } from './native-settings.mjs';
 import { resourceSettings, saferStart, reserveChoice } from './native-resources.mjs';
 import { USER_KEY, capture as captureUserArgs, flagValue, merge as mergeUserArgs, setFlag as setUserFlag, stamped as stampedUserArgs } from './native-user-args.mjs';
 import { resolvePython, venvPython } from './python-resolver.mjs';
@@ -424,7 +424,7 @@ export function createNativeControl({directory,requests=()=>[],changed=()=>{},sp
  }
  // The HTTP boundary negotiates Q36 before saving; synchronous internal callers remain conservative.
  async function saveChecked(model,input){const before=JSON.stringify(record(model).config);const view=await settingsKv(model);if(JSON.stringify(record(model).config)!==before)throw new Error('The settings changed while checking the engine. Read them again before saving.');return save(model,input,view.q36KvCapability,view.q36MemoryCapability);}
- function save(model,{values,mcp},capability=null,memoryCapability=null){
+ function save(model,{values,mcp,base},capability=null,memoryCapability=null){
   if([...jobs.values()].some(j=>j.state==='running'||j.state==='cancelling'))throw new Error('Finish the current operation before saving native settings.');
   const {path,config}=record(model);
   if(busy(requests().filter(r=>instances.get(r.instanceId)?.model===model)))throw new Error('Finish this model’s requests before saving its settings.');
@@ -436,7 +436,8 @@ export function createNativeControl({directory,requests=()=>[],changed=()=>{},sp
   assertServingSettings(next,policy);
   if(patch.ds_experts!=null&&!dsExpertsSupported(config))throw new Error('The Speed choice needs the newer DeepSeek engine. Update the engine in Settings, then choose it.');
   for(const field of servingSettingsView(next,policy,nativeFields()).fields)if(field.supported===false&&patch[field.id]!=null&&JSON.stringify(patch[field.id])!==JSON.stringify(config[field.id]))throw new Error(`${field.label} needs a newer native Strata installation. Update it in Settings → About.`);
-  if('env' in patch)next.env=restoreNativeEnv(patch.env,config.env??{});
+  let baseValues=null;try{if(base&&typeof base==='object'&&!Array.isArray(base))baseValues=validateNativeSettings(base);}catch{baseValues=null;}
+  if('env' in patch)next.env=restoreNativeEnv(baseValues?mergeEnvChanges(patch.env,baseValues.env??{},config.env??{}):patch.env,config.env??{});
   validateNativeSettings({spin8_mode:next.spin8_mode??null,spin8_native_config:next.spin8_native_config??null,spin8_native_sha256:next.spin8_native_sha256??null});
   if('vram_reserve_mib' in patch){const base=captureUserArgs(next);const mine=setUserFlag(base,'--vram-reserve-mib',patch.vram_reserve_mib);if(mine.length)next[USER_KEY]=mine;else delete next[USER_KEY];next.args=mine.length&&patch.vram_reserve_mib!==null?mergeUserArgs(next.args??[],mine):setUserFlag(next.args??[],'--vram-reserve-mib',null);delete next.ui_reserve_applied;if(Array.isArray(next.args_written))next.args_written=[...next.args];}
   if(mcp!==undefined){next.mcp_servers=validateMcpServers(mcp,config.mcp_servers??config.mcpServers??{});delete next.mcpServers;}
@@ -445,7 +446,7 @@ export function createNativeControl({directory,requests=()=>[],changed=()=>{},sp
   view.fields=view.fields.map(f=>f.id===PROJECTION_KEY?{...f,supported:projection.refusalProjection.supported,unavailableReason:projection.refusalProjection.reason}:f);
   return {...settings(model),...view,...projection};
  }
- async function settingsHints(model){try{if(!packaged||typeof control.draftingPlan!=='function')return {};const {path}=recordFile(model),d=await control.draftingPlan({configPath:path,mode:'dflash2'});return Number(d?.drafter_gb)>0?{drafting:draftingHint(d.drafter_gb)}:{};}catch{return {};}}
+ async function settingsHints(model){try{const {path:p0,config:c0}=record(model);if(String(c0.arch??'').toLowerCase()==='hy4flash'||/^hy4-flash/i.test(String(c0.model_name??model)))return {drafting:'DFly2 is Hy4-Flash’s built-in speculative drafter (on by default). Off disables speculative drafting.'};if(String(c0.arch??'').toLowerCase()==='inkling2_loop'||/^inkling-2-mini/i.test(String(c0.model_name??model)))return {drafting:'DSpark Block-8 is Inkling-2-Mini’s built-in speculative drafter (on by default). Off disables speculative drafting.'};if(!packaged||typeof control.draftingPlan!=='function')return {};const {path}=recordFile(model),d=await control.draftingPlan({configPath:path,mode:'dflash2'});return Number(d?.drafter_gb)>0?{drafting:draftingHint(d.drafter_gb)}:{};}catch{return {};}}
  function previousEngine(){if(packaged)return !!snapshot.engine?.previous;try{const data=snapshot.installed?.data_dir??snapshot.installed?.data_folder;return [join(preferences.repo,'engine/.previous'),data&&join(data,'engine/.previous')].filter(Boolean).some(existsSync)&&readFileSync(join(preferences.repo,'setup.py'),'utf8').includes('--rollback-engine');}catch{return false;}}
  function installSettings(args,capability=null,negotiating=true,memoryCapability=null){
   if(args.values?.[PROJECTION_KEY]===true)throw new Error('Enable refusal-direction removal in the prepared model’s native settings. No vector download is needed.');
@@ -881,7 +882,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   if(q36Config(cfg,args.model)&&!cfg.log)cfg.log=join(work,`${id}.engine.log`);
   writeFileSync(configPath,JSON.stringify(cfg,null,2),{mode:0o600});
   if(memoryAccess)desktopMemoryAccess.set(id,memoryAccess);
-  const instance={id,apiModelId,fingerprint,context:entry.context??0,aliases:cfg.aliases??[],vision:!!cfg.vision,resourceProfile:cfg.ui_resource_profile??null,model:args.model,label:friendlyModelName(snapshot.catalog,args.model)??entry.model_name??args.model,port:cfg.port,gpus:Array.isArray(cfg.gpu)?cfg.gpu:cfg.gpu===undefined?[]:[cfg.gpu],status:'loading',phase:'loading',parallel:cfg.parallel??1,mcpServers:cfg.mcp_servers??cfg.mcpServers??{},mcpTimeoutS:cfg.mcp_timeout_s??null,key,configPath,ownerJob:job.id,loadedAt:new Date().toISOString(),metrics:null,error:null,...(picturesNote?{picturesNote}:{})};
+  const instance={id,apiModelId,fingerprint,context:entry.context??0,aliases:cfg.aliases??[],arch:(String(cfg.arch??'').toLowerCase()==='hy4flash'?'hy4flash':String(cfg.arch??'').toLowerCase()==='inkling2_loop'?'inkling2_loop':(cfg.arch??null)),vision:!!cfg.vision,resourceProfile:cfg.ui_resource_profile??null,model:args.model,label:friendlyModelName(snapshot.catalog,args.model)??entry.model_name??args.model,port:cfg.port,gpus:Array.isArray(cfg.gpu)?cfg.gpu:cfg.gpu===undefined?[]:[cfg.gpu],status:'loading',phase:'loading',parallel:cfg.parallel??1,mcpServers:cfg.mcp_servers??cfg.mcpServers??{},mcpTimeoutS:cfg.mcp_timeout_s??null,key,configPath,ownerJob:job.id,loadedAt:new Date().toISOString(),metrics:null,error:null,...(picturesNote?{picturesNote}:{})};
   instance.servingPolicy=policyFor(args.model,cfg).id;
   instance.refusalProjection={vectorVerified:projectionRequested(cfg,packaged?control.control.dir:repo()),requested:projectionRequested(config,packaged?control.control.dir:repo())};
   const capture=(args.runObservation===true||observationEnabled())?beginObservation(id,job,cfg,{executable:trustedEngineExe??undefined}):null;

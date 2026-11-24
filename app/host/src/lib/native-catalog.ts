@@ -1,7 +1,7 @@
 import type {NativeFamily,NativeSize} from './native';
 import {tr} from './i18n';
 import {nvfp4Version} from './native-names';
-export interface CatalogVersion extends NativeSize{sourceFamily:string;edition:string;images:boolean;/** Official 0.2.20 Inkling-2-Mini fit verdict (`mode`) plus ranking metadata (`recommended`) used by VersionPicker. */inkling?:{mode:string;recommended?:boolean}}
+export interface CatalogVersion extends NativeSize{sourceFamily:string;edition:string;images:boolean}
 export interface CatalogModel extends Omit<NativeFamily,'sizes'>{sizes:CatalogVersion[]}
 export function nativeVersionLabel(model:string){const nv=nvfp4Version(model);if(nv)return tr(nv.name);return tr(({Q2_0:'Fastest',IQ2_XS:'Compact',IQ3_XXS:'Balanced',IQ3_S:'High quality',IQ1_M:'Coding','Gyro-S':'Smallest','Gyro-M':'Small memory','IST-DAS-1.75bpw':'Smallest','IST-DAS-2.00bpw':'Balanced','IST-DAS-2.25bpw':'Best quality','ISTA-DAS-Coder':'ISTA-DAS Coder'} as Record<string,string>)[model]??model);}
 export const catalogVersionLabel=(version:CatalogVersion)=>{const label=nativeVersionLabel(version.model);return [tr(version.edition),label===version.model&&version.edition?'':label].filter(Boolean).join(' · ');};

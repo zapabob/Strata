@@ -341,6 +341,16 @@ void kq256_gu_t1_q4k(const uint8_t* blob, size_t gu_row, size_t up_off, int n, c
         __m256 acc_g = _mm256_setzero_ps(), acc_u = _mm256_setzero_ps();
         __m128 acc_mg = _mm_setzero_ps(), acc_mu = _mm_setzero_ps();
         for (int i = 0; i < nb; ++i) {
+            if (i + 2 < nb) {
+                const char* pg = reinterpret_cast<const char*>(&xg[i + 2]);
+                const char* pu = reinterpret_cast<const char*>(&xu[i + 2]);
+                _mm_prefetch(pg, _MM_HINT_NTA);
+                _mm_prefetch(pg + 64, _MM_HINT_NTA);
+                _mm_prefetch(pg + 128, _MM_HINT_NTA);
+                _mm_prefetch(pu, _MM_HINT_NTA);
+                _mm_prefetch(pu + 64, _MM_HINT_NTA);
+                _mm_prefetch(pu + 128, _MM_HINT_NTA);
+            }
             const float yd = y[i].d;
             __m128i q8s;
             if (i < 64) {
@@ -474,6 +484,12 @@ void kq256_down_t1_q5_0(const uint8_t* w, size_t row_bytes, int n, const void* h
         __m256 acc2 = _mm256_setzero_ps(), acc3 = _mm256_setzero_ps();
         float bias0 = 0.0f, bias1 = 0.0f, bias2 = 0.0f, bias3 = 0.0f;
         for (int ib = 0; ib < lim; ++ib) {
+            if ((ib % 3) == 0 && ib + 6 < lim) {
+                _mm_prefetch(reinterpret_cast<const char*>(&x0[ib + 6]), _MM_HINT_NTA);
+                _mm_prefetch(reinterpret_cast<const char*>(&x1[ib + 6]), _MM_HINT_NTA);
+                _mm_prefetch(reinterpret_cast<const char*>(&x2[ib + 6]), _MM_HINT_NTA);
+                _mm_prefetch(reinterpret_cast<const char*>(&x3[ib + 6]), _MM_HINT_NTA);
+            }
             const float ydi = yd[ib];
             const float ysi = ysum16[ib];
             const __m256i qy = _mm256_loadu_si256((const __m256i*) y[ib].qs);
@@ -513,6 +529,10 @@ void kq256_down_t1_q5_0(const uint8_t* w, size_t row_bytes, int n, const void* h
         __m256 acc0 = _mm256_setzero_ps(), acc1 = _mm256_setzero_ps();
         float bias0 = 0.0f, bias1 = 0.0f;
         for (int ib = 0; ib < lim; ++ib) {
+            if ((ib % 3) == 0 && ib + 6 < lim) {
+                _mm_prefetch(reinterpret_cast<const char*>(&x0[ib + 6]), _MM_HINT_NTA);
+                _mm_prefetch(reinterpret_cast<const char*>(&x1[ib + 6]), _MM_HINT_NTA);
+            }
             const float ydi = yd[ib];
             const float ysi = ysum16[ib];
             const __m256i qy = _mm256_loadu_si256((const __m256i*) y[ib].qs);
@@ -572,6 +592,12 @@ void kq256_down_t1_q8_0(const uint8_t* w, size_t row_bytes, int n, const void* h
         __m256 acc0 = _mm256_setzero_ps(), acc1 = _mm256_setzero_ps();
         __m256 acc2 = _mm256_setzero_ps(), acc3 = _mm256_setzero_ps();
         for (int ib = 0; ib < lim; ++ib) {
+            if ((ib & 1) == 0 && ib + 4 < lim) {
+                _mm_prefetch(reinterpret_cast<const char*>(&x0[ib + 4]), _MM_HINT_NTA);
+                _mm_prefetch(reinterpret_cast<const char*>(&x1[ib + 4]), _MM_HINT_NTA);
+                _mm_prefetch(reinterpret_cast<const char*>(&x2[ib + 4]), _MM_HINT_NTA);
+                _mm_prefetch(reinterpret_cast<const char*>(&x3[ib + 4]), _MM_HINT_NTA);
+            }
             const float ydi = yd[ib];
             const __m256i qy = _mm256_loadu_si256((const __m256i*) y[ib].qs);
 
@@ -601,6 +627,10 @@ void kq256_down_t1_q8_0(const uint8_t* w, size_t row_bytes, int n, const void* h
         const block_q8_0* x1 = (const block_q8_0*) (w + (size_t) (r + 1) * row_bytes);
         __m256 acc0 = _mm256_setzero_ps(), acc1 = _mm256_setzero_ps();
         for (int ib = 0; ib < lim; ++ib) {
+            if ((ib & 1) == 0 && ib + 4 < lim) {
+                _mm_prefetch(reinterpret_cast<const char*>(&x0[ib + 4]), _MM_HINT_NTA);
+                _mm_prefetch(reinterpret_cast<const char*>(&x1[ib + 4]), _MM_HINT_NTA);
+            }
             const float ydi = yd[ib];
             const __m256i qy = _mm256_loadu_si256((const __m256i*) y[ib].qs);
 
@@ -663,6 +693,145 @@ void q8_0_quant_avx2(const float* x, void* dst, int64_t n) {
         const __m256i p23 = _mm256_permute4x64_epi64(_mm256_packs_epi32(i2, i3), 0xD8);
         const __m256i q8 = _mm256_permute4x64_epi64(_mm256_packs_epi16(p01, p23), 0xD8);
         _mm256_storeu_si256((__m256i*) y[ib].qs, q8);
+    }
+}
+
+// Gen-K 2-Row Unrolled Q4_K x Q8_K Down Projection (T==1) with NTA L3-preserving prefetch:
+// Hoists q8s_pre[i] once per expert, shares L1 activation loads across 2 rows, saturates Zen 2 dual FMA pipes.
+// Bit-exact against ggml_vec_dot_q4_K_q8_K (__AVX2__).
+void kq256_down_t1_q4k(const uint8_t* w, size_t row_bytes, int n, const void* hq0,
+                       float* out0, int r0, int r1) {
+    static const uint32_t kmask1 = 0x3f3f3f3f, kmask2 = 0x0f0f0f0f, kmask3 = 0x03030303;
+    const __m256i m4 = _mm256_set1_epi8(0xF);
+    const int nb = n / QK_K;
+    const block_q8_K* y = (const block_q8_K*) hq0;
+
+    __m128i q8s_pre[64];
+    const int nb_pre = nb <= 64 ? nb : 64;
+    for (int i = 0; i < nb_pre; ++i) {
+        const __m256i q8sums = _mm256_loadu_si256((const __m256i*) y[i].bsums);
+        q8s_pre[i] = _mm_hadd_epi16(_mm256_extracti128_si256(q8sums, 0), _mm256_extracti128_si256(q8sums, 1));
+    }
+
+    auto hsum4 = [](__m128 m) {
+        m = _mm_add_ps(m, _mm_movehl_ps(m, m));
+        m = _mm_add_ss(m, _mm_movehdup_ps(m));
+        return _mm_cvtss_f32(m);
+    };
+
+    auto unpack_scales = [&](const block_q4_K& bx, __m128i& mins_out) -> __m256i {
+        uint32_t utmp[4];
+        std::memcpy(utmp, bx.scales, 12);
+        utmp[3] = ((utmp[2] >> 4) & kmask2) | (((utmp[1] >> 6) & kmask3) << 4);
+        const uint32_t uaux = utmp[1] & kmask1;
+        utmp[1] = (utmp[2] & kmask2) | (((utmp[0] >> 6) & kmask3) << 4);
+        utmp[2] = uaux;
+        utmp[0] &= kmask1;
+        const __m256i ms = _mm256_cvtepu8_epi16(_mm_set_epi32((int) utmp[3], (int) utmp[2], (int) utmp[1], (int) utmp[0]));
+        mins_out = _mm256_extracti128_si256(ms, 1);
+        const __m128i sc128 = _mm256_extracti128_si256(ms, 0);
+        return _mm256_insertf128_si256(_mm256_castsi128_si256(sc128), sc128, 1);
+    };
+
+    int r = r0;
+    for (; r + 1 < r1; r += 2) {
+        const block_q4_K* x0 = (const block_q4_K*) (w + (size_t) r * row_bytes);
+        const block_q4_K* x1 = (const block_q4_K*) (w + (size_t) (r + 1) * row_bytes);
+        __m256 acc0 = _mm256_setzero_ps(), acc1 = _mm256_setzero_ps();
+        __m128 acc_m0 = _mm_setzero_ps(), acc_m1 = _mm_setzero_ps();
+        for (int i = 0; i < nb; ++i) {
+            if (i + 2 < nb) {
+                const char* p0 = reinterpret_cast<const char*>(&x0[i + 2]);
+                const char* p1 = reinterpret_cast<const char*>(&x1[i + 2]);
+                _mm_prefetch(p0, _MM_HINT_NTA);
+                _mm_prefetch(p0 + 64, _MM_HINT_NTA);
+                _mm_prefetch(p0 + 128, _MM_HINT_NTA);
+                _mm_prefetch(p1, _MM_HINT_NTA);
+                _mm_prefetch(p1 + 64, _MM_HINT_NTA);
+                _mm_prefetch(p1 + 128, _MM_HINT_NTA);
+            }
+            const float yd = y[i].d;
+            __m128i q8s;
+            if (i < 64) {
+                q8s = q8s_pre[i];
+            } else {
+                const __m256i q8sums = _mm256_loadu_si256((const __m256i*) y[i].bsums);
+                q8s = _mm_hadd_epi16(_mm256_extracti128_si256(q8sums, 0), _mm256_extracti128_si256(q8sums, 1));
+            }
+            const block_q4_K& b0 = x0[i];
+            const block_q4_K& b1 = x1[i];
+            const float d0 = yd * half_at(&b0, 0), dmin0 = -yd * half_at(&b0, 1);
+            const float d1 = yd * half_at(&b1, 0), dmin1 = -yd * half_at(&b1, 1);
+
+            __m128i mins0, mins1;
+            const __m256i scales0 = unpack_scales(b0, mins0);
+            const __m256i scales1 = unpack_scales(b1, mins1);
+            acc_m0 = _mm_fmadd_ps(_mm_set1_ps(dmin0), _mm_cvtepi32_ps(_mm_madd_epi16(mins0, q8s)), acc_m0);
+            acc_m1 = _mm_fmadd_ps(_mm_set1_ps(dmin1), _mm_cvtepi32_ps(_mm_madd_epi16(mins1, q8s)), acc_m1);
+
+            __m256i sumi0 = _mm256_setzero_si256();
+            __m256i sumi1 = _mm256_setzero_si256();
+            const int8_t* q8 = y[i].qs;
+            const uint8_t* q4_0 = b0.qs;
+            const uint8_t* q4_1 = b1.qs;
+            for (int j = 0; j < 4; ++j) {
+                const __m256i shuf_l = get_scale_shuffle_k4(2 * j + 0);
+                const __m256i shuf_h = get_scale_shuffle_k4(2 * j + 1);
+                const __m256i q8l = _mm256_loadu_si256((const __m256i*) q8); q8 += 32;
+                const __m256i q8h = _mm256_loadu_si256((const __m256i*) q8); q8 += 32;
+
+                const __m256i q4b0 = _mm256_loadu_si256((const __m256i*) q4_0); q4_0 += 32;
+                const __m256i sl0 = _mm256_shuffle_epi8(scales0, shuf_l);
+                const __m256i sh0 = _mm256_shuffle_epi8(scales0, shuf_h);
+                const __m256i p16l0 = _mm256_madd_epi16(sl0, _mm256_maddubs_epi16(_mm256_and_si256(q4b0, m4), q8l));
+                const __m256i p16h0 = _mm256_madd_epi16(sh0, _mm256_maddubs_epi16(_mm256_and_si256(_mm256_srli_epi16(q4b0, 4), m4), q8h));
+                sumi0 = _mm256_add_epi32(sumi0, _mm256_add_epi32(p16l0, p16h0));
+
+                const __m256i q4b1 = _mm256_loadu_si256((const __m256i*) q4_1); q4_1 += 32;
+                const __m256i sl1 = _mm256_shuffle_epi8(scales1, shuf_l);
+                const __m256i sh1 = _mm256_shuffle_epi8(scales1, shuf_h);
+                const __m256i p16l1 = _mm256_madd_epi16(sl1, _mm256_maddubs_epi16(_mm256_and_si256(q4b1, m4), q8l));
+                const __m256i p16h1 = _mm256_madd_epi16(sh1, _mm256_maddubs_epi16(_mm256_and_si256(_mm256_srli_epi16(q4b1, 4), m4), q8h));
+                sumi1 = _mm256_add_epi32(sumi1, _mm256_add_epi32(p16l1, p16h1));
+            }
+            acc0 = _mm256_fmadd_ps(_mm256_set1_ps(d0), _mm256_cvtepi32_ps(sumi0), acc0);
+            acc1 = _mm256_fmadd_ps(_mm256_set1_ps(d1), _mm256_cvtepi32_ps(sumi1), acc1);
+        }
+        out0[r]     = hsum_float_8(acc0) + hsum4(acc_m0);
+        out0[r + 1] = hsum_float_8(acc1) + hsum4(acc_m1);
+    }
+    for (; r < r1; ++r) {
+        const void* act1[1] = {hq0};
+        q4k_dot((const block_q4_K*) (w + (size_t) r * row_bytes), nb, act1, 1, out0 + r);
+    }
+}
+
+// Gen-K AVX2 FMA L1-cached weighted vector accumulate: avoids uncached WC-memory read-modify-write on h_cpu_sum.
+void vec_weighted_accum_avx2(float* dst, const float* src, float w, int n, bool first) {
+    const __m256 vw = _mm256_set1_ps(w);
+    int i = 0;
+    if (first) {
+        for (; i + 32 <= n; i += 32) {
+            _mm256_storeu_ps(dst + i + 0,  _mm256_mul_ps(vw, _mm256_loadu_ps(src + i + 0)));
+            _mm256_storeu_ps(dst + i + 8,  _mm256_mul_ps(vw, _mm256_loadu_ps(src + i + 8)));
+            _mm256_storeu_ps(dst + i + 16, _mm256_mul_ps(vw, _mm256_loadu_ps(src + i + 16)));
+            _mm256_storeu_ps(dst + i + 24, _mm256_mul_ps(vw, _mm256_loadu_ps(src + i + 24)));
+        }
+        for (; i + 8 <= n; i += 8) {
+            _mm256_storeu_ps(dst + i, _mm256_mul_ps(vw, _mm256_loadu_ps(src + i)));
+        }
+        for (; i < n; ++i) dst[i] = w * src[i];
+    } else {
+        for (; i + 32 <= n; i += 32) {
+            _mm256_storeu_ps(dst + i + 0,  _mm256_fmadd_ps(vw, _mm256_loadu_ps(src + i + 0),  _mm256_loadu_ps(dst + i + 0)));
+            _mm256_storeu_ps(dst + i + 8,  _mm256_fmadd_ps(vw, _mm256_loadu_ps(src + i + 8),  _mm256_loadu_ps(dst + i + 8)));
+            _mm256_storeu_ps(dst + i + 16, _mm256_fmadd_ps(vw, _mm256_loadu_ps(src + i + 16), _mm256_loadu_ps(dst + i + 16)));
+            _mm256_storeu_ps(dst + i + 24, _mm256_fmadd_ps(vw, _mm256_loadu_ps(src + i + 24), _mm256_loadu_ps(dst + i + 24)));
+        }
+        for (; i + 8 <= n; i += 8) {
+            _mm256_storeu_ps(dst + i, _mm256_fmadd_ps(vw, _mm256_loadu_ps(src + i), _mm256_loadu_ps(dst + i)));
+        }
+        for (; i < n; ++i) dst[i] += w * src[i];
     }
 }
 

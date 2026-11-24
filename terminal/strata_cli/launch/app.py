@@ -268,14 +268,8 @@ class Ctx:
     def warnings(self) -> list[str]:
         s = self.settings
         out = [n.line() for n in S.check_access(s)]
-        deepseek = bool(s.family and self.catalog.strata.multi_family(s.family))
-        if deepseek:
-            if s.parallel and s.parallel > 1:
-                from strata_cli.launch.cmd import parallel_notices
-                out += [n.line() for n in parallel_notices(s, self.computer)]
-        else:
-            out += [n.line() for n in S.check_parallel(s, vram_gb=self.computer.main_vram_gb or None)]
-        out += [n.line() for n in S.check_context(s, deepseek=deepseek, pack_limit=self.catalog.pack_limit(s.family, s.model) if deepseek else None)]
+        out += [n.line() for n in S.check_parallel(s, vram_gb=self.computer.main_vram_gb or None, ram_gb=self.computer.ram_gb, vendor=self.computer.engine_vendor)]
+        out += [n.line() for n in S.check_context(s)]
         r = next((x for x in self.rows if (x.family, x.model) == (s.family, s.model)), None)
         if r is not None and r.verdict == "disk":
             if s.model_path:                                             # N1: the files are the person's own, used where they are: no download to make room for

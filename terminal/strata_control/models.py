@@ -920,7 +920,11 @@ def plan_import(raw_path: str) -> dict:
     if metadata is not None:
         if metadata["architecture"] not in SUPPORTED_ARCHITECTURES:
             issues.append("unsupported_or_missing_architecture")
-        if metadata["tokenizer_model"] != "gpt2" or not metadata["tokenizer_tokens_present"] or \
+        if arch in INKLING_ARCHS:
+            if metadata["tokenizer_model"] not in ("gpt2", "bpe", "tiktoken", None) or (
+                    metadata["tokenizer_model"] in ("gpt2", "bpe", "tiktoken") and not metadata["tokenizer_tokens_present"]):
+                issues.append("unsupported_or_incomplete_tokenizer_metadata")
+        elif metadata["tokenizer_model"] != "gpt2" or not metadata["tokenizer_tokens_present"] or \
                 not metadata["tokenizer_merges_present"]:
             if metadata["architecture"] == "qwen4exp":
                 issues.append("unsupported_or_incomplete_tokenizer_metadata")

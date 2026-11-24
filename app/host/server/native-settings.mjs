@@ -18,7 +18,7 @@ export const NATIVE_FIELDS=[
  {id:'idle_unload_s',label:'Unload after idle seconds',group:'Serving',type:'number',min:0,max:86400,hint:'Zero keeps the model loaded.'},
  {id:'lazy_load',label:'Load on first request',group:'Serving',type:'boolean'},
  {id:'mtp',notForModel:'deepseek',label:'Draft layer (MTP)',group:'Serving',type:'boolean',hint:'The draft layer guesses several words ahead, which makes answers faster, and costs about 1 GB of graphics memory and some RAM. Turn it off if the model stops while it starts, or the card is small: the expert cache gets that memory back and answers are slower. Default is on.'},
- {id:'drafting',notForModel:'deepseek',label:'Drafting',group:'Serving',type:'enum',choices:['auto','mtp','dflash2','off'],hint:draftingHint(1.2)},
+ {id:'drafting',notForModel:'deepseek',label:'Drafting',group:'Serving',type:'enum',choices:['auto','mtp','dflash2','dfly2','dspark','off'],hint:draftingHint(1.2)},
  {id:'batchMtp',notForModel:'deepseek',label:'MTP per request',group:'Serving',type:'boolean',hint:'Each concurrent request uses the draft layer. Left alone, Strata turns it on for one graphics card with 24 GB or more and several requests at once, and off otherwise; choose on or off here to decide yourself.'},
  {id:'ds_experts',label:'Speed (DeepSeek)',group:'Serving',type:'enum',choices:['5','6'],forModel:'deepseek',hint:'Faster uses 5 of 6 experts per word: a small quality change, usually not noticeable. Full quality uses all 6. Left alone, the engine picks Faster on a PC whose graphics cards total 16 GB or less.'},
  {id:'parallel',label:'Concurrent requests',group:'Serving',type:'number',min:1,max:8,hint:'More slots need more memory and can slow each response.'},
@@ -151,4 +151,8 @@ export function validateMcpServers(servers,previous={}){
 
 const sensitive=name=>/KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL/i.test(name);
 export function publicNativeEnv(env){return Object.fromEntries(Object.entries(env).filter(([name])=>ENV_FLAG.test(name)).map(([name,value])=>[name,sensitive(name)?MASK:value]));}
+/** #6772: the env a panel saves, as a change to what is in the file NOW. `panel` is what the form holds, `base` what it loaded, `current` the file's env: an entry the form added or
+ *  changed is written, one it removed is removed, and everything else - an entry added to the file by hand while the panel was open - stays. Returns the public (masked) shape
+ *  that restoreNativeEnv takes. */
+export function mergeEnvChanges(panel,base,current){const out=publicNativeEnv(current??{});for(const [name,value] of Object.entries(panel??{}))if(base?.[name]!==value)out[name]=value;for(const name of Object.keys(base??{}))if(!(name in (panel??{})))delete out[name];return out;}
 export function restoreNativeEnv(env,previous={}){const result=Object.fromEntries(Object.entries(previous).filter(([name])=>!ENV_FLAG.test(name)));for(const [name,value] of Object.entries(env)){if(value===MASK){if(previous[name]===undefined)throw new Error(`Enter a new value for ${name}.`);result[name]=previous[name];}else result[name]=value;}return result;}
