@@ -60,7 +60,8 @@ def run(root,mode):
     try:
         info["portable_codec"]=codec_smoke()
         if info["device"]["state"]!="READY_A100" or mode=="inspect":
-            info["status"]=info["device"]["state"] if mode!="inspect" else "PROBE_COMPLETE"
+            state=info["device"]["state"]
+            info["status"]="PROBE_COMPLETE" if mode=="inspect" and state=="READY_A100" else state
             info["a100_measurements"]=0
             save(status_file,info)
             return info

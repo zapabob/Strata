@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "split_unit": "scenario",
+  "selection": "Calibration supplies activations and source continuations. Validation selects a single allocation. Held-out cases are opened after the recipe is locked.",
+  "non_inferiority": {
+    "accuracy_margin_absolute": 0.05,
+    "nll_margin_nats_per_token": 0.10,
+    "mean_forward_kl_ceiling_nats": 0.10,
+    "bank_excess_normalised_output_mse_ceiling": 0.01,
+    "interval": "One-sided 95% paired scenario bootstrap for quality. Require all margins on each primary benchmark. Report inconclusive intervals.",
+    "throughput_secondary": true,
+    "long_context": "Three exact retrieved values and a visible terminal answer on each required length. No context shift, draft head or image projector.",
+    "visits": "Retain each physical visit. Calibration and validation use equal weights for eight domains. At most four routed experts per bank, deterministic distinct rows picked before decoding."
+  },
+  "contexts": [131072, 139264, 147456],
+  "microbatches": [16, 32],
+  "calibration": {
+    "japanese": "測定器から返る時刻は UTC です。CSVの各行で original_timestamp を保ち、表示する直前に日本時間へ変換してください。",
+    "python": "def words(s: str) -> list[str]:\n    return [piece.casefold() for piece in s.split()]\nassert words(' One  Two ') == ['one', 'two']",
+    "cpp": "std::optional<int> first_even(const std::vector<int>& values) { for (int x : values) if (x % 2 == 0) return x; return std::nullopt; }",
+    "cuda": "__global__ void copy_strided(const float* src, float* dst, int n) { int i = blockIdx.x * blockDim.x + threadIdx.x; if (i < n) dst[2*i] = src[i]; }",
+    "typescript": "type Job = { id: string, eta?: number }; const eta = (job: Job): number | null => job.eta ?? null;",
+    "schema": "The lookup_part function requires a part number and a warehouse. Its argument schema has required fields part and warehouse, both strings, and additionalProperties false.",
+    "tool": "The user requests the current shelf for part P44. Call lookup_part with warehouse west and part P44. The tool returns shelf C7. Reply to the user with shelf C7.",
+    "repository": "src/index.py imports normalise from lib/paths.py. Preserve exports when replacing its implementation. The integration test calls normalise('a/./b') and expects 'a/b'."
+  },
+  "validation": {
+    "japanese": "ログの順序を維持したまま、同じイベント番号が再送された行だけを除きます。件数は除去後に集計します。",
+    "python": "def pairs(xs):\n    return list(zip(xs[::2], xs[1::2]))\nassert pairs([3, 4, 5]) == [(3, 4)]",
+    "cpp": "bool contains_zero(const std::vector<int>& xs) { return std::find(xs.begin(), xs.end(), 0) != xs.end(); }",
+    "cuda": "__global__ void add_bias(float* a, float bias, size_t n) { size_t k = blockIdx.x * blockDim.x + threadIdx.x; if (k < n) a[k] += bias; }",
+    "typescript": "type Packet = { seq: number }; function newest(a: Packet, b: Packet): Packet { return a.seq >= b.seq ? a : b; }",
+    "schema": "A timezone query accepts a city string and a date in YYYY-MM-DD. If the date is omitted, the service returns the local date alongside the timezone.",
+    "tool": "Read the build result for job R19, then retrieve its artefact only if the state is passed. The first tool returns passed. Call get_artefact with job R19.",
+    "repository": "cli/main.ts calls readPort in src/settings.ts. The tests require port zero to remain a valid explicit value. Replace the boolean fallback with nullish coalescing."
+  },
+  "holdout": {
+    "japanese": "空の計測ファイルを読み込んだ場合は列名を保った空の表を返します。処理時刻だけは通常どおり履歴に追加します。",
+    "python": "def clamp_count(value, cap):\n    return min(max(value, 0), cap)\nassert clamp_count(-2, 7) == 0",
+    "cpp": "struct Reading { int value; bool valid; }; int total(const std::vector<Reading>& rs) { int n=0; for (const auto& r:rs) if (r.valid) n+=r.value; return n; }",
+    "cuda": "__global__ void twice(const int* x, int* y, unsigned n) { unsigned i = blockDim.x * blockIdx.x + threadIdx.x; if (i < n) y[i] = 2*x[i]; }",
+    "typescript": "function distinct(values: readonly string[]): string[] { return Array.from(new Set(values)); }",
+    "schema": "The converter's request is a JSON object. Field sourceUnit must be one of mm, cm or m. Field value is a number. Reject any undeclared field.",
+    "tool": "Find the manifest for document D72 and then read its page count. The manifest reports revision r4. The second tool call must specify document D72 and revision r4.",
+    "repository": "The public CLI imports median from stats/core.py through stats/__init__.py. Preserve the exported name. For an even input length return the mean of the two central values."
+  }
+}

@@ -12,6 +12,30 @@ from scipy.special import logsumexp
 from activation_optimisation import paired_interval
 
 
+def nll_increase(rows):
+    """Positive differences mean greater loss after quantisation."""
+    pairs = list(rows)
+    outcome = paired_interval([math.log(r["candidate_ppl"]) for r in pairs],
+                              [math.log(r["reference_ppl"]) for r in pairs])
+    outcome["improved"], outcome["worsened"] = outcome["worsened"], outcome["improved"]
+    outcome["direction"] = "candidate minus reference NLL, in nats; lower is better"
+    return outcome
+
+
+def aggregate(rows):
+    """Use the number of observed next tokens as the cross-entropy denominator."""
+    total = sum(r["tokens"] for r in rows.values())
+    if not total:
+        raise ValueError("No scored next tokens")
+    ref = sum(r["sum_reference_nll"] for r in rows.values()) / total
+    cand = sum(r["sum_candidate_nll"] for r in rows.values()) / total
+    return dict(sequences=rows, total_tokens=total, reference_nll=ref, candidate_nll=cand,
+                delta_nll=cand-ref, reference_ppl=math.exp(ref), candidate_ppl=math.exp(cand),
+                mean_kl=sum(r["sum_kl"] for r in rows.values())/total,
+                top1_agreement=sum(r["argmax_matches"] for r in rows.values())/total,
+                sequence_paired_nll_increase=nll_increase(rows.values()))
+
+
 def score(reference,candidate,ids):
     if (reference.ndim!=2 or candidate.ndim!=2 or reference.shape[0]!=len(ids) or
             candidate.shape[0]!=len(ids) or candidate.shape[1]<reference.shape[1] or len(ids)<2):
@@ -37,29 +61,51 @@ def score(reference,candidate,ids):
 def hidden(a,b):
     a=(a.astype(np.uint32)<<16).view(np.float32).astype(np.float64)
     b=(b.astype(np.uint32)<<16).view(np.float32).astype(np.float64)
-    return dict(relative_l2=float(np.linalg.norm(a-b)/max(np.linalg.norm(a),1e-30)),
-                cosine=float(np.vdot(a,b)/max(np.linalg.norm(a)*np.linalg.norm(b),1e-30)),
-                mse=float(np.mean((a-b)**2)))
+    if a.shape!=b.shape:raise ValueError("Unequal hidden-state geometries")
+    sa,sb,dot=(float(np.vdot(x,y)) for x,y in ((a,a),(b,b),(a,b)))
+    d=a-b
+    se=float(np.vdot(d,d))
+    return dict(relative_l2=math.sqrt(se/max(sa,1e-60)),cosine=dot/max(math.sqrt(sa*sb),1e-30),
+                mse=se/a.size,reference_sum_squares=sa,candidate_sum_squares=sb,
+                sum_squared_error=se,dot=dot,values=a.size)
 
 
-def trace(ref,cand):
+def trace(ref,cand,scored_only=False):
     with np.load(ref) as r,np.load(cand) as c:
         if not np.array_equal(r["input_ids"],c["input_ids"]):raise ValueError("Token trajectories differ")
         s=score(r["logits"],c["logits"],r["input_ids"][0])
         visits=[]
+        positions=slice(None,-1) if scored_only else slice(None)
         for k in sorted(r.files):
             if not k.endswith(".hidden"):continue
-            name=k.removesuffix(".hidden");a=r[name+".ids"];b=c[name+".dynamic_ids"]
+            name=k.removesuffix(".hidden");a=r[name+".ids"][positions];b=c[name+".dynamic_ids"][positions]
             overlap=(a[:,:,None]==b[:,None,:]).any(axis=-1).mean()
             row=dict(layer=int(name.split(".")[0][1:]),visit=int(name.split(".")[1][1:]),
-                     dynamic_router_overlap=float(overlap),**hidden(r[k],c[k]))
+                     dynamic_router_overlap=float(overlap),**hidden(r[k][:,positions],c[k][:,positions]))
+            if scored_only:
+                used=c[name+".ids"][positions]
+                row["applied_top8_overlap"]=float((a[:,:,None]==used[:,None,:]).any(-1).mean())
+                row["per_position_router_overlap"]=(a[:,:,None]==b[:,None,:]).any(-1).mean(-1).tolist()
+                for suffix in ("attention_output","expert_mixture"):
+                    field=name+"."+suffix
+                    if field in r and field in c:
+                        row[suffix]=hidden(r[field][:,positions],c[field][:,positions])
+                for suffix in ("router_logit_margin","routing_margin"):
+                    field=name+"."+suffix
+                    if field in r and field in c:
+                        mr,mc=r[field][positions],c[field][positions]
+                        row[suffix]=dict(reference_mean=float(mr.mean()),candidate_mean=float(mc.mean()),
+                                         reference=mr.tolist(),candidate=mc.tolist())
             if name+".router_logits" in r and name+".router_logits" in c:
                 def lnrouter(x):
                     logp=-np.logaddexp(0,-x.astype(np.float64))
                     return logp-logsumexp(logp,axis=-1,keepdims=True)
-                lr,lc=lnrouter(r[name+".router_logits"]),lnrouter(c[name+".router_logits"])
+                lr,lc=lnrouter(r[name+".router_logits"][positions]),lnrouter(c[name+".router_logits"][positions])
                 row["router_probability_kl"]=float(np.mean(np.sum(np.exp(lr)*(lr-lc),axis=-1)))
             visits.append(row)
+        visits.sort(key=lambda v:(v["layer"]//6 if v["layer"]<6 else
+                                  (1+2*v["visit"]+(v["layer"]-6)//6 if v["layer"]<18 else 7),
+                                  v["layer"]))
         return dict(**s,visits=visits)
 
 
@@ -67,21 +113,30 @@ def binary(directory,name):
     return str((directory/(name+(".exe" if os.name=="nt" else ""))).resolve(strict=True))
 
 
-def native_logits(args,ref):
-    with np.load(ref) as z:
-        ids=z["input_ids"][0]
+def native_scores(args,files):
+    cmd=[binary(args.bin,"inkling-logits"),"--gpu-layers",str(args.gpu_layers),str(args.model)]
+    for ref in files:
         inp=args.output.parent/(ref.stem+".i32")
+        with np.load(ref) as z:
+            z["input_ids"][0].astype("<i4").tofile(inp)
+        cmd.extend([str(inp),str(inp.with_suffix(".logits"))])
+    if os.name=="nt":
+        from sm120_native import run
+        run(args.output.parent/"native-run",cmd,args.admit_mib,900,7200)
+    else:
+        with (args.output.parent/"native.log").open("w",encoding="utf8") as log:
+            subprocess.run(cmd,check=True,stderr=log)
+    results={}
+    for ref in files:
         out=args.output.parent/(ref.stem+".logits")
-        ids.astype("<i4").tofile(inp)
-        with (args.output.parent/(ref.stem+".native.log")).open("w",encoding="utf8") as log:
-            subprocess.run([binary(args.bin,"inkling-logits"),"--gpu-layers",str(args.gpu_layers),
-                            str(args.model),str(inp),str(out)],check=True,stderr=log)
         with out.open("rb") as f:
             n,v=np.fromfile(f,dtype="<i4",count=2)
-        if n!=len(ids) or v<=0 or out.stat().st_size!=8+4*int(n)*int(v):
+        if n<=0 or v<=0 or out.stat().st_size!=8+4*int(n)*int(v):
             raise ValueError("Native output has an incorrect row count, vocabulary size or byte extent")
         output=np.memmap(out,dtype="<f4",mode="r",offset=8,shape=(int(n),int(v)))
-        return score(z["logits"],output,ids)
+        with np.load(ref) as z:
+            results[ref.stem]=score(z["logits"],output,z["input_ids"][0])
+    return results
 
 
 def benchmark(args):
@@ -127,18 +182,10 @@ def benchmark(args):
 def main(a):
     a.output.parent.mkdir(parents=True,exist_ok=True)
     if a.mode=="throughput":return benchmark(a)
-    rows={}
-    for f in sorted(a.reference.glob("holdout-*.npz")):
-        rows[f.stem]=trace(f,a.candidate/f.name) if a.mode=="trace" else native_logits(a,f)
-    if not rows:raise ValueError("No held-out sequences")
-    total=sum(v["tokens"] for v in rows.values())
-    result=dict(sequences=rows,total_tokens=total,
-                mean_kl=sum(v["sum_kl"] for v in rows.values())/total,
-                top1_agreement=sum(v["argmax_matches"] for v in rows.values())/total,
-                reference_ppl=math.exp(sum(v["sum_reference_nll"] for v in rows.values())/total),
-                candidate_ppl=math.exp(sum(v["sum_candidate_nll"] for v in rows.values())/total),
-                sequence_paired_nll_increase=paired_interval([math.log(v["candidate_ppl"]) for v in rows.values()],
-                                                             [math.log(v["reference_ppl"]) for v in rows.values()]))
+    files=sorted(a.reference.glob("holdout-*.npz"))
+    if not files:raise ValueError("No held-out sequences")
+    rows=({f.stem:trace(f,a.candidate/f.name) for f in files} if a.mode=="trace" else native_scores(a,files))
+    result=aggregate(rows)
     a.output.write_text(json.dumps(result,indent=2))
 
 
@@ -153,4 +200,5 @@ if __name__=="__main__":
     p.add_argument("--batch",type=int,default=2048)
     p.add_argument("--ubatch",type=int,default=512)
     p.add_argument("--gpu-layers",type=int,default=99)
+    p.add_argument("--admit-mib",type=int,default=11300)
     main(p.parse_args())

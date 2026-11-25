@@ -1,0 +1,37 @@
+{
+  "japanese-prose": {
+    "calibration": ["閉館前の資料室で、職員は返却された地図を年代順に並べた。折り目の深いものには薄紙を挟んだ。"],
+    "validation": ["夕食の支度を始める前に、庭の鉢を廊下へ移した。今夜は霜が降りるという。"],
+    "holdout": ["市場の時計が八時を告げると、店主は木箱から青い布を外した。昨日の雨で濡れた石畳には、軒先の灯りがまだ映っていた。","停留所で手袋を片方拾った。午後の便で同じ場所を通ると、小学生が掲示板の下で落とし物の届け方を読んでいた。","最終便が着いた後、港の売店は窓辺に残ったパンを片付けた。向かいの桟橋から係員が戻ってきたのは、その少し後だった。"]
+  },
+  "japanese-technical": {
+    "calibration": ["測定表には温度と採取時刻を記入する。欠測の場合は数値欄を空欄とし、理由を備考欄に記す。"],
+    "validation": ["再計算の前に入力表の行数を確認する。空の表は正常な入力として扱い、合計を零とする。"],
+    "holdout": ["設定を保存する際は、先に一時ファイルへの書き込みを完了させる。その後で元のファイル名に切り替えると、読み取り中の処理にも一貫した内容を渡せる。","測定器の表示単位を切り替えても、保存済みの記録が書き換わることはない。表を出力するときは、見出しの単位と小数点以下の桁数を合わせる。","差分を適用する前に、基準となる版を記録する。行を削除した理由は変更履歴に残し、次回の照合では元の順序を復元できるようにする。"]
+  },
+  "mixed-dialogue": {
+    "calibration": ["担当者が「Which port is available?」と尋ねると、管理者は空いている番号を一つ返した。"],
+    "validation": ["「Choose the shorter route」と表示されたので、地図上の距離と所要時間を比較した。"],
+    "holdout": ["利用者が「Can we export just the selected rows?」と尋ねました。担当者は、一覧で行を選んでから出力範囲を selected に切り替えるよう説明しました。","「The message says retry later. 今すぐ同じ依頼を送り直してよいですか」「まず処理番号を確認しましょう。二重に登録される場合があります」","係員は『Next service at noon』と掲示板に書き、その下に「正午の便には予約が必要です」と日本語で付け加えた。"]
+  },
+  "mathematics": {
+    "calibration": ["三角形の底辺は八センチ、高さは五センチである。底辺と高さの積を二で割ると面積が求まる。"],
+    "validation": ["一辺が六の立方体を同じ大きさの二十七個の立方体に分けると、小さい立方体の一辺は二になる。"],
+    "holdout": ["整数を六で割った余りが四なら、その整数から四を引いた数は六の倍数になる。したがって、同じ整数を三で割った余りは一である。","Two trains cover the same distance. The first travels at sixty kilometres per hour for two hours. The second takes three hours, so its average speed is forty kilometres per hour.","箱には同じ重さの青玉が四個と赤玉が二個ある。二個を戻さずに取り出すとき、最初の玉の色によって二個目が赤になる確率が変わる。"]
+  },
+  "source-code": {
+    "calibration": ["def twice(value):\n    return value + value\n"],
+    "validation": ["def count_missing(rows):\n    return sum(row is None for row in rows)\n"],
+    "holdout": ["def running_total(values):\n    total = 0\n    for value in values:\n        total += value\n        yield total\n", "function lastOrNull(values) {\n  if (values.length === 0) return null;\n  return values[values.length - 1];\n}", "def group_by_station(records):\n    groups = {}\n    for station, reading in records:\n        groups.setdefault(station, []).append(reading)\n    return groups\n"]
+  },
+  "structured-tools": {
+    "calibration": ["{\"name\":\"list_books\",\"arguments\":{\"shelf\":\"北側\",\"limit\":5}}"],
+    "validation": ["{\"name\":\"read_schedule\",\"arguments\":{\"weekday\":\"火曜日\",\"direction\":\"上り\"}}"],
+    "holdout": ["{\"name\":\"find_station\",\"arguments\":{\"query\":\"西口\",\"accessible\":true},\"request_id\":17}", "{\"name\":\"compare_readings\",\"arguments\":{\"unit\":\"celsius\",\"values\":[18.2,19.4,17.9]},\"locale\":\"ja-JP\"}", "{\"result\":{\"status\":\"ok\",\"items\":[{\"label\":\"午前の便\",\"available\":3}]},\"next_page\":null}"]
+  },
+  "hermes-instructions": {
+    "calibration": ["表にある依頼番号を一つ読み、対応する記録だけを開いてください。終了したら作業件数を答えてください。"],
+    "validation": ["直前のツール応答から更新日を取り出してください。確認できない値は未確認と書いてください。"],
+    "holdout": ["前のメッセージに記載された文書名を用いて検索してください。該当する項目が複数ある場合は、更新時刻が最新のものを開き、出典と一緒に要点を日本語で答えてください。","一覧を取得したら依頼の識別子を確認し、その識別子に一致する行だけを数えてください。回答には件数と照合に用いた列名を含めてください。","Read the latest tool result and recover the three requested field values. Preserve the spelling of each value, then return a JSON object without commentary. 不明な値は推測しないでください。"]
+  }
+}

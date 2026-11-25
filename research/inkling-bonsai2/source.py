@@ -10,11 +10,13 @@ import struct
 import sys
 import time
 import threading
+import tempfile
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import requests
+from urllib3.exceptions import HTTPError as RangeTransferError
 
 REPO = "yanauto/Inkling-2-Mini-heretic-full"
 CHUNK = 16 * 1024**2
@@ -28,10 +30,20 @@ def session():
 
 def atomic_bytes(path,data):
     path=Path(path)
-    stage=path.with_suffix(path.suffix+".tmp")
-    with stage.open("wb") as f:
-        f.write(data);f.flush();os.fsync(f.fileno())
-    stage.replace(path)
+    with tempfile.NamedTemporaryFile(dir=path.parent, prefix=path.name+".", suffix=".tmp", delete=False) as f:
+        stage = Path(f.name)
+        try:
+            f.write(data)
+            f.flush()
+            os.fsync(f.fileno())
+        except BaseException:
+            f.close()
+            stage.unlink(missing_ok=True)
+            raise
+    try:
+        stage.replace(path)
+    finally:
+        stage.unlink(missing_ok=True)
 
 
 def download(url):
@@ -59,7 +71,7 @@ def retry_range(http,url,offset,size):
                 data=response.raw.read(size+1)
                 if len(data)!=size:raise IOError("Incorrect length for the source range")
                 return data
-        except (requests.RequestException,OSError):
+        except (requests.RequestException,RangeTransferError,OSError):
             if attempt==4:raise
             time.sleep(2**attempt)
 
@@ -147,8 +159,13 @@ def capture(root, readers, repository=REPO):
                 raise ValueError(f"Invalid asset length for {name}")
             atomic_bytes(root / name, b)
     atomic_bytes(root / "headers.json", json.dumps(headers).encode())
+    fetch_large_files(root, prefix, {key: files[key] for key in headers}, readers)
+
+
+def fetch_large_files(root, prefix, files, readers):
+    """Resume sequential writes and verify each file against its pinned Hub digest."""
     with ThreadPoolExecutor(max_workers=readers) as pool:
-        for name in headers:
+        for name in files:
             f = files[name]
             url = f"{prefix}/{name}"
             path = root / name
@@ -160,7 +177,7 @@ def capture(root, readers, repository=REPO):
                 ):
                     raise ValueError(f"Unverified pre-existing source file: {path}")
                 continue
-            part = path.with_suffix(".safetensors.partial")
+            part = path.with_suffix(path.suffix + ".partial")
             digest = hashlib.sha256()
             mark = part.with_suffix(".checkpoint.json")
             start = json.loads(mark.read_bytes())["bytes"] if mark.is_file() else 0

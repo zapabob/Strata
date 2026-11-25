@@ -107,6 +107,27 @@ def search_pair(ws,fit_data,budget,sweeps,seed):
 def save(path,data):
     atomic_bytes(path,json.dumps(data,indent=2,allow_nan=False).encode())
 
+def cluster_effect(observations,margin,seed=3301):
+    """Sample physical layers, then physical experts, keeping both projections together."""
+    by_layer={}
+    for (layer,expert),effects in sorted(observations.items()):
+        by_layer.setdefault(layer,{})[expert]=float(np.mean(effects))
+    arrays=[np.array(list(v.values())) for v in by_layer.values()]
+    rng=np.random.default_rng(seed)
+    draws=4000
+    indices=rng.integers(len(arrays),size=(draws,len(arrays)))
+    sampled=np.empty(indices.shape)
+    for i,values in enumerate(arrays):
+        which=indices==i
+        sampled[which]=rng.choice(values,size=(which.sum(),len(values)),replace=True).mean(axis=1)
+    means=sampled.mean(axis=1)
+    ci95=np.quantile(means,[.025,.975]);ci90=np.quantile(means,[.05,.95])
+    return dict(layer_balanced_mean=float(np.mean([v.mean() for v in arrays])),
+                ci95=ci95.tolist(),ci90=ci90.tolist(),margin=margin,layers=len(arrays),
+                practical_improvement=bool(ci95[0]>margin),statistical_improvement=bool(ci95[0]>0),
+                equivalent_within_margin=bool(ci90[0]>-margin and ci90[1]<margin),
+                expert_gains_by_physical_layer=by_layer)
+
 
 def run(args):
     original=Original(args.source)
@@ -114,6 +135,7 @@ def run(args):
     cpaths=sorted(args.traces.glob("calibration-*.npz"))
     if len(cpaths)<4:raise ValueError("At least four calibration sequences are required for fitting and selection")
     cut=len(cpaths)//2
+    families=("general-SO8","optimised-Splus","optimised-Sminus","coupled-triality","signed-hadamard","haar-octet","haar-SO128")
     ctrl={"source_revision":original.revision,"selection_split":"calibration","candidate_evaluations_per_projection":args.budget,
           "reserved_metadata_bytes_per_expert_projection":128,"margin":args.margin,"experts":[]}
     for l in args.layers:
@@ -127,23 +149,27 @@ def run(args):
             valid=[selection.expert(e,p) for p in ("w13","w2")]
             record=dict(layer=l,expert=e,source_scheme=original.schemes[keys[0]]["weight_transform"],
                         calibration_counts_per_visit=(fit.counts[:,e]+selection.counts[:,e]).tolist(),
-                        decision=["fixed-hadamard"]*2,choices={})
+                        decision=["fixed-hadamard"]*2,locked_arms={f:["fixed-hadamard"]*2 for f in families},choices={})
             if not all(data) or not all(valid):
                 record["reason"]="Insufficient calibration routes";ctrl["experts"].append(record);continue
             train=[reconstruct(original.parts(k,e,0,args.rows)) for k in keys]
             results=search_pair(train,data,args.budget,args.sweeps,803+l*128+e)
             validation={}
             for method,(bs,histories) in results.items():
-                validation[method]=[sequence_loss(train[j],fit_projection(train[j],bs[j],data[j],args.sweeps),valid[j]) for j in range(2)]
+                decoded=[fit_projection(train[j],bs[j],data[j],args.sweeps) for j in range(2)]
+                validation[method]=[sequence_loss(train[j],decoded[j],valid[j]) for j in range(2)]
+                train_mse=[float(np.mean(list(sequence_loss(train[j],decoded[j],data[j]).values()))) for j in range(2)]
                 record["choices"][method]=dict(bases=list(map(basis_desc,bs)),evaluation_history=histories,
-                                                calibration_selection=validation[method])
+                                                training_mse=train_mse,calibration_selection=validation[method])
             permitted=("general-SO8","optimised-Splus","optimised-Sminus","coupled-triality")
             for j in range(2):
                 ref=validation["fixed-hadamard"][j]
                 if len(ref)<2:continue
-                best=min(permitted,key=lambda method:np.mean(list(validation[method][j].values())))
-                rel=[(ref[k]-validation[best][j][k])/max(ref[k],1e-30) for k in ref]
-                if min(rel)>args.margin:record["decision"][j]=best
+                for method in families:
+                    rel=[(ref[k]-validation[method][j][k])/max(ref[k],1e-30) for k in ref]
+                    if min(rel)>args.margin:record["locked_arms"][method][j]=method
+                chosen=min(permitted,key=lambda method:record["choices"][method]["training_mse"][j])
+                record["decision"][j]=record["locked_arms"][chosen][j]
             ctrl["experts"].append(record)
             save(out/"calibration-progress.json",ctrl)
             print(f"Calibration L{l} E{e}: {record['decision']}",flush=True)
@@ -154,7 +180,7 @@ def run(args):
     if not lock.exists():save(lock,ctrl)
     results={"lock_sha256":hashlib.sha256(lock.read_bytes()).hexdigest(),"rows_per_projection":args.rows,"experts":[]}
     hpaths=sorted(args.traces.glob("holdout-*.npz"))
-    if not hpaths:raise ValueError("No held-out sequences are available")
+    if len(hpaths)<4:raise ValueError("Four held-out sequences are required for the final comparison")
     for l in args.layers:
         cal=Traces(cpaths,l);held=Traces(hpaths,l)
         for rec in [x for x in ctrl["experts"] if x["layer"]==l]:
@@ -173,7 +199,8 @@ def run(args):
                         cache[b]=dict(**metrics(w,q,aggregate_visits(holdx)),sequence_mse=sequence_loss(w,q,holdx),
                                      delta_by_visit=[dict(sequence=s,visit=v,mse=float(np.mean((x.astype(float)@(w-q).T)**2))) for s,v,x in holdx])
                     trial[label]=cache[b]
-                results["experts"].append(dict(layer=l,expert=e,projection=p,selected=rec["decision"][j],methods=trial))
+                results["experts"].append(dict(layer=l,expert=e,projection=p,selected=rec["decision"][j],
+                    locked_arms={name:arm[j] for name,arm in rec["locked_arms"].items()},methods=trial))
         cal.close();held.close()
         save(out/"heldout.json",results)
     # Cluster both projections and all sequences within each physical layer/expert.
@@ -185,6 +212,13 @@ def run(args):
     if clustered:
         gains=np.array([np.mean(x) for x in clustered.values()])
         results["paired_expert_relative_gain"]=paired_interval(gains,np.zeros_like(gains))
+        arms={}
+        for item in results["experts"]:
+            ref=item["methods"]["fixed-hadamard"]["activation_mse"]
+            for method,choice in item["locked_arms"].items():
+                distortion=item["methods"][choice]["activation_mse"]
+                arms.setdefault(method,{}).setdefault((item["layer"],item["expert"]),[]).append((ref-distortion)/max(ref,1e-30))
+        results["matched_heldout_intervals"]={m:cluster_effect(effect,args.margin) for m,effect in arms.items()}
     save(out/"heldout.json",results)
 
 

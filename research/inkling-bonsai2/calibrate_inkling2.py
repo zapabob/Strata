@@ -3,7 +3,6 @@
 import argparse
 import hashlib
 import json
-import re
 from contextlib import ExitStack
 from collections import Counter
 from pathlib import Path
@@ -11,7 +10,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from infer import Experts, OfficialSafetensors, Safetensors, inputs_for, load_graph
+from infer import Experts, OfficialSafetensors, Safetensors, load_graph
 from source import atomic_bytes, await_capacity
 
 
@@ -36,8 +35,10 @@ def split_observations(data,index,width,length):
     stop=start+length
     result={}
     for key,values in data.items():
-        if key.endswith(".hidden"):
+        if key.endswith((".hidden",".attention_output",".expert_mixture")):
             result[key]=values[index:index+1,:length]
+        elif key.endswith((".router_logit_margin",".routing_margin")):
+            result[key]=values.reshape(-1)[start:stop]
         elif key.endswith(".counts"):
             ids=data[key.removesuffix(".counts")+".ids"][start:stop]
             result[key]=np.bincount(ids.ravel(),minlength=128)
@@ -69,11 +70,13 @@ def capture_batch(model,experts,group,args,expected):
                 if not np.array_equal(ids,tr["input_ids"][0]):
                     raise ValueError("Frozen routes have a different token sequence")
             frozen=frozen_batch(traces,width)
-        obs=Observer(frozen)
+        obs=Observer(frozen,compact=getattr(args,"compact_traces",False))
         experts.install(model,obs)
         for j,layer in enumerate(model.model.language_model.layers):
             cleanup.callback(layer.register_forward_hook(obs.layer_hook(j)).remove)
             cleanup.callback(layer.mlp.gate.register_forward_hook(obs.router_hook(j)).remove)
+            cleanup.callback(layer.self_attn.register_forward_hook(obs.output_hook(j,True)).remove)
+            cleanup.callback(layer.mlp.register_forward_hook(obs.output_hook(j,False)).remove)
         print("Evaluating "+", ".join(f"{n} ({len(i)} tokens)" for n,i in group),flush=True)
         result=model(input_ids=inputs,attention_mask=torch.ones_like(inputs),use_cache=False)
     if [obs.visits[j] for j in range(len(expected))]!=expected:
@@ -93,14 +96,15 @@ def capture_batch(model,experts,group,args,expected):
 
 
 class Observer:
-    def __init__(self, frozen=None):
+    def __init__(self, frozen=None, compact=False):
         self.frozen, self.visits, self.data = frozen, Counter(), {}
+        self.compact=compact
 
     def begin(self, layer, x, ids, weights):
         visit = self.visits[layer]
         self.visits[layer] += 1
         prefix = f"l{layer}.v{visit}"
-        self.data[prefix+".gate_input"] = bits(x)
+        if not self.compact: self.data[prefix+".gate_input"] = bits(x)
         self.data[prefix+".dynamic_ids"] = ids.to(torch.int16).cpu().numpy()
         if self.frozen is not None:
             ids = torch.as_tensor(self.frozen[prefix+".ids"].astype(np.int64), device=x.device)
@@ -111,17 +115,33 @@ class Observer:
         return ids, weights
 
     def down(self, layer, expert, tokens, slots, x):
+        if self.compact: return
         prefix = f"l{layer}.v{self.visits[layer]-1}.e{expert}"
         self.data[prefix+".down_input"] = bits(x)
 
     def layer_hook(self, layer):
         def capture(module, args, output):
             self.data[f"l{layer}.v{self.visits[layer]-1}.hidden"] = bits(output)
+            if self.compact and layer in (5,11,17,23):
+                print(f"Captured physical layer {layer}, visit {self.visits[layer]}",flush=True)
         return capture
 
     def router_hook(self,layer):
         def capture(module,args,output):
-            self.data[f"l{layer}.v{self.visits[layer]}.router_logits"]=output[0].detach().float().cpu().numpy()
+            prefix=f"l{layer}.v{self.visits[layer]}"
+            logits=output[0].detach().float()
+            self.data[prefix+".router_logits"]=logits.cpu().numpy()
+            for key,values in (("router_logit_margin",logits),
+                               ("routing_margin",module.score_fn(logits)+module.e_score_correction_bias)):
+                ranked=values.topk(module.top_k+1,sorted=True).values
+                self.data[prefix+"."+key]=(ranked[...,-2]-ranked[...,-1]).cpu().numpy()
+        return capture
+
+    def output_hook(self,layer,attention):
+        def capture(module,args,output):
+            visit=self.visits[layer] if attention else self.visits[layer]-1
+            key="attention_output" if attention else "expert_mixture"
+            self.data[f"l{layer}.v{visit}.{key}"]=bits(output[0] if attention else output)
         return capture
 
 
@@ -131,11 +151,21 @@ def main(args):
     if set(texts) != {"calibration","holdout"} or not all(texts.values()):
         raise ValueError("Provide separate, non-empty calibration and holdout texts")
     token_sets = {}
-    store = (OfficialSafetensors if args.original else Safetensors)(args.source)
+    if args.weights_mode:
+        from decoded_reference import DecodedOfficial
+        if not (args.original and args.gguf and args.manifest and args.llama):
+            raise ValueError("A source checkpoint, GGUF, manifest and llama.cpp tree are required for attribution")
+        restored=[tuple(map(int,key.split(":"))) for key in args.restore]
+        if any(len(pair)!=2 or not 0<=pair[0]<24 or not 0<=pair[1]<128 for pair in restored):
+            raise ValueError("Restoration expects physical-layer:expert pairs")
+        torch.set_float32_matmul_precision("highest")
+        store=DecodedOfficial(args.source,args.gguf,args.manifest,args.llama,args.weights_mode,restored)
+    else:
+        store = (OfficialSafetensors if args.original else Safetensors)(args.source)
     args.output.mkdir(parents=True, exist_ok=True)
     await_capacity(args.output, 0)
     model = load_graph(store, "cuda", False)
-    if args.gguf:
+    if args.gguf and not args.weights_mode:
         from packed_replay import PackedReplay
         experts=PackedReplay(args.gguf,args.llama,args.kernels,args.cache_gib)
     else:
@@ -168,7 +198,8 @@ def main(args):
                  source_family="original" if args.original else "ablated", routing="frozen" if args.frozen else "dynamic",
                  activation_storage="exact BF16 bits", expert_gguf=str(args.gguf) if args.gguf else None,
                  cache_gib=args.cache_gib,sequence_batch=args.sequence_batch,
-                 recorded_sequences=sorted(p.stem for p in args.output.glob("*.npz"))),indent=2).encode())
+                decoded_weight_condition=args.weights_mode,restored=args.restore,
+                recorded_sequences=sorted(p.stem for p in args.output.glob("*.npz"))),indent=2).encode())
 
 
 def expert_activations(path, layer, expert, proj, split):
@@ -196,6 +227,10 @@ if __name__ == "__main__":
     p.add_argument("--output",type=Path,required=True)
     p.add_argument("--texts",type=Path,default=Path(__file__).with_name("calibration_text.json"))
     p.add_argument("--original",action="store_true")
+    p.add_argument("--compact-traces",action="store_true")
+    p.add_argument("--weights-mode",help="A decoded component set or its restore- complement; see decoded_reference.CONDITIONS")
+    p.add_argument("--manifest",type=Path)
+    p.add_argument("--restore",action="append",default=[])
     p.add_argument("--frozen",type=Path)
     for key in ("gguf","llama","kernels"):p.add_argument("--"+key,type=Path)
     p.add_argument("--cache-gib",type=float,default=1.5)

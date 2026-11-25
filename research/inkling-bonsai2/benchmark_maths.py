@@ -106,6 +106,15 @@ def evaluate(args):
 
         if not args.source:
             raise ValueError("Provide --model and --bin, or a source checkpoint")
+        identity=dict(revision=json.loads((args.source/"source.json").read_bytes())["revision"],
+                      selection=hashlib.sha256(args.selection.read_bytes()).hexdigest(),
+                      batch_size=args.batch,original=args.original)
+        progress=folder/"reference-progress.json"
+        if progress.exists():
+            saved=json.loads(progress.read_bytes())
+            if saved["identity"]!=identity:
+                raise ValueError("The existing mathematics results have a different source or selection")
+            rows.update(saved["rows"])
         store=(OfficialSafetensors if args.original else Safetensors)(args.source)
         model=load_graph(store,"cuda",False)
         experts=Experts(store,args.cache_gib,"cuda")
@@ -114,7 +123,11 @@ def evaluate(args):
         source=store.assets.as_posix()
         ordered=sorted(items,key=lambda x:len(x["tokens"]))
         with torch.inference_mode():
-            if args.heldout_reference_dir:
+            complete=args.heldout_reference_dir/"source.json" if args.heldout_reference_dir else None
+            text_identity = dict(identity, texts=hashlib.sha256(args.texts.read_bytes()).hexdigest())
+            if complete and complete.is_file() and json.loads(complete.read_bytes())!=text_identity:
+                raise ValueError("Existing held-out source identity differs")
+            if complete and not complete.is_file():
                 from transformers import AutoTokenizer
                 from source import atomic_bytes
                 from io import BytesIO
@@ -124,22 +137,40 @@ def evaluate(args):
                     raise ValueError("The evaluation texts must be independent of calibration")
                 tokenizer=AutoTokenizer.from_pretrained(store.assets,local_files_only=True)
                 seq=[tokenizer.encode(t,add_special_tokens=False) for t in texts["holdout"]]
-                limit=max(map(len,seq))
-                inputs=torch.tensor([ids+[0]*(limit-len(ids)) for ids in seq],device="cuda")
-                values=model(input_ids=inputs,attention_mask=torch.ones_like(inputs),use_cache=False).logits
                 args.heldout_reference_dir.mkdir(parents=True,exist_ok=True)
+                pending=[]
                 for i,ids in enumerate(seq):
-                    logits=values[i,:len(ids)].float().cpu().numpy()
-                    if not np.isfinite(logits).all():
-                        raise ArithmeticError("Non-finite held-out reference logits")
-                    buffer=BytesIO()
-                    np.savez(buffer,input_ids=np.array([ids],np.int64),logits=logits)
-                    atomic_bytes(args.heldout_reference_dir/f"holdout-{i}.npz",buffer.getvalue())
-                del values
-                print("Saved four disjoint text sequences from the matching source model",flush=True)
-            for start in range(0,len(ordered),args.batch):
+                    path=args.heldout_reference_dir/f"holdout-{i}.npz"
+                    if path.is_file():
+                        with np.load(path) as archive:
+                            if not np.array_equal(archive["input_ids"][0],ids):
+                                raise ValueError("Saved reference token sequence differs")
+                    else:
+                        pending.append(i)
+                for start in range(0,len(pending),args.text_batch):
+                    group=pending[start:start+args.text_batch]
+                    limit=max(len(seq[i]) for i in group)
+                    inputs=torch.tensor([seq[i]+[0]*(limit-len(seq[i])) for i in group],device="cuda")
+                    values=model(input_ids=inputs,attention_mask=torch.ones_like(inputs),use_cache=False).logits
+                    for row,i in enumerate(group):
+                        ids=seq[i]
+                        logits=values[row,:len(ids)].float().cpu().numpy()
+                        if not np.isfinite(logits).all():
+                            raise ArithmeticError("Non-finite held-out reference logits")
+                        buffer=BytesIO()
+                        np.savez(buffer,input_ids=np.array([ids],np.int64),logits=logits)
+                        atomic_bytes(args.heldout_reference_dir/f"holdout-{i}.npz",buffer.getvalue())
+                        del buffer, logits
+                    del values
+                    print(f"Saved held-out sequences {group} from the matching source model",flush=True)
+                save(complete,text_identity)
+            starts=list(range(0,len(ordered),args.batch))
+            starts.sort(key=lambda start: not any(r["row"]==180 for r in ordered[start:start+args.batch]))
+            for start in starts:
                 await_capacity(folder,0)
                 group=ordered[start:start+args.batch]
+                if all(str(row["row"]) in rows for row in group):
+                    continue
                 positions=[len(row["tokens"])-1 for row in group]
                 end=max(positions)+1
                 # Padding follows the scored position of every causal prefix.
@@ -150,6 +181,7 @@ def evaluate(args):
                     use_cache=False,logits_to_keep=torch.tensor(kept,device="cuda")).logits
                 for j,row in enumerate(group):
                     record(row,logits[j,kept.index(positions[j]),label_ids].float().cpu().numpy())
+                save(progress,dict(identity=identity,rows=rows))
                 print(f"Scored {len(rows)}/{len(items)} source questions",flush=True)
     correct=sum(x["correct"] for x in rows.values())
     save(args.output,dict(dataset=spec["dataset"],subject=spec["subject"],split=spec["split"],
@@ -167,6 +199,7 @@ if __name__=="__main__":
     parser.add_argument("--seed",type=int,default=20261125)
     parser.add_argument("--revision")
     parser.add_argument("--batch",type=int,default=8)
+    parser.add_argument("--text-batch",type=int,default=3)
     parser.add_argument("--cache-gib",type=float,default=1.5)
     parser.add_argument("--gpu-layers",type=int,default=99)
     parser.add_argument("--admit-mib",type=int,default=11300)

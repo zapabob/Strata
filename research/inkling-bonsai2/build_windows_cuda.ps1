@@ -5,7 +5,8 @@ param(
   [string]$Toolkit = 'C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v13.5',
   [string]$VsDev = 'C:/Program Files/Microsoft Visual Studio/2022/Community/Common7/Tools/VsDevCmd.bat',
   [string[]]$Targets = @('llama-completion','llama-bench','llama-perplexity','llama-mtmd-cli','llama-quantize','llama-server','inkling-logits'),
-  [switch]$KernelsOnly
+  [switch]$KernelsOnly,
+  [switch]$StrataNative
 )
 $ErrorActionPreference = 'Stop'
 Push-Location -LiteralPath (Split-Path $VsDev -Parent)
@@ -54,9 +55,15 @@ if (!(Test-Path -LiteralPath (Join-Path $Toolkit 'include/nvml.h'))) {
 $ninja = Join-Path (Split-Path (Split-Path $VsDev -Parent) -Parent) 'IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe'
 if (!(Test-Path -LiteralPath $ninja)) { $ninja = (Get-Command ninja -ErrorAction Stop).Source }
 $opts = @('-G','Ninja',"-DCMAKE_MAKE_PROGRAM=$ninja",'-DCMAKE_BUILD_TYPE=Release',
-  '-DGGML_CUDA=ON','-DGGML_NATIVE=OFF','-DGGML_CCACHE=OFF',"-DCMAKE_CUDA_ARCHITECTURES=$Architectures",
-  "-DCMAKE_CUDA_COMPILER=$Toolkit/bin/nvcc.exe",'-DCMAKE_C_FLAGS=/utf-8','-DCMAKE_CXX_FLAGS=/utf-8',
-  '-DCMAKE_CUDA_FLAGS=-Xcompiler=/utf-8,/Zc:preprocessor','-DLLAMA_OPENSSL=OFF','-DLLAMA_BUILD_TESTS=ON')
+  "-DCMAKE_CUDA_ARCHITECTURES=$Architectures",
+  "-DCMAKE_CUDA_COMPILER=$Toolkit/bin/nvcc.exe",'-DCMAKE_C_FLAGS=/utf-8',
+  '-DCMAKE_CXX_FLAGS=/utf-8 /EHsc','-DCMAKE_CUDA_FLAGS=-Xcompiler=/utf-8,/Zc:preprocessor,/EHsc')
+if ($StrataNative) {
+  $opts += @('-DSTRATA_ENABLE_CUDA=ON',"-DSTRATA_INK_CUDA_ARCHS=$Architectures",'-DSTRATA_BUILD_TESTS=ON')
+  if (!$PSBoundParameters.ContainsKey('Targets')) { $Targets = @('strata-inkling') }
+} else {
+  $opts += @('-DGGML_CUDA=ON','-DGGML_NATIVE=OFF','-DGGML_CCACHE=OFF','-DLLAMA_OPENSSL=OFF','-DLLAMA_BUILD_TESTS=ON')
+}
 & cmake -S $Source -B $buildPath @opts
 if ($LASTEXITCODE -ne 0) { throw 'CMake configuration failed' }
 & cmake --build $buildPath --parallel 5 --target @Targets

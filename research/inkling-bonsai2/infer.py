@@ -50,10 +50,27 @@ class Safetensors:
                 ):
                     raise ValueError(f"Missing verified safetensors file {name}")
 
+    def _large_cuda_slice(self,key,device,start,count):
+        t=self.physical[key]
+        shape=t["origin"]
+        if t["role"]=="expert" or not str(device).startswith("cuda"):
+            return None
+        stride=math.prod(shape[1:])*ITEMSIZE[t["dtype"]]
+        limit=max(1,16*1024**2//stride)
+        if count<=limit:
+            return None
+        output=torch.empty((count,*shape[1:]),device=device,dtype=DTYPES[t["dtype"]])
+        for row in range(0,count,limit):
+            length=min(limit,count-row)
+            output[row:row+length].copy_(self.read(key,device,start+row,length))
+        return output
+
     def read(self, key, device, start=0, count=None):
         t = self.physical[key]
         shape = t["origin"]
         count = shape[0] - start if count is None else count
+        bounded=self._large_cuda_slice(key,device,start,count)
+        if bounded is not None: return bounded
         size = math.prod(shape[1:]) * ITEMSIZE[t["dtype"]]
         with (self.assets / t["shard"]).open("rb") as f:
             f.seek(t["input_offset"] + size * start)
@@ -119,6 +136,8 @@ class OfficialSafetensors(Safetensors):
         descriptor = self.physical[key]
         geom = descriptor["origin"]
         count = geom[0] - start if count is None else count
+        bounded=self._large_cuda_slice(key,device,start,count)
+        if bounded is not None: return bounded
         if descriptor["role"] == "expert":
             values=[]
             for e in range(start,start+count):
