@@ -1,84 +1,92 @@
-## O que muda em 0.8.1
+# Hakua / Strata
 
-Nota: os valores DS4 2,84x / FLA 4,86x / Sakura 22,44 t/s vêm dos logs de desenvolvimento do Antigravity e não foram reproduzidos de forma independente nesta sessão de build. Esta sessão mediu 9,09 t/s de prefill / 11,78 t/s de decode com o GGUF canônico a 32K.
+[English](README.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [Deutsch](README.de.md) · [Français](README.fr.md) · [Español](README.es.md) · [Português](README.pt-BR.md) · [Polski](README.pl.md)
 
-Esta versão mantém todos os recursos do fork e adiciona as otimizações nativas de 22/11: produto **0.8.1**, família de mecanismos **0.7.0**, upstream v0.2.21. RTX 5060 Ti (sm_120a)/CUDA 13.5: DS4-9B prefill 2,84x, E2E +22,7 %, FLA GDN + Spin(8) prefill 4,86x, Sakura Inkling-2 65K-98K (22,44 t/s decode). Tabelas SM x VRAM de Ryu (kuraneko1, MIT) no Inkling-2 CUDA oficial (PR #6571). Verificação de assinatura removida; SHA-256 permanece. `releaseQualified=false`.
+**IA local projetada para utilizar todos os recursos do seu PC com Windows — GPU, núcleos físicos + threads SMT da CPU, RAM do sistema e armazenamento NVMe/SSD.** Hakua é o fork independente `zapabob/Strata` de [Niko1221/Strata](https://github.com/Niko1221/Strata), acompanhando o upstream oficial **v0.2.21** (`d46f5f268`, engine/Control `0.1.67`) enquanto mantém todos os motores exclusivos do fork, fluxos de memória/agentes e otimizações Blackwell CUDA 13.5.
 
+## Novidades na 0.8.1 (Engine 0.7.0)
 
-Atualizacao Gen-H (commit 21bedf91c): strata-inkling2.exe e strata.exe usam float4 k_stack_rms_norm/k_mix com exp2f, cache Zipf e h_tok_buf mapeado sem copia; moe_up 39,5 para 4,6 ms (-88 %), 32/32 tokens exatos no Sakura 131K.
+- **Inferência heterogênea de máquina completa nas 4 camadas de hardware (GPU + CPU 6P/6SMT + RAM + SSD)**:
+  - **Backend nativo Windows `aux_cpus` CPU Sets + divisão SMT para E/S** (`engine/include/strata/platform/aux_cpus.hpp`, `ssd_stream_scheduler.hpp`, `direct_file.cpp`): fixa o loop host da GPU e o cálculo AVX2 MoE estritamente nos núcleos físicos primários, dedicando todas as threads SMT secundárias (`io_smt=[1,3,5,7,9,11]` em CPU 6C/12T) a Direct I/O sobreposto de 6 threads e streaming assíncrono `PrefetchVirtualMemory`.
+  - **5 motores nativos recém-compilados com CUDA 13.5 / SM120 Blackwell** (`strata.exe`, `strata-inkling2.exe`, `strata-inkling.exe`, `strata-hy4.exe`, `strata-q38.exe`) com doorbells mapeados zero-copy Gen-K/L, proteção VRAM WDDM de 1536 MiB, orçamentos de RAM Windows seguros quanto a commit (`hy4_cpu_experts.cpp`, `inkling2_engine.cu`), afinidade em núcleos físicos no Windows + espera `_mm_pause` (`ink_hybrid.cuh`), e staging de embeddings em RAM fixada + `PrefetchVirtualMemory` em lote no SM120 Q38 (`engine/q38/src/engine.cu`).
+  - **Lançador unificado de máquina completa e presets**: `tools/full_machine_infer.py` (`--list-models`, `--plan`, `--bench`, `--serve`) detecta automaticamente GPU, topologia física/SMT de CPU, folga de RAM/commit e SSDs para gerar planos de execução em 3 camadas e arquivos de configuração prontos em `configs/`.
+- **Merge 3-way com o upstream oficial v0.2.21**: integra MoE unificado de 4 camadas GPU+RAM+CPU+SSD, `--layer-split` multi-GPU, atualizações de GUI/host e correções de Control/engine `0.1.67` junto com todos os recursos do fork (`/btw`, `/deepresearch`, RustXNG Full, habilidades de fluxo de trabalho, runner denso Q38, extensão DeepSeek, provedor Hermes `inkling2` e tabelas de perfis MIT Inkling-2 do kuraneko1).
+
+## Benchmarks medidos em hardware real
+
+Medido em **NVIDIA GeForce RTX 5060 Ti 16 GB (SM120, CUDA 13.5) · AMD Ryzen 5 4500 (6C/12T) · 32 GB DDR4 · Dual SSD (`C:` Crucial P3 NVMe + `H:` S5-1TB SSD)** com prompts de 16 tokens e decodificação greedy de 32 tokens:
+
+| Modelo (Tamanho) | Engine e contexto | Camadas ativas | Prefill (`pp`) | Decode (`tg`) | Paridade |
+|---|---|---|---:|---:|---|
+| **Sakura Inkling-2-Mini Q4_K_M** (16.28 GiB) | `strata-inkling2.exe` · 131K (Q8 KV) | GPU 10.85 GiB (2232 exps) + RAM fixada 4.34 GiB (840 exps) + 6P/6SMT | **85.08 t/s** | **42.22–42.33 t/s** | **32/32 exato** |
+| **Sakura Inkling-2-Mini Q4_K_M** (16.28 GiB) | `strata-inkling2.exe` · 131K (Q8 KV) | Spill 3 camadas: GPU 10.85 GiB + RAM 3.60 GiB + **SSD mmap 0.74 GiB (`prefetch=on`)** + 6P/6SMT | 64.80 t/s | 14.24 t/s | **32/32 exato** |
+| **Inkling-2-Mini UD Q4_K_M** (15.47 GiB) | `strata-inkling2.exe` · 16K (Q8 KV) | GPU 10.42 GiB (2339 exps) + RAM fixada 3.34 GiB (733 exps) + 6P/6SMT | **109.64 t/s** | **53.28 t/s** | Greedy limpo |
+| **Qwen3.8-27B 3.69bpw MTP** (11.73 GiB) | `strata-q38.exe` · 4K (F16 KV) | Pesos GPU SM120 (10.44 GiB) + staging emb em RAM fixada + `PrefetchVirtualMemory` | 6.21 s a frio | **29.95 t/s** | Greedy limpo |
+
+*Nota de threads de CPU (A/B no Ryzen 5 4500)*: manter os workers de cálculo nos 6 núcleos físicos (`host=0`, `workers=2,4,6,8,10`) com as threads SMT (`1,3,5,7,9,11`) reservadas para E/S alcançou **42.22–42.33 t/s**, contra **29.68 t/s** (-21.9%) ao sobrescrever 11 workers de cálculo em threads irmãs SMT.
 
 ## Versão e downloads
 
-<!-- release-062-stable -->
-Versao atual do aplicativo: **0.8.1** — GitHub Latest: [pagina de lancamento](https://github.com/zapabob/Strata/releases/tag/v0.8.1). Baixe o instalador desktop dos **Assets**; o arquivo se chama `Strata-0.8.1-windows-x64-setup.exe` (o binario do app nao foi recompilado para 0.8.1, apenas o motor mudou). Pacote: `Strata-0.8.1-windows-x64.tar.7z`. Os motores GPU sao componentes opcionais nos mesmos Assets: `strata-engine-0.7.0-windows-x86_64-cuda-cuda13.tar.gz` (Q38 27B/9B + Inkling-2, CUDA 13.5) e `strata-hy4-0.1.64-windows-x86_64-cuda-cuda13.tar.gz`. Sempre abra a pagina e escolha o arquivo exato em Assets. SHA-256 continua sendo a verificacao; `releaseQualified=false`.
+Versão atual: **0.8.1** — GitHub Latest: [página da release v0.8.1](https://github.com/zapabob/Strata/releases/tag/v0.8.1).
 
+- **Instalador Desktop**: `Strata-0.8.1-windows-x64-setup.exe` (app Tauri/NSIS por usuário com Node 24.22.3, Python, Control 0.6.3 e RustXNG Full embutidos).
+- **Pacote do Instalador**: `Strata-0.8.1-windows-x64.tar.7z` (instalador + `SHA256SUMS.txt`).
+- **Componente de Engine CUDA 13.5 SM120 (opcional)**: `strata-engine-0.7.0-windows-x86_64-cuda-cuda13.tar.gz` (todos os cinco motores SM120 recompilados: `strata.exe`, `strata-inkling2.exe`, `strata-inkling.exe`, `strata-hy4.exe`, `strata-q38.exe`).
+- **Componente Hy4-Flash (opcional)**: `strata-hy4-0.1.64-windows-x86_64-cuda-cuda13.tar.gz`.
 
-![Hakua / Strata real-model Japanese chat on Qwen3.8-27B](docs/media/native-qwen38-japanese-chat.png)
-*Hakua / Strata Desktop executando `qwen3.8-27b-abliterated-3.69bpw-12GB-MTP.gguf` via `strata-q38.exe` (CUDA 13 / RTX 5060 Ti 16 GB).*
+Baixe sempre diretamente da lista **Assets** da release e verifique os digests SHA-256. A verificação de assinatura ed25519 dos componentes foi removida (sem chave de assinatura); assinatura Windows Authenticode ausente; **`releaseQualified=false`**.
 
-## GGUF recomendado para o protótipo Qwen3.8
+![Hakua / Strata chat em japonês real com Qwen3.8-27B](docs/media/native-qwen38-japanese-chat.png)
+*Desktop Hakua / Strata executando `qwen3.8-27b-abliterated-3.69bpw-12GB-MTP.gguf` via `strata-q38.exe` (CUDA 13.5 / RTX 5060 Ti 16 GB).*
 
-Para testar conversas de texto locais numa RTX 5060 Ti com 16 GB de VRAM, recomendamos o [GGUF com quantização mista de 3,69 bpw de soyaakinohara](https://huggingface.co/soyaakinohara/qwen3.8-27b-abliterated-3.69bpw-12GB-MTP.gguf) usado nos nossos testes. Agradecemos a **soyaakinohara** pela quantização e publicação e à **AEON-7** pelos pesos de origem. Baixe o modelo separadamente e comece com um contexto de 4.096 tokens. O nome do arquivo não garante funcionamento com 12 GB de VRAM.
+## Início rápido (CLI de máquina completa e Desktop)
 
-A [prévia nativa assinada para CUDA 13.5](https://github.com/zapabob/Strata/releases/tag/v0.7.2) passou em dois turnos em japonês, na interrupção da resposta e na remoção do modelo da memória no aplicativo 0.6.3. Em dois testes da primeira solicitação, o tempo de prefill F16 curto caiu 35–43% em relação ao caminho nativo anterior; Prism (llama.cpp) ainda decodificou mais rápido. [Configuração, chave pública e limites](docs/Q38_NATIVE_PREFILL_PREVIEW.md).
+### Instalação desktop ou atualização por sobrescrita
 
-## Instalação e atualização
+1. Conclua solicitações ativas, descarregue os modelos, faça backup dos dados do aplicativo e encerre o Strata (incluindo o ícone na bandeja do sistema).
+2. Execute `Strata-0.8.1-windows-x64-setup.exe` no diretório de instalação existente para atualizar preservando modelos, chats, memória, ferramentas, chaves de API e aprovações.
+3. Importe `strata-engine-0.7.0-windows-x86_64-cuda-cuda13.tar.gz` em *I already have the file*, selecione um modelo compatível ou GGUF local e clique em **Load**. Veja [instalação e reversão](docs/HAKUA_INSTALL.md).
 
-Use o instalador NSIS para Windows x64 deste fork. Ele instala por usuário e inclui Node, Python e Control privados; ferramentas de desenvolvimento do sistema não são necessárias. O motor CUDA nativo é um componente separado. O pacote `tar.7z` reúne instalador, pacote do motor CUDA, pacote Control, instruções e checksums, excluindo pesos de modelos e dados pessoais.
+### Lançador de máquina completa (`tools/full_machine_infer.py`)
 
-Conclua solicitações ativas, descarregue modelos, faça backup dos dados e feche o app incluindo o ícone da bandeja. Execute o instalador na pasta existente para atualizar por sobrescrita preservando modelos, conversas, memória, ferramentas, chaves e aprovações. Importe o componente CUDA compactado com *Já tenho o arquivo*, escolha um modelo compatível ou um GGUF local e carregue-o. Veja [instalação e reversão](docs/HAKUA_INSTALL.md).
+```powershell
+# Inspecionar camadas GPU/CPU/RAM/SSD e descobrir modelos locais
+terminal\.venv\Scripts\python.exe tools\full_machine_infer.py --list-models
 
-## Novidades da 0.6.2 e recursos do fork
+# Executar benchmark Sakura Inkling-2-Mini 131K com ajustes de máquina completa
+terminal\.venv\Scripts\python.exe tools\full_machine_infer.py --bench --model Sakura --max-new 32
 
-A versão 0.6.2 aprimora o [executor local GGUF denso da família Qwen3.8-27B (`strata-q38.exe`)](docs/QWEN38_DENSE_NATIVE.md) no Windows CUDA 13 / Blackwell (SM120):
-- **Polimorfismo de quantização por tensor (`StrataQuantTensor`)**: suporta 11 tipos GGML/Strata (`F32`, `F16`, `BF16`, `Q8_0`, `Q4_K`, `Q5_K`, `Q6_K`, `IQ3_S`, `IQ2_S`, `IQ4_XS` e PrismML `PQ2_0=142`) por tensor.
-- **Prefill em lote Tensor Core + GDN multi-token + Atenção Spin8 fundida + Decode com CUDA Graph (CUDA 13.5 SM120)**:
-  - Prefill de 140 tokens (`--kv spin8_k8v4 --ctx-size 4096`): caiu de `36.760,7 ms` (`3,81 tok/s`, `--conservative-sync`) para **`1.558,3 ms` (`89,8 tok/s` aquecido, aceleração de 23,6x)**.
-  - Decode contínuo (`GEN 32`, 31 passos, GEMV empacotado + CUDA Graph com barreira a cada 8 camadas): caiu de `206,4 ms/passo` para **`85,13 ms/passo` (`11,75 passos/s`, aceleração de 2,42x)**.
-  - **Medições de contexto longo (`--kv spin8_k8v4`, RTX 5060 Ti 16 GB)**: **65K (`65.536`)** aprovado (prefill de 1.024 tokens `10.813,5–11.220,7 ms`, `91,3–94,7 tok/s`; decode `670,4 ms` / 7 passos); **96K (`98.304`)** aprovado (`required_with_reserve=15,09 GB`, prefill de 140 tokens `1.968,7 ms`); **131K (`131.072`)** bloqueado pela reserva de 768 MiB da GPU (`required=15,97 GB > available=15,91 GB`).
-- **Verificação real de rascunho MTP `K=3` (`blk.64.nextn.*`)**: suporta `--spec-draft-n-max 0..3` com `KvCache::rewind` e reversão de estado GDN.
-- **Cache KV e perfil japonês**: modos `F16`, `Spin8 K8V4` e `F16-K / Turbo2/3/4-V` (ordem `auto`: `f16` → `f16_turbo4` → `spin8_k8v4`), além de perfil opcional de saída em japonês.
+# Iniciar servidor API local OpenAI/Anthropic (127.0.0.1:8092) com RAM squeeze
+terminal\.venv\Scripts\python.exe tools\full_machine_infer.py --serve --model Sakura --port 8092 --squeeze
+```
 
-`/btw` inicia um subagente real sem ferramentas para perguntas paralelas com controle de parada próprio. `/research` e `/deepresearch` coletam fontes usando o RustXNG Full integrado (consultas vão para provedores externos habilitados). Aprendizado e aplicação automática de habilidades de fluxo são opções separadas e desativadas por padrão em novos perfis. Veja [habilidades](docs/WORKFLOW_SKILLS.md) e [busca](docs/BROWSER_SEARCH.md).
+## GGUF recomendado e recursos do fork
 
-## Integração oficial e compatibilidade
+- **Chat local Qwen3.8-27B em 16 GB de VRAM**: testado com [o GGUF de quantização mista 3.69 bpw de soyaakinohara](https://huggingface.co/soyaakinohara/qwen3.8-27b-abliterated-3.69bpw-12GB-MTP.gguf) (créditos para **soyaakinohara** e **AEON-7**). Comece com contexto de 4.096 tokens; o rótulo `12GB` no nome do arquivo não garante encaixe em uma placa de 12 GB.
+- **Runner denso próprio Q38 (`strata-q38.exe`)**: polimorfismo de quantização mista por tensor em 11 formatos (`F32`, `F16`, `BF16`, `Q8_0`, `Q4_K`, `Q5_K`, `Q6_K`, `IQ3_S`, `IQ2_S`, `IQ4_XS`, `PQ2_0`), prefill em Tensor Cores, modos KV Spin(8) / TurboQuant (`auto`: `f16` → `f16_turbo4` → `spin8_k8v4`), draft/verify MTP `K=3` e perfil ortográfico japonês opcional. Veja [QWEN38_DENSE_NATIVE.md](docs/QWEN38_DENSE_NATIVE.md).
+- **Ferramentas de agentes e fluxos de trabalho**: subagente lateral `/btw` sem ferramentas com parada independente, `/research` e `/deepresearch` com RustXNG Full embutido (consulta provedores externos quando habilitado), aprendizado/aplicação privada opcional de skills de fluxo, CRUD de arquivos no workspace/barra lateral e memória de chat com escopo. Veja [WORKFLOW_SKILLS.md](docs/WORKFLOW_SKILLS.md) e [BROWSER_SEARCH.md](docs/BROWSER_SEARCH.md).
 
-A base oficial fixada é [6e38f588](https://github.com/Niko1221/Strata/commit/6e38f588a646c0ee6948a74afbe670eb75896106), associada ao 0.2.15 / motor 0.1.60. As versões do fork são independentes. A compatibilidade com DeepSeek é mantida como extensão e impede o carregamento sem o runtime dedicado. Este pacote Windows não implica entrada nativa de imagem, motor DeepSeek nativo distribuído ou inferência qualificada em Linux/Mac.
+## Pisos de segurança e limites
 
-## Proteções e limites medidos
-
-Mantenha os pisos de 3 GiB de RAM disponível, 4 GiB de margem de commit, pelo menos 768 MiB de reserva de GPU e limites de disco. 32 GB de RAM e 16 GB de VRAM não garantem que todo modelo ou contexto caiba. `releaseQualified=false` permanece válido e o instalador não possui assinatura Authenticode do Windows. Medições históricas permanecem em [evidências de lançamento](docs/HAKUA_RELEASE.md).
+Mantidos sem alteração: **3 GiB de RAM disponível**, **4 GiB de folga de commit**, **>= 768 MiB de reserva GPU** (`1536 MiB` WDDM padrão para Inkling-2 `<= 17 GiB`), **5 GiB livres em `C:`** e **10 GiB livres em `H:`**. Qualidade geral de modelos, geração de janela completa e concorrência multi-cliente simultânea na GPU permanecem não qualificadas (**`releaseQualified=false`**). Esta release Windows do fork não inclui entrada nativa de imagens nem inferência qualificada em Linux/macOS. Registros históricos preservam suas versões originais em [HAKUA_RELEASE.md](docs/HAKUA_RELEASE.md).
 
 ## Documentação e desenvolvimento
 
-[Instalação](docs/HAKUA_INSTALL.md) · [Evidências](docs/HAKUA_RELEASE.md) · [API e hardware](docs/AI_REFERENCE.md) · [Terminal](docs/TERMINAL.md) · [Compilação](docs/SOURCE_INSTALL.md) · [Empacotamento](packaging/README.md) · [Contribuir](CONTRIBUTING.md) · [Segurança](SECURITY.md) · [Licença](LICENSE)
+[Instalação](docs/HAKUA_INSTALL.md) · [Evidências da release](docs/HAKUA_RELEASE.md) · [API e hardware](docs/AI_REFERENCE.md) · [Terminal](docs/TERMINAL.md) · [Compilação do código-fonte](docs/SOURCE_INSTALL.md) · [Empacotamento](tools/packaging/README.md) · [Contribuir](.github/CONTRIBUTING.md) · [Segurança](.github/SECURITY.md) · [Licença](LICENSE)
 
-```sh
-python -m pytest tests/terminal
+```powershell
+pytest tests/test_full_machine_infer.py
+python -m pytest terminal/tests/terminal
 ```
 
-```sh
-cd apps/host
+```powershell
+cd app/host
 pnpm test
 pnpm run build
 ```
 
-### Niko1221/Strata — referência oficial de Terminal
+[Niko1221/Strata](https://github.com/Niko1221/Strata) · [Hermes Agent](https://github.com/NousResearch/hermes-agent) · [Avisos de terceiros](third_party/)
 
-```sh
-curl -fsSL --connect-timeout 15 --max-time 120 https://github.com/Niko1221/Strata/releases/latest/download/install.sh -o install.sh && sh install.sh
-```
+## Agradecimentos
 
-```powershell
-irm -TimeoutSec 120 https://github.com/Niko1221/Strata/releases/latest/download/install.ps1 | iex
-```
-
-[Niko1221/Strata](https://github.com/Niko1221/Strata) · [Hermes Agent](https://github.com/NousResearch/hermes-agent) · [Fontes e avisos de terceiros](third_party/)
-
-## O que mudou na 0.6.3
-
-- O prefill nativo do Q38 usa GEMM de Tensor Core do cuBLAS com ativações FP16 escaladas por token e um bloco de pesos persistente em L2 de 20 MiB. O decode usa GEMV dp4a Q8_1 alinhado conforme o formato e um CUDA Graph com LayerFence(8).
-- A admissão de contexto longo escolhe o tamanho do bloco de prefill a partir de uma escala de VRAM medida. A reserva de GPU de 768 MiB e os mínimos de 3 GiB de RAM e 4 GiB de commit permanecem inalterados.
-- Os fixtures numéricos normalizam os pesos compactados sintéticos para amplitudes realistas sem afrouxar as tolerâncias rigorosas de `_exact_q8`. O GEMV desalinhado recorre a um kernel escalar de leitura por byte.
-- Verificação: 17/17 testes nativos passaram; compute-sanitizer relata 0 erros e 0 riscos em memcheck/synccheck/racecheck. A qualidade geral do modelo, a inferência em janela completa e a concorrência de GPU continuam não qualificadas (`releaseQualified=false`).
-- Base de pesquisa: notas de versão do NVIDIA CUDA 13.5 (correção do algoritmo 66 do cuBLASLt com Tensor Memory) e o relatório de arquitetura Qwen3.8-Next (híbrido GDN/atenção global 3:1, QSA com compressão r=4 e orçamento K=2048, residual com porta, embedding de n-gramas pré-carregado no host).
+Sinceros agradecimentos a **Niko1221/Strata**, **kuraneko1 (`_ryu15_`)**, **ggml & llama.cpp**, **NousResearch (Hermes Agent)**, **Qwen Team (Alibaba Cloud)**, **NVIDIA**, **RustXNG**, **libstrix**, **Node.js / Python / Tauri**, **Microsoft**, **ISTA-DASLab**, **PrismML**, **TurboQuant**, **Spin(8)**, **soyaakinohara** e **AEON-7** pelas bases de código aberto, pesos e pesquisas que tornam o Hakua / Strata possível.

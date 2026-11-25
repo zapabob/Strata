@@ -1,0 +1,28 @@
+{
+  "exe": "H:/Strata/build/q38-cuda135/strata-q38.exe",
+  "arch": "qwen38_dense",
+  "model_name": "qwen3.8-27b-full-machine",
+  "aliases": [
+    "qwen3.8-27b-abliterated-3.69bpw-12GB-MTP",
+    "qwen3.8-27b",
+    "q38-full-machine"
+  ],
+  "drafting": "off",
+  "args": [
+    "--model",
+    "H:/Strata/models/qwen38-27b-soya-mixed-iq/qwen3.8-27b-abliterated-3.69bpw-12GB-MTP.gguf",
+    "--ctx-size",
+    "16384",
+    "--kv",
+    "auto"
+  ],
+  "env": {
+    "STRATA_AUX_CPUS": "off",
+    "STRATA_AUX_IO_SMT": "1",
+    "STRATA_IO_THREADS": "6"
+  },
+  "host": "127.0.0.1",
+  "port": 8094,
+  "open_browser": false,
+  "fit_max_tokens": true
+}

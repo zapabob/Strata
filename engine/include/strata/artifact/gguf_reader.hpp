@@ -228,6 +228,10 @@ inline bool block_geometry(uint32_t t, int& elems, int& bytes) {
         elems = 1;
         bytes = 1;
         return true;
+    case 35:   // TQ2_0: 256 ternary trits (64 bytes qs + 2 bytes fp16 scale d)
+        elems = 256;
+        bytes = 66;
+        return true;
     case 40:   // NVFP4: 64 values = 4 UE4M3 sub-block scales + 32 bytes of E2M1 codes
         elems = 64;
         bytes = 36;
@@ -532,6 +536,23 @@ private:
             // `file_size() - data_start()` (the payload checks downstream) at 0 instead of wrapping.
             if (n_tensors != 0) throw std::runtime_error("GGUF: data section starts past EOF");
             data_start_ = size_;
+        }
+        const uint64_t payload_avail = size_ - data_start_;
+        for (const auto& t : tensors_) {
+            if (t.offset > payload_avail) {
+                throw std::runtime_error("GGUF: truncated file (tensor '" + t.name + "' offset " +
+                                         std::to_string(t.offset) + " exceeds available payload " +
+                                         std::to_string(payload_avail) + ")");
+            }
+            int be = 0, bb = 0;
+            if (block_geometry(t.type, be, bb) && be > 0) {
+                const uint64_t ne = t.elements();
+                const uint64_t tbytes = (ne / (uint64_t)be) * (uint64_t)bb;
+                if (tbytes > payload_avail - t.offset) {
+                    throw std::runtime_error("GGUF: truncated file (tensor '" + t.name + "' end exceeds file size " +
+                                             std::to_string(size_) + ")");
+                }
+            }
         }
     }
 

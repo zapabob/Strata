@@ -96,16 +96,18 @@ __global__ void k_add(float* __restrict__ x, const float* __restrict__ y, int64_
 }
 
 __global__ void k_rms_norm(const float* __restrict__ x, const float* __restrict__ w, float* __restrict__ y,
-                           int n, float eps) {
+                           int n, float eps, float* __restrict__ y_mirror = nullptr) {
     __shared__ float sh[32];
     const int t = blockIdx.x;
     const float* xr = x + (size_t) t * n;
     float* yr = y + (size_t) t * n;
+    float* ym = y_mirror ? (y_mirror + (size_t) t * n) : nullptr;
     float s = 0.0f;
     if ((n & 3) == 0) {
         const int n4 = n >> 2;
         const float4* x4 = (const float4*) xr;
         float4* y4 = (float4*) yr;
+        float4* ym4 = (float4*) ym;
         for (int i = threadIdx.x; i < n4; i += blockDim.x) {
             const float4 v = x4[i];
             s += v.x * v.x + v.y * v.y + v.z * v.z + v.w * v.w;
@@ -115,12 +117,15 @@ __global__ void k_rms_norm(const float* __restrict__ x, const float* __restrict_
         const float4* w4 = w ? (const float4*) w : nullptr;
         for (int i = threadIdx.x; i < n4; i += blockDim.x) {
             const float4 v = x4[i];
+            float4 outv;
             if (w4) {
                 const float4 ww = w4[i];
-                y4[i] = make_float4(v.x * r * ww.x, v.y * r * ww.y, v.z * r * ww.z, v.w * r * ww.w);
+                outv = make_float4(v.x * r * ww.x, v.y * r * ww.y, v.z * r * ww.z, v.w * r * ww.w);
             } else {
-                y4[i] = make_float4(v.x * r, v.y * r, v.z * r, v.w * r);
+                outv = make_float4(v.x * r, v.y * r, v.z * r, v.w * r);
             }
+            y4[i] = outv;
+            if (ym4) ym4[i] = outv;
         }
         return;
     }
@@ -131,7 +136,9 @@ __global__ void k_rms_norm(const float* __restrict__ x, const float* __restrict_
     s = block_sum(s, sh);
     const float r = rsqrtf(s / (float) n + eps);
     for (int i = threadIdx.x; i < n; i += blockDim.x) {
-        yr[i] = xr[i] * r * (w ? w[i] : 1.0f);
+        const float outv = xr[i] * r * (w ? w[i] : 1.0f);
+        yr[i] = outv;
+        if (ym) ym[i] = outv;
     }
 }
 
@@ -4673,7 +4680,10 @@ __device__ __forceinline__ uint32_t ink_float_to_ordered_u32(float f) {
 __global__ void k_route_inkling2(const float* __restrict__ logits, const float* __restrict__ bias,
                                  int32_t* __restrict__ ids, float* __restrict__ ewts,
                                  int n_exp, int top_k, float scale,
-                                 uint32_t* __restrict__ d_hits = nullptr) {
+                                 uint32_t* __restrict__ d_hits = nullptr,
+                                 int32_t* __restrict__ h_ids_dev = nullptr,
+                                 float* __restrict__ h_ewts_dev = nullptr,
+                                 uint32_t* __restrict__ h_ready_dev = nullptr) {
     const int t = blockIdx.x, lane = threadIdx.x;
     uint64_t key[4];
     float p[4];
@@ -4712,6 +4722,7 @@ __global__ void k_route_inkling2(const float* __restrict__ logits, const float* 
         const int be = 127 - int(bk & 0xFFu);
         if (lane == 0) {
             ids[(size_t) t * top_k + k] = be;
+            if (h_ids_dev && t == 0) h_ids_dev[k] = be;
             if (d_hits) atomicAdd(&d_hits[be], 1u);
             wlocal[k] = bp;
             wsum += bp;
@@ -4721,7 +4732,15 @@ __global__ void k_route_inkling2(const float* __restrict__ logits, const float* 
     if (lane == 0) {
         const float denom = fmaxf(wsum, 6.103515625e-5f);
         const float fac = scale / denom;
-        for (int k = 0; k < top_k; ++k) ewts[(size_t) t * top_k + k] = wlocal[k] * fac;
+        for (int k = 0; k < top_k; ++k) {
+            const float wk = wlocal[k] * fac;
+            ewts[(size_t) t * top_k + k] = wk;
+            if (h_ewts_dev && t == 0) h_ewts_dev[k] = wk;
+        }
+        if (h_ready_dev && t == 0) {
+            __threadfence_system();
+            *(volatile uint32_t*) h_ready_dev = 1u;
+        }
     }
 }
 
@@ -4986,7 +5005,8 @@ __global__ void k_gemv_f32(const float* __restrict__ W, const float* __restrict_
     if (lane == 0) y[o] = acc;
 }
 
-__global__ void k_argmax(const float* __restrict__ logits, int32_t* __restrict__ pick, int V) {
+__global__ void k_argmax(const float* __restrict__ logits, int32_t* __restrict__ pick, int V,
+                         int32_t* __restrict__ h_pick_dev = nullptr) {
     __shared__ float sv[256];
     __shared__ int32_t si[256];
     const float* row = logits + (size_t) blockIdx.x * V;
@@ -5009,7 +5029,13 @@ __global__ void k_argmax(const float* __restrict__ logits, int32_t* __restrict__
         }
         __syncthreads();
     }
-    if (threadIdx.x == 0) pick[blockIdx.x] = si[0];
+    if (threadIdx.x == 0) {
+        pick[blockIdx.x] = si[0];
+        if (h_pick_dev) {
+            __threadfence_system();
+            *(volatile int32_t*) (h_pick_dev + blockIdx.x) = si[0];
+        }
+    }
 }
 
 struct SwaLayerPtrs {

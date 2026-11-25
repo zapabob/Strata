@@ -31,6 +31,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "strata/platform/aux_cpus.hpp"
+
 #ifdef min
 #undef min
 #endif
@@ -490,6 +492,9 @@ private:
     }
 
     void worker_loop() {
+        // Place SSD streaming I/O workers on SMT secondary / aux logical CPUs so NVMe/SSD
+        // reads overlap CPU AVX2 MoE compute without preempting primary physical cores.
+        strata::aux_cpus::pin_io_thread();
         for (;;) {
             bool is_demand = false;
             StreamExpertReq dreq{};

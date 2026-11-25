@@ -8,6 +8,7 @@ import { isNativeJobBusy, nativeAction, useNative, type NativeJob } from '../lib
 import { nativeCatalogModels, catalogVersionLabel } from '../lib/native-catalog';
 import { sizeGb } from '../lib/format';
 import { NativeProgress } from './NativeModels';
+import { ownFilesVision } from '../lib/own-files-vision';
 
 interface Preview { path: string; preview: { model_dir?: string; plain_issues?: string[]; already_set_up?: { data_dir?: string | null; pack?: string | null } | null; file_count: number; total_bytes: number; file_set_status: string; issues: string[]; messages?: string[]; projectors?: { name: string; status: string; pinned: boolean; plain: string }[]; reads_pictures?: boolean; candidate_selection: { family: string; model: string } | null; local_runtime?: 'PrismML' | 'TurboQuant' | string | null } }
 
@@ -75,7 +76,9 @@ export function NativeLocalModel({ onBack, onAlternative }: { onBack: () => void
                 const result=await nativeAction<NativeJob>('operations',{kind:'install',args:{family:'qwen38_dense',model:'local',gguf_dir:checked.path,...(denseContext?{context:Number(denseContext)}:{}),...(denseKv?{kv:denseKv}:{}),values:denseLanguage?{output_language:denseLanguage}:{},loadAfter:true}});
                 setJobId(result.id);return;
             }
-            const result = await nativeAction<NativeJob>('operations', { kind: 'install', args: { family: selection.family, model: selection.model, gguf_dir: checked.preview.model_dir ?? checked.path, ...(ownDataFolder ? { data_dir: ownDataFolder } : {}), context: native?.catalog?.recommendation?.context ?? 32768, vision: checked.preview.projectors?.some(p => p.status === 'ok' && p.pinned) && native?.visionReader ? 'yes' : 'no', ...(version && native?.servingPolicies?.[version.id]?.ordinaryKv.includes('int8') ? { kv: 'int8' } : {}), loadAfter: true } });
+            const isInkling = selection.family === 'inkling-2-mini';
+            const localTarget = isInkling && /\.(gguf|strata)$/i.test(checked.path) ? checked.path : (checked.preview.model_dir ?? checked.path);
+            const result = await nativeAction<NativeJob>('operations', { kind: 'install', args: { family: selection.family, model: selection.model, gguf_dir: localTarget, ...(ownDataFolder ? { data_dir: ownDataFolder } : {}), context: isInkling ? 32768 : (native?.catalog?.recommendation?.context ?? 32768), vision: ownFilesVision(checked.preview.projectors, native?.visionReader, native?.installed?.models, selection.family), ...(version && native?.servingPolicies?.[version.id]?.ordinaryKv.includes('int8') ? { kv: 'int8' } : {}), loadAfter: true } });
             setJobId(result.id);
         }
         catch (e) { setError(e instanceof Error ? e.message : String(e)); }

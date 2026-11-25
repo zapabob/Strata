@@ -797,6 +797,103 @@ INKLING_FAMILIES = {
     }
 }
 
+# Inkling-2-Mini custom/community local-file & Hugging Face import sources (official HF safetensors + Unsloth GGUFs).
+# Native `.strata` v1.1 (SQ-20, SQ-15, SQ-10 + Vision) remains the flagship recommended default; `strata-inkling` also
+# downloads and loads Unsloth GGUFs (`unsloth/Inkling-2-Mini-GGUF`) and official safetensors directly.
+INKLING_COMMUNITY_SOURCES = {
+    "safetensors": {
+        "title": "Inkling-2-Mini (Official HF safetensors)",
+        "repo": "thinkingmachines/Inkling-2-Mini",
+        "format": "safetensors",
+        "files": ("model-00001-of-00001.safetensors", "model.safetensors.index.json", "config.json",
+                  "tokenizer.json", "chat_template.jinja"),
+        "dspark": "mtp.safetensors",
+        "arch": "inkling2_loop",
+        "exe": "component:strata-inkling",
+        "recommended_default": False,
+    },
+    "gguf": {
+        "title": "Inkling-2-Mini (Community / Unsloth GGUF)",
+        "repo": "unsloth/Inkling-2-Mini-GGUF",
+        "format": "gguf",
+        "arch": "inkling2_loop",
+        "exe": "component:strata-inkling",
+        "recommended_default": False,
+        "models": {
+            b: {
+                "file": inkling_fit.BUILDS[b]["file"],
+                "ram_gb": int(-(-inkling_fit.BUILDS[b]["footprint_gb"] // 1)),
+                "about": inkling_family.BUILD_ABOUT[b],
+            }
+            for b in inkling_fit.GGUF_ORDER
+        },
+        "sha256": dict(inkling_family.UNSLOTH_GGUF_FILES),
+        "dspark": inkling_family.DSPARK_GGUF_FILE,
+        "mmproj": inkling_family.MMPROJ_BF16_FILE,
+    },
+}
+
+
+def detect_inkling_source_format(path: str | os.PathLike) -> str | None:
+    """Detect whether `path` is a `.strata`, official HF `safetensors`, or `.gguf` Inkling-2-Mini source."""
+    p = Path(path)
+    if p.is_dir():
+        if (p / "model.safetensors.index.json").is_file() or (p / "model-00001-of-00001.safetensors").is_file():
+            return "safetensors"
+        if any(f.suffix.lower() == ".safetensors" and f.name != "mtp.safetensors" for f in p.iterdir() if f.is_file()):
+            return "safetensors"
+        return None
+    if not p.is_file():
+        return None
+    low = p.name.lower()
+    if low.endswith(".strata"):
+        return "strata"
+    if low.endswith(".safetensors") or low == "model.safetensors.index.json":
+        return "safetensors"
+    if low.endswith(".gguf"):
+        try:
+            with p.open("rb") as fh:
+                if fh.read(4) == b"GGUF":
+                    return "gguf"
+        except OSError:
+            pass
+    return None
+
+
+def build_inkling_import_args(
+    model_path: str | os.PathLike,
+    *,
+    max_context: int = 32768,
+    parallel: int = 1,
+    gpus: int = 1,
+    ep_split: float | None = None,
+    kv: str | None = None,
+    vram_reserve_mib: int | None = None,
+    cpu_threads: int | None = None,
+    dspark_path: str | os.PathLike | None = None,
+    vision_path: str | os.PathLike | None = None,
+) -> list[str]:
+    """Build unified `strata-inkling` engine args for `.strata` (default), official `safetensors`, or `.gguf`."""
+    args = ["--native", str(model_path), "--max-context", str(max_context)]
+    if parallel > 1:
+        args += ["--parallel", str(parallel)]
+    if gpus > 1:
+        args += ["--gpus", str(gpus)]
+        if ep_split is not None:
+            args += ["--ep-split", f"{ep_split:.3f}"]
+    if kv:
+        args += ["--kv", str(kv)]
+    if vram_reserve_mib is not None and vram_reserve_mib >= 0:
+        args += ["--vram-reserve-mib", str(vram_reserve_mib)]
+    if cpu_threads is not None and cpu_threads > 0:
+        args += ["--cpu-threads", str(cpu_threads)]
+    if dspark_path:
+        args += ["--dspark", str(dspark_path)]
+    if vision_path:
+        args += ["--vision", str(vision_path)]
+    return args
+
+
 # DeepSeek-V4.1-Flash (GGUF architecture deepseek41), Unsloth's UD-Q8_K_XL at the revision the port was checked against: a
 # family with an engine of its own (strata-dsv41, src/dsv41, ported from Project Maya's maya-ds4, MIT) that is not a
 # Flash-Next pack and not a single GGUF: nine shards (508.4 GB, the routed experts as MXFP4, the dense weights in BF16, and
@@ -1175,10 +1272,11 @@ def net_fail(e: "netpolicy.NetFailure", url: str, what=None):
 def run(cmd, cwd=None, env=None, check=True, quiet=False):
     """An install, build or preparation step (pip, cmake, a package manager, tools/*.py): never part of a start."""
     acquisition.require("an install or build step (" + Path(str(cmd[0])).name + ")")
-    if CONTROL:                                        # the app: only this Python running a bundled tool
+    if CONTROL:                                        # the app: only this Python running a bundled tool (or strata-hy4/strata-inkling --export-tokenizer)
         argv = [str(c) for c in cmd]
-        if len(argv) < 2 or os.path.normcase(argv[0]) != os.path.normcase(sys.executable) or argv[1] == "-m" or \
-                Path(argv[1]).resolve().parent not in ((ROOT / "tools").resolve(), (ROOT / "tools" / "dsv41").resolve(), (ROOT / "metal" / "tools").resolve()):
+        hy4_tok = len(argv) >= 2 and Path(argv[0]).name.lower() in ("strata-hy4", "strata-hy4.exe", "strata-inkling", "strata-inkling.exe") and argv[1] == "--export-tokenizer"
+        if not hy4_tok and (len(argv) < 2 or os.path.normcase(argv[0]) != os.path.normcase(sys.executable) or argv[1] == "-m" or \
+                Path(argv[1]).resolve().parent not in ((ROOT / "tools").resolve(), (ROOT / "tools" / "dsv41").resolve(), (ROOT / "metal" / "tools").resolve())):
             raise acquisition.AcquisitionRefused("the desktop app's installer only runs its bundled preparation tools; "
                                                  + " ".join(argv[:2]))
     say("  > " + " ".join(str(c) for c in cmd))
@@ -7672,15 +7770,16 @@ def choices_from_config(cfg_path: Path) -> dict:
         return {"family": big, "model": size, "context": int(ctx) if ctx and ctx.isdigit() else None, "kv": None,
                 "vision": "none", "esp": "off", "host": cfg.get("host"), "api_key": cfg.get("api_key"),
                 "port": cfg.get("port"), "gpu": cfg.get("gpu"), "layer_split": None, "cuda": None, "vram_reserve_mib": None}
-    own = next((f for f, d in OWN_PATH_FAMILIES.items() if tag.startswith(d["tag"])), None)
-    if own is not None:                                # Qwen3.6: its own sizes; no KV / images / projection settings
-        d = OWN_PATH_FAMILIES[own]
+    special_fams = {**OWN_PATH_FAMILIES, **HY4_FAMILIES, **INKLING_FAMILIES}
+    own = next((f for f, d in special_fams.items() if tag.startswith(d["tag"])), None)
+    if own is not None:                                # Qwen3.6 / Hy4-Flash / Inkling-2-Mini
+        d = special_fams[own]
         size = next((m for m in d["models"] if m.lower() == tag[len(d["tag"]):].lower()), None)
         a = cfg.get("args", [])
         ctx = a[a.index("--max-context") + 1] if "--max-context" in a and a.index("--max-context") + 1 < len(a) else None
         vis = cfg.get("vision")
         return {"family": own, "model": size, "context": int(ctx) if ctx and ctx.isdigit() else None, "kv": None,
-                "vision": ("gpu" if vis.get("gpu") else "cpu") if isinstance(vis, dict) else "none", "esp": "off", "host": cfg.get("host"), "api_key": cfg.get("api_key"),
+                "vision": ("yes" if "--vision" in a else "none") if (d.get("hy4") or d.get("inkling")) else (("gpu" if vis.get("gpu") else "cpu") if isinstance(vis, dict) else "none"), "esp": "off", "host": cfg.get("host"), "api_key": cfg.get("api_key"),
                 "port": cfg.get("port"), "gpu": cfg.get("gpu"), "layer_split": None,
                 "cuda": 12 if config_toolkit(cfg) == 12 else None, "vram_reserve_mib": None}
     family = next((f for f, d in FAMILIES.items() if d["tag"] and tag.startswith(d["tag"])), "qwen")
@@ -7707,12 +7806,13 @@ def choices_from_config(cfg_path: Path) -> dict:
 
 def calibration_targets(have: list, model: str | None, family: str | None) -> list:
     """#2036: the installed configs `--calibrate --model X` (and/or --family) means; every config with neither."""
+    skip = set(OWN_PATH_FAMILIES) | set(MULTI_FILE_FAMILIES) | set(HY4_FAMILIES) | set(INKLING_FAMILIES)
     if not (model or family):
-        return [c for c in have if choices_from_config(c)["family"] not in (*OWN_PATH_FAMILIES, *MULTI_FILE_FAMILIES)]
+        return [c for c in have if choices_from_config(c)["family"] not in skip]
     out = []
     for c in have:
         ch = choices_from_config(c)
-        if ch["family"] in OWN_PATH_FAMILIES or ch["family"] in MULTI_FILE_FAMILIES:   # the tuning measures Flash-Next's engine settings
+        if ch["family"] in skip:   # the tuning measures Flash-Next's engine settings
             continue
         if (not model or ch["model"] == model) and (not family or ch["family"] == family):
             out.append(c)
@@ -8993,7 +9093,66 @@ def shape_engine_fetch(a):
     return found
 
 
-def shape_engine_step(a, gpu, vision):
+def build_shape_engine(shape: str, gpu: dict, hip: bool, cuda_tk=None, yes: bool = False) -> Path | None:
+    """Compile a shape engine (`hy4` -> `strata-hy4`, `inkling2` -> `strata-inkling`) locally from `engine/` when `--build` is passed (#6588).
+    Returns the installed engine directory containing the built executable + `BUILD.json`, or None if unsupported."""
+    from strata_control import shape_engine
+    if shape not in (shape_engine.HY4_SHAPE, shape_engine.INKLING_SHAPE):
+        return None
+    src = engine_src()
+    if not (src / "CMakeLists.txt").is_file():
+        fail(f"cannot compile {shape} locally: engine source not found at {src}")
+    exe_name = shape_engine.exe_name(shape)
+    out_dir = home() / f"engine-{shape}"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    build_dir = src / f"build-{shape}"
+    cmake = shutil.which("cmake")
+    if not cmake:
+        fail("cmake is required to compile with --build", "install cmake and ninja, or run without --build to download a prebuilt engine")
+    ninja = shutil.which("ninja")
+    cfg_cmd = [cmake, "-S", str(src), "-B", str(build_dir), "-DCMAKE_BUILD_TYPE=Release"]
+    if ninja:
+        cfg_cmd += ["-G", "Ninja"]
+    if shape == shape_engine.HY4_SHAPE:
+        cfg_cmd += ["-DSTRATA_BUILD_HY4=ON", "-DSTRATA_BUILD_INKLING=OFF", "-DSTRATA_BUILD_TESTS=OFF"]
+        if hip:
+            cfg_cmd += ["-DSTRATA_ENABLE_HIP=ON", "-DSTRATA_ENABLE_CUDA=OFF"]
+        else:
+            cfg_cmd += ["-DSTRATA_ENABLE_CUDA=ON", "-DSTRATA_ENABLE_HIP=OFF"]
+        target = "strata-hy4"
+    else:
+        cfg_cmd += ["-DSTRATA_BUILD_INKLING=ON", "-DSTRATA_BUILD_HY4=OFF", "-DSTRATA_BUILD_TESTS=OFF"]
+        if hip:
+            cfg_cmd += ["-DSTRATA_ENABLE_HIP=ON", "-DSTRATA_ENABLE_CUDA=OFF"]
+        elif sys.platform == "darwin":
+            cfg_cmd += ["-DSTRATA_ENABLE_METAL=ON", "-DSTRATA_ENABLE_CUDA=OFF"]
+        else:
+            cfg_cmd += ["-DSTRATA_ENABLE_CUDA=ON", "-DSTRATA_ENABLE_HIP=OFF"]
+        target = "strata-inkling"
+    say(f"  compiling {target} locally (--build) in {build_dir} ...")
+    run(cfg_cmd)
+    run([cmake, "--build", str(build_dir), "--target", target, "--config", "Release"])
+    built = None
+    for cand in (build_dir / exe_name, build_dir / "Release" / exe_name,
+                 build_dir / "src" / "inkling2" / exe_name, build_dir / "src" / "inkling2" / "Release" / exe_name):
+        if cand.is_file():
+            built = cand
+            break
+    if built is None:
+        fail(f"local build of {target} finished but {exe_name} was not found in {build_dir}")
+    dst = out_dir / exe_name
+    shutil.copy2(built, dst)
+    if not WIN:
+        dst.chmod(dst.stat().st_mode | 0o755)
+    meta = {"version": "local", "backend": "hip" if hip else ("metal" if sys.platform == "darwin" else "cuda"),
+            "source": "local", "shape": shape, "entrypoint": exe_name}
+    (out_dir / "BUILD.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
+    ok(f"built {target} locally: {dst}")
+    return out_dir
+
+
+
+def shape_engine_step(a, gpu, vision, *, hip: bool = False, cuda_tk=None):
     """Step 4 for a model that runs on the engine of its own shape (a Qwen4 model whose geometry is not Flash-Next's: strata_control/shape_engine.py). That engine is a
     separate component next to the Strata engine (shape_engine_fetch); the run config names it ("component:strata-q4-lite") and every start looks it up.
     Returns what engine_step returns."""
@@ -9015,7 +9174,7 @@ def engine_step(a, gpu, hip, amd, cuda_tk, vision):
     """Step 4: llama.cpp's sources and the engine (ready-made, or compiled here).  Returns (llama, engine folder, its
     BUILD.json, its library folders, the GPU (AMD on Windows: as the engine sees it), the image-encoder choice)."""
     if SHAPE_ENGINE.get("shape"):
-        return shape_engine_step(a, gpu, vision)
+        return shape_engine_step(a, gpu, vision, hip=hip, cuda_tk=cuda_tk)
     if CONTROL:
         return control_engine_step(gpu, vision)
     llama = llama_override()
@@ -9497,6 +9656,25 @@ def local_feed(feed: str | None = None) -> bool:
     return host in ("localhost", "127.0.0.1", "::1") or host.startswith("127.")
 
 
+def hy4_folder(a) -> Path:
+    """Where the Hy4-Flash files live: --gguf-dir (the person's own folder with the files), else <models>/hy4-flash (every build and the Engram shard they share are in it)."""
+    if getattr(a, "gguf_dir", None):
+        return Path(a.gguf_dir)
+    return Path(getattr(a, "models_dir", None) or (home() / "models")) / hy4_family.FAMILY
+
+
+def hy4_offered(a=None) -> bool:
+    """Is Hy4-Flash in the menu: a download source is configured (strata_control/hy4_family.py sources), or its files are already in the model folder.  The engine package is
+    fetched when the model is chosen (the signed feed); with no source and no file there is nothing to offer yet (the owner decides where the files are published)."""
+    try:
+        if hy4_family.sources():
+            return True
+        return bool(a is not None and hy4_family.local_files(hy4_folder(a)))
+    except Exception:                                  # noqa: BLE001 - the menu never fails on this
+        return False
+
+
+
 def hy4_pc(gpu, ram) -> tuple:
     """(vram_gib or None, ram_gib, unified) of this PC for strata_control/hy4_fit.py: an APU / unified-memory PC has one pool (what the GPU can map), a card has its VRAM."""
     g = gpu or {}
@@ -9505,6 +9683,341 @@ def hy4_pc(gpu, ram) -> tuple:
     if g.get("uma"):
         return None, float(g.get("vram_gb") or ram) / hy4_fit.GIB_TO_GB, True
     return effective_vram_gb(g), float(ram), False
+
+
+def hy4_menu_lines(vram_gib, ram_gib, unified, ctx=None, vision=hy4_family.DEFAULT_VISION, extra_vram_gib=0.0) -> list:
+    """One line per build for the size menu, best first, with the fit words (at this context, with the image reader's memory when images are on) and the recommended mark."""
+    rec = hy4_fit.recommend(vram_gib, ram_gib, unified, ctx, vision, extra_vram_gib=extra_vram_gib)["build"]
+    words = {"ram_vram_zero_ssd": "fits in memory", "near_resident_ssd": "fits, a few experts are read from the SSD", "cross_tier_ssd": "streams experts from the SSD: much slower"}
+    out = []
+    for r in hy4_fit.rows(vram_gib, ram_gib, unified, ctx, vision, extra_vram_gib=extra_vram_gib):
+        out.append((r["build"], f"{r['build']:7s} {hy4_family.BUILD_ABOUT[r['build']]}; download {r['download_gb']:.0f} GB   <- {words[r['mode']]}"
+                    + ("   (recommended)" if r["build"] == rec else "")))
+    return out
+
+
+def _multi_gpu_cards(multi, gpu, hip, amd) -> list[dict]:
+    """Resolve `multi` (either a list of int indices from main(), or a list of GPU dicts) into discrete GPU dicts for CUDA, AMD HIP, or Intel SYCL."""
+    if not multi or not isinstance(multi, (list, tuple)):
+        return []
+    out: list[dict] = []
+    amd_by = {int(g["index"]): g for g in (amd or []) if isinstance(g, dict) and "index" in g}
+    nv_by: dict[int, dict] | None = None
+    for item in multi:
+        if isinstance(item, dict):
+            card = dict(item)
+        elif isinstance(item, int) and not isinstance(item, bool):
+            if hip and item in amd_by:
+                card = dict(amd_by[item])
+            elif gpu and int(gpu.get("index", -1)) == item:
+                card = dict(gpu)
+            else:
+                if nv_by is None:
+                    try:
+                        nv_by = {int(g["index"]): g for g in gpus()}
+                    except Exception:                  # noqa: BLE001
+                        nv_by = {}
+                card = dict(nv_by.get(item) or {"index": item, "name": f"GPU {item}", "vram_gb": float((gpu or {}).get("vram_gb") or 0.0)})
+        else:
+            continue
+        if card.get("uma") or card.get("unified") or card.get("unified_gb") or card.get("integrated"):
+            continue
+        out.append(card)
+    return out
+
+
+def hy4_have(a, dst: Path) -> bool:
+    if not dst.is_file():
+        return False
+    if done(dst) or bool(getattr(a, "gguf_dir", None)):
+        return True
+    pin = hy4_family.FILES.get(dst.name)
+    return bool(pin and dst.stat().st_size == pin[0] and not dst.with_name(dst.name + ".part").exists())
+
+
+def hy4_verify(dst: Path, name: str, own: bool) -> None:
+    size, sha = hy4_family.FILES[name]
+    if sha:
+        verify_sha256(dst, size, sha, own=own)
+        return
+    got = dst.stat().st_size if dst.exists() else -1
+    if got != size:
+        fail(f"{name} is {got:,} bytes, not the {size:,} this Strata expects", "download it again (the file there may have changed)")
+    if not done(dst):
+        mark(dst)
+    warn(f"{name}: checked by its size only (its SHA-256 is not published yet)")
+
+
+def hy4_fetch(a, name: str, folder: Path, own: bool) -> Path:
+    """One Hy4-Flash file in `folder`, whole and checked: already there, or downloaded from the configured sources in order (a source that fails is left for the next one; parts of a
+    file are fetched one at a time and joined as they come, so the disk holds the file plus one part)."""
+    dst = folder / name
+    if hy4_have(a, dst):
+        ok(f"{name} already downloaded")
+        hy4_verify(dst, name, own)
+        return dst
+    if own:
+        fail(f"{dst} is missing", f"put {name} in {folder}, or drop --gguf-dir to download it")
+    srcs = hy4_family.sources()
+    if not srcs:
+        fail(f"no download source for {name} is configured", f"put the file in {folder} (or set STRATA_HY4_SOURCE to a base URL that holds it) and run this again")
+    last = None
+    for i, src in enumerate(srcs):
+        urls = hy4_family.urls_for(name, src)
+        if not urls:
+            continue
+        try:
+            if len(urls) == 1:
+                download(urls[0], dst, name)
+            else:
+                parts = []
+                for j, u in enumerate(urls, 1):
+                    p = folder / f"{name}.part-{j:02d}"
+                    download(u, p, f"{name} (part {j} of {len(urls)})")
+                    parts.append(p)
+                say(f"  joining {len(parts)} parts of {name} ...")
+                hy4_family.join_parts(parts, dst)
+                mark(dst)
+            hy4_verify(dst, name, own)
+            return dst
+        except SystemExit as e:                        # fail() ended this source: the next one gets its turn
+            last = e
+            if i + 1 >= len(srcs):
+                raise
+            warn(f"{name}: that source did not work; trying the next one")
+    if last is not None:
+        raise last
+    fail(f"no source lists {name}")
+
+
+def hy4_tokenizer_dir(model: Path, out: Path, engine: Path | None, a=None, folder: Path | None = None, own: bool = False, data: Path | None = None) -> Path | None:
+    """The tokenizer directory serve reads, from the model file or companion files:
+    1) already populated (`vocab.json` + `chat_template.jinja`);
+    2) Section 0 read directly in Python (3.14 `compression.zstd` or `zstandard`);
+    3) companion `tokenizer.json` + `chat_template.jinja` beside the model file or in `<data>/models/hy4-flash`;
+    4) exported by the engine (`strata-hy4 --export-tokenizer`);
+    5) public download fallback (`hy4_family.tokenizer_sources()`, including `tencent/Hy4-flash`) when `not own`."""
+    sys.path.insert(0, str(ROOT / "tools"))
+    import hy4_tokenizer
+    out = Path(out)
+    model = Path(model)
+    if (out / "vocab.json").is_file() and (out / "chat_template.jinja").is_file():
+        return out
+    try:
+        hy4_tokenizer.convert_manifest(hy4_tokenizer.read_manifest(model), out)
+        return out
+    except (RuntimeError, ValueError, OSError, KeyError):    # no zstd in Python or non-strata file
+        pass
+    # Companion tokenizer.json + chat_template.jinja beside the model or in the data folder
+    search_dirs: list[Path] = [model.parent]
+    if folder is not None and Path(folder) not in search_dirs:
+        search_dirs.append(Path(folder))
+    if data is not None:
+        dmod = Path(data) / "models" / hy4_family.FAMILY
+        if dmod not in search_dirs:
+            search_dirs.append(dmod)
+    if out not in search_dirs:
+        search_dirs.append(out)
+    for base in search_dirs:
+        for tok_name in (hy4_family.TOKENIZER_FILE, "tokenizer.hf.json"):
+            tok_json = base / tok_name
+            tmpl_file = base / hy4_family.CHAT_TEMPLATE_FILE
+            if tok_json.is_file() and tmpl_file.is_file():
+                try:
+                    hy4_tokenizer.convert_files(tok_json, tmpl_file, out)
+                    return out
+                except (ValueError, OSError, KeyError):
+                    pass
+    if engine is not None and Path(engine).is_file():
+        raw = out.with_name(out.name + "-export")
+        raw.mkdir(parents=True, exist_ok=True)
+        env = dict(os.environ)
+        var = "PATH" if WIN else ("DYLD_LIBRARY_PATH" if sys.platform == "darwin" else "LD_LIBRARY_PATH")
+        eng_dir = str(Path(engine).resolve().parent)
+        env[var] = os.pathsep.join([eng_dir, env[var]]) if env.get(var) else eng_dir
+        try:
+            run([str(engine), "--export-tokenizer", str(model), str(raw)], env=env)
+            if (raw / "tokenizer.hf.json").is_file() and (raw / "chat_template.jinja").is_file():
+                hy4_tokenizer.convert_files(raw / "tokenizer.hf.json", raw / "chat_template.jinja", out)
+                return out
+        except (SystemExit, OSError, ValueError):
+            pass
+    # Public HF / configured source fallback so `packs/hy4-flash-*/tokenizer/vocab.json` is ALWAYS populated even without zstd or unpacked engine
+    if not own and a is not None:
+        fetch_dir = Path(folder) if folder is not None else model.parent
+        fetch_dir.mkdir(parents=True, exist_ok=True)
+        tok_json = fetch_dir / hy4_family.TOKENIZER_FILE
+        tmpl_file = fetch_dir / hy4_family.CHAT_TEMPLATE_FILE
+        for src in hy4_family.tokenizer_sources():
+            if not tok_json.is_file():
+                for u in hy4_family.urls_for(hy4_family.TOKENIZER_FILE, src):
+                    try:
+                        download(u, tok_json, hy4_family.TOKENIZER_FILE)
+                        break
+                    except (SystemExit, OSError):
+                        pass
+            if not tmpl_file.is_file():
+                for u in hy4_family.urls_for(hy4_family.CHAT_TEMPLATE_FILE, src):
+                    try:
+                        download(u, tmpl_file, hy4_family.CHAT_TEMPLATE_FILE)
+                        break
+                    except (SystemExit, OSError):
+                        pass
+            if tok_json.is_file() and tmpl_file.is_file():
+                try:
+                    hy4_tokenizer.convert_files(tok_json, tmpl_file, out)
+                    return out
+                except (ValueError, OSError, KeyError):
+                    pass
+    return None
+
+
+def install_hy4_flash(a, family, gpu, hip, amd, cuda_tk, multi, port, ram, adopted):
+    """Steps 2-7 for Tencent Hy4-Flash (HY4_FAMILIES): the build (recommended by strata_control/hy4_fit.py for this PC's RAM and card, any build can be chosen), the context, the
+    engine program strata-hy4 (its own component, fetched through the signed feed like a model shape's), the build's file and the Engram shard every build shares (pinned sizes
+    and SHA-256, from the configured sources or already in the folder), the tokenizer from the model file, the config and the start script.  The engine places the experts itself
+    (the numbers written into the config are the rank-cut plan of hy4_fit), so there is no pack, profile, drafter or RAM budget to choose."""
+    fam = HY4_FAMILIES[family]
+    say()
+    say(f"  {fam['title']} - {fam['by']}: {fam['about']}")
+    ok(f"model: {fam['title']}")
+    say(f"  Its license: {fam['license']}")
+    names = list(fam["models"])
+    if a.model and a.model not in names:
+        fail(f"{fam['title']} has no {a.model} model file", "choose one of: " + ", ".join(names))
+    vram_gib, ram_gib, unified = hy4_pc(gpu, ram)
+    multi_cards = _multi_gpu_cards(multi, gpu, hip, amd)[:4] if not unified else []
+    extra_vram_gib = 0.0
+    if len(multi_cards) >= 2:
+        main_idx = int(gpu.get("index", multi_cards[-1]["index"]))
+        helpers = [c for c in multi_cards if int(c["index"]) != main_idx]
+        if len(helpers) == len(multi_cards):
+            helpers = multi_cards[:-1]
+        extra_vram_gib = sum(float(c.get("vram_gb") or 0.0) for c in helpers)
+        ok("GPUs: " + " + ".join(gpu_name(c) for c in multi_cards) + f" (expert-parallel across {len(multi_cards)} GPUs)")
+    vision = a.vision not in ("no", "none")            # images are on by default (owner, 2026-11-19): the Vision shard is in the download set; --vision no leaves it out
+    want_ctx = a.context or hy4_family.DEFAULT_CONTEXT
+    lines = hy4_menu_lines(vram_gib, ram_gib, unified, want_ctx, vision, extra_vram_gib=extra_vram_gib)
+    rec = hy4_fit.recommend(vram_gib, ram_gib, unified, want_ctx, vision, extra_vram_gib=extra_vram_gib)
+    say()
+    order = [b for b, _ in lines]
+    for i, (b, text) in enumerate(lines, 1):
+        say(f"  {i}) {text}")
+    if not a.model:
+        say(f"  Every build also needs the Engram file ({hy4_fit.ENGRAM_GB:.0f} GB, read from the SSD while it answers, shared by all builds, downloaded once).")
+    model = a.model or order[int(ask("Which size?", [str(i) for i in range(1, len(order) + 1)], str(order.index(rec["build"]) + 1), a.yes)) - 1]
+    ok(f"size: {model}")
+    tag = fam["tag"] + model
+    ctx = a.context or hy4_family.DEFAULT_CONTEXT       # 128K on every card (owner, 2026-11-19: "people can change whenever they want themselves"); no card-size special case
+    if not a.context:
+        ctxs = hy4_family.CONTEXTS
+        say()
+        say("  Context length = how much text the model can see at once (128K by default; a longer context takes more memory for its cache).")
+        for i, c in enumerate(ctxs, 1):
+            say(f"  {i}) {c // 1024}K tokens" + ("   (recommended)" if c == hy4_family.DEFAULT_CONTEXT else ""))
+        ctx = ctxs[int(ask("Context?", [str(i) for i in range(1, len(ctxs) + 1)], str(ctxs.index(hy4_family.DEFAULT_CONTEXT) + 1), a.yes)) - 1]
+    placed = hy4_fit.place(model, vram_gib, ram_gib, unified, ctx, vision, extra_vram_gib=extra_vram_gib)
+    mode = hy4_fit.mode(placed["ssd_gb"])
+    if mode == "cross_tier_ssd":
+        warn(f"{model} does not fit this PC's memory: about {placed['ssd_gb']:.0f} GB of its experts are read from the SSD while it answers, so it is much slower "
+             f"({hy4_fit.recommend(vram_gib, ram_gib, unified, ctx, vision, extra_vram_gib=extra_vram_gib)['build']} fits better)")
+    ok(f"context: {ctx} tokens")
+    ok("images: " + ("on (the Vision file is downloaded; the engine reads pictures once it supports them)" if vision else "off"))
+    if a.rope_scaling or a.rope_scale or a.kv or a.resident_budget_gib is not None or a.low_ram not in (None, "auto"):
+        warn(f"--rope-scaling / --kv / --resident-budget-gib / --low-ram are Flash-Next settings: {fam['title']} does not use them")
+    folder = hy4_folder(a)
+    own = bool(getattr(a, "gguf_dir", None))
+    files = hy4_family.files_of(model, vision)
+    left = 0.0
+    for n in files:
+        p = folder / n
+        if not hy4_have(a, p):
+            part = p.with_name(p.name + ".part")
+            left += (hy4_family.FILES[n][0] - (part.stat().st_size if part.is_file() else 0)) / 1e9
+    if left and free_gb(folder) < left:
+        fail(f"not enough free disk space in {folder}: need ~{left:.0f} GB, {free_gb(folder):.0f} GB free", ("use --data-dir on a bigger drive (strata launch --data-dir)" if CONTROL else "use --models-dir on a bigger drive"))
+    if left and free_gb(folder) < left + 1:
+        warn(f"little free disk space in {folder}: {free_gb(folder):.1f} GB free for about {left:.1f} GB. Setup goes on and should fit")
+
+    step(3, "Python packages")
+    pip_install(runtime_packages(), "numpy, jinja2, regex, pyyaml, tqdm, requests, cmake, ninja, pillow, psutil, textual (the screens)")
+
+    step(4, "the Hy4-Flash engine")
+    SHAPE_ENGINE.clear()
+    SHAPE_ENGINE["shape"], SHAPE_ENGINE["title"] = hy4_family.SHAPE, fam["title"]
+    llama, eng, meta, lib_dirs, gpu, _vision = engine_step(a, gpu, hip, amd, cuda_tk, "none")
+    engine_program = None
+    if meta.get("component") == "missing":
+        pass                                           # no engine yet: the model downloads now, the engine is looked up when it loads (set up again to finish the tokenizer)
+    else:
+        engine_program = Path(eng) / hy4_family.EXE
+        ok(f"engine: {engine_program}")
+
+    step(5, f"downloading {fam['title']} {model}")
+    paths = {n: hy4_fetch(a, n, folder, own) for n in files}
+    ok(f"model file: {paths[files[0]]}")
+    engram = paths[hy4_family.ENGRAM_FILE] if hy4_family.ENGRAM_FILE in paths else folder / hy4_family.ENGRAM_FILE
+    ok(f"Engram file: {engram}")
+
+    step(6, "preparing the model for Strata")
+    data, _ = data_folder_for(a)
+    tokdir = hy4_tokenizer_dir(paths[files[0]], data / "packs" / tag.lower() / "tokenizer", engine_program, a=a, folder=folder, own=own, data=data)
+    if tokdir is None:
+        warn("the tokenizer is read from the model file by the engine, which is not installed yet: run this again once it is (nothing is downloaded twice)")
+        tokdir = data / "packs" / tag.lower() / "tokenizer"
+    else:
+        ok(f"tokenizer: {tokdir}")
+
+    step(7, "writing the start script")
+    args = ["--native", str(paths[files[0]]), "--engram", str(engram), "--max-context", str(ctx), "--session-reuse", "1"]   # the engine reuses a conversation's longest common prefix
+    if vision:                                         # the Vision shard: the engine reads pictures with it once it supports them (serve leaves the option out until the engine says images=1)
+        args += ["--vision", str(paths[hy4_family.VISION_FILE])]
+    use_layer_split = len(multi_cards) >= 2 and hy4_fit.should_layer_split(multi_cards, windows=WIN)
+    if use_layer_split:
+        args += ["--layer-split", "auto"]
+    if not unified:                                    # a card: the rank-cut plan (hy4_fit) as the engine's caps; one pool: the engine puts everything in it
+        args += ["--vram-experts-gb", f"{placed['vram_gb']:.2f}", "--ram-experts-gb", f"{placed['ram_gb']:.2f}"]
+    cfg = {"exe": engine_exe(eng), "args": args, "cwd": str(ROOT), "tokenizer": str(tokdir), "model_name": f"{fam['name']}-{model.lower()}", "arch": fam["arch"],
+           "log": str(home() / f"strata-{tag.lower()}.log"), "lib_dirs": lib_dirs, "port": port, "drafting": hy4_family.DEFAULT_DRAFTER}
+    if use_layer_split:
+        cfg["layer_split"] = "auto"
+    if hip:
+        cfg["backend"] = "hip"
+    elif sys.platform == "darwin":
+        cfg["backend"] = "metal"
+    elif getattr(a, "backend", None) == "sycl":
+        cfg["backend"] = "sycl"
+    if isinstance(getattr(a, "_roles", None), dict):
+        from strata_control import gpu_roles as GR
+        rcards = getattr(a, "_roles_cards", None) or (multi_cards if len(multi_cards) >= 2 else [gpu])
+        cfg.update(GR.mirror(GR.parse_saved(a._roles) or a._roles, rcards))
+        cfg["gpus_asked"] = True
+    elif len(multi_cards) >= 2:
+        cfg["gpu"] = [int(c["index"]) for c in multi_cards]
+        cfg["gpu_order"] = "as_given"
+        cfg["gpus_asked"] = True
+    elif gpu.get("count", 1) > 1 or a.gpu is not None:
+        cfg["gpu"] = gpu["index"]
+        cfg["gpus_asked"] = True
+    if a.host:
+        cfg["host"] = a.host
+    if a.api_key:
+        cfg["api_key"] = a.api_key
+    if a.browser is not None:
+        cfg["open_browser"] = a.browser
+    cfg_path = home() / f"strata-{tag.lower()}.json"
+    write_setup_config(cfg_path, cfg, adopted if adopted is not None and adopted.name == cfg_path.name else None, explicit_args(a))
+    script = write_run_script(tag, cfg_path, port, cfg.get("open_browser") is not False)
+    ok(f"start script: {script.name}")
+    say()
+    say("All set.")
+    say(f"  API (OpenAI):     http://127.0.0.1:{port}/v1   (any API key; model name: anything)")
+    say(f"  API (Anthropic):  http://127.0.0.1:{port}/v1/messages")
+    say(f"  Next time:        just run {'START-HERE.bat' if WIN else './setup.sh'} (or {script.name}) - it starts right away")
+    if a.no_start:
+        return 0
+    return start(cfg_path, port)
+
 
 
 def dsv41_engine_pending(eng: Path) -> bool:
@@ -9847,6 +10360,63 @@ def dsv41_pack_problems(pack: Path) -> list | None:
         return None
     if not need:
         return None
+    problems = []
+    for i, want in sorted(need.items()):
+        path = Path(os.path.normpath(os.path.join(model_dir, names.get(i, "")))) if names.get(i) else None
+        if path is None:
+            problems.append((f"file {i}", "unreadable", 0, want))
+            continue
+        try:
+            have = path.stat().st_size
+        except OSError:
+            problems.append((str(path), "missing", 0, want))
+            continue
+        if have < want:
+            problems.append((str(path), "short", have, want))
+    return problems
+
+
+def dsv41_problems_line(problems: list) -> str:
+    """One line for the files a pack needs and does not find: \"2 of the files it points at are missing or too short: X (not there), Y (11.2 GB there, 39.1 GB wanted)\"."""
+    parts = []
+    for path, kind, have, want in problems[:3]:
+        name = Path(path).name or path
+        parts.append(f"{name} (not there)" if kind == "missing" else f"{name} ({have / 1e9:.1f} GB there, {want / 1e9:.1f} GB wanted)" if kind == "short"
+                     else f"{name} (not readable)")
+    more = f" and {len(problems) - 3} more" if len(problems) > 3 else ""
+    return (f"{len(problems)} of the files it points at {'is' if len(problems) == 1 else 'are'} missing or too short: " + ", ".join(parts) + more)
+
+
+def dsv41_pack_source_file(pack: Path) -> Path:
+    return Path(pack) / "pack-source.json"
+
+
+def inkling_folder(a) -> Path:
+    if getattr(a, "gguf_dir", None):
+        p = Path(a.gguf_dir)
+        return p.parent if p.is_file() else p
+    return Path(getattr(a, "models_dir", None) or (home() / "models")) / inkling_family.FAMILY
+
+
+def inkling_local_source(a, model: str | None = None) -> tuple[Path, Path, bool] | None:
+    """Resolve a user-supplied --gguf-dir (file or folder) for Inkling-2-Mini to (model_file, folder, is_gguf)."""
+    raw_val = getattr(a, "gguf_dir", None)
+    if not raw_val:
+        return None
+    raw = Path(raw_val)
+    shard_re = re.compile(r"^(.+)-(\d{5})-of-(\d{5})\.gguf$", re.I)
+    aux_re = re.compile(r"^(?:mmproj|dspark|imatrix|mtp[-_]).*\.gguf$", re.I)
+    if raw.is_file():
+        low = raw.name.lower()
+        if low.endswith(".gguf"):
+            m = shard_re.match(raw.name)
+            first = raw.with_name(f"{m.group(1)}-00001-of-{m.group(3)}.gguf") if m else raw
+            return (first if first.is_file() else raw), raw.parent, True
+        if low.endswith(".strata"):
+            return raw, raw.parent, False
+        return None
+    if not raw.is_dir():
+        return None
     if model and model in inkling_fit.BUILDS:
         pinned = raw / inkling_family.build_file(model)
         if pinned.is_file():
@@ -9863,6 +10433,7 @@ def dsv41_pack_problems(pack: Path) -> list | None:
     if len(stratas) == 1:
         return stratas[0], raw, False
     return None
+
 
 
 def inkling_find_local_vision(folder: Path, data: Path, is_gguf: bool) -> Path | None:
@@ -9930,6 +10501,16 @@ def dsv41_write_pack_source(pack: Path) -> None:
         dsv41_pack_source_file(pack).write_text(json.dumps({"model_dir": model_dir, "files": files}, indent=1), encoding="utf-8")
     except (OSError, ValueError):
         pass
+
+
+def inkling_offered(a=None) -> bool:
+    try:
+        if inkling_family.sources():
+            return True
+        return bool(a is not None and (inkling_local_source(a) or inkling_family.local_files(inkling_folder(a))))
+    except Exception:                                  # noqa: BLE001
+        return False
+
 
 
 def inkling_pc(gpu, ram) -> tuple:
@@ -10049,8 +10630,16 @@ def earlier_card_kept(prev: Path) -> bool:
         return gpu_pick.chosen_by_person(earlier, amd_usable_cards(amd_gpus()))
     except Exception:                                      # noqa: BLE001 - an unreadable file or listing: keep the card, as before
         return True
+
+
+def inkling_have(a, dst: Path) -> bool:
+    if not dst.is_file():
+        return False
+    if done(dst) or bool(getattr(a, "gguf_dir", None)):
+        return True
     pins = inkling_family.pins_for(dst.name)
     return bool(pins and any(dst.stat().st_size == p[0] for p in pins) and not dst.with_name(dst.name + ".part").exists())
+
 
 
 def inkling_verify(dst: Path, name: str, own: bool) -> None:
@@ -10206,6 +10795,217 @@ def inkling_tokenizer_dir(a, model: Path, folder: Path, out: Path, engine: Path 
             inkling_tokenizer.convert_files(tok_json, tmpl_file, out)
             return out
     return None
+
+
+def install_inkling2(a, family, gpu, hip, amd, cuda_tk, multi, port, ram, adopted):
+    """Steps 2-7 for Thinking Machines Inkling-2-Mini (.strata v1.1 or local .gguf, strata-inkling shape engine)."""
+    fam = INKLING_FAMILIES[family]
+    say()
+    say(f"  {fam['title']} - {fam['by']}: {fam['about']}")
+    ok(f"model: {fam['title']}")
+    say(f"  Its license: {fam['license']}")
+    names = list(fam["models"])
+    if a.model and a.model not in names:
+        fail(f"{fam['title']} has no {a.model} model file", "choose one of: " + ", ".join(names))
+    vram_gib, ram_gib, unified, igpu, arch = inkling_pc(gpu, ram)
+    multi_cards = _multi_gpu_cards(multi, gpu, hip, amd) if not unified else []
+    is_cuda_ink = not hip and getattr(a, "backend", None) != "sycl" and sys.platform != "darwin"
+    ink_gpus = multi_cards[:(4 if is_cuda_ink else 2)] if len(multi_cards) >= 2 else []
+    mgpu_flags = inkling_fit.multi_gpu_flags(ink_gpus, windows=WIN) if (is_cuda_ink and len(ink_gpus) >= 2) else (["--gpus", "2"] if len(ink_gpus) >= 2 else [])
+    use_ink_ls = "--layer-split" in mgpu_flags
+    if len(ink_gpus) >= 2:
+        vram_gib = sum(effective_vram_gb(g) for g in ink_gpus)
+        mode_desc = "pipeline layer-split" if use_ink_ls else "dual-GPU expert parallelism"
+        ok("GPUs: " + " + ".join(gpu_name(c) for c in ink_gpus) + f" ({mode_desc})")
+        if use_ink_ls and is_cuda_ink and str(getattr(a, "drafter", None) or "").strip().lower() != "off":
+            warn("DSpark drafting does not run yet when the layers are split across several NVIDIA cards, so it decodes without it (#6741). "
+                 "On one card with the rest of the experts in RAM it does: add --gpu N to use one card")
+    vision = a.vision not in ("no", "none")
+    want_ctx = a.context or inkling_family.DEFAULT_CONTEXT
+    plan_extra = inkling_plan_extra(gpu) if not unified else {}
+    plan_extra["backend"] = "hip" if hip else ("sycl" if getattr(a, "backend", None) == "sycl" else ("metal" if sys.platform == "darwin" else "cuda"))
+    lines = inkling_menu_lines(vram_gib, ram_gib, unified, want_ctx, vision, igpu=igpu, arch=arch, extra=plan_extra)
+    rec = inkling_fit.recommend(vram_gib, ram_gib, unified, want_ctx, vision, igpu=igpu, arch=arch, **plan_extra)
+    say()
+    order = [b for b, _ in lines]
+    for i, (b, text) in enumerate(lines, 1):
+        say(f"  {i}) {text}")
+    model = a.model or order[int(ask("Which size?", [str(i) for i in range(1, len(order) + 1)], str(order.index(rec["build"]) + 1), a.yes)) - 1]
+    ok(f"size: {model}")
+    tag = fam["tag"] + model
+    ctx = a.context or inkling_family.DEFAULT_CONTEXT
+    if not a.context:
+        ctxs = inkling_family.CONTEXTS
+        say()
+        say("  Context length = how much text the model can see at once (32K by default; up to 1M supported).")
+        for i, c in enumerate(ctxs, 1):
+            say(f"  {i}) {c // 1024}K tokens" + ("   (recommended)" if c == inkling_family.DEFAULT_CONTEXT else ""))
+        ctx = ctxs[int(ask("Context?", [str(i) for i in range(1, len(ctxs) + 1)], str(ctxs.index(inkling_family.DEFAULT_CONTEXT) + 1), a.yes)) - 1]
+    par = max(1, min(inkling_family.MAX_PARALLEL, int(getattr(a, "parallel", None) or 1)))     # --parallel N: the slots the planner makes room for (0221 APPTUI: it planned for one)
+    placed = inkling_fit.place(model, vram_gib, ram_gib, unified, ctx, vision, parallel=par, **plan_extra)
+    mode = inkling_fit.mode(placed)
+    if mode == "cross_tier_ssd":
+        warn(f"{model} exceeds this PC's memory: about {placed['ssd_gb']:.1f} GB stream from SSD ({rec['build']} fits better)")
+    ok(f"context: {ctx} tokens")
+    folder = inkling_folder(a)
+    own = bool(getattr(a, "gguf_dir", None))
+    local_src = inkling_local_source(a, model) if own else None
+    is_gguf = bool(local_src and local_src[2]) or (not local_src and inkling_family.is_gguf_build(model))
+    if local_src:
+        folder = local_src[1]
+    data, _ = data_folder_for(a)
+    vision_path: Path | None = None
+    fetch_vision = False
+    dspark_path: Path | None = None
+    drafter_asked = str(getattr(a, "drafter", None) or "").strip().lower()
+    want_dspark = drafter_asked != "off"
+    if local_src:
+        if vision:
+            vision_path = inkling_find_local_vision(folder, data, is_gguf)
+            if vision_path is not None:
+                ok(f"images: on ({vision_path.name})")
+            else:
+                fetch_vision = True                          # step 5 downloads it (the engine comes first, as for any download)
+        else:
+            ok("images: off")
+    else:
+        ok("images: " + ("on (Inkling-2-Mini-Vision.strata, 0.64 GB lossless BF16)" if vision else "off"))
+        files = inkling_family.files_of(model, vision, dspark=False)
+        left = 0.0
+        drafter = []
+        if is_gguf and want_dspark and not any(inkling_have(a, folder / d) for d in (inkling_family.MTP_FILE, inkling_family.DSPARK_GGUF_FILE)):
+            drafter = [inkling_family.MTP_FILE]
+        for n in files + drafter:
+            p = folder / n
+            if not inkling_have(a, p):
+                part = p.with_name(p.name + ".part")
+                left += (inkling_family.size_of(n) - (part.stat().st_size if part.is_file() else 0)) / 1e9
+        if left and free_gb(folder) < left:
+            fail(f"not enough free disk space in {folder}: need ~{left:.1f} GB, {free_gb(folder):.1f} GB free",
+                 ("use --data-dir on a bigger drive (strata launch --data-dir)" if CONTROL else "use --models-dir on a bigger drive"))
+
+    step(3, "Python packages")
+    pip_install(runtime_packages(), "numpy, jinja2, regex, pyyaml, tqdm, requests, cmake, ninja, pillow, psutil, textual (the screens)")
+
+    step(4, "the Inkling-2-Mini engine")
+    SHAPE_ENGINE.clear()
+    SHAPE_ENGINE["shape"], SHAPE_ENGINE["title"] = inkling_family.SHAPE, fam["title"]
+    llama, eng, meta, lib_dirs, gpu, _vision = engine_step(a, gpu, hip, amd, cuda_tk, "none")
+    engine_program = None
+    if meta.get("component") != "missing":
+        engine_program = Path(eng) / inkling_family.EXE
+        ok(f"engine: {engine_program}")
+
+    if local_src:
+        step(5, f"using local {fam['title']} files")
+        model_file = local_src[0]
+        ok(f"model file: {model_file}")
+        if fetch_vision:
+            vision_path = inkling_fetch_local_vision(a, folder, data)
+            if vision_path is None:
+                vision = False
+        if is_gguf and want_dspark:                     # after the engine step: which file it can read decides
+            dspark_path = inkling_find_local_dspark(folder, inkling_engine_reads_mtp(engine_program, model_file, lib_dirs))
+            if dspark_path is not None:
+                ok(f"drafter: DSpark ({dspark_path.name})")
+    else:
+        step(5, f"downloading {fam['title']} {model}")
+        files = inkling_family.files_of(model, vision, dspark=False)
+        paths = {n: inkling_fetch(a, n, folder, own) for n in files}
+        model_file = paths[files[0]]
+        vision_path = paths.get(inkling_family.VISION_FILE) if vision else None
+        reads_mtp = inkling_engine_reads_mtp(engine_program, model_file, lib_dirs) if (is_gguf and want_dspark) else True
+        dspark_path = inkling_fetch_drafter(a, folder, own, reads_mtp) if (is_gguf and want_dspark) else None
+        if dspark_path is not None:
+            ok(f"drafter: DSpark ({dspark_path.name})")
+        ok(f"model file: {model_file}")
+
+    step(6, "preparing the model for Strata")
+    tokdir = inkling_tokenizer_dir(a, model_file, folder, data / "packs" / tag.lower() / "tokenizer", engine_program, own, data=data)
+    if tokdir is None:
+        warn("the tokenizer could not be extracted yet; run setup again once the engine or tokenizer.json is available")
+        tokdir = data / "packs" / tag.lower() / "tokenizer"
+    else:
+        ok(f"tokenizer: {tokdir}")
+
+    step(7, "writing the start script")
+    ink_backend = "hip" if hip else ("metal" if sys.platform == "darwin" else ("sycl" if getattr(a, "backend", None) == "sycl" else "cuda"))
+    # Drafting follows a measured probe at the first start of this placement ("auto", inkling_probe.py) unless the person asked (--drafter dspark / off)
+    # A slightly different answer is accepted, a loss in speed is not (owner, 11-23); the run config starts as "auto".
+    drafting_mode = "off" if (not want_dspark or (is_gguf and dspark_path is None)) else (
+        inkling_family.DEFAULT_DRAFTER if drafter_asked == "dspark" else inkling_family.default_drafting(ink_backend))
+    placed = inkling_fit.place(model, vram_gib, ram_gib, unified, ctx, bool(vision and vision_path is not None), parallel=par, dspark=(drafting_mode != "off"), **{**plan_extra, "backend": ink_backend})
+    args = ["--native", str(model_file), "--max-context", str(ctx)]
+    kv_asked = str(getattr(a, "kv", None) or "").strip().lower()
+    if kv_asked in ("fp16", "fp8", "k8v8", "k8v4"):
+        if ink_backend in ("hip", "metal", "sycl") and kv_asked in ("k8v4", "k8v8"):
+            warn(f"--kv {kv_asked} is not supported for {fam['title']} on {ink_backend}; using --kv fp8 instead")
+            kv_asked = "fp8"
+        args += ["--kv", kv_asked]
+    if drafting_mode == "off":
+        args += ["--draft", "off"]
+    if vision and vision_path is not None:
+        args += ["--vision", str(vision_path)]
+    if dspark_path is not None and drafting_mode != "off":
+        args += ["--dspark", str(dspark_path)]
+    if mgpu_flags:
+        args += mgpu_flags
+    if not unified and len(ink_gpus) < 2:
+        args += inkling_expert_flags(placed)
+        if placed.get("ssd_gb", 0.0) > 0.05:
+            args += ["--ssd-experts"]
+    cfg = {
+        "exe": engine_exe(eng),
+        "args": args,
+        "cwd": str(ROOT),
+        "tokenizer": str(tokdir),
+        "model_name": f"{fam['name']}-{model.lower()}",
+        "arch": fam["arch"],
+        "log": str(home() / f"strata-{tag.lower()}.log"),
+        "lib_dirs": lib_dirs,
+        "port": port,
+        "drafting": drafting_mode,
+        "parallel": par if par > 1 else inkling_family.DEFAULT_PARALLEL,
+    }
+    if use_ink_ls:
+        cfg["layer_split"] = "auto"
+    if hip:
+        cfg["backend"] = "hip"
+    elif sys.platform == "darwin":
+        cfg["backend"] = "metal"
+    elif a.backend == "sycl":
+        cfg["backend"] = "sycl"
+    if isinstance(getattr(a, "_roles", None), dict):
+        from strata_control import gpu_roles as GR
+        rcards = getattr(a, "_roles_cards", None) or (ink_gpus if len(ink_gpus) >= 2 else [gpu])
+        cfg.update(GR.mirror(GR.parse_saved(a._roles) or a._roles, rcards))
+        cfg["gpus_asked"] = True
+    elif len(ink_gpus) >= 2:
+        cfg["gpu"] = [int(g["index"]) for g in ink_gpus]
+        cfg["gpu_order"] = "as_given"
+        cfg["gpus_asked"] = True
+    elif gpu.get("count", 1) > 1 or a.gpu is not None:
+        cfg["gpu"] = gpu["index"]
+        cfg["gpus_asked"] = True
+    if a.host:
+        cfg["host"] = a.host
+    if a.api_key:
+        cfg["api_key"] = a.api_key
+    if a.browser is not None:
+        cfg["open_browser"] = a.browser
+    cfg_path = home() / f"strata-{tag.lower()}.json"
+    write_setup_config(cfg_path, cfg, adopted if adopted is not None and adopted.name == cfg_path.name else None, explicit_args(a))
+    script = write_run_script(tag, cfg_path, port, cfg.get("open_browser") is not False)
+    ok(f"start script: {script.name}")
+    say()
+    say("All set.")
+    say(f"  API (OpenAI):     http://127.0.0.1:{port}/v1   (any API key; model name: anything)")
+    say(f"  API (Anthropic):  http://127.0.0.1:{port}/v1/messages")
+    say(f"  Next time:        just run {'START-HERE.bat' if WIN else './setup.sh'} (or {script.name}) - it starts right away")
+    if a.no_start:
+        return 0
+    return start(cfg_path, port)
+
 
 
 def dsv41_auto_cards(amd, eng) -> list:
@@ -10939,6 +11739,55 @@ def mac_dsv41_setup(a) -> int:
     return install_dsv41(a, a.family, gpu, False, False, 0, False, a.port or 8080, ram, None, [gpu])
 
 
+def mac_hy4_setup(a) -> int:
+    """Tencent Hy4-Flash on a Mac (Apple Silicon, Metal): unified memory, strata-hy4 Metal component, no Flash-Next repack."""
+    from strata_control import mac_fit as MF
+    say("Strata - Tencent Hy4-Flash 220B-A12B on a Mac (Apple Silicon, Metal)")
+    step(1, "checking your Mac")
+    info = MF.mac_info()
+    ram = float(info["ram_gb"] or ram_gb())
+    ok(f"{info['chip']}, {ram:.0f} GB unified memory, macOS {info['macos'] or '?'}")
+    problems = MF.mac_problems(info, need_compiler=False)
+    for p in problems:
+        warn(p)
+    data, _ = data_folder_for(a)
+    if a.models_dir is None:
+        a.models_dir = str(data / "models")
+    free = free_gb(data if data.exists() else home())
+    ok(f"free disk: {free:.0f} GB at {data}")
+    if a.check:
+        return 1 if problems else 0
+    if problems:
+        fail(problems[0])
+    gpu = {"index": 0, "name": info["chip"], "vendor": "apple", "vram_gb": 0.0, "unified_gb": ram, "uma": True, "count": 1}
+    return install_hy4_flash(a, a.family or hy4_family.FAMILY, gpu, False, False, None, False, a.port or 8080, ram, None)
+
+
+def mac_inkling_setup(a) -> int:
+    """Thinking Machines Inkling-2-Mini on a Mac (Apple Silicon, Metal): unified memory, strata-inkling Metal component."""
+    from strata_control import mac_fit as MF
+    say("Strata - Inkling-2-Mini on a Mac (Apple Silicon, Metal)")
+    step(1, "checking your Mac")
+    info = MF.mac_info()
+    ram = float(info["ram_gb"] or ram_gb())
+    ok(f"{info['chip']}, {ram:.0f} GB unified memory, macOS {info['macos'] or '?'}")
+    problems = MF.mac_problems(info, need_compiler=False)
+    for p in problems:
+        warn(p)
+    data, _ = data_folder_for(a)
+    if a.models_dir is None:
+        a.models_dir = str(data / "models")
+    free = free_gb(data if data.exists() else home())
+    ok(f"free disk: {free:.0f} GB at {data}")
+    if a.check:
+        return 1 if problems else 0
+    if problems:
+        fail(problems[0])
+    gpu = {"index": 0, "name": info["chip"], "vendor": "apple", "vram_gb": 0.0, "unified_gb": ram, "uma": True, "count": 1}
+    return install_inkling2(a, a.family or inkling_family.FAMILY, gpu, False, False, None, False, a.port or 8080, ram, None)
+
+
+
 def main() -> int:
     try:                                               # the engine programs setup runs start no debugger on a user's machine (strata_control/childenv.py)
         from strata_control.childenv import quiet_crash_env
@@ -10950,24 +11799,28 @@ def main() -> int:
         _pf.adopt_user_defaults()
     except Exception:
         pass
-    if sys.platform == "darwin" and not CONTROL:       # a Mac: metal/setup_mac.py (the Metal engine); the app (Control mode) goes on below
-        return mac_setup(sys.argv[1:])
     _peek = lambda flag: next((v.split("=", 1)[1] if v.startswith(flag + "=") else sys.argv[i + 2] if i + 2 < len(sys.argv) else None   # noqa: E731
                                for i, v in enumerate(sys.argv[1:]) if v == flag or v.startswith(flag + "=")), None)
-    if (_peek("--family") and _peek("--family") not in {**FAMILIES, **OWN_PATH_FAMILIES, **MULTI_FILE_FAMILIES}) \
+    _hy4_ask = _peek("--family") in HY4_FAMILIES or bool(_peek("--model") and model_alias(_peek("--model")) in HY4_FAMILIES["hy4-flash"]["models"])
+    _ink_ask = _peek("--family") in INKLING_FAMILIES or bool(_peek("--model") and model_alias(_peek("--model")) in INKLING_FAMILIES["inkling-2-mini"]["models"])
+    if sys.platform == "darwin" and not CONTROL and not _hy4_ask and not _ink_ask:       # a Mac: metal/setup_mac.py (the Metal engine); the app (Control mode), Hy4-Flash and Inkling-2-Mini go on below
+        return mac_setup(sys.argv[1:])
+    if (_peek("--family") and _peek("--family") not in {**FAMILIES, **OWN_PATH_FAMILIES, **MULTI_FILE_FAMILIES, **HY4_FAMILIES, **INKLING_FAMILIES}) \
             or (_peek("--model") and not _peek("--family") and model_alias(_peek("--model")) not in MODELS
-                and not any(model_alias(_peek("--model")) in f["models"] for f in (*OWN_PATH_FAMILIES.values(), *MULTI_FILE_FAMILIES.values()))):
+                and not any(model_alias(_peek("--model")) in f["models"] for f in (*OWN_PATH_FAMILIES.values(), *MULTI_FILE_FAMILIES.values(), *HY4_FAMILIES.values(), *INKLING_FAMILIES.values()))):
         feed_models_setup(_peek("--feed"))             # a name the built-in tables do not know may be a model of the signed feed
         if _peek("--family") in FEED_UNAVAILABLE:
             fail(f"{FEED_UNAVAILABLE[_peek('--family')]['title']} is {FEED_UNAVAILABLE[_peek('--family')]['reason']}")
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--family", choices=list(FAMILIES) + list(PREVIEW_FAMILIES) + list(MULTI_FILE_FAMILIES),
+    ap.add_argument("--family", choices=list(FAMILIES) + list(PREVIEW_FAMILIES) + list(MULTI_FILE_FAMILIES) + list(HY4_FAMILIES) + list(INKLING_FAMILIES),
                     help="qwen = Qwen3.8-Flash-Next, swift = Swift 1.5, qwen36 = Qwen3.6-35B-A3B (pictures with --vision, "
-                         "several requests at once with --parallel; docs/QWEN36.md), deepseek41 = DeepSeek-V4.1-Flash "
-                         "(the official 1.75 / 2.00 / 2.25 bpw versions, 239 / 257 / 274 GB; docs/DEEPSEEK41.md)")
+                         "several requests at once with --parallel; docs/QWEN36.md), deepseek41 = DeepSeek-V4.1-Flash, "
+                         "hy4-flash = Tencent Hy4-Flash (SQ-64 / SQ-96 / SQ-128), inkling-2-mini = Inkling-2-Mini (SQ-20 / SQ-15 / SQ-10 / Unsloth GGUF)")
     ap.add_argument("--model", type=model_alias, choices=list(dict.fromkeys([*MODELS, *(m for f in PREVIEW_FAMILIES.values()
                                                                        for m in f["models"]),
-                                                          *(m for f in MULTI_FILE_FAMILIES.values() for m in f["models"])])))
+                                                          *(m for f in MULTI_FILE_FAMILIES.values() for m in f["models"]),
+                                                          *(m for f in HY4_FAMILIES.values() for m in f["models"]),
+                                                          *(m for f in INKLING_FAMILIES.values() for m in f["models"])])))
     ap.add_argument("--context", type=int)
     ap.add_argument("--rope-scaling", choices=["none", "linear", "yarn"],
                     help="the RoPE extension for a context past the model's trained 262144: linear (position "
@@ -11123,8 +11976,8 @@ def main() -> int:
     a = ap.parse_args()
     if getattr(a, "gguf_dir", None):                   # the person's own files: their finish marks go to Strata's marks/, never beside them
         own_files_in(a.gguf_dir)
-    if a.model and a.model not in MODELS and a.family not in PREVIEW_FAMILIES and a.family not in MULTI_FILE_FAMILIES:
-        ap.error(f"--model {a.model} is a size of " + ", ".join(f"--family {f}" for f, d in {**PREVIEW_FAMILIES, **MULTI_FILE_FAMILIES}.items()
+    if a.model and a.model not in MODELS and a.family not in PREVIEW_FAMILIES and a.family not in MULTI_FILE_FAMILIES and a.family not in HY4_FAMILIES and a.family not in INKLING_FAMILIES:
+        ap.error(f"--model {a.model} is a size of " + ", ".join(f"--family {f}" for f, d in {**PREVIEW_FAMILIES, **MULTI_FILE_FAMILIES, **HY4_FAMILIES, **INKLING_FAMILIES}.items()
                                                               if a.model in d["models"]))
     if a.source:
         os.environ["STRATA_SOURCE"] = a.source
@@ -11132,6 +11985,11 @@ def main() -> int:
         return prepare_pack_only(a)
     if a.inspect:                                      # headers only: nothing is installed
         sys.exit(subprocess.run([sys.executable, str(ROOT / "tools" / "strata_inspect.py"), *a.inspect[:2]]).returncode)
+    if sys.platform == "darwin":
+        if a.family in HY4_FAMILIES or (not a.family and a.model in HY4_FAMILIES["hy4-flash"]["models"]):
+            return mac_hy4_setup(a)
+        if a.family in INKLING_FAMILIES or (not a.family and a.model in INKLING_FAMILIES["inkling-2-mini"]["models"]):
+            return mac_inkling_setup(a)
     if sys.platform == "darwin" and CONTROL:           # the app on a Mac: model files only; the Metal engine is a component
         if a.family in MULTI_FILE_FAMILIES:            # DeepSeek-V4.1-Flash: its own engine package, the generic DeepSeek install
             return mac_dsv41_setup(a)

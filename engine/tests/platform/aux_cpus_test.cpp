@@ -112,6 +112,19 @@ void test_derive() {
         CHECK(derive(a, 0, V{1}) == V{4});
     }
     CHECK(derive(std::vector<LogicalCpu>{}, 0, V{1}).empty());
+    // 6C/12T Ryzen layout (0,1 = core 0; 2,3 = core 1; ...; 10,11 = core 5):
+    // derive() yields host SMT sibling (1); derive_io_smt() yields all 6 SMT siblings (1,3,5,7,9,11)
+    // while keeping host (0) and workers (2,4,6,8,10) untouched.
+    {
+        std::vector<LogicalCpu> ryzen;
+        for (int core = 0; core < 6; ++core) {
+            ryzen.push_back({core * 2, 0, core});
+            ryzen.push_back({core * 2 + 1, 0, core});
+        }
+        const V workers{2, 4, 6, 8, 10};
+        CHECK(derive(ryzen, 0, workers) == V{1});
+        CHECK(derive_io_smt(ryzen, 0, workers) == (V{1, 3, 5, 7, 9, 11}));
+    }
 }
 
 #if defined(__linux__)
@@ -198,8 +211,38 @@ void test_live() {
     late.join();
     pinned.join();
 }
+#elif defined(_WIN32)
+void test_live() {
+    std::string err;
+    CHECK(configure("auto", err));
+    const auto topo = detail::read_topology_win({});
+    if (topo.size() < 4) {
+        std::printf("aux_cpus_test (Windows): skipped live check (have %zu logical CPUs)\n", topo.size());
+        return;
+    }
+    // Emulate 1 host + workers on distinct physical cores
+    std::vector<int> primaries;
+    std::set<long> seen_cores;
+    for (const auto& c : topo) {
+        if (seen_cores.insert(c.core).second) primaries.push_back(c.cpu);
+    }
+    if (primaries.size() < 2) return;
+    const int host = primaries[0];
+    const V workers(primaries.begin() + 1, primaries.end());
+    const std::string line = set_topology(host, workers);
+    std::printf("%s\n", line.c_str());
+    CHECK(!io_plan().empty() || primaries.size() == topo.size());
+    std::atomic<bool> io_ok{false};
+    std::thread io_th([&] {
+        pin_io_thread();
+        io_ok.store(true);
+    });
+    io_th.join();
+    CHECK(io_ok.load());
+    set_enabled(false);
+}
 #else
-void test_live() { std::printf("aux_cpus_test: live placement is Linux only\n"); }
+void test_live() { std::printf("aux_cpus_test: live placement is Linux/Windows only\n"); }
 #endif
 
 }  // namespace

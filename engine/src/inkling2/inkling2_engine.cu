@@ -21,7 +21,9 @@
 #include "strata/kernels/cpu/native_expert.hpp"
 #include "strata/kernels/cpu/pool.hpp"
 #endif
+#include "strata/platform/aux_cpus.hpp"
 #include "strata/platform/cpu_relax.hpp"
+#include "strata/platform/thread_name.hpp"
 
 #include <cublas_v2.h>
 #include <cuda_fp16.h>
@@ -326,7 +328,8 @@ struct Model : GpuWeightStore {
     std::unique_ptr<strata::GgufModel> gguf;
     Hparams hp;
 
-    const uint8_t* host_tok_embd = nullptr;    // [vocab_padded, n_embd] on host (mmap)
+    const uint8_t* host_tok_embd = nullptr;    // [vocab_padded, n_embd] on host (RAM copy or mmap)
+    std::vector<uint8_t> tok_embd_ram;         // Gen-L: sequential RAM-resident copy eliminates cold mmap page faults during decode
     int tok_embd_type = -1;
     size_t tok_embd_row_bytes = 0;
     float* tok_embd_norm = nullptr;
@@ -530,6 +533,30 @@ bool load_model(const std::string& path, Model& m, std::string& err) {
     if (m.tok_embd_row_bytes == 0) {
         err = "token_embd.weight unsupported type " + std::to_string(m.tok_embd_type);
         return false;
+    }
+    // Opt-in RAM-resident copy of token_embd.weight via STRATA_RAM_EMBD=1 (off by default to keep fast cold/warm load).
+    if (const char* re = std::getenv("STRATA_RAM_EMBD"); re && std::atoi(re) != 0) {
+        const size_t embd_bytes = (size_t) hp.vocab_padded * m.tok_embd_row_bytes;
+        size_t avail_ram = 0;
+#if defined(_WIN32)
+        MEMORYSTATUSEX ms{};
+        ms.dwLength = sizeof(ms);
+        if (GlobalMemoryStatusEx(&ms)) avail_ram = std::min((size_t) ms.ullAvailPhys, (size_t) ms.ullAvailPageFile);
+#else
+        const long pages = sysconf(_SC_AVPHYS_PAGES), psize = sysconf(_SC_PAGESIZE);
+        if (pages > 0 && psize > 0) avail_ram = (size_t) pages * (size_t) psize;
+#endif
+        if (embd_bytes > 0 && embd_bytes <= ((size_t) 1024 << 20) &&
+            avail_ram > embd_bytes + ((size_t) 5120 << 20)) {
+            try {
+                m.tok_embd_ram.resize(embd_bytes);
+                std::memcpy(m.tok_embd_ram.data(), m.host_tok_embd, embd_bytes);
+                m.host_tok_embd = m.tok_embd_ram.data();
+            } catch (const std::bad_alloc&) {
+                m.tok_embd_ram.clear();
+                m.tok_embd_ram.shrink_to_fit();
+            }
+        }
     }
     m.tok_embd_norm = m.upload_f32("token_embd_norm.weight", (size_t) hp.n_embd);
     if (hp.num_loops > 1) {
@@ -855,14 +882,21 @@ struct Engine {
     unsigned long long* grp_ptr = nullptr;
     int32_t *tok_d = nullptr, *pos0_d = nullptr, *pick_d = nullptr;
 
-    // Hybrid CPU pool staging
-    int32_t* h_ids = nullptr;        // [tmax * top_k]
-    float* h_ewts = nullptr;         // [tmax * top_k] pinned for T==1 CPU pre-combine
+    // Hybrid CPU pool staging (Gen-L zero-copy mapped host memory + userspace doorbell eliminates WDDM D2H & event traps)
+    int32_t* h_ids = nullptr;        // [tmax * top_k] mapped host
+    int32_t* h_ids_dev = nullptr;    // device-mapped alias of h_ids
+    float* h_ewts = nullptr;         // [tmax * top_k] mapped host
+    float* h_ewts_dev = nullptr;     // device-mapped alias of h_ewts
+    uint32_t* h_route_ready = nullptr;     // 64B cache-line mapped doorbell (GPU sets 1 after __threadfence_system)
+    uint32_t* h_route_ready_dev = nullptr; // device-mapped alias of h_route_ready
+    int32_t* h_pick = nullptr;       // [verify_max_t] mapped argmax output
+    int32_t* h_pick_dev = nullptr;   // device-mapped alias of h_pick
     float* h_cpu_sum = nullptr;      // [2 * N] zero-copy mapped double-buffered CPU miss sum for T==1
     float* h_cpu_sum_dev = nullptr;  // device-mapped alias of h_cpu_sum (0 H2D memcpy submissions)
     int32_t* h_pos0 = nullptr;       // pinned scalar pos0 staging (avoids pageable stack H2D stall)
     uint32_t st_tok_step = 0;        // ST-MoE decode token counter
-    float* h_h = nullptr;            // [tmax * N]
+    float* h_h = nullptr;            // [tmax * N] mapped host
+    float* h_h_dev = nullptr;        // device-mapped alias of h_h (fused dual-write in k_rms_norm)
     float* cpu_out = nullptr;        // [tmax * top_k * N]
     int32_t* h_miss = nullptr;       // [tmax * top_k]
     int32_t* d_miss = nullptr;
@@ -907,7 +941,303 @@ struct Engine {
 #if defined(STRATA_INKLING2_CPU_POOL)
     std::unique_ptr<strata::kernels::cpu::ExpertPool> pool;
     std::vector<strata::kernels::cpu::ExpertJobMulti> jobs;
+    strata::kernels::cpu::ThreadAffinity host_aff{};
 #endif
+
+    // Asynchronous RH-guided, address-sorted, gap-coalesced SATA/NVMe SSD virtual-memory prefetcher
+    // pinned to SMT secondary CPUs (1,3,5,7,9,11). Converts random 64K SATA faults (~98 MB/s) into
+    // contiguous multi-MiB sequential SATA NCQ bursts (~252 MB/s on S5-1TB) with zero private commit.
+    struct MmapPrefetchWorker {
+        struct Range {
+            const void* ptr = nullptr;
+            size_t len = 0;
+        };
+        std::mutex mu;
+        std::condition_variable cv;
+        std::deque<Range> q;
+        std::vector<std::thread> thrs;
+        std::atomic<bool> running{false};
+        std::atomic<bool> stop_req{false};
+        std::atomic<uint64_t> bytes_hinted{0};
+        std::atomic<uint64_t> reqs_hinted{0};
+        std::atomic<uint64_t> spans_coalesced{0};
+        size_t coalesce_gap_bytes = 14336ull << 10;   // ShinkaEvolve SATA S5-1TB optimal (~3 experts = 14 MiB)
+        size_t max_merged_bytes = 32ull << 20;
+        static constexpr size_t kMaxQueue = 512;
+
+        bool enabled_env() const {
+            const char* v = std::getenv("STRATA_SSD_PREFETCH");
+            return v == nullptr || v[0] != '0';
+        }
+        bool active() const { return running.load(std::memory_order_acquire); }
+        int worker_count() const { return (int) thrs.size(); }
+
+        void start() {
+            if (!enabled_env() || running.load(std::memory_order_acquire)) return;
+            // Single SMT-pinned thread issuing up to 32 coalesced PrefetchVirtualMemory entries per call
+            // saturates SATA NCQ (QD=32) with zero Windows PFN-lock / L3 contention during warm decode.
+            int nt = 1;
+            if (const char* v = std::getenv("STRATA_SATA_PF_THREADS")) {
+                nt = std::clamp(std::atoi(v), 1, 6);
+            }
+            if (const char* g = std::getenv("STRATA_SATA_COALESCE_GAP_KB")) {
+                const int kb = std::atoi(g);
+                if (kb >= 0) coalesce_gap_bytes = (size_t) kb << 10;
+            }
+            stop_req.store(false, std::memory_order_relaxed);
+            running.store(true, std::memory_order_release);
+            thrs.reserve((size_t) nt);
+            for (int wi = 0; wi < nt; ++wi) {
+                thrs.emplace_back([this]() {
+                    strata::platform::name_this_thread("strata-sata-pf");
+                    strata::aux_cpus::pin_io_thread();
+                    std::vector<strata::math::SataPrefetchSpan> spans;
+                    spans.reserve(32);
+                    for (;;) {
+                        spans.clear();
+                        {
+                            std::unique_lock<std::mutex> lk(mu);
+                            cv.wait(lk, [&]() { return stop_req.load(std::memory_order_acquire) || !q.empty(); });
+                            if (stop_req.load(std::memory_order_acquire) && q.empty()) break;
+                            while (!q.empty() && spans.size() < 32) {
+                                const Range r = q.front();
+                                q.pop_front();
+                                if (r.ptr && r.len > 0) {
+                                    spans.push_back(strata::math::SataPrefetchSpan{reinterpret_cast<uintptr_t>(r.ptr), r.len});
+                                }
+                            }
+                        }
+                        if (spans.empty()) continue;
+                        const size_t raw_cnt = spans.size();
+                        if (coalesce_gap_bytes > 0) {
+                            strata::math::coalesce_sata_ranges(spans, coalesce_gap_bytes, max_merged_bytes);
+                        } else if (spans.size() > 1) {
+                            std::sort(spans.begin(), spans.end(), [](const strata::math::SataPrefetchSpan& a, const strata::math::SataPrefetchSpan& b) {
+                                return a.addr < b.addr;
+                            });
+                        }
+                        if (raw_cnt > spans.size()) {
+                            spans_coalesced.fetch_add((uint64_t) (raw_cnt - spans.size()), std::memory_order_relaxed);
+                        }
+#if defined(_WIN32)
+                        WIN32_MEMORY_RANGE_ENTRY entries[32];
+                        ULONG cnt = 0;
+                        uint64_t bsum = 0;
+                        for (const auto& sp : spans) {
+                            if (sp.addr == 0 || sp.len == 0 || cnt >= 32) continue;
+                            entries[cnt].VirtualAddress = reinterpret_cast<void*>(sp.addr);
+                            entries[cnt].NumberOfBytes = sp.len;
+                            bsum += (uint64_t) sp.len;
+                            ++cnt;
+                        }
+                        if (cnt > 0) {
+                            (void) PrefetchVirtualMemory(GetCurrentProcess(), cnt, entries, 0);
+                            bytes_hinted.fetch_add(bsum, std::memory_order_relaxed);
+                            reqs_hinted.fetch_add(cnt, std::memory_order_relaxed);
+                        }
+#elif defined(MADV_WILLNEED)
+                        uint64_t bsum = 0;
+                        uint64_t cnt = 0;
+                        for (const auto& sp : spans) {
+                            if (sp.addr == 0 || sp.len == 0) continue;
+                            (void) madvise(reinterpret_cast<void*>(sp.addr), sp.len, MADV_WILLNEED);
+                            bsum += (uint64_t) sp.len;
+                            ++cnt;
+                        }
+                        if (cnt > 0) {
+                            bytes_hinted.fetch_add(bsum, std::memory_order_relaxed);
+                            reqs_hinted.fetch_add(cnt, std::memory_order_relaxed);
+                        }
+#endif
+                    }
+                });
+            }
+        }
+
+        void enqueue(const void* ptr, size_t len) {
+            if (!ptr || len == 0 || !running.load(std::memory_order_acquire)) return;
+            std::lock_guard<std::mutex> lk(mu);
+            if (stop_req.load(std::memory_order_relaxed)) return;
+            while (q.size() >= kMaxQueue) q.pop_front();
+            q.push_back(Range{ptr, len});
+            cv.notify_one();
+        }
+
+        void enqueue_batch(const std::vector<Range>& items) {
+            if (items.empty() || !running.load(std::memory_order_acquire)) return;
+            {
+                std::lock_guard<std::mutex> lk(mu);
+                if (stop_req.load(std::memory_order_relaxed)) return;
+                for (const Range& r : items) {
+                    if (!r.ptr || r.len == 0) continue;
+                    while (q.size() >= kMaxQueue) q.pop_front();
+                    q.push_back(r);
+                }
+            }
+            cv.notify_all();
+        }
+
+        void stop() {
+            if (!running.exchange(false, std::memory_order_acq_rel)) return;
+            {
+                std::lock_guard<std::mutex> lk(mu);
+                q.clear();
+                stop_req.store(true, std::memory_order_release);
+            }
+            cv.notify_all();
+            for (std::thread& t : thrs) {
+                if (t.joinable()) t.join();
+            }
+            thrs.clear();
+        }
+
+        ~MmapPrefetchWorker() { stop(); }
+    };
+    MmapPrefetchWorker ssd_prefetch;
+    std::vector<uint32_t> ssd_pf_seen;   // [n_phys * n_expert] last step_gen prefetched to avoid redundant syscalls
+    std::vector<uint8_t> ssd_layer_done; // [n_phys] 1 once all off-VRAM experts in layer ip have been hinted (O(1) warm skip)
+
+    void prefetch_zc_expert(int ip, int x, bool force = false) {
+        if (!ssd_prefetch.active() || !m || ip < 0 || ip >= (int) m->layers.size()) return;
+        const PhysLayer& L = m->layers[(size_t) ip];
+        if (L.hblobs != nullptr || !L.h_gate_up || !L.h_down) return;
+        const int ne = (int) m->hp.n_expert;
+        if (x < 0 || x >= ne) return;
+        const size_t idx = (size_t) ip * (size_t) ne + (size_t) x;
+        if (idx >= ssd_pf_seen.size()) ssd_pf_seen.resize((size_t) m->layers.size() * (size_t) ne, 0u);
+        if (!force && ssd_pf_seen[idx] != 0u) return;
+        ssd_pf_seen[idx] = 1u;
+        const size_t gu_bytes = (size_t) (2 * L.L.n_ff) * L.gu_row;
+        const size_t d_bytes = (size_t) L.L.n_embd * L.d_row;
+        ssd_prefetch.enqueue(L.h_gate_up + (size_t) x * gu_bytes, gu_bytes);
+        ssd_prefetch.enqueue(L.h_down + (size_t) x * d_bytes, d_bytes);
+    }
+
+    // RH Critical-Line Spectral Lookahead: selects top K_pf(H_norm, step) uncached SATA experts in layer `ip`
+    // and submits them as a single batch so MmapPrefetchWorker sorts & gap-coalesces them for sequential SATA NCQ.
+    void enqueue_sata_layer_top_k(int ip, int k_cap = 12) {
+        if (!ssd_prefetch.active() || !m || ip < 0 || ip >= (int) m->layers.size()) return;
+        if ((size_t) ip < ssd_layer_done.size() && ssd_layer_done[(size_t) ip] != 0u) return;
+        const PhysLayer& L = m->layers[(size_t) ip];
+        const int ne = (int) m->hp.n_expert;
+        if (L.n_slots >= ne || L.hblobs != nullptr || !L.h_gate_up || !L.h_down) {
+            if (ssd_layer_done.size() < m->layers.size()) ssd_layer_done.resize(m->layers.size(), 0u);
+            ssd_layer_done[(size_t) ip] = 1u;
+            return;
+        }
+        if (ssd_pf_seen.size() < m->layers.size() * (size_t) ne) {
+            ssd_pf_seen.resize(m->layers.size() * (size_t) ne, 0u);
+        }
+        const double h_norm = strata::math::normalized_shannon_entropy(L.score.data(), (size_t) ne);
+        const int k_want = std::min(k_cap, strata::math::rh_sata_prefetch_k(h_norm, rh_rebal_step, 8, 1.4732, k_cap));
+        int best_e[12];
+        double best_s[12];
+        int found = 0;
+        for (int x = 0; x < ne; ++x) {
+            if (L.slot_of[(size_t) x] >= 0) continue;
+            const size_t idx = (size_t) ip * (size_t) ne + (size_t) x;
+            if (ssd_pf_seen[idx] != 0u) continue;
+            const double sc = L.score[(size_t) x];
+            if (found < k_want) {
+                int pos_i = found++;
+                while (pos_i > 0 && sc > best_s[pos_i - 1]) {
+                    best_s[pos_i] = best_s[pos_i - 1];
+                    best_e[pos_i] = best_e[pos_i - 1];
+                    --pos_i;
+                }
+                best_s[pos_i] = sc;
+                best_e[pos_i] = x;
+            } else if (sc > best_s[k_want - 1]) {
+                int pos_i = k_want - 1;
+                while (pos_i > 0 && sc > best_s[pos_i - 1]) {
+                    best_s[pos_i] = best_s[pos_i - 1];
+                    best_e[pos_i] = best_e[pos_i - 1];
+                    --pos_i;
+                }
+                best_s[pos_i] = sc;
+                best_e[pos_i] = x;
+            }
+        }
+        if (found == 0) {
+            if (ssd_layer_done.size() < m->layers.size()) ssd_layer_done.resize(m->layers.size(), 0u);
+            ssd_layer_done[(size_t) ip] = 1u;
+            return;
+        }
+        const size_t gu_bytes = (size_t) (2 * L.L.n_ff) * L.gu_row;
+        const size_t d_bytes = (size_t) L.L.n_embd * L.d_row;
+        std::vector<MmapPrefetchWorker::Range> batch;
+        batch.reserve((size_t) found * 2);
+        for (int i = 0; i < found; ++i) {
+            const int x = best_e[i];
+            ssd_pf_seen[(size_t) ip * (size_t) ne + (size_t) x] = 1u;
+            batch.push_back(MmapPrefetchWorker::Range{L.h_gate_up + (size_t) x * gu_bytes, gu_bytes});
+            batch.push_back(MmapPrefetchWorker::Range{L.h_down + (size_t) x * d_bytes, d_bytes});
+        }
+        ssd_prefetch.enqueue_batch(batch);
+    }
+
+    void warmup_zc_layers() {
+        if (!m) return;
+        bool any_zc = false;
+        const int ne = (int) m->hp.n_expert;
+        for (const PhysLayer& L : m->layers) {
+            if (L.n_slots < ne && !L.hblobs && L.h_gate_up && L.h_down) {
+                any_zc = true;
+                break;
+            }
+        }
+        if (!any_zc) return;
+        ssd_prefetch.start();
+        if (!ssd_prefetch.active()) return;
+        // Hint up to available RAM minus 4 GiB safety reserve (page-cache advisory, zero private commit).
+        size_t budget = (size_t) 4096 << 20;
+#if defined(_WIN32)
+        MEMORYSTATUSEX ms{};
+        ms.dwLength = sizeof(ms);
+        if (GlobalMemoryStatusEx(&ms)) {
+            const size_t floor_b = (size_t) 4096 << 20;
+            budget = (ms.ullAvailPhys > floor_b) ? (size_t) (ms.ullAvailPhys - floor_b) : 0;
+        }
+#endif
+        if (budget == 0) return;
+        size_t queued = 0;
+        // Also warm the hot prefix of token_embd.weight if still mmap-backed (up to 64 MiB).
+        if (m->tok_embd_ram.empty() && m->host_tok_embd && m->tok_embd_row_bytes > 0) {
+            const size_t emb_tot = (size_t) m->hp.vocab_padded * m->tok_embd_row_bytes;
+            const size_t emb_warm = std::min<size_t>(emb_tot, std::min<size_t>(budget / 8, 64ull << 20));
+            if (emb_warm > 0) {
+                ssd_prefetch.enqueue(m->host_tok_embd, emb_warm);
+                queued += emb_warm;
+            }
+        }
+        for (int ip = 0; ip < (int) m->layers.size() && queued < budget; ++ip) {
+            const PhysLayer& L = m->layers[(size_t) ip];
+            if (L.n_slots >= ne || L.hblobs != nullptr || !L.h_gate_up || !L.h_down) continue;
+            const size_t gu_bytes = (size_t) (2 * L.L.n_ff) * L.gu_row;
+            const size_t d_bytes = (size_t) L.L.n_embd * L.d_row;
+            // Enqueue coarse 16-expert contiguous sequential slabs (~32 MiB) so SATA NCQ runs at peak sequential speed.
+            int run_start = -1;
+            for (int x = 0; x <= ne; ++x) {
+                const bool miss = (x < ne) && (L.slot_of[(size_t) x] < 0);
+                if (miss && run_start < 0) {
+                    run_start = x;
+                } else if ((!miss || (x - run_start) >= 16) && run_start >= 0) {
+                    const int cnt = x - run_start;
+                    const size_t r_gu = (size_t) cnt * gu_bytes;
+                    const size_t r_d = (size_t) cnt * d_bytes;
+                    if (queued + r_gu + r_d > budget) return;
+                    ssd_prefetch.enqueue(L.h_gate_up + (size_t) run_start * gu_bytes, r_gu);
+                    ssd_prefetch.enqueue(L.h_down + (size_t) run_start * d_bytes, r_d);
+                    queued += r_gu + r_d;
+                    if (ssd_pf_seen.size() < m->layers.size() * (size_t) ne) {
+                        ssd_pf_seen.resize(m->layers.size() * (size_t) ne, 0u);
+                    }
+                    for (int e = run_start; e < x; ++e) ssd_pf_seen[(size_t) ip * (size_t) ne + (size_t) e] = 1u;
+                    run_start = miss ? x : -1;
+                }
+            }
+        }
+    }
 
     // Stats
     int64_t hy_gpu = 0, hy_cpu = 0;
@@ -955,10 +1285,14 @@ struct Engine {
     }
 
     // Cached decode CUDA Graph for the contiguous 36-layer core (il = 6..41) when blk.6..17 are 100% in VRAM,
-    // plus per-layer pre-route graphs (attn + mix + ffn_norm + route).
+    // plus per-layer pre+gpu_moe graphs, per-layer post (combine+shortconv) graphs, and greedy head graph.
     cudaGraphExec_t core_graph = nullptr;
     cudaGraphExec_t verify_core_graph = nullptr;
     std::vector<cudaGraphExec_t> layer_pre_graph;
+    std::vector<cudaGraphExec_t> layer_post_graph_hyb;
+    std::vector<cudaGraphExec_t> layer_post_graph_hit;
+    cudaGraphExec_t head_graph = nullptr;
+    std::vector<float*> head_graph_nb;
     bool core_all_gpu = false;
     bool graph_oom = false;
 
@@ -1084,10 +1418,17 @@ struct Engine {
     }
 
     ~Engine() {
+        ssd_prefetch.stop();
+#if defined(STRATA_INKLING2_CPU_POOL)
+        if (host_aff.valid) strata::kernels::cpu::restore_thread_affinity(host_aff);
+#endif
         if (core_graph) cudaGraphExecDestroy(core_graph);
         if (verify_core_graph) cudaGraphExecDestroy(verify_core_graph);
+        if (head_graph) cudaGraphExecDestroy(head_graph);
         for (auto g : core_pass_graph) if (g) cudaGraphExecDestroy(g);
         for (auto g : layer_pre_graph) if (g) cudaGraphExecDestroy(g);
+        for (auto g : layer_post_graph_hyb) if (g) cudaGraphExecDestroy(g);
+        for (auto g : layer_post_graph_hit) if (g) cudaGraphExecDestroy(g);
         if (elt_prev) cudaFree(elt_prev);
         if (elt_delta_host) cudaFreeHost(elt_delta_host);
         for (auto* p : kc) cudaFree(p);
@@ -1120,7 +1461,7 @@ struct Engine {
             if (rebal_stage_pinned) cudaFreeHost(rebal_stage);
             else std::free(rebal_stage);
         }
-        cudaFreeHost(h_ids); cudaFreeHost(h_ewts); cudaFreeHost(h_cpu_sum); cudaFreeHost(h_pos0); cudaFreeHost(h_h); cudaFreeHost(cpu_out); cudaFreeHost(h_miss);
+        cudaFreeHost(h_ids); cudaFreeHost(h_ewts); cudaFreeHost(h_route_ready); cudaFreeHost(h_pick); cudaFreeHost(h_cpu_sum); cudaFreeHost(h_pos0); cudaFreeHost(h_h); cudaFreeHost(cpu_out); cudaFreeHost(h_miss);
         std::free(acts);
         if (ev_route) cudaEventDestroy(ev_route);
         for (int b = 0; b < kMaxPpStages; ++b) {
@@ -1160,6 +1501,8 @@ struct Engine {
 
         // Allocate KV caches & contiguous recurrent shortconv state per virtual layer
         layer_pre_graph.assign((size_t) hp.n_layer, nullptr);
+        layer_post_graph_hyb.assign((size_t) hp.n_layer, nullptr);
+        layer_post_graph_hit.assign((size_t) hp.n_layer, nullptr);
         pp_layer_cnt.assign((size_t) hp.n_layer, 0);
         kc.resize((size_t) hp.n_layer, nullptr);
         vc.resize((size_t) hp.n_layer, nullptr);
@@ -1357,8 +1700,15 @@ struct Engine {
         CK(cudaHostAlloc(&h_pos0, sizeof(int32_t), cudaHostAllocDefault));
         CK(cudaMalloc(&pick_d, (size_t) tmax * sizeof(int32_t)));
 
-        CK(cudaMallocHost(&h_ids, (size_t) max_ent * sizeof(int32_t)));
-        CK(cudaMallocHost(&h_ewts, (size_t) max_ent * sizeof(float)));
+        CK(cudaHostAlloc(&h_ids, (size_t) max_ent * sizeof(int32_t), cudaHostAllocMapped));
+        CK(cudaHostGetDevicePointer(&h_ids_dev, h_ids, 0));
+        CK(cudaHostAlloc(&h_ewts, (size_t) max_ent * sizeof(float), cudaHostAllocMapped));
+        CK(cudaHostGetDevicePointer(&h_ewts_dev, h_ewts, 0));
+        CK(cudaHostAlloc(&h_route_ready, 64, cudaHostAllocMapped));
+        CK(cudaHostGetDevicePointer(&h_route_ready_dev, h_route_ready, 0));
+        *h_route_ready = 0u;
+        CK(cudaHostAlloc(&h_pick, (size_t) std::max(verify_max_t, 16) * sizeof(int32_t), cudaHostAllocMapped));
+        CK(cudaHostGetDevicePointer(&h_pick_dev, h_pick, 0));
         CK(cudaHostAlloc(&h_cpu_sum, (size_t) (2 * N) * sizeof(float), cudaHostAllocMapped));
         CK(cudaHostGetDevicePointer(&h_cpu_sum_dev, h_cpu_sum, 0));
         CK(cudaEventCreateWithFlags(&ev_route, cudaEventDisableTiming));
@@ -1368,6 +1718,9 @@ struct Engine {
             CK(cudaEventCreateWithFlags(&ev_pp_copy[b], cudaEventDisableTiming));
             CK(cudaEventCreateWithFlags(&ev_pp_used[b], cudaEventDisableTiming));
         }
+        // Gen-L PCIe-roofline-aware streaming crossover: on <= 17 GiB / PCIe Gen3 x8 WDDM GPUs,
+        // 6-core DDR4 (~35 GB/s) beats full-layer PCIe expert streaming (~6.4 GB/s) for T < 64.
+        pp_stream_t = (vtot_init <= (17ULL << 30)) ? 64 : 16;
         if (const char* v = std::getenv("STRATA_PP_STREAM_T")) pp_stream_t = std::max(1, std::atoi(v));
         reset_state();
         return true;
@@ -1376,7 +1729,8 @@ struct Engine {
     void init_cpu_bufs(int cpu_t) {
         const int64_t N = m->hp.n_embd;
         const int64_t cpu_ent = (int64_t) cpu_t * m->hp.n_expert_used;
-        CK(cudaMallocHost(&h_h, (size_t) cpu_t * N * sizeof(float)));
+        CK(cudaHostAlloc(&h_h, (size_t) cpu_t * N * sizeof(float), cudaHostAllocMapped));
+        CK(cudaHostGetDevicePointer(&h_h_dev, h_h, 0));
         CK(cudaMallocHost(&cpu_out, (size_t) cpu_ent * N * sizeof(float)));
         CK(cudaMallocHost(&h_miss, (size_t) cpu_ent * sizeof(int32_t)));
         CK(cudaMalloc(&d_miss, (size_t) cpu_ent * sizeof(int32_t)));
@@ -1677,7 +2031,8 @@ struct Engine {
         for (int k = 0; k < pp_stage_cnt && pp_kick_idx < pp_tasks.size(); ++k) pp_kick_next();
     }
 
-    void run_moe(PhysLayer& L, int il, const float* x_norm, int T, bool pre_routed_t1 = false) {
+    void run_moe(PhysLayer& L, int il, const float* x_norm, int T, bool pre_routed_t1 = false,
+                 bool defer_combine_t1 = false, bool* out_used_hybrid = nullptr) {
         const auto& hp = m->hp;
         const int N = (int) hp.n_embd, Kp = (int) hp.n_expert_used;
         const int n_ent = T * Kp;
@@ -1765,17 +2120,15 @@ struct Engine {
             return;
         }
 
-        if (need_cpu) {
-            if (!pre_routed_t1) {
-                CK(cudaMemcpyAsync(h_ids, ids, (size_t) n_ent * sizeof(int32_t), cudaMemcpyDeviceToHost, st));
-                if (T == 1) CK(cudaMemcpyAsync(h_ewts, ewts, (size_t) Kp * sizeof(float), cudaMemcpyDeviceToHost, st));
-                else CK(cudaMemcpyAsync(h_h, x_norm, (size_t) T * N * sizeof(float), cudaMemcpyDeviceToHost, st));
-            }
+        if (need_cpu && !pre_routed_t1) {
+            CK(cudaMemcpyAsync(h_ids, ids, (size_t) n_ent * sizeof(int32_t), cudaMemcpyDeviceToHost, st));
+            if (T == 1) CK(cudaMemcpyAsync(h_ewts, ewts, (size_t) Kp * sizeof(float), cudaMemcpyDeviceToHost, st));
+            else CK(cudaMemcpyAsync(h_h, x_norm, (size_t) T * N * sizeof(float), cudaMemcpyDeviceToHost, st));
             CK(cudaEventRecord(ev_route, st));
         }
 
         const auto tp_mg0 = Clock::now();
-        if (has_gpu) {
+        if (has_gpu && !pre_routed_t1) {
             k_group_experts<<<1, 128, 0, st>>>(ids, L.d_slot_of, L.d_blobs, L.stride, n_ent, (int) hp.n_expert, L.n_slots,
                                                grp_ptr, grp_start, n_groups, ent_dst, ent_tok, Kp);
             run_grouped(grp_ptr, std::min<int64_t>(n_ent, hp.n_expert));
@@ -1793,9 +2146,19 @@ struct Engine {
         if (need_cpu) {
             namespace C = strata::kernels::cpu;
             const auto tp_wait0 = Clock::now();
-            for (int sp = 0; cudaEventQuery(ev_route) == cudaErrorNotReady; ++sp) {
-                if (sp < 2048) strata_cpu_pause();
-                else std::this_thread::yield();
+            if (pre_routed_t1) {
+                // Gen-L zero-driver userspace doorbell wait: GPU wrote h_h_dev, h_ids_dev, h_ewts_dev
+                // then executed __threadfence_system() and stored 1 to h_route_ready_dev.
+                for (int sp = 0; *(volatile uint32_t*) h_route_ready == 0u; ++sp) {
+                    if (sp < 4096) strata_cpu_pause();
+                    else std::this_thread::yield();
+                }
+                std::atomic_thread_fence(std::memory_order_acquire);
+            } else {
+                for (int sp = 0; cudaEventQuery(ev_route) == cudaErrorNotReady; ++sp) {
+                    if (sp < 2048) strata_cpu_pause();
+                    else std::this_thread::yield();
+                }
             }
             if (prof) p_moe_wait_ms += ms_since(tp_wait0);
             const auto t0 = Clock::now();
@@ -1894,6 +2257,14 @@ struct Engine {
                 else { p_miss_nv += n_miss; p_hit_nv += (n_ent - n_miss); }
             }
             if (n_miss > 0) {
+                // While the 6 physical compute cores evaluate current-layer misses, ask the SMT SATA prefetcher
+                // to warm the next 2 zero-copy mmap hybrid layers using RH critical-line entropy lookahead + NCQ coalescing.
+                if (T == 1 && ssd_prefetch.active()) {
+                    for (int ahead = 1; ahead <= 2 && il + ahead < hp.n_layer; ++ahead) {
+                        const int next_ip = hp.loop_layer(il + ahead);
+                        enqueue_sata_layer_top_k(next_ip, ahead == 1 ? 8 : 4);
+                    }
+                }
                 const auto tp_c0 = Clock::now();
                 pool->run_split_multi_native(L.cpu_fmt, jobs.data(), (int) jobs.size());
                 const double c_ms = ms_since(tp_c0);
@@ -1923,6 +2294,10 @@ struct Engine {
                     std::memcpy(hsum, acc_buf, (size_t) N * sizeof(float));
                     if (has_gpu) {
                         if (prof) p_moe_up_ms += ms_since(tp_u0);
+                        if (defer_combine_t1) {
+                            if (out_used_hybrid) *out_used_hybrid = true;
+                            return;
+                        }
                         const auto tp_p0 = Clock::now();
                         const int n4 = ((N & 3) == 0) ? (N >> 2) : N;
                         k_combine_experts_hybrid<<<(unsigned) ((n4 + 255) / 256), 256, 0, st>>>(
@@ -1953,6 +2328,10 @@ struct Engine {
         }
         hy_gpu += n_ent;
 #endif
+        if (defer_combine_t1 && T == 1 && has_gpu) {
+            if (out_used_hybrid) *out_used_hybrid = false;
+            return;
+        }
         const auto tp_p0 = Clock::now();
         k_combine_experts<<<dim3((unsigned) ((N + 255) / 256), (unsigned) T), 256, 0, st>>>(eparts, ewts, moe_raw, N, Kp);
         if (prof && need_cpu) { CK(cudaStreamSynchronize(st)); p_moe_post_ms += ms_since(tp_p0); }
@@ -2102,6 +2481,14 @@ struct Engine {
         for (auto& g : layer_pre_graph) {
             if (g) { cudaGraphExecDestroy(g); g = nullptr; }
         }
+        for (auto& g : layer_post_graph_hyb) {
+            if (g) { cudaGraphExecDestroy(g); g = nullptr; }
+        }
+        for (auto& g : layer_post_graph_hit) {
+            if (g) { cudaGraphExecDestroy(g); g = nullptr; }
+        }
+        if (head_graph) { cudaGraphExecDestroy(head_graph); head_graph = nullptr; }
+        head_graph_nb.clear();
         graph_oom = false;
 
         const int ne = (int) hp.n_expert;
@@ -2315,12 +2702,25 @@ struct Engine {
 
 #if defined(STRATA_INKLING2_CPU_POOL)
         if (hybrid && !pool) {
+            std::string aux_err;
+            const char* aux_env = std::getenv("STRATA_AUX_CPUS");
+            const std::string aux_spec = (aux_env && aux_env[0] != '\0') ? std::string(aux_env) : std::string("off");
+            if (aux_spec != "0") (void) strata::aux_cpus::configure(aux_spec, aux_err);
             int nw = cpu_threads_req > 0 ? cpu_threads_req : 0;
             pool = std::make_unique<strata::kernels::cpu::ExpertPool>(nw, true, true);
             pool_workers = pool->workers();
+            const int hc = strata::kernels::cpu::planned_host_core();
+            if (hc >= 0 && !host_aff.valid) {
+                host_aff = strata::kernels::cpu::pin_current_thread(hc);
+            }
+            const auto& all_wc = pool->worker_cores();
+            std::vector<int> active_wc(all_wc.begin(), all_wc.begin() + std::min<size_t>((size_t) pool_workers, all_wc.size()));
+            const std::string aux_line = strata::aux_cpus::set_topology(hc, active_wc);
             std::fprintf(stderr, "strata-inkling2: %s\n", pool->placement_line().c_str());
+            std::fprintf(stderr, "strata-inkling2: %s\n", aux_line.c_str());
         }
 #endif
+        warmup_zc_layers();
 
         // Reallocate full-attention KV buffers one layer at a time; use host staging when tight on VRAM so we need ZERO extra layer headroom.
         std::vector<uint8_t> kv_stage;
@@ -2484,13 +2884,13 @@ struct Engine {
                 const int32_t tok = tokens[t];
                 float* dst = h_tok_buf + (size_t) t * N;
                 const size_t slot = ((size_t) (uint32_t) tok * 2654435761u) & (kTokCacheSlots - 1);
-                if (tok_cache_id[slot] == tok) {
-                    std::memcpy(dst, tok_cache_vec.data() + slot * (size_t) N, (size_t) N * sizeof(float));
-                } else {
-                    m->dequant_tok(tok, dst);
+                float* cached = tok_cache_vec.data() + slot * (size_t) N;
+                if (tok_cache_id[slot] != tok) {
+                    // Gen-L: dequantize into L1-cached RAM first (never read back from mapped h_tok_buf).
+                    m->dequant_tok(tok, cached);
                     tok_cache_id[slot] = tok;
-                    std::memcpy(tok_cache_vec.data() + slot * (size_t) N, dst, (size_t) N * sizeof(float));
                 }
+                std::memcpy(dst, cached, (size_t) N * sizeof(float));
             }
         }
         if (T == 1) ++st_tok_step;
@@ -2853,16 +3253,24 @@ struct Engine {
             float* ffn_mix_out[1] = {in_ffn};
             run_mix_normed(norm_blocks, ffn_inp, false, L.ffn_res_query, ffn_mix_out, 1, T, 0);
             if (has_msg) run_control(in_ffn, msg3, L, 3, in_ffn, T);
-            k_rms_norm<<<(unsigned) T, kThreads, 0, st>>>(in_ffn, L.ffn_norm, in_ffn, N, hp.rms_eps);
             if (include_route_t1) {
-                // Capture h_h D2H + router + k_route + h_ids/h_ewts D2H inside layer_pre_graph[il] (-240 API calls/tok!)
+                // Gen-L zero-copy mapped routing doorbell + fused GPU hit MoE inside layer_pre_graph[il]:
+                // eliminates 36 D2H cudaMemcpyAsync, 12 cudaEventRecord/Query, and 60 ungraphed MoE launches/tok!
                 const int Kp = (int) hp.n_expert_used;
-                CK(cudaMemcpyAsync(h_h, in_ffn, (size_t) N * sizeof(float), cudaMemcpyDeviceToHost, st));
+                k_rms_norm<<<1, kThreads, 0, st>>>(in_ffn, L.ffn_norm, in_ffn, N, hp.rms_eps, h_h_dev);
                 project_f32(in_ffn, L.ffn_gate_inp, router_logits, 1, hp.n_expert, N);
                 k_route_inkling2<<<1, 32, 0, st>>>(
-                    router_logits, L.exp_probs_b, ids, ewts, (int) hp.n_expert, Kp, hp.expert_weights_scale, L.d_hits);
-                CK(cudaMemcpyAsync(h_ids, ids, (size_t) Kp * sizeof(int32_t), cudaMemcpyDeviceToHost, st));
-                CK(cudaMemcpyAsync(h_ewts, ewts, (size_t) Kp * sizeof(float), cudaMemcpyDeviceToHost, st));
+                    router_logits, L.exp_probs_b, ids, ewts, (int) hp.n_expert, Kp, hp.expert_weights_scale,
+                    L.d_hits, h_ids_dev, h_ewts_dev, h_route_ready_dev);
+                if (L.n_slots > 0) {
+                    k_group_experts<<<1, 128, 0, st>>>(ids, L.d_slot_of, L.d_blobs, L.stride, Kp, (int) hp.n_expert, L.n_slots,
+                                                       grp_ptr, grp_start, n_groups, ent_dst, ent_tok, Kp);
+                    K::quantize_q8_1_rows(in_ffn, 1, N, xq, st);
+                    K::native_expert_grouped(L.L, grp_ptr, grp_start, n_groups, ent_dst, ent_tok,
+                                             std::min<int64_t>(Kp, hp.n_expert), Kp, xq, escr, eparts, st);
+                }
+            } else {
+                k_rms_norm<<<(unsigned) T, kThreads, 0, st>>>(in_ffn, L.ffn_norm, in_ffn, N, hp.rms_eps);
             }
             if (prof_detail) { CK(cudaStreamSynchronize(st)); p_d_out += ms_since(tp_d3); }
         };
@@ -2892,7 +3300,50 @@ struct Engine {
             float* hst = conv_hist[(size_t) il];
             float* h_tr = save_conv_trace ? (d_conv_trace + (size_t) il * layer_conv_floats) : nullptr;
             const bool is_hy = (L.n_slots < hp.n_expert);
-            run_moe(L, il, in_ffn, T, pre_routed_t1);
+            const bool use_post_graph = (T == 1 && is_hy && L.n_slots > 0 && !prof && !prof_detail &&
+                                         !pp_streaming && !capture_dspark && !save_conv_trace);
+            bool used_hybrid = false;
+            run_moe(L, il, in_ffn, T, pre_routed_t1, use_post_graph, &used_hybrid);
+            if (use_post_graph) {
+                cudaGraphExec_t& pg = used_hybrid ? layer_post_graph_hyb[(size_t) il] : layer_post_graph_hit[(size_t) il];
+                const int Kp = (int) hp.n_expert_used;
+                const int n4 = ((N & 3) == 0) ? (N >> 2) : N;
+                const float* dsum = h_cpu_sum_dev + (size_t) (il & 1) * N;
+                auto emit_post_ops = [&]() {
+                    if (used_hybrid) {
+                        k_combine_experts_hybrid<<<(unsigned) ((n4 + 255) / 256), 256, 0, st>>>(
+                            eparts, ewts, ids, L.d_slot_of, dsum, moe_raw, N, Kp);
+                    } else {
+                        k_combine_experts<<<dim3((unsigned) ((N + 255) / 256), 1), 256, 0, st>>>(eparts, ewts, moe_raw, N, Kp);
+                    }
+                    k_shortconv<<<(unsigned) ((N + 255) / 256), 256, 0, st>>>(
+                        moe_raw, L.ffn_post_conv, nullptr, hst, cur, N, 2 * (int) kv_dim + N, 0, 1, ffn_inp, nullptr, total_conv_floats);
+                };
+                if (!pg && !graph_oom) {
+                    cudaGraph_t g = nullptr;
+                    cudaError_t ce = cudaStreamBeginCapture(st, cudaStreamCaptureModeThreadLocal);
+                    if (ce == cudaSuccess) {
+                        emit_post_ops();
+                        ce = cudaStreamEndCapture(st, &g);
+                    }
+                    cudaGraphExec_t ge = nullptr;
+                    if (ce == cudaSuccess && g) ce = cudaGraphInstantiate(&ge, g, nullptr, nullptr, 0);
+                    if (g) cudaGraphDestroy(g);
+                    if (ce == cudaSuccess && ge) {
+                        pg = ge;
+                        CK(cudaGraphLaunch(pg, st));
+                    } else {
+                        (void) cudaGetLastError();
+                        graph_oom = true;
+                        emit_post_ops();
+                    }
+                } else if (pg) {
+                    CK(cudaGraphLaunch(pg, st));
+                } else {
+                    emit_post_ops();
+                }
+                return;
+            }
             const auto tp_mp0 = Clock::now();
             if (T >= 32 && !save_conv_trace) {
                 k_shortconv_pp<<<dim3((unsigned) ((N + 255) / 256), (unsigned) ((T + 15) / 16)), 256, 0, st>>>(
@@ -2915,6 +3366,13 @@ struct Engine {
         pp_streaming = (hybrid && T >= pp_stream_t && pp_stage_cnt > 0 && pp_stage[0] != nullptr);
         if (pp_streaming) pp_begin(core_end_virt, core_all_gpu ? 1 : 0);
         for (int il = 0; il < hp.n_layer; ++il) {
+            if (il == hp.core_start && T == 1 && ssd_prefetch.active()) {
+                // Cross-core SATA overlap: while the RTX GPU executes the 36-layer VRAM core (~12 ms),
+                // SMT threads prefetch RH-ranked, address-coalesced experts for post-core SATA layers.
+                for (int post_ip = (int) hp.core_end; post_ip < (int) m->layers.size(); ++post_ip) {
+                    enqueue_sata_layer_top_k(post_ip, 12);
+                }
+            }
             if (elt_active && il == hp.core_start) {
                 // Elastic Looped Transformer (ELT, arXiv:2604.09168): run core pass-by-pass with per-pass CUDA Graphs.
                 CK(cudaMemcpyAsync(elt_prev, cur, (size_t) N * sizeof(float), cudaMemcpyDeviceToDevice, st));
@@ -2997,6 +3455,14 @@ struct Engine {
             const bool use_pre_graph = (T == 1 && hybrid && !prof_detail && !pp_streaming && !capture_dspark);
             const int ip_cur = hp.loop_layer(il);
             const bool include_route_t1 = use_pre_graph && (m->layers[(size_t) ip_cur].n_slots < hp.n_expert);
+            if (include_route_t1) {
+                if (has_pending_rebal) {
+                    CK(cudaStreamWaitEvent(st, ev_rebal, 0));
+                    has_pending_rebal = false;
+                }
+                *(volatile uint32_t*) h_route_ready = 0u;
+                std::atomic_thread_fence(std::memory_order_release);
+            }
             const auto tp_ly0 = Clock::now();
             if (use_pre_graph && (layer_pre_graph[(size_t) il] || !graph_oom)) {
                 if (!layer_pre_graph[(size_t) il]) {
@@ -3032,6 +3498,10 @@ struct Engine {
             } else {
                 run_layer_pre(il, include_route_t1);
             }
+            if (include_route_t1 && !prof) {
+                // Flush WDDM command buffer immediately so GPU executes pre+route+GPU-MoE while CPU spins on doorbell.
+                (void) cudaStreamQuery(st);
+            }
             if (prof) {
                 CK(cudaStreamSynchronize(st));
                 if (is_outer) p_attn_ms += ms_since(tp_ly0);
@@ -3043,6 +3513,57 @@ struct Engine {
         // Output head (skip 200K vocab matmul + sync on intermediate prefill chunks where only KV/DSpark states are needed)
         const auto tp_h0 = Clock::now();
         const bool compute_logits = need_logits || copy_logits || all_row_logits || out_picks != nullptr;
+        const bool fast_greedy_t1 = (T == 1 && compute_logits && !copy_logits && !all_row_logits &&
+                                     out_picks == nullptr && !capture_dspark && !prof && !elt_active && !pp_streaming);
+        if (fast_greedy_t1) {
+            if (head_graph && head_graph_nb != norm_blocks) {
+                cudaGraphExecDestroy(head_graph);
+                head_graph = nullptr;
+                head_graph_nb.clear();
+            }
+            auto emit_head_ops = [&]() {
+                float* out_head[1] = {in_ffn};
+                run_mix_normed(norm_blocks, cur, false, m->output_res_query, out_head, 1, 1, 0);
+                k_rms_norm<<<1, kThreads, 0, st>>>(in_ffn, m->output_norm, cur, N, hp.rms_eps);
+                project(cur, m->output_weight, logits, 1, hp.vocab_unpadded, N);
+                // softcap(x) = cap * tanh(x / cap) is strictly increasing -> argmax is mathematically invariant!
+                k_argmax<<<1, 256, 0, st>>>(logits, pick_d, (int) hp.vocab_unpadded, h_pick_dev);
+            };
+            *(volatile int32_t*) h_pick = -1;
+            std::atomic_thread_fence(std::memory_order_release);
+            if (!head_graph && !graph_oom) {
+                cudaGraph_t g = nullptr;
+                cudaError_t ce = cudaStreamBeginCapture(st, cudaStreamCaptureModeThreadLocal);
+                if (ce == cudaSuccess) {
+                    emit_head_ops();
+                    ce = cudaStreamEndCapture(st, &g);
+                }
+                cudaGraphExec_t ge = nullptr;
+                if (ce == cudaSuccess && g) ce = cudaGraphInstantiate(&ge, g, nullptr, nullptr, 0);
+                if (g) cudaGraphDestroy(g);
+                if (ce == cudaSuccess && ge) {
+                    head_graph = ge;
+                    head_graph_nb = norm_blocks;
+                    CK(cudaGraphLaunch(head_graph, st));
+                } else {
+                    (void) cudaGetLastError();
+                    graph_oom = true;
+                    emit_head_ops();
+                }
+            } else if (head_graph) {
+                CK(cudaGraphLaunch(head_graph, st));
+            } else {
+                emit_head_ops();
+            }
+            (void) cudaStreamQuery(st);
+            for (int sp = 0; *(volatile int32_t*) h_pick < 0; ++sp) {
+                if (sp < 4096) strata_cpu_pause();
+                else std::this_thread::yield();
+            }
+            std::atomic_thread_fence(std::memory_order_acquire);
+            pos += 1;
+            return *h_pick;
+        }
         if (compute_logits || (capture_dspark && dspark && d_tgt_feat[3])) {
             float* out_head[1] = {in_ffn};
             run_mix_normed(norm_blocks, cur, false, m->output_res_query, out_head, 1, T, 0);
@@ -3062,8 +3583,18 @@ struct Engine {
         const float* head_h = (rows == T) ? cur : (cur + (size_t) (T - 1) * N);
         project(head_h, m->output_weight, logits, rows, hp.vocab_unpadded, N);
         const int64_t tot_lg = (int64_t) rows * hp.vocab_unpadded;
-        k_softcap<<<(unsigned) ((tot_lg + 255) / 256), 256, 0, st>>>(logits, tot_lg, hp.softcap);
-        k_argmax<<<(unsigned) rows, 256, 0, st>>>(logits, pick_d, (int) hp.vocab_unpadded);
+        if (copy_logits) {
+            k_softcap<<<(unsigned) ((tot_lg + 255) / 256), 256, 0, st>>>(logits, tot_lg, hp.softcap);
+        }
+        const bool direct_pick = (rows <= 16 && out_picks == nullptr && !copy_logits);
+        k_argmax<<<(unsigned) rows, 256, 0, st>>>(logits, pick_d, (int) hp.vocab_unpadded, direct_pick ? h_pick_dev : nullptr);
+        if (direct_pick) {
+            CK(cudaStreamSynchronize(st));
+            if (pp_streaming) sync_d_hits(true);
+            if (prof) p_head_ms += ms_since(tp_h0);
+            pos += T;
+            return h_pick[rows - 1];
+        }
         std::vector<int32_t> tmp_picks((size_t) rows, 0);
         if (copy_logits && out_logits) {
             out_logits->resize((size_t) tot_lg);
@@ -3090,8 +3621,9 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, std::strin
 #if defined(_WIN32)
     // Windows WDDM shares physical VRAM with DWM/OS; overcommitting to free=0 MiB silently migrates
     // late tier2 expert slabs to Shared GPU Memory (~20 GB/s PCIe vs 448 GB/s GDDR7 = 16x slower).
-    // Reserve 3328 MiB on <=17 GiB WDDM GPUs so placed VRAM slabs + 65K-98K KV + cuBLAS/CUDA Graphs stay strictly GDDR-resident.
-    if (tot <= (17ull << 30)) reserve = std::max(reserve, (size_t) 3328 << 20);
+    // Reserve 1536 MiB on <=17 GiB WDDM GPUs: leaves ~1.45 GiB live GDDR7 headroom for DWM/WebView2 + CUDA Graphs
+    // with zero Shared-GPU-Memory spill while placing +350-500 more outer experts in GDDR7 (+40% AUTO-VRAM tg t/s).
+    if (tot <= (17ull << 30)) reserve = std::max(reserve, (size_t) 1536 << 20);
 #endif
     if (const char* v = std::getenv("STRATA_VRAM_RESERVE_MB")) {
         const int mb = std::atoi(v);
@@ -3190,23 +3722,33 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, std::strin
         }
     }
 
-    // Priority 2: Fate (arXiv:2502.12224) Shallow-Favoring + Riemann Zeta-Lagrangian VRAM allocation.
-    // Shallow outer layers (ip < core_start) exhibit steeper Zipf/Zeta skewness (s=1.38 vs 1.02) and higher hit-rate/byte.
+    // Priority 2: Fate (arXiv:2502.12224) + Riemann Zeta-Lagrangian 3-Tier (GPU VRAM -> Pinned RAM -> SATA SSD) allocation.
+    // ShinkaEvolve (48 gens x 3 islands on real S5-1TB SATA 252.2/98.0 MB/s) optimal: rho_SATA=12.958.
+    std::vector<strata::math::ZetaLayerSpec> tier2_specs;
+    std::vector<int> tier2_gpu_slots;
     if (!tier2.empty() && budget > used) {
-        std::vector<strata::math::ZetaLayerSpec> specs;
-        specs.reserve(tier2.size());
+        tier2_specs.reserve(tier2.size());
         for (int ip : tier2) {
             const PhysLayer& L = m.layers[(size_t) ip];
             const double cost = (L.L.gu_type == 13) ? 1.43 : ((L.L.d_type == 8) ? 1.30 : 1.0);
             const double zeta_s = (ip < hp.core_start) ? 1.38 : 1.02;
-            specs.push_back(strata::math::ZetaLayerSpec{ip, L.stride, cost, zeta_s, ne});
+            tier2_specs.push_back(strata::math::ZetaLayerSpec{ip, L.stride, cost, zeta_s, ne});
         }
         size_t t2_used = 0;
-        const std::vector<int> t2_slots = strata::math::zeta_lagrangian_allocate(specs, budget - used, &t2_used);
+        tier2_gpu_slots = strata::math::zeta_lagrangian_allocate(tier2_specs, budget - used, &t2_used);
         for (size_t i = 0; i < tier2.size(); ++i) {
-            slots[(size_t) tier2[i]] = t2_slots[i];
+            slots[(size_t) tier2[i]] = tier2_gpu_slots[i];
         }
         used += t2_used;
+    } else if (!tier2.empty()) {
+        tier2_specs.reserve(tier2.size());
+        tier2_gpu_slots.assign(tier2.size(), 0);
+        for (int ip : tier2) {
+            const PhysLayer& L = m.layers[(size_t) ip];
+            const double cost = (L.L.gu_type == 13) ? 1.43 : ((L.L.d_type == 8) ? 1.30 : 1.0);
+            const double zeta_s = (ip < hp.core_start) ? 1.38 : 1.02;
+            tier2_specs.push_back(strata::math::ZetaLayerSpec{ip, L.stride, cost, zeta_s, ne});
+        }
     }
 
     std::vector<uint8_t> tmp;
@@ -3262,10 +3804,17 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, std::strin
     if (const char* v = std::getenv("STRATA_MAX_PIN_MB")) max_pin_bytes = (size_t) std::max(0, std::atoi(v)) << 20;
     E.max_pin_bytes = max_pin_bytes;
     E.cpu_threads_req = threads;
+    const bool use_rh_3tier = (std::getenv("STRATA_RH_3TIER") == nullptr || std::getenv("STRATA_RH_3TIER")[0] != '0');
     std::vector<int> alloc_order;
     alloc_order.reserve((size_t) hp.n_phys);
     for (int ip : tier1) alloc_order.push_back(ip);
-    for (int ip : tier2) alloc_order.push_back(ip);
+    if (use_rh_3tier && !tier2.empty() && tier2_specs.size() == tier2.size()) {
+        // 3-Tier Hurwitz-Zeta Lagrangian RAM vs SATA ordering: highest off-VRAM SATA miss mass gets Pinned RAM first!
+        const auto ram_rank = strata::math::zeta_hurwitz_ram_priority(tier2_specs, tier2_gpu_slots, 12.958);
+        for (size_t idx : ram_rank) alloc_order.push_back(tier2[idx]);
+    } else {
+        for (int ip : tier2) alloc_order.push_back(ip);
+    }
     for (int ip = 0; ip < hp.n_phys; ++ip) {
         if (m.layers[(size_t) ip].gu_type == 30) alloc_order.push_back(ip);
     }
@@ -3415,10 +3964,25 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, std::strin
 
 #if defined(STRATA_INKLING2_CPU_POOL)
     if (need_cpu) {
+        // Configure Windows/Linux aux & SMT I/O topology BEFORE spawning workers so host + workers are marked owned.
+        std::string aux_err;
+        const char* aux_env = std::getenv("STRATA_AUX_CPUS");
+        const std::string aux_spec = (aux_env && aux_env[0] != '\0') ? std::string(aux_env) : std::string("off");
+        if (aux_spec != "0") (void) strata::aux_cpus::configure(aux_spec, aux_err);
+        // Keep default HostCore::First (workers on IRQ-free physical cores 2,4,...,10; host on CPU 0),
+        // and explicitly pin the host thread to its planned core to eliminate SMT sibling collisions.
         int nw = threads > 0 ? threads : 0;
         E.pool = std::make_unique<strata::kernels::cpu::ExpertPool>(nw, true, true);
         E.pool_workers = E.pool->workers();
+        const int hc = strata::kernels::cpu::planned_host_core();
+        if (hc >= 0 && !E.host_aff.valid) {
+            E.host_aff = strata::kernels::cpu::pin_current_thread(hc);
+        }
+        const auto& all_wc = E.pool->worker_cores();
+        std::vector<int> active_wc(all_wc.begin(), all_wc.begin() + std::min<size_t>((size_t) E.pool_workers, all_wc.size()));
+        const std::string aux_line = strata::aux_cpus::set_topology(hc, active_wc);
         std::fprintf(stderr, "strata-inkling2: %s\n", E.pool->placement_line().c_str());
+        std::fprintf(stderr, "strata-inkling2: %s\n", aux_line.c_str());
     }
 #else
     if (need_cpu) {
@@ -3426,6 +3990,7 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, std::strin
         return false;
     }
 #endif
+    E.warmup_zc_layers();
 
     E.core_all_gpu = !tier1.empty() && slots[(size_t) tier1[0]] == ne;
     for (int ip : tier1) if (slots[(size_t) ip] != ne) E.core_all_gpu = false;
@@ -3441,6 +4006,20 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, std::strin
         tier2_min = std::min(tier2_min, slots[(size_t) ip]);
         tier2_max = std::max(tier2_max, slots[(size_t) ip]);
     }
+    int ram_pin_exps = 0, ram_pag_exps = 0, ssd_zc_exps = 0;
+    size_t ram_pin_bytes = 0, ram_pag_bytes = 0, ssd_zc_bytes = 0;
+    for (int ip = 0; ip < hp.n_phys; ++ip) {
+        const PhysLayer& L = m.layers[(size_t) ip];
+        const int off_vram = std::max(0, ne - L.n_slots);
+        if (off_vram <= 0) continue;
+        if (L.hblobs) {
+            if (L.hblobs_pinned) { ram_pin_exps += off_vram; ram_pin_bytes += (size_t) off_vram * L.stride; }
+            else { ram_pag_exps += off_vram; ram_pag_bytes += (size_t) off_vram * L.stride; }
+        } else {
+            ssd_zc_exps += off_vram;
+            ssd_zc_bytes += (size_t) off_vram * ((size_t) (2 * L.L.n_ff) * L.gu_row + (size_t) L.L.n_embd * L.d_row);
+        }
+    }
     std::fprintf(stderr,
                  "strata-inkling2: placed %d/%lld experts in VRAM (%.2f GiB, tier1=%d/128/layer, tier2=%d..%d/128/layer, free=%.0f MiB) in %.2f s\n",
                  total_vram_experts, (long long) hp.n_phys * ne, (double) used / (1 << 30),
@@ -3448,6 +4027,17 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, std::strin
                  tier2.empty() ? 0 : tier2_min, tier2.empty() ? 0 : tier2_max,
                  (double) fr_after / (1 << 20),
                  ms_since(t0) / 1000.0);
+    std::fprintf(stderr,
+                 "strata-inkling2: full-machine tiers: GPU=%d exps (%.2f GiB VRAM) | RAM_pinned=%d exps (%.2f GiB) | RAM_pageable=%d exps (%.2f GiB) | SSD_mmap=%d exps (%.2f GiB, prefetch=%s/%dT, rh3tier=%s) | CPU=%dP+%zuSMT\n",
+                 total_vram_experts, (double) used / (1 << 30),
+                 ram_pin_exps, (double) ram_pin_bytes / (1 << 30),
+                 ram_pag_exps, (double) ram_pag_bytes / (1 << 30),
+                 ssd_zc_exps, (double) ssd_zc_bytes / (1 << 30),
+                 E.ssd_prefetch.active() ? "on" : "off",
+                 E.ssd_prefetch.worker_count(),
+                 use_rh_3tier ? "on" : "off",
+                 E.pool ? (E.pool_workers + 1) : 1,
+                 strata::aux_cpus::io_plan().size());
     return true;
 }
 

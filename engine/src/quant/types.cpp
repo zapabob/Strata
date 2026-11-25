@@ -34,6 +34,7 @@ const TypeInfo kTable[] = {
     {Type::IQ4_XS,  "iq4_xs",  QK_K, sizeof(block_iq4_xs),     kQ8K,          true,  false},
     {Type::IQ1_M,   "iq1_m",   QK_K, sizeof(block_iq1_m),      kQ8K,          true,  false},
     {Type::BF16,    "bf16",    1,   2,                         Type::BF16,    false, false},
+    {Type::TQ2_0,   "tq2_0",   256, 66,                        kQ8K,          false, false},
     {Type::MXFP4,   "mxfp4",   QK_MXFP4, sizeof(block_mxfp4),  kQ80,          true,  false},
     {Type::NVFP4,   "nvfp4",   QK_NVFP4, sizeof(block_nvfp4),  kQ80,          true,  false},
     {Type::Q1_0,    "q1_0",    QK1_0, sizeof(block_q1_0),      kQ80,          false, false},

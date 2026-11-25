@@ -397,8 +397,9 @@ private:
     ExpertJobMulti* mjobs_ = nullptr;
     int64_t mrows_ = 0;     // rows of the current multi phase across all its experts (n * FF, then n * H)
     int mtasks_ = 1;        // equal row ranges the phase is cut into
+    static constexpr int kMaxNativeFF = FF > 2048 ? FF : 2048;   // Inkling-2 n_ff=1152 > Flash-Next FF=640
     struct SplitBufMulti {
-        alignas(64) float ff[MAXT][FF];
+        alignas(64) float ff[MAXT][kMaxNativeFF];
         ActQ a2[MAXT];
         alignas(64) uint8_t hq[MAXT][kNativeHBytes];   // plan v0.3 P6: native down activations
     };

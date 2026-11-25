@@ -629,6 +629,27 @@ void dequant_iq4_xs(const block_iq4_xs* STRATA_RESTRICT x, float* STRATA_RESTRIC
     }
 }
 
+struct block_tq2_0_wire {
+    uint8_t qs[64];
+    uint16_t d;
+};
+static_assert(sizeof(block_tq2_0_wire) == 66, "block_tq2_0_wire must be 66 bytes");
+
+void dequant_tq2_0(const block_tq2_0_wire* STRATA_RESTRICT x, float* STRATA_RESTRICT y, int64_t k) {
+    const int64_t nb = k / 256;
+    for (int64_t i = 0; i < nb; ++i) {
+        const float d = fp16_to_fp32(x[i].d);
+        for (size_t j = 0; j < 64; j += 32) {
+            for (size_t l = 0; l < 4; ++l) {
+                for (size_t m = 0; m < 32; ++m) {
+                    const int8_t q = (int8_t) ((x[i].qs[j + m] >> (l * 2)) & 3);
+                    *y++ = (float) (q - 1) * d;
+                }
+            }
+        }
+    }
+}
+
 }  // namespace
 
 bool can_dequant(Type t) noexcept {
@@ -639,6 +660,7 @@ bool can_dequant(Type t) noexcept {
     case Type::Q5_0:
     case Type::Q5_1:
     case Type::Q8_0:
+    case Type::TQ2_0:
     case Type::MXFP4:
     case Type::NVFP4:
     case Type::Q2_K:
@@ -668,6 +690,7 @@ bool dequant_row(Type t, const void* src, float* dst, int64_t n) {
     case Type::Q5_0: dequant_q5_0((const block_q5_0*) src, dst, n); return true;
     case Type::Q5_1: dequant_q5_1((const block_q5_1*) src, dst, n); return true;
     case Type::Q8_0: dequant_q8_0((const block_q8_0*) src, dst, n); return true;
+    case Type::TQ2_0: dequant_tq2_0((const block_tq2_0_wire*) src, dst, n); return true;
     case Type::MXFP4: dequant_mxfp4((const block_mxfp4*) src, dst, n); return true;
     case Type::NVFP4: dequant_nvfp4((const block_nvfp4*) src, dst, n); return true;
     case Type::Q2_K: dequant_q2_K((const block_q2_K*) src, dst, n); return true;

@@ -99,7 +99,7 @@ inline void row_dot(const uint8_t* row, const Acts& a, float* res) {
     const block_nvfp4* x = (const block_nvfp4*) row;
     const int prefetch_ahead = prefetch_distance();
     for (int ib = 0; ib < a.nb; ++ib) {
-        if (prefetch_ahead > 0) _mm_prefetch((const char*) (x + ib) + prefetch_ahead, _MM_HINT_T0);
+        if (prefetch_ahead > 0) _mm_prefetch((const char*) (x + ib) + prefetch_ahead, _MM_HINT_NTA);
         const __m256i v01 = values32(x[ib].qs, kv), v23 = values32(x[ib].qs + 16, kv);
         const __m256i a01 = _mm256_sign_epi8(v01, v01), a23 = _mm256_sign_epi8(v23, v23);
         // lanes 0-3 ue4m3(d[0]), 4-7 d[1] (and d[2], d[3]): times a broadcast d_q8, each lane is ggml's scalar
@@ -120,6 +120,114 @@ inline void row_dot(const uint8_t* row, const Acts& a, float* res) {
         }
     }
     for (int t = 0; t < NT; ++t) res[t] = hsum8(acc[t]);
+}
+
+static inline __m128 nvfp4_fast_tanh4_ps(__m128 x) noexcept {
+    const __m128 lo = _mm_set1_ps(-5.0f), hi = _mm_set1_ps(5.0f);
+    const __m128 xc = _mm_min_ps(hi, _mm_max_ps(lo, x));
+    const __m128 x2 = _mm_mul_ps(xc, xc);
+    __m128 num = _mm_fmadd_ps(x2, _mm_add_ps(_mm_set1_ps(378.0f), x2), _mm_set1_ps(17325.0f));
+    num = _mm_mul_ps(xc, _mm_fmadd_ps(x2, num, _mm_set1_ps(135135.0f)));
+    __m128 den = _mm_fmadd_ps(x2, _mm_fmadd_ps(x2, _mm_set1_ps(28.0f), _mm_set1_ps(3150.0f)), _mm_set1_ps(62370.0f));
+    den = _mm_fmadd_ps(x2, den, _mm_set1_ps(135135.0f));
+    __m128 r = _mm_rcp_ps(den);
+    r = _mm_mul_ps(r, _mm_fnmadd_ps(den, r, _mm_set1_ps(2.0f)));
+    __m128 res = _mm_mul_ps(num, r);
+    res = _mm_blendv_ps(res, _mm_set1_ps(1.0f), _mm_cmpgt_ps(x, hi));
+    res = _mm_blendv_ps(res, _mm_set1_ps(-1.0f), _mm_cmplt_ps(x, lo));
+    return res;
+}
+
+// Gen-L T==1 dual-row NVFP4 dot: reads Q8_0 activation ONCE for two weight rows (2x ILP, NTA L3-bypass, bit-exact).
+inline void row_dot2_t1(const uint8_t* row0, const uint8_t* row1, const Acts& a, float& out0, float& out1) {
+    const __m128i kv = _mm_loadu_si128((const __m128i*) kvalues_fp4);
+    const __m256i ones = _mm256_set1_epi16(1);
+    __m256 acc0 = _mm256_setzero_ps();
+    __m256 acc1 = _mm256_setzero_ps();
+    const block_nvfp4* x0 = (const block_nvfp4*) row0;
+    const block_nvfp4* x1 = (const block_nvfp4*) row1;
+    const block_q8_0* y0 = a.y[0];
+    const float* dy_base = a.dy;
+    const int nb = a.nb;
+    for (int ib = 0; ib < nb; ++ib) {
+        if (ib + 4 < nb) {
+            _mm_prefetch((const char*) (x0 + ib + 4), _MM_HINT_NTA);
+            _mm_prefetch((const char*) (x1 + ib + 4), _MM_HINT_NTA);
+        }
+        const block_q8_0* yb = y0 + 2 * ib;
+        const __m256i q01 = _mm256_loadu_si256((const __m256i*) yb[0].qs);
+        const __m256i q23 = _mm256_loadu_si256((const __m256i*) yb[1].qs);
+        const __m256 dy0 = _mm256_broadcast_ss(dy_base + 2 * ib);
+        const __m256 dy1 = _mm256_broadcast_ss(dy_base + 2 * ib + 1);
+
+        const __m256i v0_01 = values32(x0[ib].qs, kv), v0_23 = values32(x0[ib].qs + 16, kv);
+        const __m256i a0_01 = _mm256_sign_epi8(v0_01, v0_01), a0_23 = _mm256_sign_epi8(v0_23, v0_23);
+        const __m256 u0_01 = _mm256_set_m128(_mm_set1_ps(kUe4m3.v[x0[ib].d[1]]), _mm_set1_ps(kUe4m3.v[x0[ib].d[0]]));
+        const __m256 u0_23 = _mm256_set_m128(_mm_set1_ps(kUe4m3.v[x0[ib].d[3]]), _mm_set1_ps(kUe4m3.v[x0[ib].d[2]]));
+        const __m256i p0_1 = _mm256_madd_epi16(_mm256_maddubs_epi16(a0_01, _mm256_sign_epi8(q01, v0_01)), ones);
+        const __m256i p0_2 = _mm256_madd_epi16(_mm256_maddubs_epi16(a0_23, _mm256_sign_epi8(q23, v0_23)), ones);
+        acc0 = _mm256_fmadd_ps(_mm256_mul_ps(u0_01, dy0), _mm256_cvtepi32_ps(p0_1), acc0);
+        acc0 = _mm256_fmadd_ps(_mm256_mul_ps(u0_23, dy1), _mm256_cvtepi32_ps(p0_2), acc0);
+
+        const __m256i v1_01 = values32(x1[ib].qs, kv), v1_23 = values32(x1[ib].qs + 16, kv);
+        const __m256i a1_01 = _mm256_sign_epi8(v1_01, v1_01), a1_23 = _mm256_sign_epi8(v1_23, v1_23);
+        const __m256 u1_01 = _mm256_set_m128(_mm_set1_ps(kUe4m3.v[x1[ib].d[1]]), _mm_set1_ps(kUe4m3.v[x1[ib].d[0]]));
+        const __m256 u1_23 = _mm256_set_m128(_mm_set1_ps(kUe4m3.v[x1[ib].d[3]]), _mm_set1_ps(kUe4m3.v[x1[ib].d[2]]));
+        const __m256i p1_1 = _mm256_madd_epi16(_mm256_maddubs_epi16(a1_01, _mm256_sign_epi8(q01, v1_01)), ones);
+        const __m256i p1_2 = _mm256_madd_epi16(_mm256_maddubs_epi16(a1_23, _mm256_sign_epi8(q23, v1_23)), ones);
+        acc1 = _mm256_fmadd_ps(_mm256_mul_ps(u1_01, dy0), _mm256_cvtepi32_ps(p1_1), acc1);
+        acc1 = _mm256_fmadd_ps(_mm256_mul_ps(u1_23, dy1), _mm256_cvtepi32_ps(p1_2), acc1);
+    }
+    out0 = hsum8(acc0);
+    out1 = hsum8(acc1);
+}
+
+template <bool SITU>
+void gu_rows_t1(const uint8_t* blob, size_t gu_row, size_t up_off, const Acts& a, float* ff0, int r0, int r1,
+                float sg, float su, float beta = 4.f, float lb = 25.f) {
+    const float inv_beta = SITU ? (1.0f / beta) : 0.0f;
+    const float inv_lb = (SITU && lb > 0.f) ? (1.0f / lb) : 0.0f;
+    for (int r = r0; r < r1; ++r) {
+        if (r + 2 < r1) {
+            _mm_prefetch((const char*) (blob + (size_t) (r + 2) * gu_row), _MM_HINT_NTA);
+            _mm_prefetch((const char*) (blob + up_off + (size_t) (r + 2) * gu_row), _MM_HINT_NTA);
+        }
+        float g = 0.f, u = 0.f;
+        row_dot2_t1(blob + (size_t) r * gu_row, blob + up_off + (size_t) r * gu_row, a, g, u);
+        const float gs = g * sg, us = u * su;
+        if constexpr (SITU) {
+            const __m128 vin = _mm_set_ps(0.0f, 0.5f * gs, lb > 0.f ? (us * inv_lb) : 0.0f, gs * inv_beta);
+            const __m128 tv = nvfp4_fast_tanh4_ps(vin);
+            const float tv0 = _mm_cvtss_f32(tv);
+            const float tv1 = _mm_cvtss_f32(_mm_shuffle_ps(tv, tv, 0x55));
+            const float tv2 = _mm_cvtss_f32(_mm_movehl_ps(tv, tv));
+            const float tg = beta * tv0;
+            const float tu = lb > 0.f ? (lb * tv1) : us;
+            const float sig = 0.5f * (1.0f + tv2);
+            ff0[r] = (tg * sig) * tu;
+        } else {
+            ff0[r] = (gs / (1.f + std::exp(-gs))) * us;
+        }
+    }
+}
+
+void dot_rows_t1(const uint8_t* w, size_t row_bytes, const Acts& a, float* out0, int r0, int r1, float scale) {
+    int r = r0;
+    for (; r + 1 < r1; r += 2) {
+        if (r + 4 < r1) {
+            _mm_prefetch((const char*) (w + (size_t) (r + 4) * row_bytes), _MM_HINT_NTA);
+            _mm_prefetch((const char*) (w + (size_t) (r + 5) * row_bytes), _MM_HINT_NTA);
+        }
+        float s0 = 0.f, s1 = 0.f;
+        row_dot2_t1(w + (size_t) r * row_bytes, w + (size_t) (r + 1) * row_bytes, a, s0, s1);
+        out0[r]     = s0 * scale;
+        out0[r + 1] = s1 * scale;
+    }
+    for (; r < r1; ++r) {
+        float res[1];
+        row_dot<1>(w + (size_t) r * row_bytes, a, res);
+        out0[r] = res[0] * scale;
+    }
 }
 
 template <int NT, bool SITU = false>
@@ -172,7 +280,7 @@ void nvfp4_256_gu_rows(const uint8_t* blob, size_t gu_row, size_t up_off, int n,
         const Acts a(act + t0, w, n / QK_NVFP4);
         float* const* f = ff + t0;
         switch (w) {
-            case 1: gu_rows<1, false>(blob, gu_row, up_off, a, f, r0, r1, s_gate, s_up); break;
+            case 1: gu_rows_t1<false>(blob, gu_row, up_off, a, f[0], r0, r1, s_gate, s_up); break;
             case 2: gu_rows<2, false>(blob, gu_row, up_off, a, f, r0, r1, s_gate, s_up); break;
             case 3: gu_rows<3, false>(blob, gu_row, up_off, a, f, r0, r1, s_gate, s_up); break;
             case 4: gu_rows<4, false>(blob, gu_row, up_off, a, f, r0, r1, s_gate, s_up); break;
@@ -190,7 +298,7 @@ void nvfp4_256_gu_rows_situ(const uint8_t* blob, size_t gu_row, size_t up_off, i
         const Acts a(act + t0, w, n / QK_NVFP4);
         float* const* f = ff + t0;
         switch (w) {
-            case 1: gu_rows<1, true>(blob, gu_row, up_off, a, f, r0, r1, s_gate, s_up, beta, lb); break;
+            case 1: gu_rows_t1<true>(blob, gu_row, up_off, a, f[0], r0, r1, s_gate, s_up, beta, lb); break;
             case 2: gu_rows<2, true>(blob, gu_row, up_off, a, f, r0, r1, s_gate, s_up, beta, lb); break;
             case 3: gu_rows<3, true>(blob, gu_row, up_off, a, f, r0, r1, s_gate, s_up, beta, lb); break;
             case 4: gu_rows<4, true>(blob, gu_row, up_off, a, f, r0, r1, s_gate, s_up, beta, lb); break;
@@ -208,7 +316,7 @@ void nvfp4_256_rows(const uint8_t* w, size_t row_bytes, int n, const void* const
         const Acts a(act + t0, k, n / QK_NVFP4);
         float* const* o = out + t0;
         switch (k) {
-            case 1: dot_rows<1>(w, row_bytes, a, o, r0, r1, scale); break;
+            case 1: dot_rows_t1(w, row_bytes, a, o[0], r0, r1, scale); break;
             case 2: dot_rows<2>(w, row_bytes, a, o, r0, r1, scale); break;
             case 3: dot_rows<3>(w, row_bytes, a, o, r0, r1, scale); break;
             case 4: dot_rows<4>(w, row_bytes, a, o, r0, r1, scale); break;

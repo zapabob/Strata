@@ -222,4 +222,100 @@ inline std::vector<int> zeta_lagrangian_allocate(const std::vector<ZetaLayerSpec
     return slots;
 }
 
+// 4. Truncated Riemann-Hurwitz tail probability P(rank > gpu_slots | Zeta_E(s)):
+//    Exact off-VRAM miss probability mass spilling to Tier-2 (Pinned RAM) or Tier-3 (SATA/NVMe SSD).
+inline double truncated_hurwitz_tail(int E, int gpu_slots, double s) noexcept {
+    if (E <= 0 || gpu_slots >= E) return 0.0;
+    const double z_all = truncated_zeta(E, s);
+    if (z_all <= 0.0) return 0.0;
+    const int start = std::max(1, gpu_slots + 1);
+    double z_tail = 0.0;
+    for (int k = start; k <= E; ++k) {
+        z_tail += std::pow((double) k, -s);
+    }
+    return std::clamp(z_tail / z_all, 0.0, 1.0);
+}
+
+// 5. 3-Tier Hurwitz-Zeta Lagrangian RAM vs SATA SSD Priority Ranking:
+//    Ranks off-VRAM hybrid layers by descending marginal SATA stall latency saved per byte of Pinned RAM:
+//      mu_i^{RAM<-SATA} = (c_i * rho_SATA * P_spill(S_i^{GPU})) / (E_i * stride_i)
+//    ShinkaEvolve (48 gens x 3 islands, real S5-1TB SATA 252.2/98.0 MB/s constants) optimal: rho_SATA = 12.958.
+inline std::vector<size_t> zeta_hurwitz_ram_priority(const std::vector<ZetaLayerSpec>& specs,
+                                                     const std::vector<int>& gpu_slots,
+                                                     double sata_cost_ratio = 12.958) {
+    const size_t L = specs.size();
+    std::vector<size_t> order(L);
+    std::vector<double> util(L, 0.0);
+    for (size_t i = 0; i < L; ++i) {
+        order[i] = i;
+        const auto& sp = specs[i];
+        const int s_gpu = (i < gpu_slots.size()) ? gpu_slots[i] : 0;
+        if (s_gpu >= sp.max_slots || sp.stride_bytes == 0) {
+            util[i] = -1.0;
+            continue;
+        }
+        const double tail_p = truncated_hurwitz_tail(sp.max_slots, s_gpu, sp.zeta_exponent);
+        const double pin_bytes = (double) std::max(1, sp.max_slots) * (double) sp.stride_bytes;
+        util[i] = (sp.cpu_miss_cost * sata_cost_ratio * tail_p) / pin_bytes;
+    }
+    std::stable_sort(order.begin(), order.end(), [&](size_t a, size_t b) {
+        return util[a] > util[b];
+    });
+    return order;
+}
+
+// 6. RH Critical-Line Spectral Lookahead Prefetch Breadth K_pf(H_norm, step):
+//    Combines normalized Shannon routing entropy H_norm with RH critical-line uncertainty
+//    delta_RH(t) = 1 / (sqrt(t + 4) * ln(t + e)) so early/high-entropy regimes prefetch wider
+//    across SATA NCQ while converged low-entropy regimes avoid wasting SATA bandwidth.
+//    ShinkaEvolve optimal on SATA S5-1TB: k_base = 8, beta_rh = 1.4732.
+inline int rh_sata_prefetch_k(double norm_entropy, uint64_t step,
+                              int k_base = 8, double beta_rh = 1.4732, int k_max = 12) noexcept {
+    const double h = std::clamp(norm_entropy, 0.0, 1.0);
+    const double rh_uncert = 1.0 / (std::sqrt((double) step + 4.0) * std::max(1.0, std::log((double) step + 2.718281828459045)));
+    const double raw = (double) k_base + 4.0 * (h + beta_rh * rh_uncert);
+    const int k = (int) std::ceil(raw);
+    return std::clamp(k, 1, std::max(1, k_max));
+}
+
+// 7. SATA NCQ Address-Sorted Gap-Coalescing Prefetch Planner:
+//    Sorts virtual/file byte spans ascending by address and merges ranges separated by <= max_gap_bytes
+//    (up to max_merged_bytes) to convert random 64K SATA faults (~98 MB/s) into contiguous sequential
+//    SATA NCQ bursts (~252 MB/s on S5-1TB, 2.57x bandwidth amplification).
+struct SataPrefetchSpan {
+    uintptr_t addr = 0;
+    size_t len = 0;
+};
+
+inline void coalesce_sata_ranges(std::vector<SataPrefetchSpan>& spans,
+                                 size_t max_gap_bytes,
+                                 size_t max_merged_bytes = 32ull << 20) {
+    if (spans.size() <= 1) return;
+    std::sort(spans.begin(), spans.end(), [](const SataPrefetchSpan& a, const SataPrefetchSpan& b) {
+        return a.addr < b.addr;
+    });
+    size_t out = 0;
+    for (size_t i = 0; i < spans.size(); ++i) {
+        const SataPrefetchSpan& cur = spans[i];
+        if (cur.addr == 0 || cur.len == 0) continue;
+        if (out == 0) {
+            spans[out++] = cur;
+            continue;
+        }
+        SataPrefetchSpan& prev = spans[out - 1];
+        const uintptr_t prev_end = prev.addr + prev.len;
+        const uintptr_t cur_end = cur.addr + cur.len;
+        if (cur.addr <= prev_end || (cur.addr - prev_end) <= max_gap_bytes) {
+            const uintptr_t new_end = std::max(prev_end, cur_end);
+            const size_t merged_len = (size_t) (new_end - prev.addr);
+            if (merged_len <= max_merged_bytes) {
+                prev.len = merged_len;
+                continue;
+            }
+        }
+        spans[out++] = cur;
+    }
+    spans.resize(out);
+}
+
 }  // namespace strata::math

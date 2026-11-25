@@ -1,0 +1,43 @@
+{
+  "context_capacity": 4096,
+  "prefill_tokens": 16,
+  "forced_tokens": 32,
+  "logit_rows": 33,
+  "vocabulary": 248320,
+  "reference_mode": "f16",
+  "candidate_mode": "spin8_k8v4",
+  "reference": {
+    "kv_payload_bytes": 268435456,
+    "timing": {
+      "prefill_forward_ms": 297.079,
+      "decode_forward_ms": 1058.418,
+      "decode_steps": 32.0,
+      "sampling_ms": 153.883,
+      "reset_ms": 1.778,
+      "e2e_ms": 1512.154
+    },
+    "decode_forward_tokens_per_second": 30.233801768299482,
+    "minimum_device_free_mib": 3304,
+    "minimum_system_ram_free_bytes": 15701131264,
+    "minimum_commit_headroom_bytes": 24352710656
+  },
+  "candidate": {
+    "kv_payload_bytes": 109051904,
+    "timing": {
+      "prefill_forward_ms": 298.491,
+      "decode_forward_ms": 1033.939,
+      "decode_steps": 32.0,
+      "sampling_ms": 903.417,
+      "reset_ms": 1.331,
+      "e2e_ms": 2238.041
+    },
+    "decode_forward_tokens_per_second": 30.949601475522247,
+    "minimum_device_free_mib": 3541,
+    "minimum_system_ram_free_bytes": 15861260288,
+    "minimum_commit_headroom_bytes": 24746872832
+  },
+  "top1_agreement_count": 31,
+  "mean_full_vocab_kl_nats": 0.1048464483409639,
+  "max_full_vocab_kl_nats": 1.9601433275008695,
+  "max_abs_logit_error": 13.86924147605896
+}

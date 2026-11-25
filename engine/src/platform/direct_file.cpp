@@ -58,11 +58,16 @@ struct Pending {
     uint64_t tag;
 };
 
-/// The number of issuing threads: STRATA_IO_THREADS, else 4 (Windows: overlapped submits) / 16 (Linux: each
+/// The number of issuing threads: STRATA_IO_THREADS, else 6 (Windows: overlapped submits) / 16 (Linux: each
 /// thread does one blocking pread, so the thread count is the queue depth).
 int io_threads(int dflt) {
+#if defined(_WIN32)
+    char buf[32] = {};
+    const int n = (GetEnvironmentVariableA("STRATA_IO_THREADS", buf, (DWORD) sizeof buf) > 0) ? std::atoi(buf) : dflt;
+#else
     const char* v = std::getenv("STRATA_IO_THREADS");
     const int n = v ? std::atoi(v) : dflt;
+#endif
     return std::clamp(n, 1, 64);
 }
 }  // namespace
@@ -192,8 +197,9 @@ bool DirectFile::open(const std::string& path, std::string& err) {
     }
     // Completions of reads that finish synchronously are still queued to the port, so every issued read
     // produces exactly one packet; `wait` is the only completion path.
-    const int n = io_threads(4);
-    for (int i = 0; i < n; ++i) impl_->pool.emplace_back([this] { strata::aux_cpus::pin_current_thread(); impl_->worker(); });
+    // On 6C/12T+ CPUs, 6 overlapped issuers saturate NVMe queue depth while running on SMT secondary threads.
+    const int n = io_threads(6);
+    for (int i = 0; i < n; ++i) impl_->pool.emplace_back([this] { strata::aux_cpus::pin_io_thread(); impl_->worker(); });
     return true;
 }
 

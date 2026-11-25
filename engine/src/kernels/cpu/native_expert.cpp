@@ -701,7 +701,7 @@ void native_gu_rows_impl(const NativeFmt& f, const uint8_t* blob, const void* co
     static const bool kq512 = cpu_avx512_ok() && std::getenv("STRATA_NO_KQ512") == nullptr;
     static const int kq512_min = [] { const char* e = std::getenv("STRATA_KQ512_MIN"); return e ? std::atoi(e) : 8; }();
     static const bool kq512_gu_ok = kq512 && kq512_ok(12);   // (checked once: the check takes a mutex, and this runs on every pool thread for every row range)
-    if (kq512_gu_ok && f.gu_type == 12 && nt >= kq512_min && (Arithmetic == NativeArithmetic::Default || flavour_avx2())) {
+    if (kq512_gu_ok && f.gu_type == 12 && !f.situ && nt >= kq512_min && (Arithmetic == NativeArithmetic::Default || flavour_avx2())) {
         kq512_gu_rows(f.gu_type, blob, f.gu_row, f.up_off, (int) f.n_embd, act, nt, ff, r0, r1);
         return;
     }
@@ -712,14 +712,21 @@ void native_gu_rows_impl(const NativeFmt& f, const uint8_t* blob, const void* co
                         f.situ, f.situ_beta, f.situ_linear_beta);
         return;
     }
+    if (cpu_avx2_ok() && f.gu_type == 13 && nt == 1 && f.tail_off == 0 &&
+        (Arithmetic == NativeArithmetic::Default || (flavour_avx2()))) {
+        kq256_gu_t1_q5k(blob, f.gu_row, f.up_off, (int) f.n_embd, act[0], ff[0], r0, r1,
+                        f.situ, f.situ_beta, f.situ_linear_beta);
+        return;
+    }
     if (kq && f.gu_type == 12 && nt >= 2 &&
         (Arithmetic == NativeArithmetic::Default || (flavour_avx2()))) {   // one token: ggml's own dot below (the same bits, less overhead)
-        kq256_gu_rows(f.gu_type, blob, f.gu_row, f.up_off, (int) f.n_embd, act, nt, ff, r0, r1);
+        kq256_gu_rows(f.gu_type, blob, f.gu_row, f.up_off, (int) f.n_embd, act, nt, ff, r0, r1,
+                      f.situ, f.situ_beta, f.situ_linear_beta);
         return;
     }
     // The trellis types (TQ2_T / TQK6 / TQK7): Strata's own kernels (tq_cpu.hpp), for every group size - they decode
     // a block once for all the tokens and give each token the same bits whatever the group (no #152 rule needed).
-    if (tq_rows_own(f.gu_type)) {
+    if (!f.situ && tq_rows_own(f.gu_type)) {
         tq_gu_rows(tq_isa(), f.gu_type, blob, f.gu_row, f.up_off, (int) f.n_embd, act, nt, ff, r0, r1);
         return;
     }
@@ -727,7 +734,7 @@ void native_gu_rows_impl(const NativeFmt& f, const uint8_t* blob, const void* co
     // it, as before (its rows would round differently).  Each kernel only for the formats it implements: falling
     // through an empty switch would leave ff unwritten instead of falling back to ggml-cpu.
     static const bool cpu512 = cpu_vnni_ok();
-    if (nt >= mt_min && (iq512_supported(f.gu_type) || (!cpu512 && iq256_supported(f.gu_type)))) {
+    if (!f.situ && nt >= mt_min && (iq512_supported(f.gu_type) || (!cpu512 && iq256_supported(f.gu_type)))) {
         if (singleton_iq) {
 #if defined(__x86_64__) || defined(_M_X64)
             if (avx512 && flavour_avx2() &&
@@ -748,7 +755,7 @@ void native_gu_rows_impl(const NativeFmt& f, const uint8_t* blob, const void* co
             }
         }
     }
-    if (!singleton_iq && avx1 && nt >= mt_min && iq128_supported(f.gu_type)) {
+    if (!f.situ && !singleton_iq && avx1 && nt >= mt_min && iq128_supported(f.gu_type)) {
         iq128_gu_rows(f.gu_type, blob, f.gu_row, f.up_off, (int) f.n_embd, act, nt, ff, r0, r1);
         return;
     }

@@ -1,0 +1,14 @@
+{
+  "calibration": [
+    "A gardener divides twelve seedlings equally among three trays. Each tray contains four seedlings. A brass compass rests beside a blue notebook. 水槽の温度を毎朝記録します。 The function returns its input multiplied by two.",
+    "A database index lets a query locate records by key. Updating a record can change the index entries.",
+    "At eight o'clock the library opens. 司書が入口の小さな看板を出しました。",
+    "One rectangle measures nine by four centimetres. Another measures six by six. Their areas are equal."
+  ],
+  "holdout": [
+    "Seven boats carry two lanterns apiece. The total number of lanterns is fourteen. 夕方の駅で友人を待ちました。 A triangle with two equal sides is isosceles. Write a short description of a winter morning.",
+    "A program reads one line at a time until it reaches the end of a file.",
+    "山道に沿って白い花が咲いています。朝の雨が上がり、遠くの峰が見えました。",
+    "Each of five envelopes contains three stamps. Two stamps are then removed. Thirteen stamps remain."
+  ]
+}

@@ -81,6 +81,8 @@ struct Engine {
     bool graphs_ready=false;
     bool h_q8_valid=false;
     int* pinned_error=nullptr;
+    uint8_t* pinned_embrow=nullptr;
+    int pinned_emb_slots=0;
     float* bx_ptr()const{return bscratch.as<float>();}
     float* bh_ptr()const{return bscratch.as<float>()+size_t(prefill_chunk)*size_t(G.hidden);}
     float* by_ptr()const{return bscratch.as<float>()+size_t(prefill_chunk)*(size_t(G.hidden)+size_t(G.hidden));}
@@ -94,6 +96,7 @@ struct Engine {
     ~Engine(){
         for(int g=0;g<16;++g){if(gdn_graphs[g])cudaGraphExecDestroy(gdn_graphs[g]);if(ffn_graphs[g])cudaGraphExecDestroy(ffn_graphs[g]);if(attn_proj_graphs[g])cudaGraphExecDestroy(attn_proj_graphs[g]);}
         if(head_graph)cudaGraphExecDestroy(head_graph);
+        if(pinned_embrow)cudaFreeHost(pinned_embrow);
         if(pinned_error)cudaFreeHost(pinned_error);
     }
     Engine(const std::string& path,int context,const Q::KvConfig& config,bool reference=false,bool ja=false,int draft_n_max=0,
@@ -251,6 +254,20 @@ struct Engine {
         a(qg,G.attn_q_rows());a(k,G.attn_kv_rows());a(v,G.attn_kv_rows());a(q,G.attn_out_rows());a(gate,G.attn_out_rows());a(att,G.attn_out_rows());a(fg,G.ffn);a(fu,G.ffn);
         a(scores,scores_elems);a(logits,G.vocab);a(error,1);
         embrow.allocate(emb_stride);
+        if(emb_stride>0){
+            const int want_slots=(size_t(prefill_chunk)*emb_stride<=16ull*1024*1024)?std::max(1,prefill_chunk):1;
+            if(cudaHostAlloc(&pinned_embrow,size_t(want_slots)*emb_stride,cudaHostAllocDefault)==cudaSuccess){
+                pinned_emb_slots=want_slots;
+            }else{
+                (void)cudaGetLastError();
+                if(want_slots>1&&cudaHostAlloc(&pinned_embrow,emb_stride,cudaHostAllocDefault)==cudaSuccess){
+                    pinned_emb_slots=1;
+                }else{
+                    (void)cudaGetLastError();
+                    pinned_embrow=nullptr;pinned_emb_slots=0;
+                }
+            }
+        }
         if(!conservative){
             prefill_ws.init(prefill_chunk,G.ffn,prefill_tile_bytes);
             a(bscratch,size_t(prefill_chunk)*bscratch_floats_per_tok);
@@ -418,9 +435,19 @@ struct Engine {
             Q::ck(cudaMemcpyAsync(states[i].gdn.data,snap_states[i].gdn.data,states[i].gdn.bytes,cudaMemcpyDeviceToDevice,stream.s));
         }
     }
+    void upload_emb_row(int token,int slot=0){
+        const uint8_t* src=file.tensor_data(*embedding)+size_t(token)*emb_stride;
+        if(pinned_embrow&&slot>=0&&slot<pinned_emb_slots){
+            uint8_t* dst=pinned_embrow+size_t(slot)*emb_stride;
+            std::memcpy(dst,src,emb_stride);
+            Q::ck(cudaMemcpyAsync(embrow.data,dst,emb_stride,cudaMemcpyHostToDevice,stream.s));
+        }else{
+            Q::ck(cudaMemcpyAsync(embrow.data,src,emb_stride,cudaMemcpyHostToDevice,stream.s));
+        }
+    }
     int mtp_draft_step(int token,int mtp_pos){
         Q::require(token>=0&&token<G.vocab&&mtp_pos<ctx,"MTP token or context out of range");
-        Q::ck(cudaMemcpyAsync(embrow.data,file.tensor_data(*embedding)+size_t(token)*emb_stride,emb_stride,cudaMemcpyHostToDevice,stream.s));
+        upload_emb_row(token,0);
         Q::decode(embedding->type,embrow.data,x.as(),G.hidden,stream.s);
         if(admission.inverse_embedding){Q::hadamard(x.as(),signs.at(G.hidden).as(),rotated.as(),G.hidden,true,false,stream.s);Q::ck(cudaMemcpyAsync(x.data,rotated.data,size_t(G.hidden)*4,cudaMemcpyDeviceToDevice,stream.s));}
         Q::rms(x.as(),f(mtp_name("nextn.enorm.weight")),mtp_eh.as(),G.hidden,admission.eps,stream.s);
@@ -499,7 +526,7 @@ struct Engine {
         Q::require(token>=0&&token<G.vocab&&position<ctx,"token or context out of range");
         if(!conservative&&!fp32_decode&&!graphs_ready)ensure_decode_graphs();
         Q::host_resources();gpu_resources();error.zero(stream.s);
-        Q::ck(cudaMemcpyAsync(embrow.data,file.tensor_data(*embedding)+size_t(token)*emb_stride,emb_stride,cudaMemcpyHostToDevice,stream.s));
+        upload_emb_row(token,0);
         Q::decode(embedding->type,embrow.data,x.as(),G.hidden,stream.s);
         if(admission.inverse_embedding){Q::hadamard(x.as(),signs.at(G.hidden).as(),rotated.as(),G.hidden,true,false,stream.s);Q::ck(cudaMemcpyAsync(x.data,rotated.data,size_t(G.hidden)*4,cudaMemcpyDeviceToDevice,stream.s));}
         const bool prof=(std::getenv("STRATA_Q38_PROFILE")!=nullptr);
@@ -566,9 +593,26 @@ struct Engine {
         float* const by_p=by_ptr();
         float* const sub_p=bsub_ptr();
         const size_t C=size_t(prefill_chunk);
+#ifdef _WIN32
+        if(n_tokens>1&&emb_stride>0){
+            std::vector<WIN32_MEMORY_RANGE_ENTRY> ranges;
+            ranges.reserve(size_t(n_tokens));
+            const uint8_t* emb_base=file.tensor_data(*embedding);
+            for(int t=0;t<n_tokens;++t){
+                const int tok=tokens[t];
+                if(tok>=0&&tok<G.vocab){
+                    WIN32_MEMORY_RANGE_ENTRY e{};
+                    e.VirtualAddress=const_cast<uint8_t*>(emb_base+size_t(tok)*emb_stride);
+                    e.NumberOfBytes=emb_stride;
+                    ranges.push_back(e);
+                }
+            }
+            if(!ranges.empty())(void)PrefetchVirtualMemory(GetCurrentProcess(),ULONG(ranges.size()),ranges.data(),0);
+        }
+#endif
         for(int t=0;t<n_tokens;++t){
             const int tok=tokens[t];Q::require(tok>=0&&tok<G.vocab,"token out of range");
-            Q::ck(cudaMemcpyAsync(embrow.data,file.tensor_data(*embedding)+size_t(tok)*emb_stride,emb_stride,cudaMemcpyHostToDevice,stream.s));
+            upload_emb_row(tok,(n_tokens<=pinned_emb_slots)?t:-1);
             Q::decode(embedding->type,embrow.data,bx_p+size_t(t)*size_t(G.hidden),G.hidden,stream.s);
             if(admission.inverse_embedding){
                 Q::hadamard(bx_p+size_t(t)*size_t(G.hidden),signs.at(G.hidden).as(),rotated.as(),G.hidden,true,false,stream.s);

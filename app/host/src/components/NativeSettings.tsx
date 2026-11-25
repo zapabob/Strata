@@ -13,6 +13,11 @@ import type { RunCard } from '../lib/native-fit';
 import { NativeMcpEditor } from './NativeMcpEditor';
 import { RefusalProjectionStatus } from './RefusalProjectionStatus';
 import type { RefusalProjectionSettings } from '../lib/refusal-projection';
+import { HY4_FAMILY, INKLING_FAMILY } from '../lib/native-catalog';
+/** Native engine fields that apply only to the Qwen Flash-Next engine (strata-hy4 ignores them). */
+const HY4_HIDDEN_FIELDS = new Set(['mtp', 'batchMtp', 'layer_split', 'gpu_order', 'split_skip_if_fits', 'vram_elastic', 'vram_reserve_mib', 'prompt_cache_spread', 'vision_tokens', 'vision_min_tokens', 'parallel', 'effort_position', 'anthropic_thinking']);
+/** Native engine fields that Inkling-2-Mini (strata-inkling) ignores — no thinking mode, and `parallel` (1..64) IS shown! */
+const INKLING_HIDDEN_FIELDS = new Set(['mtp', 'batchMtp', 'layer_split', 'gpu_order', 'split_skip_if_fits', 'vram_elastic', 'vram_reserve_mib', 'prompt_cache_spread', 'vision_tokens', 'vision_min_tokens', 'reasoning_budget_tokens', 'effort_position', 'anthropic_thinking']);
 /** One of the speed features: what it is called, what it does, whether it is on by default, and the engine environment it writes outside its default (server/native-settings.mjs). */
 interface SpeedSwitch {
     id: string;
@@ -157,9 +162,12 @@ export function NativeSettings({ model }: {
       {error ? <><ErrorNotice message={tr('Couldn’t load model settings.')} next={tr('Check that the engine is connected and this model is installed, then try again.')} onRetry={() => setRevision(value => value + 1)}/><details className="native-settings-diagnostic"><summary className="small">{tr('Details')}</summary><p className="small muted">{error}</p></details></> : <p className="small muted" role="status">{tr('Reading saved settings…')}</p>}
     </details>;
     const family = (native?.catalog?.families ?? []).find(f => f.sizes.some(s => s.id === model))?.family ?? null;
-    const draftingOffered = !!draftingChoices(family, native?.capabilities?.dflash2);
+    const isHy4 = family === HY4_FAMILY || /^hy4-flash/i.test(model);
+    const isInkling = family === INKLING_FAMILY || /^inkling-2-mini/i.test(model);
+    const draftingOpts = isHy4 ? ['dfly2', 'off'] : isInkling ? ['dspark', 'off'] : draftingChoices(family, native?.capabilities?.dflash2);
+    const draftingOffered = !!draftingOpts;
     const projectionField = modelFields?.find(f => f.id === 'refusal_direction_removal');
-    const rows = (modelFields ?? []).filter(f => f.id !== 'refusal_direction_removal' && (f.id !== 'ds_experts' || dsExperts || values[f.id] != null) && (f.id !== 'drafting' || draftingOffered || values[f.id] != null) && `${tr(f.label)} ${f.id} ${tr(f.group)}`.toLowerCase().includes(query.toLowerCase()));
+    const rows = (modelFields ?? []).filter(f => f.id !== 'refusal_direction_removal' && (!isHy4 || !HY4_HIDDEN_FIELDS.has(f.id)) && (!isInkling || !INKLING_HIDDEN_FIELDS.has(f.id)) && (f.id !== 'ds_experts' || dsExperts || values[f.id] != null) && (f.id !== 'drafting' || draftingOffered || values[f.id] != null) && `${tr(f.label)} ${f.id} ${tr(f.group)}`.toLowerCase().includes(query.toLowerCase())).map(f => f.id === 'drafting' && draftingOpts ? { ...f, choices: draftingOpts } : f);
     const switchRows = switches.filter(sw => `${tr(sw.label)} ${sw.id} ${tr(switchGroup(sw))}`.toLowerCase().includes(query.toLowerCase()));
     const switchRow = (sw: SpeedSwitch) => <label className="native-setting-row" key={sw.id}><span><strong>{tr(sw.label)}</strong><small>{tr(sw.hint)}</small></span><Select ariaLabel={tr(sw.label)} value={switchIsOn(sw, values.env) ? 'on' : 'off'} options={sw.words ? [{ value: sw.default, label: sw.words[sw.default] }, { value: sw.default === 'on' ? 'off' : 'on', label: sw.words[sw.default === 'on' ? 'off' : 'on'] }] : sw.default === 'on' ? [{ value: 'on', label: 'On (recommended)' }, { value: 'off', label: 'Off' }] : [{ value: 'off', label: 'Off (recommended)' }, { value: 'on', label: 'On' }]} onChange={v => changeSwitch(sw, v === 'on')}/></label>;
     const memoryOffered = modelFields?.some(f => f.id === 'q36_memory' && f.supported !== false) || values.q36_memory != null;

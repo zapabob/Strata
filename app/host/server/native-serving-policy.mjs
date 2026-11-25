@@ -4,7 +4,7 @@ import { q36KvFields, parseQ36KvCapabilities, verifiedQ36MemoryCapability } from
 import { q36MemoryRequest } from './q36-run-contract.mjs';
 
 const Q38_FAMILIES = new Set(['qwen', 'swift', 'coder', 'unsloth', 'gyro']);
-const RUNTIME_ARCH = {q38:'qwen4exp',q38dense:'qwen38_dense',q36:'qwen35moe',deepseek41:'deepseek41'};
+const RUNTIME_ARCH = {q38:'qwen4exp',q38dense:'qwen38_dense',q36:'qwen35moe',deepseek41:'deepseek41',hy4flash:'hy4flash',inkling2_loop:'inkling2_loop'};
 export const DENSE_KV = ['auto','f16','k8v4','spin8_k8v4','f16_turbo2','f16_turbo3','f16_turbo4'];
 export const ORDINARY_KV = ['fp16', 'int8', 'q4_0', 'k8v4'];
 export const SERVING_FLAGS = {
@@ -17,6 +17,8 @@ export function nativeServingPolicy(config = {}, family = null, capability = nul
   // The saved architecture wins over the catalog; neither executable nor model filename is consulted.
   const identity = config.arch || config.family || family;
   const id = identity === 'qwen38_dense' ? 'q38dense' : identity === 'qwen35moe' || identity === 'qwen36' ? 'q36' : identity === 'deepseek41' ? 'deepseek41'
+    : identity === 'hy4flash' || identity === 'hy4-flash' ? 'hy4flash'
+    : identity === 'inkling2_loop' || identity === 'inkling-2-mini' ? 'inkling2_loop'
     : identity === 'qwen4exp' || Q38_FAMILIES.has(identity) ? 'q38' : 'unknown';
   const { binarySha256, ...marker } = capability ?? {};
   const kvCapability = id === 'q36' && /^[a-f0-9]{64}$/.test(binarySha256 ?? '') &&
@@ -24,6 +26,8 @@ export function nativeServingPolicy(config = {}, family = null, capability = nul
   const note = id === 'q38dense' ? 'Dense native uses original GGUF weights and one text session. Long-window quality and latency remain unqualified; native admission preserves requested context.' : id === 'q38' ? 'Ordinary Qwen3.8 serving uses --kv. Independent K/V formats and Spin(8) capsules cannot serve requests.'
     : id === 'q36' ? 'Qwen3.6 uses negotiated FP32/FP16 storage. Unknown engines retain the legacy FP32 path. Spin(8) serving is unavailable.'
     : id === 'deepseek41' ? 'DeepSeek uses its own packed FP8 window and FP4 latent/index cache, not generic Qwen KV or Spin(8) controls.'
+    : id === 'hy4flash' ? 'Tencent Hy4-Flash uses its own strata-hy4 engine with FP16 KV and DFly2 drafting.'
+    : id === 'inkling2_loop' ? 'Inkling-2-Mini uses its own strata-inkling engine with native KV and DSpark drafting.'
     : 'The serving adapter is unknown. Generic KV and Spin(8) choices are unavailable.';
   return { id, runtimeArch: RUNTIME_ARCH[id] ?? null, ordinaryKv: id === 'q38dense' ? [...DENSE_KV] : id === 'q38' ? [...ORDINARY_KV] : [], note, kvCapability,
     memoryCapability: id === 'q36' ? verifiedQ36MemoryCapability(memoryCapability) : null };

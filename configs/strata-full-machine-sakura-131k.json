@@ -1,0 +1,31 @@
+{
+  "exe": "H:/Strata/build/engine-cuda135/strata-inkling2.exe",
+  "arch": "inkling2_loop",
+  "model_name": "sakura-inkling-2-mini-131k-full-machine",
+  "aliases": [
+    "Sakura-Inkling-2-Mini-Uncensored-Q4_K_M",
+    "sakura-inkling-2-mini",
+    "sakura-inkling-2-mini-131k",
+    "sakura-full-machine"
+  ],
+  "drafting": "off",
+  "args": [
+    "--model",
+    "H:/Strata/models/Sakura-Inkling-2-Mini-Uncensored-Q4_K_M.gguf",
+    "--max-context",
+    "131072",
+    "--kv-q8"
+  ],
+  "env": {
+    "STRATA_AUX_CPUS": "off",
+    "STRATA_AUX_IO_SMT": "1",
+    "STRATA_SSD_PREFETCH": "1",
+    "STRATA_IO_THREADS": "6",
+    "STRATA_VRAM_RESERVE_MB": "1536",
+    "STRATA_RAM_SQUEEZE": "on"
+  },
+  "host": "127.0.0.1",
+  "port": 8092,
+  "open_browser": false,
+  "fit_max_tokens": true
+}

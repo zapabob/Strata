@@ -31,9 +31,23 @@ C: was at 0.12 GB free (929 GB used). Measured top contributors:
 After hardlinking the separate components' DLLs, C: free rose from 0.12 GB to
 3.03 GB.
 
+## Cleanup performed (user approved "片付けたい")
+- Verified SHA first: Temp `DeepSeek-9B-Q4_K_M.gguf` is byte-identical to the H:
+  Qwen3.5-9B original (8cf793a3...), so it was safe to delete. Hikari's Temp copy
+  had a **different SHA** from the H: original (18c2a2c4 vs 0ab2a1f2) — it is the
+  actual benchmark entity, so it was kept.
+- Removed 8 obsolete engine generations (0.5.9, 0.6.0, 0.6.2, 0.6.3 x2, 0.6.4,
+  0.6.7, 0.6.8) and 3 stale Temp build copies (ds4-model, v072-target,
+  syncstrata-013). Small metadata (engine-component.json / BUILD.json) was backed
+  up to H:/Strata/evidence/cleanup-backup/manifests first.
+- Result: C: free **0.12 GB -> 27.17 GB**; only 0.6.9 + the four separate 0.6.9
+  components + hy4 0.1.64 remain; Temp keeps only hikari-model (6.71 GB).
+- App relaunched and reported "Strata engine 0.6.9 is installed", no crash log.
+- Receipt: H:/Strata/evidence/cleanup-report.json.
+
 ## Notes
-- No files were deleted — frozen evidence, old engine generations and benchmark
-  model copies are preserved per the project's workspace rules. Cleanup of old
-  generations / Temp copies is a user decision.
+- Frozen evidence (H:/Strata/evidence/*), all models and the active engine remain
+  untouched; only obsolete installed generations and verified-duplicate Temp
+  copies were removed.
 - Scripts: H:/Strata/evidence/install-4-separate-components.py,
   finish-q38-component.py, dedupe-component-dlls.py.

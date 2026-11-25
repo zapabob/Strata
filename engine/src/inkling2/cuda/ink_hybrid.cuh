@@ -20,7 +20,9 @@
 #include "../ink_cold_store.hpp"
 #include "../ink_host_avx2.h"
 #include "../ink_host_avx512.h"
+#include "strata/platform/aux_cpus.hpp"
 #include "strata/platform/commit.hpp"
+#include "strata/platform/cpu_relax.hpp"
 #include "strata/core/moe_wave_plan.hpp"
 #include "strata/core/ink_expert_policy.hpp"
 #include "strata/core/ink_pin_rule.hpp"
@@ -115,6 +117,52 @@ inline int ink_logical_cpus() noexcept {
     if (n > 0) return (int)n;
 #endif
     return std::max(1, (int)std::thread::hardware_concurrency());
+}
+
+inline std::vector<int> ink_primary_physical_cpus() noexcept {
+    std::vector<int> out;
+#ifdef _WIN32
+    DWORD len = 0;
+    GetLogicalProcessorInformationEx(RelationProcessorCore, nullptr, &len);
+    if (len > 0) {
+        std::vector<char> buf(len);
+        if (GetLogicalProcessorInformationEx(
+                RelationProcessorCore,
+                reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX>(buf.data()), &len)) {
+            for (DWORD off = 0; off < len;) {
+                const auto* e = reinterpret_cast<const SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX*>(buf.data() + off);
+                if (e->Size == 0 || off + e->Size > len) break;
+                if (e->Relationship == RelationProcessorCore) {
+                    bool took = false;
+                    for (WORD gi = 0; gi < e->Processor.GroupCount && !took; ++gi) {
+                        const GROUP_AFFINITY& g = e->Processor.GroupMask[gi];
+                        for (int bit = 0; bit < 64; ++bit) {
+                            if (g.Mask & (KAFFINITY(1) << bit)) {
+                                out.push_back((int)g.Group * 64 + bit);
+                                took = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                off += e->Size;
+            }
+        }
+    }
+#endif
+    return out;
+}
+
+inline void ink_pin_this_thread(int enc_cpu) noexcept {
+    if (enc_cpu < 0) return;
+#ifdef _WIN32
+    GROUP_AFFINITY ga{};
+    ga.Group = (WORD)(enc_cpu / 64);
+    ga.Mask  = (KAFFINITY)1ull << (enc_cpu % 64);
+    (void)SetThreadGroupAffinity(GetCurrentThread(), &ga, nullptr);
+#else
+    (void)enc_cpu;
+#endif
 }
 
 // ============================================================================
@@ -1642,12 +1690,9 @@ struct InkHybridEngine {
                 host_eval::expert_phase1(hm, hm.body, cur_x, tk.begin, tk.end, act_sh[tk.job]);
                 p1_left[tk.job].fetch_sub(1, std::memory_order_release);
             } else {
-                while (p1_left[tk.job].load(std::memory_order_acquire) > 0) {
-#if (defined(__GNUC__) || defined(__clang__)) && defined(__x86_64__)
-                    __builtin_ia32_pause();
-#else
-                    std::this_thread::yield();
-#endif
+                for (int sp = 0; p1_left[tk.job].load(std::memory_order_acquire) > 0; ++sp) {
+                    if (sp < 2048) strata_cpu_pause();
+                    else std::this_thread::yield();
                 }
                 host_eval::expert_phase2(hm, hm.body, act_sh[tk.job], tk.begin, tk.end, ydst);
             }
@@ -1748,7 +1793,10 @@ struct InkHybridEngine {
             eval_verify_group(gi);
         }
         if (n_threads > 1 && ng > 1) {
-            while (work_done.load(std::memory_order_acquire) < n_threads - 1) std::this_thread::yield();
+            for (int sp = 0; work_done.load(std::memory_order_acquire) < n_threads - 1; ++sp) {
+                if (sp < 2048) strata_cpu_pause();
+                else std::this_thread::yield();
+            }
         }
         work_mode = 0;
     }
@@ -1823,9 +1871,30 @@ struct InkHybridEngine {
             pf_buf_busy[b]  = false;
         }
 
+        const char* pin_env = std::getenv("STRATA_INK_PIN");
+        const bool do_pin = (pin_env == nullptr || pin_env[0] != '0');
+        const std::vector<int> prim_cpus = do_pin ? ink_primary_physical_cpus() : std::vector<int>{};
+        int master_cpu = -1;
+        std::vector<int> worker_cpus;
+        if (!prim_cpus.empty()) {
+            master_cpu = prim_cpus[0];
+            for (int t = 1; t < n_threads && (size_t)t < prim_cpus.size(); ++t) {
+                worker_cpus.push_back(prim_cpus[(size_t)t]);
+            }
+        }
+        {
+            std::string aux_err;
+            const char* aux_env = std::getenv("STRATA_AUX_CPUS");
+            const std::string aux_spec = (aux_env && aux_env[0] != '\0') ? std::string(aux_env) : std::string("off");
+            if (aux_spec != "0") (void)strata::aux_cpus::configure(aux_spec, aux_err);
+        }
+
         stop_flag.store(false, std::memory_order_relaxed);
         for (int t = 1; t < n_threads; ++t) {
-            workers.emplace_back([this, t]() {
+            const int pin_cpu = ((size_t)(t - 1) < worker_cpus.size()) ? worker_cpus[(size_t)(t - 1)] : -1;
+            workers.emplace_back([this, t, pin_cpu]() {
+                strata::aux_cpus::note_owned_thread();
+                if (pin_cpu >= 0) ink_pin_this_thread(pin_cpu);
                 uint32_t seen = 0, pf_seen = 0;
                 auto last_t = std::chrono::steady_clock::now();
                 while (!stop_flag.load(std::memory_order_relaxed)) {
@@ -1844,7 +1913,9 @@ struct InkHybridEngine {
                                         const size_t len = host_meta[key].body_bytes;
                                         for (size_t o = 0; o < len; o += 64) {
                                             if ((o & 16383u) == 0 && work_gen.load(std::memory_order_acquire) != seen) break;
-#if defined(__GNUC__) || defined(__clang__)
+#if defined(__x86_64__) || defined(_M_X64)
+                                            _mm_prefetch(ptr + o, _MM_HINT_T1);
+#elif defined(__GNUC__) || defined(__clang__)
                                             __builtin_prefetch(ptr + o, 0, 2);
 #endif
                                         }
@@ -1864,7 +1935,7 @@ struct InkHybridEngine {
                             workers_sleeping.fetch_sub(1, std::memory_order_release);
                             last_t = std::chrono::steady_clock::now();
                         } else {
-                            std::this_thread::yield();
+                            strata_cpu_pause();
                         }
                         continue;
                     }
@@ -1893,7 +1964,9 @@ struct InkHybridEngine {
                 }
             });
         }
-        master_thr = std::thread([this]() {
+        master_thr = std::thread([this, master_cpu]() {
+            strata::aux_cpus::note_owned_thread();
+            if (master_cpu >= 0) ink_pin_this_thread(master_cpu);
             uint32_t seen = 0;
             auto last_t = std::chrono::steady_clock::now();
             while (!stop_flag.load(std::memory_order_relaxed)) {
@@ -1901,7 +1974,7 @@ struct InkHybridEngine {
                 if (seq == seen) {
                     auto dt = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - last_t).count();
                     if (dt > 15) std::this_thread::sleep_for(std::chrono::microseconds(100));
-                    else std::this_thread::yield();
+                    else strata_cpu_pause();
                     continue;
                 }
                 seen = seq;
@@ -1932,7 +2005,10 @@ struct InkHybridEngine {
                     }
                     run_row_tasks();
                     const auto tq2 = std::chrono::steady_clock::now();
-                    while (work_done.load(std::memory_order_acquire) < n_threads - 1) std::this_thread::yield();
+                    for (int sp = 0; work_done.load(std::memory_order_acquire) < n_threads - 1; ++sp) {
+                        if (sp < 2048) strata_cpu_pause();
+                        else std::this_thread::yield();
+                    }
                     work_mode = 0;
                     if (prof_on) {
                         const auto tq3 = std::chrono::steady_clock::now();
@@ -1952,7 +2028,10 @@ struct InkHybridEngine {
                     eval_doorbell_job(j);
                 }
                 if (n_threads > 1 && cur_nj > 1) {
-                    while (work_done.load(std::memory_order_acquire) < n_threads - 1) std::this_thread::yield();
+                    for (int sp = 0; work_done.load(std::memory_order_acquire) < n_threads - 1; ++sp) {
+                        if (sp < 2048) strata_cpu_pause();
+                        else std::this_thread::yield();
+                    }
                 }
                 }
                 if (cold_store) {
@@ -1976,6 +2055,10 @@ struct InkHybridEngine {
                 }
             }
         });
+        if (master_cpu >= 0 || !worker_cpus.empty()) {
+            const std::string aux_line = strata::aux_cpus::set_topology(master_cpu, worker_cpus);
+            std::fprintf(stderr, "[InkHybrid] %s\n", aux_line.c_str());
+        }
         active = true;
     }
 

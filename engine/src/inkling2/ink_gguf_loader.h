@@ -1,5 +1,5 @@
 // engine/src/inkling2/ink_gguf_loader.h - Direct Community / Unsloth .gguf loader for strata-inkling
-// Supports single & split multi-shard GGUFs (UD-Q4_K_XL, IQ3_S, IQ4_NL, IQ4_XS, Q8_0, Q4_K, Q5_K, Q6_K, MXFP4, NVFP4)
+// Supports single & split multi-shard GGUFs (UD-Q4_K_XL, IQ3_S, IQ4_NL, IQ4_XS, Q8_0, Q4_K, Q5_K, Q6_K, TQ2_0, MXFP4, NVFP4)
 // in BOTH llama.cpp master (Unsloth GGUF_shard_rewrite) and PR #32187 layouts + optional GGUF dspark / mmproj + embedded o200k tokenizer.
 //
 // MIT License

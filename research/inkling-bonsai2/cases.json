@@ -1,0 +1,8 @@
+[
+  {"id":"capital","prompt":"The capital of Germany is Berlin. The capital of France is","tokens":6},
+  {"id":"arithmetic","prompt":"2 + 2 = 4\n3 + 5 =","tokens":5},
+  {"id":"japanese","prompt":"日本の首都は","tokens":6},
+  {"id":"image-red","prompt":"What colour is the square? Answer in one word.","image":"red","tokens":12},
+  {"id":"physics-reference","prompt":"At sea level, water","suffix":" boils at one hundred degrees Celsius."},
+  {"id":"japanese-reference","prompt":"富士山は","suffix":"日本で最も高い山です。"}
+]

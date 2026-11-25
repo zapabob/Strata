@@ -1,86 +1,92 @@
-## 0.8.1 での変更
+# Hakua / Strata
 
-注記：DS4 2.84倍／FLA 4.86倍／Sakura 22.44 t/s の数値は Antigravity の開発ログ由来で、本ビルドセッションでは独立再現していません。本セッションの実測は正規 GGUF・32K コンテキストで prefill 9.09 t/s／decode 11.78 t/s です（証拠：H:/Strata/evidence/inkling2-benchmark-result.txt）。
+[English](README.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [Deutsch](README.de.md) · [Français](README.fr.md) · [Español](README.es.md) · [Português](README.pt-BR.md) · [Polski](README.pl.md)
 
-本リリースはフォーク独自機能をすべて維持し、2026-11-22/23 のネイティブ高速化を追加します。プロダクト **0.8.1**、ネイティブエンジンファミリ **0.7.0**、upstream **Niko1221/Strata v0.2.21**（Control/engines 0.1.67）。RTX 5060 Ti（sm_120a）/ CUDA 13.5 最適化：DS4-9B prefill 2.84倍、decode +13.4%、E2E +22.7%、FLA GDN + Spin(8) triality exp2f で prefill 4.86倍・KV 59.4% 圧縮、Inkling-2 branchless router（1.16倍）、Sakura Inkling-2-Mini 65K〜98K コンテキスト（`--expert-vram 7.8` で decode 22.44 t/s、12.7倍、32/32 完全一致）。serve 層は GGUF 埋め込みトークナイザ／テンプレートと Inkling 出力パーサに対応、Hermes Agent に `inkling2` プロバイダを追加。Ryu さん（kuraneko1、MIT）の SM × VRAM プロファイル表を公式 CUDA Inkling-2 にマージし、upstream PR #6571 として還元。署名検証は削除済み、SHA-256 ダイジェストが残ります。`releaseQualified=false`。
+**Windows PC の全リソース（GPU・物理コア＋SMT スレッド・システム RAM・NVMe/SSD）を総動員して推論するローカル AI 環境。** Hakua は [Niko1221/Strata](https://github.com/Niko1221/Strata) の独立フォーク（`zapabob/Strata`）であり、公式上流 **v0.2.21**（`d46f5f268`、エンジン/Control `0.1.67`）を取り込みつつ、フォーク独自のランタイム・メモリー・エージェント機能および Blackwell CUDA 13.5 最適化を維持しています。
 
+## 0.8.1（エンジン 0.7.0）の主な更新
 
-Gen-H 更新 (コミット 21bedf91c): strata-inkling2.exe と strata.exe に float4 の k_stack_rms_norm/k_mix + exp2f、Zipf トークンキャッシュ、zero-copy マップ h_tok_buf を適用。moe_up 39.5ms から 4.6ms (-88%)、Sakura 131K で 32/32 トークン完全一致。
+- **実機の全4階層（GPU + 6物理コア/6SMT CPU + RAM + SSD）を使う異種混合推論**:
+  - **Windows ネイティブ `aux_cpus` CPU Sets ＋ SMT I/O 分離**（`aux_cpus.hpp`, `ssd_stream_scheduler.hpp`, `direct_file.cpp`）: GPU ホストおよび AVX2 MoE 計算を物理プライマリコアに固定し、全 SMT セカンダリスレッド（6コア12スレッド機では `io_smt=[1,3,5,7,9,11]`）を 6スレッド非同期 Direct I/O と `PrefetchVirtualMemory` 先読み専用に割り当てます。
+  - **CUDA 13.5 / SM120 Blackwell 向けネイティブエンジン5種を再ビルド**（`strata.exe`, `strata-inkling2.exe`, `strata-inkling.exe`, `strata-hy4.exe`, `strata-q38.exe`）: Gen-K/L ゼロコピーマップドドアベル、WDDM 1536 MiB VRAM 予約（Shared GPU Memory 退避防止）、Windows コミット上限連動の安全 RAM 予算（`hy4_cpu_experts.cpp`, `inkling2_engine.cu`）、Windows 物理コア固定＋`_mm_pause` スピン待機（`ink_hybrid.cuh`）、SM120 Q38 向けピン留め埋め込みステージング＋バッチ `PrefetchVirtualMemory`（`engine/q38/src/engine.cu`）を統合。
+  - **全実機推論ランチャー＆プリセット**: `tools/full_machine_infer.py`（`--list-models`, `--plan`, `--bench`, `--serve`）が GPU・CPU 物理/SMT トポロジ・RAM/コミット残量・SSD 空き容量を自動検出し、最適な 3階層配置プランと `configs/` サーバー設定を生成・実行します。
+- **公式上流 v0.2.21 3-way マージ**: 公式の 4階層 GPU+RAM+CPU+SSD MoE、マルチ GPU `--layer-split`、GUI 同期および Control/エンジン `0.1.67` の修正を取り込みつつ、`/btw`・`/deepresearch`・RustXNG Full・ワークフロースキル・Q38 Dense ランナー・DeepSeek 拡張・Hermes `inkling2` プロバイダ・kuraneko1（MIT）プロファイル表をすべて保持しています。
+
+## 実機ベンチマーク結果
+
+計測環境: **NVIDIA GeForce RTX 5060 Ti 16 GB（SM120, CUDA 13.5）・AMD Ryzen 5 4500（6コア12スレッド）・32 GB DDR4・デュアル SSD（`C:` Crucial P3 NVMe + `H:` S5-1TB SSD）**（16トークン入力 / 32トークン貪欲生成）:
+
+| モデル（サイズ） | エンジン・コンテキスト | 稼働階層 | Prefill (`pp`) | Decode (`tg`) | トークン一致 |
+|---|---|---|---:|---:|---|
+| **Sakura Inkling-2-Mini Q4_K_M** (16.28 GiB) | `strata-inkling2.exe` · 131K (Q8 KV) | GPU 10.85 GiB (2232 exps) + Pinned RAM 4.34 GiB (840 exps) + 6P/6SMT | **85.08 t/s** | **42.22–42.33 t/s** | **32/32 完全一致** |
+| **Sakura Inkling-2-Mini Q4_K_M** (16.28 GiB) | `strata-inkling2.exe` · 131K (Q8 KV) | 3階層スピル: GPU 10.85 GiB + RAM 3.60 GiB + **SSD mmap 0.74 GiB (`prefetch=on`)** + 6P/6SMT | 64.80 t/s | 14.24 t/s | **32/32 完全一致** |
+| **Inkling-2-Mini UD Q4_K_M** (15.47 GiB) | `strata-inkling2.exe` · 16K (Q8 KV) | GPU 10.42 GiB (2339 exps) + Pinned RAM 3.34 GiB (733 exps) + 6P/6SMT | **109.64 t/s** | **53.28 t/s** | 正常生成 |
+| **Qwen3.8-27B 3.69bpw MTP** (11.73 GiB) | `strata-q38.exe` · 4K (F16 KV) | GPU SM120 重み (10.44 GiB) + ピン留め埋め込み転送 + `PrefetchVirtualMemory` | 6.21 s (初回) | **29.95 t/s** | 正常生成 |
+
+*CPU スレッド設計の実測根拠（Ryzen 5 4500 A/B 検証）*: 6物理コア（`host=0`, `workers=2,4,6,8,10`）を計算専用、6 SMT（`1,3,5,7,9,11`）を非同期 I/O 専用にした場合は **42.22–42.33 t/s** だったのに対し、11ワーカー（12計算スレッド）へ過負荷割り当てするとメモリ帯域競合により **29.68 t/s**（-21.9%）へ低下しました。
 
 ## バージョンと配布物
 
-<!-- release-062-stable -->
-現在のアプリリリース: **0.8.1** — GitHub Latest: [リリースページ](https://github.com/zapabob/Strata/releases/tag/v0.8.1)。デスクトップインストーラーはリリースの **Assets** からダウンロードしてください。ファイル名は `Strata-0.8.1-windows-x64-setup.exe` です（GUI・アプリ本体・公式 v0.2.21 3-way マージ・Gen-I/J CUDA 13.5 エンジンすべて最新ビルド）。バンドルは `Strata-0.8.1-windows-x64.tar.7z`。GPU エンジンは同じ Assets の opt-in コンポーネント: `strata-engine-0.7.0-windows-x86_64-cuda-cuda13.tar.gz`（再ビルド Q38 27B/9B + Inkling-2、CUDA 13.5）と `strata-hy4-0.1.64-windows-x86_64-cuda-cuda13.tar.gz`（Hy4-Flash）。必ずリリースページを開いて Assets から正確なファイルを選んでください（ファイル名にバージョンが入っているとは限りません）。SHA-256 ダイジェストが完全性チェックです。`releaseQualified=false`。
+現在のリリース: **0.8.1** — GitHub Latest: [v0.8.1 リリースページ](https://github.com/zapabob/Strata/releases/tag/v0.8.1)
 
+- **デスクトップインストーラー**: `Strata-0.8.1-windows-x64-setup.exe`（ユーザー単位 Tauri/NSIS 導入、専用 Node 24.22.3・Python・Control 0.6.3・RustXNG Full 同梱）
+- **バンドルアーカイブ**: `Strata-0.8.1-windows-x64.tar.7z`（インストーラー＋`SHA256SUMS.txt`）
+- **CUDA 13.5 SM120 エンジンコンポーネント（opt-in）**: `strata-engine-0.7.0-windows-x86_64-cuda-cuda13.tar.gz`（再ビルド済み SM120 エンジン5種: `strata.exe`, `strata-inkling2.exe`, `strata-inkling.exe`, `strata-hy4.exe`, `strata-q38.exe`）
+- **Hy4-Flash コンポーネント（opt-in）**: `strata-hy4-0.1.64-windows-x86_64-cuda-cuda13.tar.gz`
+
+必ずリリースページの **Assets** から正確なファイルを選び、SHA-256 ダイジェストを確認してください。コンポーネントの ed25519 署名検証は削除済み（署名鍵なし）、Windows Authenticode 署名は未付与であり、**`releaseQualified=false`** です。
 
 ![Hakua / Strata real-model Japanese chat on Qwen3.8-27B](docs/media/native-qwen38-japanese-chat.png)
-*`strata-q38.exe` で `qwen3.8-27b-abliterated-3.69bpw-12GB-MTP.gguf` を実行している実環境スクリーンショット（CUDA 13 / RTX 5060 Ti 16 GB）。*
+*`strata-q38.exe` で `qwen3.8-27b-abliterated-3.69bpw-12GB-MTP.gguf` を実行している実環境スクリーンショット（CUDA 13.5 / RTX 5060 Ti 16 GB）。*
 
-## Qwen3.8 試作版の推奨 GGUF
+## クイックスタート（デスクトップ＆全実機ランチャー）
 
-RTX 5060 Ti（VRAM 16 GB）でローカルのテキスト会話を試すなら、実機検証に使った [soyaakinohara さんの混合量子化 GGUF（3.69 bpw）](https://huggingface.co/soyaakinohara/qwen3.8-27b-abliterated-3.69bpw-12GB-MTP.gguf) をおすすめします。量子化と公開を行った **soyaakinohara さん**、元の重みを公開した **AEON-7** に感謝します。モデルは別途ダウンロードし、まず4,096トークンのコンテキストでお試しください。ファイル名の「12GB」は VRAM 12 GB での動作保証ではありません。
+### デスクトップの導入・上書き更新
 
-[署名済みネイティブ CUDA 13.5 プレビュー](https://github.com/zapabob/Strata/releases/tag/v0.7.2) は、インストール済み 0.6.3 アプリで日本語の2ターン生成・応答途中の停止・アンロードに合格しました。初回リクエスト2組で短文 F16 プリフィルを従来ネイティブ経路より35〜43%短縮しました。同条件のデコードは Prism（llama.cpp）が速い結果でした。[導入・公開鍵・制限](docs/Q38_NATIVE_PREFILL_PREVIEW.md)
+1. 実行中の依頼を終え、モデルをアンロードし、アプリデータをバックアップしてから、トレイアイコンを含めて Strata を終了します。
+2. `Strata-0.8.1-windows-x64-setup.exe` を既存の導入フォルダへ上書き実行すると、モデル・会話・メモリー・ツール・API キー・承認設定を保持したまま更新できます。
+3. アプリの「手元のファイルを使う」から `strata-engine-0.7.0-windows-x86_64-cuda-cuda13.tar.gz` を取り込み、対応モデルまたはローカル GGUF を選んで読み込みます。詳細は [導入と戻し方](docs/HAKUA_INSTALL.md) を参照してください。
 
-## インストールと更新
+### 全実機推論ランチャー（`tools/full_machine_infer.py`）
 
-このフォーク用の Windows x64 NSIS インストーラーを使います。ユーザー単位で導入され、専用の Node・Python・Control を同梱しているため、システム側の開発環境は不要です。ネイティブ CUDA エンジンは別コンポーネントです。`tar.7z` にはインストーラー、CUDA エンジンパッケージ、Control パッケージ、説明書、チェックサムを収めており、モデル重みと個人データは含みません。
+```powershell
+# GPU/CPU/RAM/SSD の全階層を診断し、ローカルモデル一覧と配置プランを表示
+terminal\.venv\Scripts\python.exe tools\full_machine_infer.py --list-models
 
-実行中の依頼を終え、モデルをアンロードし、アプリデータをバックアップしてから、トレイを含めてアプリを終了してください。既存の導入先へそのまま上書きインストールすると、モデル・会話・メモリー・ツール・API キー・承認設定を保持したまま更新できます。圧縮した CUDA コンポーネントはアプリの「手元のファイルを使う」操作から取り込み、対応モデルまたはローカル GGUF を選んで読み込んでください。モデル名だけではエンジン互換性を判断できません。詳しくは [導入と戻し方](docs/HAKUA_INSTALL.md) を参照してください。
+# Sakura Inkling-2-Mini 131K を全実機設定でベンチマーク実行
+terminal\.venv\Scripts\python.exe tools\full_machine_infer.py --bench --model Sakura --max-new 32
 
-## 0.6.2 の主な特徴と独自機能
+# RAM スクイーズ付きで OpenAI/Anthropic 互換 API サーバーを起動 (127.0.0.1:8092)
+terminal\.venv\Scripts\python.exe tools\full_machine_infer.py --serve --model Sakura --port 8092 --squeeze
+```
 
-0.6.2 では Windows CUDA 13 / Blackwell（SM120）向けの [ローカル Qwen3.8-27B 系 Dense GGUF ランナー（`strata-q38.exe`）](docs/QWEN38_DENSE_NATIVE.md) を大幅に強化しました：
-- **テンソル単位の混合量子化ポリモーフィズム（`StrataQuantTensor`）**: `F32`, `F16`, `BF16`, `Q8_0`, `Q4_K`, `Q5_K`, `Q6_K`, `IQ3_S`, `IQ2_S`, `IQ4_XS` に加え、PrismML `PQ2_0`（type 142）を含む全11種をテンソル単位で動的ディスパッチ。
-- **Tensor Core バッチ Prefill ＋ マルチトークン GDN ＋ 融合 Spin8 Attention ＋ CUDA Graph Decode（CUDA 13.5 SM120）**:
-  - 140トークン Prefill（`--kv spin8_k8v4 --ctx-size 4096`）: `36,760.7 ms`（`3.81 tok/s`, `--conservative-sync`）→ **`1,558.3 ms`（ウォーム `89.8 tok/s`、23.6倍高速化）**。
-  - 定常 Decode（`GEN 32`、31 steps、パック単位 GEMV ＋ 8層フェンス CUDA Graph）: `206.4 ms/step` → **`85.13 ms/step`（`11.75 step/s`、2.42倍高速化）**。
-  - **長文脈実測（`--kv spin8_k8v4`, RTX 5060 Ti 16 GB）**: **65K (`65,536`)** 通過（1,024tok Prefill `10,813.5〜11,220.7 ms`, `91.3〜94.7 tok/s`、Decode `670.4 ms` / 7 steps）、**96K (`98,304`)** 通過（`required_with_reserve=15.09 GB`, 140tok Prefill `1,968.7 ms`）、**131K (`131,072`)** は 768 MiB GPU 予約保護によりガード拒否（`required=15.97 GB > available=15.91 GB`）。
-- **実 MTP `K=3` ドラフト検証ループ（`blk.64.nextn.*`）**: `--spec-draft-n-max 0..3`、`KvCache::rewind`、GDN 状態スナップショット／ロールバックに対応。
-- **KV キャッシュと日本語プロファイル**: `F16` / `Spin8 K8V4` / `F16-K・Turbo2/3/4-V`（`auto` 順: `f16` → `f16_turbo4` → `spin8_k8v4`）と、任意の日本語出力プロファイル（`model-default` で制約オフ）を選択可能。
+## 推奨 GGUF とフォーク独自機能
 
-`/btw` は停止操作を独立させた、ツールを使わない実際のサブエージェントです。`/research` と `/deepresearch` は出典を集めて調査し、Web 検索には同梱の RustXNG Full を利用できます（外部検索先へクエリを送信するため、検索は完全オフラインではありません）。出典数は回答の正確さを保証しません。
+- **16 GB VRAM 向け Qwen3.8-27B 推奨 GGUF**: 実機検証済みの [soyaakinohara さんの 3.69 bpw 混合量子化 GGUF](https://huggingface.co/soyaakinohara/qwen3.8-27b-abliterated-3.69bpw-12GB-MTP.gguf) をおすすめします（量子化・公開の **soyaakinohara さん**、元重みの **AEON-7** に感謝）。まずは 4,096 コンテキストでお試しください（ファイル名の `12GB` は VRAM 12 GB での動作保証ではありません）。
+- **自社ネイティブ Q38 Dense ランナー（`strata-q38.exe`）**: 全11種（`F32`, `F16`, `BF16`, `Q8_0`, `Q4_K`, `Q5_K`, `Q6_K`, `IQ3_S`, `IQ2_S`, `IQ4_XS`, `PQ2_0`）のテンソル単位混合量子化ディスパッチ、Tensor Core Prefill、Spin(8) / TurboQuant KV（`auto`: `f16` → `f16_turbo4` → `spin8_k8v4`）、MTP `K=3` ドラフト検証、任意の日本語正書法プロファイルに対応。詳しくは [QWEN38_DENSE_NATIVE.md](docs/QWEN38_DENSE_NATIVE.md)。
+- **エージェント＆ワークフロー機能**: 独立停止できるツール非使用サブエージェント `/btw`、同梱 RustXNG Full を使う `/research`・`/deepresearch`（有効時は外部検索プロバイダへ送信）、オプトインの非公開ワークフロースキル学習／自動適用、ワークスペース＆サイドバーファイル操作、スコープ限定チャットメモリーを搭載。詳細は [WORKFLOW_SKILLS.md](docs/WORKFLOW_SKILLS.md) と [BROWSER_SEARCH.md](docs/BROWSER_SEARCH.md)。
 
-ワークフロースキルの学習と自動適用は別々に切り替えられ、新規プロファイルでは両方とも無効です。既存設定、編集可能な非公開スキル、履歴と取り消しを維持します。ワークスペース／サイドバーのファイル操作、スコープ限定チャット履歴とメモリー、互換 PrismML・TurboQuant 経路、上限付きエキスパートメモリー、pack 整合性検査も維持しています。[スキル](docs/WORKFLOW_SKILLS.md) と [検索](docs/BROWSER_SEARCH.md) をご覧ください。
+## 保護条件と制限
 
-## 公式の取り込みと互換性
-
-公式ソースの基準は [6e38f588](https://github.com/Niko1221/Strata/commit/6e38f588a646c0ee6948a74afbe670eb75896106)（公式 0.2.15 / エンジン 0.1.60 相当）です。通信、ドラフト選択、プロンプトカーネル、メモリー管理、各 OS の修正を取り込んでいます。フォークのバージョン体系は独立しています。DeepSeek 互換性は公式が削除した経路を独自拡張として維持し、専用ランタイムがなければ読み込みを止めます。この Windows 配布は、ネイティブ画像入力、専用 DeepSeek エンジンの配布、Linux・Mac での推論検証を意味しません。
-
-## 保護条件と測定上の制限
-
-空き RAM 3 GiB、コミット余力 4 GiB、GPU 予約領域 768 MiB 以上、ディスク空き容量の下限を維持します。Windows の RAM 保護は読み込みと生成中も監視します。RAM 32 GB・VRAM 16 GB でもすべてのモデルやコンテキストが収まるわけではありません。最大長推論・一般的なモデル品質・GPU 同時実行は未認定（`releaseQualified=false`）です。インストーラーに Windows Authenticode 署名はありません。過去の測定記録は [リリース記録](docs/HAKUA_RELEASE.md) に元のバージョンのまま残しています。
+安全下限は変更していません：**空き RAM 3 GiB 以上**、**コミット余力 4 GiB 以上**、**GPU 予約領域 768 MiB 以上**（17 GiB 以下の Inkling-2 では WDDM 1536 MiB 既定）、**`C:` 空き 5 GiB 以上**、**`H:` 空き 10 GiB 以上**。一般的なモデル品質・最大ウィンドウ推論・GPU 同時多重実行は未認定（**`releaseQualified=false`**）です。本 Windows 配布にはネイティブ画像入力や Linux/macOS 推論検証は含まれません。過去の測定記録は [HAKUA_RELEASE.md](docs/HAKUA_RELEASE.md) に元のバージョンで保持しています。
 
 ## 資料と開発
 
-[導入](docs/HAKUA_INSTALL.md) · [リリース記録](docs/HAKUA_RELEASE.md) · [API・ハードウェア](docs/AI_REFERENCE.md) · [Terminal](docs/TERMINAL.md) · [ソースビルド](docs/SOURCE_INSTALL.md) · [パッケージ化](packaging/README.md) · [貢献ガイド](CONTRIBUTING.md) · [セキュリティ](SECURITY.md) · [ライセンス](LICENSE)
+[導入](docs/HAKUA_INSTALL.md) · [リリース記録](docs/HAKUA_RELEASE.md) · [API・ハードウェア](docs/AI_REFERENCE.md) · [Terminal](docs/TERMINAL.md) · [ソースビルド](docs/SOURCE_INSTALL.md) · [パッケージ化](tools/packaging/README.md) · [貢献ガイド](.github/CONTRIBUTING.md) · [セキュリティ](.github/SECURITY.md) · [ライセンス](LICENSE)
 
-```sh
-python -m pytest tests/terminal
+```powershell
+pytest tests/test_full_machine_infer.py
+python -m pytest terminal/tests/terminal
 ```
 
-```sh
-cd apps/host
+```powershell
+cd app/host
 pnpm test
 pnpm run build
 ```
 
-### Niko1221/Strata — 上流 Terminal リファレンス
-
-```sh
-curl -fsSL --connect-timeout 15 --max-time 120 https://github.com/Niko1221/Strata/releases/latest/download/install.sh -o install.sh && sh install.sh
-```
-
-```powershell
-irm -TimeoutSec 120 https://github.com/Niko1221/Strata/releases/latest/download/install.ps1 | iex
-```
-
 [Niko1221/Strata](https://github.com/Niko1221/Strata) · [Hermes Agent](https://github.com/NousResearch/hermes-agent) · [サードパーティ表記](third_party/)
 
-## 0.6.3 の変更点
+## 謝辞
 
-- ネイティブ Q38 の prefill は、トークン単位でスケールした FP16 活性値と 20 MiB の L2 常駐重みタイルを用いる cuBLAS Tensor Core GEMM に移行しました。decode は形式別の整列 Q8_1 dp4a GEMV と LayerFence(8) の CUDA Graph を使用します。
-- 長文脈の受け入れ判定は実測 VRAM に基づく段階的リストから prefill チャンクを選択します。768 MiB の GPU 予約、3 GiB の RAM 下限、4 GiB のコミット下限は変更していません。
-- 数値テストの合成重みを実モデル相当の振幅へ正規化しました。厳密な `_exact_q8` 許容値は緩めておらず、非整列の GEMV はバイトロードのスカラーカーネルへフォールバックします。
-- 検証: ネイティブテスト 17/17 が成功し、compute-sanitizer の memcheck/synccheck/racecheck は 0 errors / 0 hazards です。一般モデルの品質・全ウィンドウ推論・GPU 並行実行は未検証のままです (`releaseQualified=false`)。
-- 調査根拠: NVIDIA CUDA 13.5 リリースノート (cuBLASLt アルゴリズム 66 の Tensor Memory 並行時訂正) と Qwen3.8-Next アーキテクチャ報告 (GDN と全体注意の 3:1 ハイブリッド、r=4 圧縮と K=2048 トークン予算の QSA、ゲート付き残差、ホスト先読み n-gram 埋め込み)。
+Hakua / Strata を支える基盤技術・重み・研究成果を提供してくださっている **Niko1221/Strata**、**kuraneko1 (`_ryu15_`)**、**ggml & llama.cpp**、**NousResearch（Hermes Agent）**、**Qwen Team（Alibaba Cloud）**、**NVIDIA**、**RustXNG**、**libstrix**、**Node.js / Python / Tauri**、**Microsoft**、**ISTA-DASLab**、**PrismML**、**TurboQuant**、**Spin(8)**、**soyaakinohara さん**、**AEON-7** の皆様に心より感謝いたします。

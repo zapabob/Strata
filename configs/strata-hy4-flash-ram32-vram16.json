@@ -2,7 +2,7 @@
   "arch": "hy4flash",
   "engine": "strata",
   "model_name": "hy4-flash-sq-64",
-  "exe": "H:/Strata/build/engine-cuda135/strata-hy4.exe",
+  "exe": "H:/Strata/build/hy4-cuda135/strata-hy4.exe",
   "args": [
     "--native",
     "H:/Strata/models/Hy4-Flash-SQ-64.strata",
@@ -17,6 +17,9 @@
   ],
   "env": {
     "STRATA_RAM_SQUEEZE": "on",
+    "STRATA_AUX_CPUS": "off",
+    "STRATA_AUX_IO_SMT": "1",
+    "STRATA_IO_THREADS": "6",
     "HY4_KV_INIT_SLOTS": "16384",
     "HY4_VCACHE_FRAC": "0.35"
   },

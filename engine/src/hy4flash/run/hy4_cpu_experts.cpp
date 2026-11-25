@@ -16,7 +16,9 @@
 #include "hy4_io.h"
 #include "strata/core/moe_wave_plan.hpp"
 #include "strata/core/ssd_stream_scheduler.hpp"
+#include "strata/platform/aux_cpus.hpp"
 #include "strata/platform/cgroup_mem.hpp"
+#include "strata/platform/commit.hpp"
 #include "strata/platform/direct_file.hpp"
 #include "strata/quant/sk_codecs.hpp"
 
@@ -2084,10 +2086,24 @@ void CpuExperts::Impl::start_threads(int n) {
     act_n.assign(E, 0);
     act_body.assign(E, nullptr);
     act_slot.assign(E, -1);
+    {
+        std::string aux_err;
+        const char* aux_env = std::getenv("STRATA_AUX_CPUS");
+        const std::string aux_spec = (aux_env && aux_env[0] != '\0') ? std::string(aux_env) : std::string("off");
+        if (aux_spec != "0") (void)strata::aux_cpus::configure(aux_spec, aux_err);
+    }
     threads.reserve(nth);
+    std::vector<int> worker_enc_cpus;
     for (int i = 0; i < nth; ++i) {
         threads.emplace_back([this, i]() { worker(i); });
-        if (!pins.empty()) pin_native_thread(threads.back().native_handle(), pins[i]);
+        if (!pins.empty()) {
+            pin_native_thread(threads.back().native_handle(), pins[i]);
+            worker_enc_cpus.push_back((int)pins[i].group * 64 + pins[i].cpu);
+        }
+    }
+    if (!worker_enc_cpus.empty()) {
+        const std::string aux_line = strata::aux_cpus::set_topology(-1, worker_enc_cpus);
+        std::fprintf(stderr, "[cpuexp] %s\n", aux_line.c_str());
     }
     const char* pin_note = !pins.empty() ? " (pinned, physical cores first)" : (cg_constrained ? " (not pinned: cgroup CPU quota)" : " (not pinned)");
     std::fprintf(stderr, "[cpuexp] %d pool threads%s, spin %d us, sched=%d, pf=%d rows, l3_pf=%s\n",
@@ -2130,6 +2146,7 @@ void CpuExperts::Impl::do_l3_prefetch(int, uint64_t seen) {
 }
 
 void CpuExperts::Impl::worker(int tid) {
+    strata::aux_cpus::note_owned_thread();
     uint64_t seen = 0;
     uint64_t pf_seen = 0;
     for (;;) {
@@ -2784,9 +2801,12 @@ uint64_t CpuExperts::ram_budget_bytes() {
 
 uint64_t CpuExperts::ram_available_bytes() {
 #ifdef _WIN32
-    MEMORYSTATUSEX ms;
+    MEMORYSTATUSEX ms{};
     ms.dwLength = sizeof(ms);
-    return GlobalMemoryStatusEx(&ms) ? (uint64_t)ms.ullAvailPhys : 0;
+    if (!GlobalMemoryStatusEx(&ms)) return 0;
+    const uint64_t commit = strata::platform::commit_available(
+        (uint64_t)ms.ullAvailPageFile, strata::platform::commit_growth((uint64_t)ms.ullTotalPhys));
+    return strata::platform::host_ram_budget((uint64_t)ms.ullAvailPhys, commit);
 #else
     uint64_t avail = 0, mfree = 0, mbuf = 0, mcache = 0;
     if (std::FILE* f = std::fopen("/proc/meminfo", "r")) {
