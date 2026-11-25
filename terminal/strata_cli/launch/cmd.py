@@ -85,6 +85,7 @@ def add_parsers(sp: argparse._SubParsersAction) -> list[argparse.ArgumentParser]
     g.add_argument("--dsv41-package", metavar="FILE", help="DeepSeek: the engine package you downloaded from the release page (.tar.gz or .zip); "
                                                           "it is checked and installed instead of being fetched")
     g.add_argument("--model-path", metavar="PATH", help="use model files you already have: a folder of shards or one .gguf file")
+    g.add_argument("--inkling-engine", metavar="STRATA-INKLING", help="serve the local PQ2_0 GGUF in this terminal with a specified native strata-inkling build")
     g.add_argument("--data-dir", metavar="DIR", help="where downloaded model files are stored (default: Strata's data folder)")
     g.add_argument("--move-data", action="store_true",
                    help="with --data-dir: move the models you already have into the new folder. Without it nothing is moved: your models stay "
@@ -823,6 +824,9 @@ def run_launch(a: argparse.Namespace) -> int:
         return code
 
     try:
+        if getattr(a, "inkling_engine", None):
+            from strata_cli.launch.inkling_pq2 import launch
+            return launch(a)
         if a.list_presets:
             items = store.list_presets()
             if machine:

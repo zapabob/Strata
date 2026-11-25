@@ -29,6 +29,7 @@
 #include "strata/core/ink_dspark_layout.hpp"
 #include "strata/core/ink_names.hpp"
 #include "strata/core/mapped_pages.hpp"
+#include "strata/inkling2/pq2.hpp"
 #include "ink_q8f_pack.h"
 #include "strata/quant/dequant.hpp"
 #include "strata/quant/sk_codecs.hpp"
@@ -60,6 +61,11 @@ inline strata::quant::Type ggml_to_quant_type(uint32_t t) noexcept {
 
 // Decode a single row of `cols` elements from a GGUF tensor into FP32
 inline bool gguf_dequant_row_f32(uint32_t ggml_type, const uint8_t* src, float* dst, int64_t cols) {
+    if (ggml_type == 142) {
+        if (cols <= 0 || cols % 128) return false;
+        strata::inkling2::pq2_h128_row(src, dst, static_cast<size_t>(cols), fp16_to_f32);
+        return true;
+    }
     if (ggml_type == 0) { // F32
         std::memcpy(dst, src, static_cast<size_t>(cols) * 4);
         return true;
@@ -83,6 +89,48 @@ inline size_t gguf_row_bytes(uint32_t ggml_type, int64_t cols) {
     int be = 0, bb = 0;
     if (!strata::block_geometry(ggml_type, be, bb) || be <= 0) return 0;
     return static_cast<size_t>(cols / be) * static_cast<size_t>(bb);
+}
+
+inline bool validate_pq2_basis(const strata::GgufModel& model, std::string& err) {
+    std::set<std::string> banks;
+    for (size_t shard = 0; shard < model.size(); ++shard) {
+        for (const auto& tensor : model.shard(shard).tensors()) {
+            if (tensor.type != 142) continue;
+            if (tensor.shape.size() != 3 || tensor.shape[0] % 128 || tensor.shape[2] != 128 ||
+                !model.in_bounds(tensor, shard)) {
+                err = "Invalid PQ2_0 expert bank extent: " + tensor.name;
+                return false;
+            }
+            banks.insert(tensor.name);
+        }
+    }
+    const auto& meta = model.meta();
+    if (banks.empty() && !meta.get("prism.hadamard.version")) return true;
+    auto number_is = [&](const char* key, uint64_t value) {
+        const auto* v = meta.get(key);
+        return v && v->type == strata::MetaType::U32 && v->u == value;
+    };
+    auto string_is = [&](const char* key, const char* text) {
+        const auto* v = meta.get(key);
+        return v && v->type == strata::MetaType::STRING && v->s == text;
+    };
+    const auto* names = meta.get("prism.hadamard.weight_names");
+    std::set<std::string> expected, declared;
+    for (int layer = 0; layer < 24; ++layer) {
+        for (const char* projection : {"gate_up", "down"})
+            expected.insert("blk." + std::to_string(layer) + ".ffn_" + projection + "_exps.weight");
+    }
+    if (names && names->type == strata::MetaType::ARRAY && names->elem == strata::MetaType::STRING)
+        for (const auto& item : names->items) declared.insert(item.s);
+    if (banks.empty() || !std::includes(expected.begin(), expected.end(), banks.begin(), banks.end()) ||
+        declared != banks || !names || names->count != banks.size() ||
+        !number_is("prism.hadamard.version", 1) || !number_is("prism.hadamard.block_size", 128) ||
+        !string_is("prism.hadamard.transform", "normalized-sylvester-walsh-hadamard") ||
+        !string_is("prism.hadamard.axis", "input-last-dimension") || !string_is("prism.hadamard.sign_mode", "identity")) {
+        err = "Unsupported Inkling PQ2_0 basis or incomplete list of transformed expert banks.";
+        return false;
+    }
+    return true;
 }
 
 // Bit-exact lossless repack of one row of GGUF block_nvfp4 (64 values = 4 UE4M3 scales + 32B E2M1 split-half nibbles)
@@ -345,6 +393,7 @@ struct GgufAdapter {
             return false;
         }
 
+        if (!gguf_detail::validate_pq2_basis(*model, err)) return false;
         is_rewrite_layout = (model->find("blk.0.ffn_gate_up_exps.weight") != nullptr);
         is_merged_layout  = is_rewrite_layout && (model->find("loop_res_query.weight") == nullptr);
 
@@ -907,7 +956,15 @@ struct GgufAdapter {
 
             // Optional per-expert scales (mandatory for NVFP4, 1.0f if absent for requantized types)
             auto load_scale = [&](const std::string& sn, bool required, std::vector<float>& out) -> bool {
-                if (model->find(sn)) return read_tensor_f32(*model, sn, out, err);
+                if (model->find(sn)) {
+                    if (!read_tensor_f32(*model, sn, out, err)) return false;
+                    if (out.size() != static_cast<size_t>(c.n_experts) ||
+                        !std::all_of(out.begin(), out.end(), [](float s) { return std::isfinite(s) && s >= 0.0f; })) {
+                        err = "Invalid per-expert scale vector: " + sn;
+                        return false;
+                    }
+                    return true;
+                }
                 if (required) { err = "GGUF: NVFP4 expert missing required scale " + sn; return false; }
                 out.assign(c.n_experts, 1.0f);
                 return true;

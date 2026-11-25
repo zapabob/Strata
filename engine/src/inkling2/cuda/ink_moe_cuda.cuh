@@ -409,7 +409,7 @@ static_assert(sizeof(InkGgufExpertHeader) == 32, "InkGgufExpertHeader must be 32
 
 __host__ __device__ inline bool ink_gguf_has_gpu_kernel(uint32_t t) noexcept {
     switch (t) {
-        case 0: case 1: case 2: case 6: case 8: case 10: case 11: case 12: case 13: case 14: case 18: case 20: case 23: case 30: case 39:
+        case 0: case 1: case 2: case 6: case 8: case 10: case 11: case 12: case 13: case 14: case 18: case 20: case 23: case 30: case 39: case 142:
             return true;
         default:
             return false;
@@ -433,6 +433,7 @@ __host__ __device__ inline size_t ink_gguf_row_bytes(uint32_t t, int K) noexcept
         case 20: return (size_t)(K / 32) * 18u;
         case 23: return (size_t)(K / 256) * 136u;
         case 39: return (size_t)(K / 32) * 17u;
+        case 142: return K % 128 == 0 ? (size_t)(K / 128) * 34u : 0u;
         default: return 0u;
     }
 }
@@ -525,7 +526,35 @@ __device__ __forceinline__ void ink_gguf_row_dot_multi(
     const int l4  = lane & 3;   // 0..3 (8-elem chunk within sub-block)
     const int in32 = l4 * 8;
 
-    if (ggml_type == 12) {  // Q4_K: 256 elems = 144 B
+    if (ggml_type == 142) {
+        // The Hadamard transform is symmetric. Transform four coefficients per lane
+        // once, then reuse the physical row for each token routed to this expert.
+        for (int col = 0; col < K; col += 128) {
+            const uint8_t* block = row + (size_t)(col / 128) * 34;
+            const unsigned bits = block[2 + lane];
+            const int a = int(bits & 3) - 1, b = int((bits >> 2) & 3) - 1;
+            const int c = int((bits >> 4) & 3) - 1, d = int(bits >> 6) - 1;
+            int h[4] = {a + b + c + d, a - b + c - d, a + b - c - d, a - b - c + d};
+#pragma unroll
+            for (int step = 1; step < 32; step *= 2) {
+#pragma unroll
+                for (int j = 0; j < 4; ++j) {
+                    const int peer = __shfl_xor_sync(0xffffffffu, h[j], step);
+                    h[j] = (lane & step) ? peer - h[j] : h[j] + peer;
+                }
+            }
+            const float scale = f16_to_f32(ld16_u(block)) * 0.08838834764831844f;
+#pragma unroll
+            for (int m = 0; m < MAX_M; ++m) {
+                if (m < n_e) {
+                    const float4 v = *reinterpret_cast<const float4*>(xf_ptrs[m] + col + 4 * lane);
+                    const float dot = fmaf(float(h[3]), v.w, fmaf(float(h[2]), v.z,
+                                      fmaf(float(h[1]), v.y, float(h[0]) * v.x)));
+                    acc[m] = fmaf(scale, dot, acc[m]);
+                }
+            }
+        }
+    } else if (ggml_type == 12) {  // Q4_K: 256 elems = 144 B
         const int j64 = sub >> 1;
         const int hi  = sub & 1;
         for (int b = 0; b < (K >> 8); ++b) {

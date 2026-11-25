@@ -39,6 +39,7 @@ const TypeInfo kTable[] = {
     {Type::NVFP4,   "nvfp4",   QK_NVFP4, sizeof(block_nvfp4),  kQ80,          true,  false},
     {Type::Q1_0,    "q1_0",    QK1_0, sizeof(block_q1_0),      kQ80,          false, false},
     {Type::Q2_0,    "q2_0",    QK2_0, sizeof(block_q2_0),      kQ80,          true,  false},
+    {Type::PQ2_0,   "pq2_0",   128, 34,                        Type::F32,     false, false},
     // the trellis types: 128 values a block, 2 + 4K bytes (2 + 8K for the pair layout); their rows are tq_cpu.hpp's
     {Type::TQ2_T,   "tq2_t",   128, 34,                        kQ80,          false, false},
     {Type::TQK6,    "tqk6",    128, 26,                        kQ80,          false, false},

@@ -68,7 +68,7 @@ def _is_safetensors_dir(target: Path) -> bool:
 
 
 def _ensure_inkling_tokenizer(native: Path, folder: Path, data_dir: Path, src: Path, tokenizer: Path) -> bool:
-    """Ensure `tokenizer/vocab.json` exists by extracting from .strata manifest or companion tokenizer files if needed."""
+    """Extract the tokenizer embedded in the selected model, or read its companion files."""
     if (tokenizer / "vocab.json").is_file():
         return True
     try:
@@ -76,6 +76,14 @@ def _ensure_inkling_tokenizer(native: Path, folder: Path, data_dir: Path, src: P
         tools = str(Path(src) / "tools")
         if tools not in sys.path:
             sys.path.insert(0, tools)
+        if native.is_file() and native.suffix.lower() == ".gguf" and tokenizer.name == "tokenizer":
+            import strata_tokenizer
+            try:
+                strata_tokenizer.extract(native, tokenizer.parent)
+                if (tokenizer / "vocab.json").is_file():
+                    return True
+            except (ValueError, KeyError, OSError):
+                pass
         import inkling_tokenizer
         from strata_control import inkling_family
         data_ink = Path(data_dir) / "models" / inkling_family.FAMILY

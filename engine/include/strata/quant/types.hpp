@@ -14,6 +14,7 @@ enum class Type : int32_t {
     Q2_K = 10, Q3_K = 11, Q4_K = 12, Q5_K = 13, Q6_K = 14, Q8_K = 15,
     IQ2_XXS = 16, IQ2_XS = 17, IQ3_XXS = 18, IQ1_S = 19, IQ4_NL = 20, IQ3_S = 21, IQ2_S = 22, IQ4_XS = 23,
     IQ1_M = 29, BF16 = 30, TQ2_0 = 35, MXFP4 = 39, NVFP4 = 40, Q1_0 = 41, Q2_0 = 42,
+    PQ2_0 = 142,
     // Strata's trellis types (Agention ids): their rows are tq_cpu.hpp's, the table only knows their geometry
     TQ2_T = 144, TQK6 = 145, TQK7 = 146, TQP5 = 147, TQP6 = 148, TQP7 = 149,
 };

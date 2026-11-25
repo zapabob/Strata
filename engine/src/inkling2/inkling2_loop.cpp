@@ -1,6 +1,7 @@
 // src/inkling2/inkling2_loop.cpp - Native ModelFamily::Inkling2Loop + DSpark Block-8 Markov ops
 // MIT License - Copyright (c) 2026 Strata contributors
 #include "strata/inkling2/inkling2_loop.hpp"
+#include "strata/inkling2/pq2.hpp"
 #include "strata/artifact/gguf_reader.hpp"
 #include "strata/quant/act.hpp"
 #include "strata/quant/dequant.hpp"
@@ -290,7 +291,9 @@ void eval_inkling2_expert_batch(
         } else {
             std::vector<float> wrow(hidden);
             auto deq_row = [&](const uint8_t* src) {
-                if (hdr.gu_type == 0) {
+                if (hdr.gu_type == 142) {
+                    pq2_h128_row(src, wrow.data(), hidden, fp16_bits_to_f32);
+                } else if (hdr.gu_type == 0) {
                     std::memcpy(wrow.data(), src, hidden * 4);
                 } else if (hdr.gu_type == 1) {
                     const uint16_t* p = reinterpret_cast<const uint16_t*>(src);
@@ -436,7 +439,9 @@ void eval_inkling2_expert_batch(
             std::vector<float> wrow(inter);
             for (size_t r = 0; r < hidden; ++r) {
                 const uint8_t* src = w2_base + r * row_b;
-                if (hdr.dn_type == 0) {
+                if (hdr.dn_type == 142) {
+                    pq2_h128_row(src, wrow.data(), inter, fp16_bits_to_f32);
+                } else if (hdr.dn_type == 0) {
                     std::memcpy(wrow.data(), src, inter * 4);
                 } else if (hdr.dn_type == 1) {
                     const uint16_t* p = reinterpret_cast<const uint16_t*>(src);
@@ -540,7 +545,9 @@ GgufDot gguf_dot_for(uint32_t type, size_t cols) noexcept {
 
 // One weight row -> floats, as the dequantize fallback of eval_inkling2_expert_batch does it.
 void gguf_deq_row(uint32_t type, const uint8_t* src, float* wrow, size_t n) noexcept {
-    if (type == 0) {
+    if (type == 142) {
+        pq2_h128_row(src, wrow, n, fp16_bits_to_f32);
+    } else if (type == 0) {
         std::memcpy(wrow, src, n * 4);
     } else if (type == 1) {
         const uint16_t* p = reinterpret_cast<const uint16_t*>(src);

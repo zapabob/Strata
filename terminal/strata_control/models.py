@@ -35,7 +35,8 @@ MAX_CONFIG_BYTES = 1024 * 1024
 MAX_CONFIGS = 128
 MAX_IMPORT_SHARDS = 128
 SHARD = re.compile(r"(.+)-(\d{5})-of-(\d{5})\.gguf\Z", re.I)
-SUPPORTED_ARCHITECTURES = frozenset({
+INKLING_ARCHS = frozenset({"inkling2", "inkling2_loop"})
+SUPPORTED_ARCHITECTURES = INKLING_ARCHS | frozenset({
     "qwen4exp", "qwen35", "qwen2", "qwen", "deepseek2", "deepseek", "dsv41", "deepseek41", "qwen35moe"
 })
 SUPPORTED_SELECTIONS = frozenset({"qwen/Q2_0", "qwen/IQ2_XS", "qwen/IQ3_XXS", "qwen/IQ3_S",
@@ -918,7 +919,8 @@ def plan_import(raw_path: str) -> dict:
             if inspected["architecture"] is not None and inspected["architecture"] not in SUPPORTED_ARCHITECTURES:
                 issues.append(f"{item.name}: unsupported_architecture")
     if metadata is not None:
-        if metadata["architecture"] not in SUPPORTED_ARCHITECTURES:
+        arch = metadata["architecture"]
+        if arch not in SUPPORTED_ARCHITECTURES:
             issues.append("unsupported_or_missing_architecture")
         if arch in INKLING_ARCHS:
             if metadata["tokenizer_model"] not in ("gpt2", "bpe", "tiktoken", None) or (
@@ -942,6 +944,18 @@ def plan_import(raw_path: str) -> dict:
     elif projectors:
         messages.extend(p["plain"] for p in projectors)
     candidate = _candidate_selection(shards)
+    native_pq2 = False
+    if metadata and metadata["architecture"] in INKLING_ARCHS and observed_experts == {"PQ2_0"} and len(shards) == 1:
+        from strata_control.inkling_pq2 import inspect_model
+        try:
+            inspect_model(shards[0])
+        except (OSError, ValueError) as exc:
+            issues.append(str(exc))
+        else:
+            native_pq2 = True
+            candidate = dict(family="inkling-2-mini", model="PQ2_0", basis="inkling_pq2_hadamard",
+                             expected_expert_types=["PQ2_0"], expected_tensor_count=observed_tensor_count,
+                             setup_args_hint=["--family", "inkling-2-mini", "--model-path", str(shards[0])])
     dense = metadata is not None and metadata.get("architecture") == "qwen35"
     if dense:
         from strata_control.qwen38_dense import preview
@@ -1006,7 +1020,7 @@ def plan_import(raw_path: str) -> dict:
     # Prism tensor encodings are not native Q2_0, even under a known shard name.
     # Leave them to the app's local llama-server path instead of preparing an
     # unrelated Flash-Next pack (which also reports the wrong disk requirement).
-    local_runtime = "PrismML" if metadata is not None and {"PQ2_0", "PTQ1_0"} & metadata.get("tensor_types", {}).keys() else None
+    local_runtime = "PrismML" if not native_pq2 and metadata is not None and {"PQ2_0", "PTQ1_0"} & metadata.get("tensor_types", {}).keys() else None
     if local_runtime and not (candidate and candidate.get("family") == "qwen38_dense"):
         candidate = None
         messages.append(

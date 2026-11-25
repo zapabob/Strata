@@ -17,6 +17,7 @@
 
 #include "ink_cuda.cuh"
 #include "ink_moe_cuda.cuh"
+#include "strata/inkling2/pq2.hpp"
 #include "../ink_cold_store.hpp"
 #include "../ink_host_avx2.h"
 #include "../ink_host_avx512.h"
@@ -528,7 +529,9 @@ inline void eval_gguf_raw_batch_h(
     };
 
     auto deq_gguf_row_h = [](uint32_t gtype, const uint8_t* src, float* dst, int K) noexcept {
-        if (gtype == 0) {
+        if (gtype == 142) {
+            strata::inkling2::pq2_h128_row(src, dst, K, f16_to_f32_h);
+        } else if (gtype == 0) {
             std::memcpy(dst, src, (size_t)K * 4u);
         } else if (gtype == 1) {
             const uint16_t* p = reinterpret_cast<const uint16_t*>(src);

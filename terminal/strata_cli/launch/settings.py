@@ -27,6 +27,7 @@ PICTURE_SHORT = {"off": "off", "on": "on", "cpu": "on, read by the processor", "
 ACCESS_WORDS = {"local": "This computer only", "lan": "My local network", "address": "One address only", "cloudflare": "Cloudflare tunnel",
                 "tailscale": "Tailscale"}
 TUNE_MODES = ("quick", "thorough", "skip")
+SPEED_MODES = ("faster", "full")
 VISION_MODES = ("off", "on", "gpu", "cpu")
 MTP_MODES = ("on", "off")
 #: strata_control/split_engine.py MODES: the all-cards split engine on NVIDIA and AMD gfx1201 cards (auto = by itself where it is supported, the default)
