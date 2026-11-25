@@ -154,6 +154,7 @@ fn ggml_type_geometry(type_id: u32) -> Option<(&'static str, u64, u64)> {
         39 => Some(("MXFP4", 32, 17)),
         40 => Some(("NVFP4", 64, 36)),
         42 => Some(("Q2_0", 64, 18)),
+        142 => Some(("PQ2_0", 128, 34)),
         143 => Some(("PTQ1_0", 128, 28)),
         144 => Some(("TQ2_T", 128, 34)),
         145 => Some(("TQK6", 128, 26)),
@@ -161,6 +162,10 @@ fn ggml_type_geometry(type_id: u32) -> Option<(&'static str, u64, u64)> {
         147 => Some(("TQP5", 128, 42)),
         148 => Some(("TQP6", 128, 50)),
         149 => Some(("TQP7", 128, 58)),
+        1001 => Some(("PQ2_0", 128, 34)),
+        1002 => Some(("PTQ1_0", 128, 28)),
+        2001 => Some(("TQ4_1S", 32, 20)),
+        2002 => Some(("TQ3_0S", 32, 15)),
         _ => None,
     }
 }
