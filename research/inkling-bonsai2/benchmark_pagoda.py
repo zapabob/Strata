@@ -1,4 +1,4 @@
-"""Run the published Pagoda Bench user prompt against both native Strata models."""
+"""Run the published Pagoda Bench user prompt against selected native Strata models."""
 
 import argparse
 import hashlib
@@ -25,6 +25,7 @@ from sm120_native import Nvml
 SOURCE = "https://artificialanalysis.ai/microevals/pagoda-bench-1788018029907"
 PROMPT_DIGEST = "0221b0589379ba83a6c0b9d5ed9f1de2e129c78ba26b6d289414d6bcb4324dc1"
 SEED = 47
+ANSWER_OPENER = "<|message_model|><|content_text|>"
 FENCE = re.compile(r"(?:^|\n)[ \t]*\x60{3}html[ \t]*\r?\n(.*?)\r?\n[ \t]*\x60{3}(?=\r?\n|$)", re.I | re.S)
 DOCUMENT = re.compile(r"(?:<!doctype\s+html\s*>\s*)?<html(?=\s|>).*?</html\s*>", re.I | re.S)
 ENGINES = ("strata-inkling.exe", "strata-inkling2.exe", "llama-server.exe", "ollama.exe")
@@ -54,10 +55,16 @@ def freeze(args, tokenizer):
         template = ChatTemplate(args.template)
         rendered = template.render([dict(role="user", content=published_prompt())],
                                    tools=None, reasoning_effort="none")
+        if args.answer_only:
+            from serve.inkling_dialect import finish_prompt
+            rendered = finish_prompt(rendered, thinking=False)
+            if not rendered.endswith(ANSWER_OPENER):
+                raise ValueError("Inkling's visible answer opener is missing")
         ids = tokenizer.encode(rendered, add_special_tokens=False).ids
     if not ids or len(ids) + args.budget >= args.context:
         raise ValueError("The published prompt and budget exceed the requested context")
-    model_paths = dict(sq10=args.sq10, nvfp4=args.nvfp4)
+    model_paths = {arm: path for arm, path in (("sq10", args.sq10), ("nvfp4", args.nvfp4))
+                   if args.arm in ("both", arm)}
     models = {}
     expected_sizes = dict(sq10=10471526400, nvfp4=15036265248)
     for arm, path in model_paths.items():
@@ -71,7 +78,8 @@ def freeze(args, tokenizer):
                            system_prompt=None, reasoning_effort="none", context=args.context,
                            budget=args.budget, temperature=0, seed=SEED, repeat_penalty=1,
                            engine_options=engine_options(args), models=models,
-                           arm_order=["sq10", "nvfp4"]))
+                           arm_order=list(model_paths), **({"answer_opener": ANSWER_OPENER}
+                                                           if args.answer_only else {})))
     return ids, model_paths
 
 
@@ -137,7 +145,8 @@ def run_arm(args, ids, tokenizer, arm, model):
                 continue
             result = dict(output_ids=tokens, input_tokens=len(ids), output_tokens=len(tokens), stop="interrupted",
                           generation_wall_seconds=None if started is None else time.perf_counter() - started)
-        channels = visible_and_reasoning(result["output_ids"], tokenizer, result["stop"])
+        answer_prefix = tokenizer.encode(ANSWER_OPENER, add_special_tokens=False).ids if args.answer_only else []
+        channels = visible_and_reasoning(answer_prefix + result["output_ids"], tokenizer, result["stop"])
         html, strict, complete = candidate(channels["content"])
         if html is not None:
             (folder / "index.html").write_bytes(html.encode("utf-8"))
@@ -161,8 +170,13 @@ def run_arm(args, ids, tokenizer, arm, model):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("prepare", "run"))
-    for option in ("engine", "sq10", "nvfp4", "out", "tokenizer", "template", "expert-cache-dir"):
+    for option in ("engine", "out", "tokenizer", "template", "expert-cache-dir"):
         parser.add_argument(f"--{option}", type=Path, required=True)
+    parser.add_argument("--sq10", type=Path)
+    parser.add_argument("--nvfp4", type=Path)
+    parser.add_argument("--arm", choices=("both", "sq10", "nvfp4"), default="both")
+    parser.add_argument("--answer-only", action="store_true",
+                        help="Start in Inkling's visible answer channel without prefilled answer text")
     parser.add_argument("--budget", type=int, default=16384)
     parser.add_argument("--context", type=int, default=24576)
     parser.add_argument("--wait-minutes", type=int, default=30)
@@ -171,6 +185,9 @@ def main():
     parser.add_argument("--prefill-chunk", type=int, default=128)
     parser.add_argument("--minimum-cold-mib", type=int, default=256)
     args = parser.parse_args()
+    if ((args.arm in ("both", "sq10") and args.sq10 is None)
+            or (args.arm in ("both", "nvfp4") and args.nvfp4 is None)):
+        parser.error("Supply a weight file for each selected model")
     if args.budget <= 0 or args.wait_minutes <= 0 or not args.expert_cache_dir.is_dir():
         parser.error("Use a positive budget and wait interval, and an existing scratch directory")
     args.out.mkdir(parents=True, exist_ok=True)
