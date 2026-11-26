@@ -1,10 +1,10 @@
-import type {NativeFamily,NativeSize} from './native';
+import type {NativeFamily,NativeSize,NativeState} from './native';
 import {tr} from './i18n';
 import {nvfp4Version} from './native-names';
-export interface CatalogVersion extends NativeSize{sourceFamily:string;edition:string;images:boolean}
+export interface CatalogVersion extends NativeSize{sourceFamily:string;edition:string;images:boolean;localProfile?:true}
 export interface CatalogModel extends Omit<NativeFamily,'sizes'>{sizes:CatalogVersion[]}
 export function nativeVersionLabel(model:string){const nv=nvfp4Version(model);if(nv)return tr(nv.name);return tr(({Q2_0:'Fastest',IQ2_XS:'Compact',IQ3_XXS:'Balanced',IQ3_S:'High quality',IQ1_M:'Coding','Gyro-S':'Smallest','Gyro-M':'Small memory','IST-DAS-1.75bpw':'Smallest','IST-DAS-2.00bpw':'Balanced','IST-DAS-2.25bpw':'Best quality','ISTA-DAS-Coder':'ISTA-DAS Coder','SQ-64':'Flagship','SQ-96':'High quality','SQ-128':'Highest quality','SQ-20':'Lossless','SQ-15':'Flagship','SQ-10':'Compact'} as Record<string,string>)[model]??model);}
-export const catalogVersionLabel=(version:CatalogVersion)=>{if(version.sourceFamily===INKLING_FAMILY&&/^UD-/i.test(version.model))return `${tr('Unsloth')} · ${version.model}`;const label=nativeVersionLabel(version.model);return [tr(version.edition),label===version.model&&version.edition?'':label].filter(Boolean).join(' · ');};
+export const catalogVersionLabel=(version:CatalogVersion)=>{if(version.localProfile)return version.model;if(version.sourceFamily===INKLING_FAMILY&&/^UD-/i.test(version.model))return `${tr('Unsloth')} · ${version.model}`;const label=nativeVersionLabel(version.model);return [tr(version.edition),label===version.model&&version.edition?'':label].filter(Boolean).join(' · ');};
 /**
  * Models whose picture files Load fetches by itself (strata_control/pictures.py): the Flash-Next GGUF families, which share the original's reader (Swift has its own file).
  * NVFP4 packs, Qwen3.6 and DeepSeek keep the installer for their pictures. With these the Load of a model that is on this computer never runs the installer again just
@@ -22,7 +22,7 @@ export const HY4_FAMILY='hy4-flash';
 /** Thinking Machines Inkling-2-Mini (setup.py INKLING_FAMILIES, its own shape engine strata-inkling). */
 export const INKLING_FAMILY='inkling-2-mini';
 /** Display groups are distinct from the engine's installation family IDs. */
-export function nativeCatalogModels(families:NativeFamily[]):CatalogModel[]{
+export function nativeCatalogModels(families:NativeFamily[], state?:Pick<NativeState,'installed'|'servingPolicies'>|null):CatalogModel[]{
  if(!families.length)return[];
  const groups:CatalogModel[]=[{family:'qwen3.8',title:'Qwen3.8-Flash-Next',about:'',experimental:false,images:false,sizes:[]},{family:'qwen3.6',title:'Qwen3.6-35B-A3B',about:'',experimental:false,images:false,sizes:[]}];
  for(const family of families){
@@ -34,6 +34,18 @@ export function nativeCatalogModels(families:NativeFamily[]):CatalogModel[]{
   const edition=target===groups[0]?({swift:'Swift 1.5',coder:'Coder',unsloth:'Unsloth',gyro:'Gyro'} as Record<string,string>)[family.family]??'':'';
   target.images ||= family.images;
   target.sizes.push(...family.sizes.map(size=>({...size,sourceFamily:family.family,edition,images:family.images})));
+ }
+ const inkling=groups.find(group=>group.family===INKLING_FAMILY);
+ if(inkling){
+  for(const quant of ['10','15','20']){
+   const id=`inkling-2-mini-sc117-sq-${quant}`;
+   const profile=state?.installed?.models.find(model=>model.model===id);
+   const original=inkling.sizes.find(size=>size.model===`SQ-${quant}`);
+   if(!profile||!original||state?.servingPolicies?.[id]?.id!=='inkling2_loop')continue;
+   inkling.sizes.push({...original,id,model:`SC117 SQ-${quant}`,edition:'SC117',
+    installed:profile.ready,images:profile.visionEnabled===true,imagesCapable:profile.visionPrepared===true,
+    needsNewerEngine:false,localProfile:true});
+  }
  }
  return groups;
 }

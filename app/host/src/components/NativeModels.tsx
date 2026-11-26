@@ -52,7 +52,7 @@ export function NativeModels({ onOtherModels, onReady, onImport, onConnectEngine
     const [toastedJob, setToastedJob] = useKept('models.toasted', ''), [appliedSig, setAppliedSig] = useKept('models.applied', '');
     const presetPending = useRef(false), visionPicks = useRef(new Map<string, string>());   // Read pictures per version: what the person set, or what the version opened with; later reports of the host never overwrite it
     const [deleting, setDeleting] = useState<string | null>(null);
-    const families = nativeCatalogModels(native?.catalog?.families ?? []);
+    const families = nativeCatalogModels(native?.catalog?.families ?? [], native);
     const expertSection = useRef<HTMLElement>(null);
     // The card is inserted above the fold and the browser's scroll anchoring
     // immediately compensates by scrolling down, which cancelled the smooth
@@ -71,11 +71,16 @@ export function NativeModels({ onOtherModels, onReady, onImport, onConnectEngine
     const selectedFamily = families.find(f => f.family === family || f.sizes.some(size => size.sourceFamily === family)) ?? families[0], selectedSize = selectedFamily?.sizes.find(s => s.id === size) ?? selectedFamily?.sizes[0];
     const isHy4Selected = selectedFamily?.family === HY4_FAMILY || selectedFamily?.family === INKLING_FAMILY;
     const installed = native?.installed?.models.find(m => m.model === selectedSize?.id), listPending = installedListPending(native);
-    const runtimeUnavailable = installed?.runtime?.available === false ? installed.runtime.reason : selectedFamily?.available === false ? selectedFamily.unavailable_reason ?? 'A compatible engine is not available for this model.' : null;
+    const runtimeUnavailable = installed?.runtime?.available === false
+        ? installed.runtime.reason || 'A compatible engine is not available for this model.'
+        : selectedSize?.localProfile && !installed?.ready
+            ? 'This local model is missing files.'
+            : !selectedSize?.localProfile && selectedFamily?.available === false
+                ? selectedFamily.unavailable_reason ?? 'A compatible engine is not available for this model.' : null;
     const servingPolicy = selectedSize ? native?.servingPolicies?.[selectedSize.id] : undefined;
     const ordinaryKv = servingPolicy?.ordinaryKv ?? [];
     // The sizes this model offers for the conversation context; it opens at 128K (or its largest size when that is smaller).
-    const contextList = selectedSize?.multi_file ? deepseekContexts(installed?.contextMax) : native?.catalog?.contexts ?? [8192, 32768, 65536, 131072, 262144];
+    const contextList = selectedSize?.localProfile && installed?.context ? [installed.context] : selectedSize?.multi_file ? deepseekContexts(installed?.contextMax) : native?.catalog?.contexts ?? [8192, 32768, 65536, 131072, 262144];
     // The model that is running is shown as running, with Unload: not offered for loading again.
     const downloaded = native?.installed?.models ?? [], allSizes = families.flatMap(f => f.sizes);
     // This computer for the fit figures: the biggest usable graphics card, or the ones chosen under Expert settings.
@@ -175,7 +180,7 @@ export function NativeModels({ onOtherModels, onReady, onImport, onConnectEngine
         if (installed) {
             // The context it was prepared with when someone chose it; a model that holds the old default (32K, DeepSeek's 8K) without the marker opens at the new default.
             if (installed.context)
-                setContext(openingContext(installed.context, contextList, installed.contextChosen === true, selectedSize.multi_file ? [OLD_DEEPSEEK_CONTEXT] : undefined));
+                setContext(selectedSize.localProfile ? installed.context : openingContext(installed.context, contextList, installed.contextChosen === true, selectedSize.multi_file ? [OLD_DEEPSEEK_CONTEXT] : undefined));
             // Off only when the person turned it off (a saved choice on a model that has the picture files); a model prepared without them (images 'off', or an old "off" saved while the engine had no reader) starts with it ON.
             // The first time this version is seen as installed it opens from its saved settings; from then on that value is the person's (a host report that changes while a job runs never changes it).
             const known = visionPicks.current.get(selectedSize.id), value = shownVision(known, installed);
@@ -223,6 +228,11 @@ export function NativeModels({ onOtherModels, onReady, onImport, onConnectEngine
     const picturesByLoad = fetchesPictures(selectedSize, native?.packaged);
     async function load() { if (!selectedSize || runtimeUnavailable)
         return; setPlan(null); setDrafterGb(null); await perform(async () => {
+        if (selectedSize.localProfile) {
+            const result = await nativeAction<NativeJob>('operations', { kind: 'load', args: { model: selectedSize.id } });
+            setJobId(result.id);
+            return;
+        }
         if (ordinaryKv.length && !ordinaryKv.includes(kv)) throw new Error('Choose a context memory (KV) format in Expert settings. The saved format is unknown.');
         if (installed?.ready && context === installed.context && (!selectedSize?.images || vision === 'no' || picturesByLoad || installed.images && installed.images !== 'off') && (lowRam === (installed.lowRamMode ?? 'auto') || lowRam === tunedNow?.fields.lowRam)) {
         const result = await nativeAction<NativeJob>('operations', { kind: 'load', args: { model: selectedSize.id, resourceProfile, ...(ordinaryKv.length ? { kv } : {}), vision: selectedSize?.images ? vision : 'no', ...(noReader ? { visionUnavailable: true } : {}), ...(contextPicked && !installed.contextChosen ? { contextChosen: true } : {}), multiple: expert && multiple, ...(draftingChoices ? { values: { drafting } } : {}), ...(roleCards.length > 1 ? (roles && customRoles ? { gpuRoles: effectiveRoles, ...(!isHy4Selected ? { layerSplit: expert && cardsGpus.length > 1 ? split : 'auto' } : {}) } : cardsGpus.length ? { gpus: cardsGpus, gpusFromRecommendation: true, ...(!isHy4Selected ? { layerSplit: expert && cardsGpus.length > 1 ? split : 'auto' } : {}) } : {}) : {}) } });

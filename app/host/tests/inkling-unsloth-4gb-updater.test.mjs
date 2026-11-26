@@ -52,6 +52,18 @@ test('Inkling-2-Mini catalog exposes native .strata builds and Unsloth GGUF buil
   assert.equal(udq2.edition, 'Unsloth');
   assert.equal(catalog.catalogVersionLabel(sq10), 'Compact');
   assert.equal(catalog.catalogVersionLabel(udq2), 'Unsloth · UD-Q2_K_XL');
+
+  const ids = ['10', '15', '20'].map(quant => `inkling-2-mini-sc117-sq-${quant}`);
+  const state = {
+    installed: { models: ids.map((model, index) => ({ model, ready: index !== 2 })) },
+    servingPolicies: Object.fromEntries(ids.map(id => [id, { id: 'inkling2_loop' }])),
+  };
+  const inkWithSc117 = catalog.nativeCatalogModels(families, state).find(g => g.family === 'inkling-2-mini');
+  const sc117 = inkWithSc117.sizes.filter(size => size.localProfile);
+  assert.deepEqual(sc117.map(size => size.id), ids);
+  assert.deepEqual(sc117.map(size => catalog.catalogVersionLabel(size)), ['SC117 SQ-10', 'SC117 SQ-15', 'SC117 SQ-20']);
+  assert.deepEqual(sc117.map(size => size.installed), [true, true, false]);
+  assert.equal(inkWithSc117.sizes.find(size => size.id === sq10.id).localProfile, undefined);
 });
 
 test('4 GB GPUs reporting 3.8-4.0 GiB are admitted by runCards and gpu-roles', () => {
