@@ -38,6 +38,8 @@ The benchmark used 16 prompt tokens and generated 32 at a configured 98,304-toke
 Strata also lists registered SC117 SQ-10, SQ-15 and SQ-20 profiles under Inkling-2-Mini, with each profile loaded using its saved local runtime settings.
 
 
+Inkling profiles with explicit SSD Expert caching receive a longer, bounded cold-start wait. The Host respects the ceiling of the installed Control.
+
 ## Artifacts and limits
 
 The Windows installer and matching CUDA engine are separate assets. This candidate retains the resource floors and has eleaseQualified=false. The Windows installer is unsigned.

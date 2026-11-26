@@ -945,3 +945,22 @@ test('packaged: a run config that names a longer engine wait is honoured, and ne
     assert.equal(f.saved[0].engine_ready_s, 3600, 'setup’s own longer wait stays as it is');
   } finally { await f.native.close(); f.cleanup(); }
 });
+
+test('packaged: Inkling with a disk Expert cache can finish a slow cold start', async () => {
+  for (const [cliStartWait, expected] of [['runtime', 1500], ['old', 600]]) {
+    const id = 'inkling-2-mini-sc117-sq-15';
+    const f = packagedFixture({ ids: [id], cliStartWait });
+    try {
+      const configPath = join(f.install, `strata-${id}.json`);
+      const config = JSON.parse(readFileSync(configPath, 'utf8'));
+      config.arch = 'inkling2_loop';
+      config.args.push('--expert-cache-dir', join(f.install, 'scratch'));
+      writeFileSync(configPath, JSON.stringify(config));
+      await f.native.refresh(true);
+      const job = await finish(f.native, f.native.operation('load', { model: id }).id);
+      assert.equal(job.state, 'done', job.error);
+      assert.equal(f.calls.find(call => call[0] === 'start')[2], expected);
+      assert.equal(f.saved[0].engine_ready_s, expected === 1500 ? 1560 : undefined);
+    } finally { await f.native.close(); f.cleanup(); }
+  }
+});

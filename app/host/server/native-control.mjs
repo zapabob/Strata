@@ -33,6 +33,7 @@ import { openTextFile } from './open-text-file.mjs';
 import { openLoopbackUrl } from './open-loopback.mjs';
 import { markEngine, engineRefusal } from './engine-version.mjs';
 import { friendlyModelName } from './model-names.mjs';
+import { isInkling } from './inkling.mjs';
 import { parseSaved as parseRoles, mirror as mirrorRoles } from './gpu-roles.mjs';
 import { configContextLimit } from './dsv41-context.mjs';
 import { PROJECTION_KEY, probeRefusalProjection, projectionModelReason, projectionView, projectionRequested, admitProjection, applyProjection, clearOwnedProjection } from './refusal-projection.mjs';
@@ -629,6 +630,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
  }
  /* How long a start waits for this model, in the same shape as `strata launch`'s figure (#3949 #3459 #4191): ten minutes, about eight
     more seconds per GB above 40 GB, never more than this Control accepts. A model nobody can size keeps the 300 s it always had.
+    Inkling's explicit SSD Expert tier may have to write and probe a second large file before it can answer.
     The run config's engine_ready_s is the floor, not the ceiling: the server reads that number and ends the engine when it runs out,
     so the start must never give up before the server does (setup writes 3600 for DeepSeek V4.1-Flash). */
  function startWaitFor(config,entry,model){
@@ -636,7 +638,8 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   const known=Number(entry?.diskGb),fromDisk=Number.isFinite(known)&&known>0?known:0;
   const gb=fromDisk||Number((snapshot.catalog?.families??[]).flatMap(f=>f.sizes??[]).find(s=>s.id===model)?.download_gb)||0;
   const sized=gb>40?Math.max(300,600+(gb-40)*8):300;
-  return Math.trunc(Math.max(300,Math.min(ceiling,Math.max(ready,sized))));
+  const offload=isInkling(config)&&config.args?.includes('--expert-cache-dir')?1500:300;
+  return Math.trunc(Math.max(300,Math.min(ceiling,Math.max(ready,sized,offload))));
  }
  function buildConfig(args,config,drafter=null,trusted={}){
   if(denseConfig(config))return {cfg:denseRunConfig(config,args),resources:null,visionPreferences:{},parallelChoice:{explicit:true},parallelNote:null,dsNote:null,q36Note:null};
@@ -1001,7 +1004,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
    await new Promise(resolve=>setTimeout(resolve,1200));
   }
   if(job.state!=='running'){await stopCancelledLoad(job,instance,id);return;}
-  if(instances.get(id)?.ownerJob===job.id){if(instance.profile)await control.stop(instance.profile).catch(()=>{});else await stopProcess(proc);instance.status='error';instance.error='Loading took more than five minutes. Check the engine log and free memory.';throw new Error(instance.error);}
+  if(instances.get(id)?.ownerJob===job.id){if(instance.profile)await control.stop(instance.profile).catch(()=>{});else await stopProcess(proc);instance.status='error';instance.error=adopted&&startWait>300?'The engine did not become ready within its startup limit. Check the engine log and free memory.':'Loading took more than five minutes. Check the engine log and free memory.';throw new Error(instance.error);}
   return;
   }finally{stopWatch.flush?.();if(instance.status!=='ready'||!q36Config(cfg,args.model)){stopWatch();q36Watches.delete(id);q36Pending.delete(id);}}
  }
