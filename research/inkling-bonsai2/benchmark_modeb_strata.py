@@ -35,6 +35,7 @@ PLACEMENT = re.compile(r"Expert scratch: (\d+) GPU, (\d+) RAM, (\d+) SSD, (\d+) 
 
 def engine_options(args):
     options = list(ENGINE_OPTIONS)
+    options[options.index("--max-context") + 1] = str(getattr(args, "context", CONTEXT))
     if args.expert_cache_dir:
         options[options.index("--vram-experts-gb") + 1] = str(args.expert_vram_gib)
         options[options.index("--ram-experts-gb") + 1] = str(args.expert_ram_gib)
@@ -247,7 +248,7 @@ def native(args, model, folder):
                 if engine_info.get("kv_dtype") != "k8v8" or engine_info.get("drafting") != "off":
                     raise RuntimeError("Strata did not apply the common KV and drafting settings")
                 ready = peer.wait("READY")
-                if int(ready[1]) < CONTEXT:
+                if int(ready[1]) < getattr(args, "context", CONTEXT):
                     raise RuntimeError("Strata reduced the requested context")
                 load_seconds = time.monotonic() - load_started
                 if args.expert_cache_dir:
