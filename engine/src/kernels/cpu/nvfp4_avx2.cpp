@@ -150,7 +150,7 @@ inline void row_dot2_t1(const uint8_t* row0, const uint8_t* row1, const Acts& a,
     const float* dy_base = a.dy;
     const int nb = a.nb;
     for (int ib = 0; ib < nb; ++ib) {
-        if (ib + 4 < nb) {
+        if ((ib & 1) == 0 && ib + 4 < nb) {
             _mm_prefetch((const char*) (x0 + ib + 4), _MM_HINT_NTA);
             _mm_prefetch((const char*) (x1 + ib + 4), _MM_HINT_NTA);
         }
@@ -223,8 +223,92 @@ void gu_rows_t1(const uint8_t* blob, size_t gu_row, size_t up_off, const Acts& a
     }
 }
 
+// Gen-N T==1 4-row unrolled zero-spill NVFP4 dot: reads Q8_0 activation ONCE for 4 weight rows
+// (splits Half-0 q01/dy0 then Half-1 q23/dy1 across 4 rows -> peak <=13/16 YMM, 0 spills, 100% bit-exact).
+inline void row_dot4_t1(const uint8_t* row0, const uint8_t* row1, const uint8_t* row2, const uint8_t* row3,
+                        const Acts& a, float& out0, float& out1, float& out2, float& out3) {
+    const __m128i kv = _mm_loadu_si128((const __m128i*) kvalues_fp4);
+    const __m256i ones = _mm256_set1_epi16(1);
+    __m256 acc0 = _mm256_setzero_ps();
+    __m256 acc1 = _mm256_setzero_ps();
+    __m256 acc2 = _mm256_setzero_ps();
+    __m256 acc3 = _mm256_setzero_ps();
+    const block_nvfp4* x0 = (const block_nvfp4*) row0;
+    const block_nvfp4* x1 = (const block_nvfp4*) row1;
+    const block_nvfp4* x2 = (const block_nvfp4*) row2;
+    const block_nvfp4* x3 = (const block_nvfp4*) row3;
+    const block_q8_0* y0 = a.y[0];
+    const float* dy_base = a.dy;
+    const int nb = a.nb;
+    for (int ib = 0; ib < nb; ++ib) {
+        if ((ib & 1) == 0 && ib + 4 < nb) {
+            _mm_prefetch((const char*) (x0 + ib + 4), _MM_HINT_NTA);
+            _mm_prefetch((const char*) (x1 + ib + 4), _MM_HINT_NTA);
+            _mm_prefetch((const char*) (x2 + ib + 4), _MM_HINT_NTA);
+            _mm_prefetch((const char*) (x3 + ib + 4), _MM_HINT_NTA);
+        }
+        const block_q8_0* yb = y0 + 2 * ib;
+        // Half 0 (sub-blocks 0, 1): share q01 & dy0 across all 4 rows
+        {
+            const __m256i q01 = _mm256_loadu_si256((const __m256i*) yb[0].qs);
+            const __m256 dy0 = _mm256_broadcast_ss(dy_base + 2 * ib);
+            auto step01 = [&](const block_nvfp4& bx, __m256& acc) {
+                const __m256i v = values32(bx.qs, kv);
+                const __m256i av = _mm256_sign_epi8(v, v);
+                const __m256 u = _mm256_set_m128(_mm_set1_ps(kUe4m3.v[bx.d[1]]), _mm_set1_ps(kUe4m3.v[bx.d[0]]));
+                const __m256i p = _mm256_madd_epi16(_mm256_maddubs_epi16(av, _mm256_sign_epi8(q01, v)), ones);
+                acc = _mm256_fmadd_ps(_mm256_mul_ps(u, dy0), _mm256_cvtepi32_ps(p), acc);
+            };
+            step01(x0[ib], acc0);
+            step01(x1[ib], acc1);
+            step01(x2[ib], acc2);
+            step01(x3[ib], acc3);
+        }
+        // Half 1 (sub-blocks 2, 3): share q23 & dy1 across all 4 rows
+        {
+            const __m256i q23 = _mm256_loadu_si256((const __m256i*) yb[1].qs);
+            const __m256 dy1 = _mm256_broadcast_ss(dy_base + 2 * ib + 1);
+            auto step23 = [&](const block_nvfp4& bx, __m256& acc) {
+                const __m256i v = values32(bx.qs + 16, kv);
+                const __m256i av = _mm256_sign_epi8(v, v);
+                const __m256 u = _mm256_set_m128(_mm_set1_ps(kUe4m3.v[bx.d[3]]), _mm_set1_ps(kUe4m3.v[bx.d[2]]));
+                const __m256i p = _mm256_madd_epi16(_mm256_maddubs_epi16(av, _mm256_sign_epi8(q23, v)), ones);
+                acc = _mm256_fmadd_ps(_mm256_mul_ps(u, dy1), _mm256_cvtepi32_ps(p), acc);
+            };
+            step23(x0[ib], acc0);
+            step23(x1[ib], acc1);
+            step23(x2[ib], acc2);
+            step23(x3[ib], acc3);
+        }
+    }
+    out0 = hsum8(acc0);
+    out1 = hsum8(acc1);
+    out2 = hsum8(acc2);
+    out3 = hsum8(acc3);
+}
+
 void dot_rows_t1(const uint8_t* w, size_t row_bytes, const Acts& a, float* out0, int r0, int r1, float scale) {
     int r = r0;
+    for (; r + 3 < r1; r += 4) {
+        if (r + 7 < r1) {
+            const char* n0 = reinterpret_cast<const char*>(w + (size_t) (r + 4) * row_bytes);
+            const char* n1 = reinterpret_cast<const char*>(w + (size_t) (r + 5) * row_bytes);
+            const char* n2 = reinterpret_cast<const char*>(w + (size_t) (r + 6) * row_bytes);
+            const char* n3 = reinterpret_cast<const char*>(w + (size_t) (r + 7) * row_bytes);
+            _mm_prefetch(n0, _MM_HINT_NTA); _mm_prefetch(n0 + 64, _MM_HINT_NTA);
+            _mm_prefetch(n1, _MM_HINT_NTA); _mm_prefetch(n1 + 64, _MM_HINT_NTA);
+            _mm_prefetch(n2, _MM_HINT_NTA); _mm_prefetch(n2 + 64, _MM_HINT_NTA);
+            _mm_prefetch(n3, _MM_HINT_NTA); _mm_prefetch(n3 + 64, _MM_HINT_NTA);
+        }
+        float s0 = 0.f, s1 = 0.f, s2 = 0.f, s3 = 0.f;
+        row_dot4_t1(w + (size_t) r * row_bytes, w + (size_t) (r + 1) * row_bytes,
+                    w + (size_t) (r + 2) * row_bytes, w + (size_t) (r + 3) * row_bytes,
+                    a, s0, s1, s2, s3);
+        out0[r]     = s0 * scale;
+        out0[r + 1] = s1 * scale;
+        out0[r + 2] = s2 * scale;
+        out0[r + 3] = s3 * scale;
+    }
     for (; r + 1 < r1; r += 2) {
         if (r + 4 < r1) {
             _mm_prefetch((const char*) (w + (size_t) (r + 4) * row_bytes), _MM_HINT_NTA);

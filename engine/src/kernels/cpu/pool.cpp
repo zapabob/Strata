@@ -912,12 +912,13 @@ ExpertPool::ExpertPool(int n_workers, bool pin, bool host_works, PoolAffinity af
     scratch_.resize((size_t) n_);
     dg_w_.reset(new DiagW[(size_t) n_ + 1]);
     wstate_.reset(new std::atomic<int32_t>[(size_t) n_]);
+    wparked_.reset(new WorkerPark[(size_t) n_]);
     for (int i = 0; i < n_; ++i) wstate_[(size_t) i].store(kParked);
     hstate_ms_.store(now_ms());
     g_diag_pool.store(this);
     strata::core::diag_pool_fn().store(&diag_active_pool);
-    split_.resize((size_t) kMaxSplit);
-    split_multi_.resize((size_t) kMaxSplitMulti);
+    // Lazy-grow split buffers: start with 16 native slots (~1.5 MiB vs ~15.4 MiB upfront) and grow up to kMaxSplitMulti on demand.
+    split_multi_.resize(16);
     dep_.reset(new DepExpert[(size_t) kMaxSplitMulti]);
     // STRATA_POOL_DEP: ON unless "0" (0.1.63: bit-exact, window -2.9%; =0 is the way back to the two-phase batch)
     dep_on_ = [] { const char* v = std::getenv("STRATA_POOL_DEP"); return v == nullptr || v[0] != '0'; }();
@@ -1065,7 +1066,8 @@ void ExpertPool::worker(int id) {
     // on the RETURN from a drain leaves `parked_` at 0 until each worker has finished one batch, and the first
     // `run()` - which waits for `parked_ == n_` before publishing - then deadlocks.  It deadlocks on the very
     // first call, which is the good case; a version that deadlocked on the second would be far worse.
-    parked_of(id).fetch_add(1, std::memory_order_acq_rel);
+    if (numa_n_ == 0) wparked_[(size_t) id].parked.store(1, std::memory_order_release);
+    else parked_of(id).fetch_add(1, std::memory_order_acq_rel);
     for (;;) {
         // Park: wait for work.  `_mm_pause` rather than a bare spin because it yields the pipeline to the
         // sibling hyperthread; `epoch_` is bumped once per LAYER, not once per expert, so most of these
@@ -1116,7 +1118,8 @@ void ExpertPool::worker(int id) {
         seen = epoch_.load(std::memory_order_acquire);
         if (diag_pool_on() && mode_ >= 5)
             dg_w_[(size_t) id].wake.fetch_add(now_ns() - dg_pub_ns_.load(std::memory_order_relaxed), std::memory_order_relaxed);
-        parked_of(id).fetch_sub(1, std::memory_order_acq_rel);   // leaving the park
+        if (numa_n_ == 0) wparked_[(size_t) id].parked.store(0, std::memory_order_release);   // leaving the park (zero RMW contention)
+        else parked_of(id).fetch_sub(1, std::memory_order_acq_rel);
 
         // Drain: one claim per iteration, so a slow worker takes fewer experts and a fast one takes more.
         // Every job is the same size (all experts are 1,382,400 bytes), so there is nothing to schedule.  Only
@@ -1124,7 +1127,8 @@ void ExpertPool::worker(int id) {
         wstate_[(size_t) id].store(kBetween, std::memory_order_relaxed);
         drain(id, scratch_[(size_t) id], seen);
         wstate_[(size_t) id].store(kParked, std::memory_order_relaxed);
-        parked_of(id).fetch_add(1, std::memory_order_acq_rel);   // back at the park
+        if (numa_n_ == 0) wparked_[(size_t) id].parked.store(1, std::memory_order_release);   // back at the park (zero RMW contention)
+        else parked_of(id).fetch_add(1, std::memory_order_acq_rel);
     }
 }
 
@@ -1152,7 +1156,11 @@ int ExpertPool::claim_slice(uint32_t epoch, int slice) {
 }
 
 uint32_t ExpertPool::parked_count() const {
-    if (numa_n_ == 0) return parked_.load(std::memory_order_acquire);
+    if (numa_n_ == 0) {
+        uint32_t p = 0;
+        for (int i = 0; i < n_; ++i) p += wparked_[(size_t) i].parked.load(std::memory_order_acquire);
+        return p;
+    }
     uint32_t p = 0;   // each slice's counter is bounded by its own workers, so the sum is n_ only when each is full
     for (int k = 0; k < numa_n_; ++k) p += nsync_[(size_t) k].parked.load(std::memory_order_acquire);
     return p;
@@ -1297,7 +1305,7 @@ void ExpertPool::native_rows(int e, int r0, int r1) {
     } else if (q2_native_kernels(nfmt->d_type)) {
         // Q2_0 down (most IQ layers): the AVX-512 kernel, ggml-cpu has only a scalar one on x86
         const ActQ* a2[MAXT];
-        for (int t = 0; t < mjobs_[e].nt; ++t) a2[t] = &sb.a2[t];
+        for (int t = 0; t < mjobs_[e].nt; ++t) a2[t] = &split_multi_q2_[(size_t) e].a2[t];
         q2_rows_any(mjobs_[e].blob + nfmt->down_off, nfmt->d_row, (int) (nfmt->n_ff / 64), a2,
                     mjobs_[e].nt, mjobs_[e].out, r0, r1);
     } else {
@@ -1337,7 +1345,7 @@ void ExpertPool::drain(int id, ExpertScratch& scratch, uint32_t epoch) {
         const bool dg_task = diag_pool_on() && mode_ >= 5;
         const int64_t dg_t0 = dg_task ? now_ns() : 0;
         if (id >= 0) wstate_[(size_t) id].store(ci, std::memory_order_relaxed);
-        else { hstate_.store(ci, std::memory_order_relaxed); hstate_ms_.store(now_ms(), std::memory_order_relaxed); }
+        else hstate_.store(ci, std::memory_order_relaxed);
         if (mode_ == 0) {
             const ExpertJob& j = jobs_[i];
             s2_expert_vnni_q(j.blob, *j.act, j.out, scratch);
@@ -1388,7 +1396,7 @@ void ExpertPool::drain(int id, ExpertScratch& scratch, uint32_t epoch) {
                     s2_expert_gu_rows_multi(mjobs_[e].blob, mjobs_[e].act, mjobs_[e].nt, ff, r0, r1);
                 } else {
                     const ActQ* a2[MAXT];
-                    for (int t = 0; t < mjobs_[e].nt; ++t) a2[t] = &sb.a2[t];
+                    for (int t = 0; t < mjobs_[e].nt; ++t) a2[t] = &split_multi_q2_[(size_t) e].a2[t];
                     s2_expert_down_rows_multi(mjobs_[e].blob, a2, mjobs_[e].nt, mjobs_[e].out, r0, r1);
                 }
                 r += r1 - r0;
@@ -1498,6 +1506,7 @@ void ExpertPool::run_phase(int mode, int n_tasks, bool per_worker) {
 void ExpertPool::run_split(ExpertJob* jobs, int n) {
     if (n <= 0) return;
     if (n > kMaxSplit || n_ == 1 || expert_oracle_q8_0_enabled()) { run(jobs, n); return; }
+    if (split_.empty()) split_.resize((size_t) kMaxSplit);
     const auto t0 = std::chrono::steady_clock::now();
     jobs_ = jobs;
     const int threads = n_ + (host_works_ ? 1 : 0);
@@ -1533,6 +1542,8 @@ void ExpertPool::run_split_multi(ExpertJobMulti* jobs, int n) {
         return;
     }
     const auto t0 = std::chrono::steady_clock::now();
+    if ((int) split_multi_.size() < n) split_multi_.resize((size_t) n);
+    if ((int) split_multi_q2_.size() < n) split_multi_q2_.resize((size_t) n);
     mjobs_ = jobs;
     mrows_ = (int64_t) n * FF;
     mtasks_ = phase_tasks(mrows_);
@@ -1540,7 +1551,7 @@ void ExpertPool::run_split_multi(ExpertJobMulti* jobs, int n) {
     const auto t1 = std::chrono::steady_clock::now();
     for (int e = 0; e < n; ++e)
         for (int t = 0; t < jobs[e].nt; ++t)
-            act_quant_q8_1(split_multi_[(size_t) e].ff[t], FF, split_multi_[(size_t) e].a2[t]);
+            act_quant_q8_1(split_multi_[(size_t) e].ff[t], FF, split_multi_q2_[(size_t) e].a2[t]);
     const auto t2 = std::chrono::steady_clock::now();
     mrows_ = (int64_t) n * H;
     mtasks_ = phase_tasks(mrows_);
@@ -1560,6 +1571,8 @@ void ExpertPool::run_split_multi_native(const NativeFmt& f, ExpertJobMulti* jobs
     // more distinct experts than buffers: run them in batches
     for (int b0 = 0; b0 < n; b0 += kMaxSplitMulti) {
         const int nb = (std::min)(kMaxSplitMulti, n - b0);
+        if ((int) split_multi_.size() < nb) split_multi_.resize((size_t) nb);
+        if (q2_native_kernels(f.d_type) && (int) split_multi_q2_.size() < nb) split_multi_q2_.resize((size_t) nb);
         mjobs_ = jobs + b0;
         nfmt_ = &f;
         narithmetic_ = arithmetic;
@@ -1587,7 +1600,7 @@ void ExpertPool::run_split_multi_native(const NativeFmt& f, ExpertJobMulti* jobs
         const auto b = std::chrono::steady_clock::now();
         for (int e = 0; e < nb; ++e)
             for (int t = 0; t < mjobs_[e].nt; ++t)
-                if (q2_native_kernels(f.d_type)) act_quant_any(split_multi_[(size_t) e].ff[t], FF, split_multi_[(size_t) e].a2[t]);
+                if (q2_native_kernels(f.d_type)) act_quant_any(split_multi_[(size_t) e].ff[t], FF, split_multi_q2_[(size_t) e].a2[t]);
                 else native_quant_h(f, split_multi_[(size_t) e].ff[t], split_multi_[(size_t) e].hq[t]);
         const auto c = std::chrono::steady_clock::now();
         mrows_ = (int64_t) nb * f.n_embd;

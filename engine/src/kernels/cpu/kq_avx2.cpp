@@ -631,6 +631,15 @@ void kq256_down_t1_q5_0(const uint8_t* w, size_t row_bytes, int n, const void* h
         ysum16[ib] = -16.0f * d * (float) s;
     }
     const __m256i m16 = _mm256_set1_epi8(0x10);
+    const __m256i q5_shuf = _mm256_set_epi64x(0x0303030303030303LL, 0x0202020202020202LL,
+                                              0x0101010101010101LL, 0x0000000000000000LL);
+    const __m256i q5_bsel = _mm256_set1_epi64x((long long) 0x8040201008040201ULL);
+    auto hi_bits_16 = [&](const uint8_t* qh) -> __m256i {
+        uint32_t x32;
+        std::memcpy(&x32, qh, sizeof(uint32_t));
+        const __m256i b = _mm256_shuffle_epi8(_mm256_set1_epi32((int) x32), q5_shuf);
+        return _mm256_and_si256(_mm256_cmpeq_epi8(_mm256_and_si256(b, q5_bsel), q5_bsel), m16);
+    };
     int r = r0;
     for (; r + 3 < r1; r += 4) {
         const block_q5_0* x0 = (const block_q5_0*) (w + (size_t) r * row_bytes);
@@ -638,20 +647,28 @@ void kq256_down_t1_q5_0(const uint8_t* w, size_t row_bytes, int n, const void* h
         const block_q5_0* x2 = (const block_q5_0*) (w + (size_t) (r + 2) * row_bytes);
         const block_q5_0* x3 = (const block_q5_0*) (w + (size_t) (r + 3) * row_bytes);
         if (r + 7 < r1) {
-            _mm_prefetch((const char*) (w + (size_t) (r + 4) * row_bytes), _MM_HINT_T0);
-            _mm_prefetch((const char*) (w + (size_t) (r + 5) * row_bytes), _MM_HINT_T0);
-            _mm_prefetch((const char*) (w + (size_t) (r + 6) * row_bytes), _MM_HINT_T0);
-            _mm_prefetch((const char*) (w + (size_t) (r + 7) * row_bytes), _MM_HINT_T0);
+            const char* n0 = reinterpret_cast<const char*>(w + (size_t) (r + 4) * row_bytes);
+            const char* n1 = reinterpret_cast<const char*>(w + (size_t) (r + 5) * row_bytes);
+            const char* n2 = reinterpret_cast<const char*>(w + (size_t) (r + 6) * row_bytes);
+            const char* n3 = reinterpret_cast<const char*>(w + (size_t) (r + 7) * row_bytes);
+            _mm_prefetch(n0, _MM_HINT_NTA); _mm_prefetch(n0 + 64, _MM_HINT_NTA);
+            _mm_prefetch(n1, _MM_HINT_NTA); _mm_prefetch(n1 + 64, _MM_HINT_NTA);
+            _mm_prefetch(n2, _MM_HINT_NTA); _mm_prefetch(n2 + 64, _MM_HINT_NTA);
+            _mm_prefetch(n3, _MM_HINT_NTA); _mm_prefetch(n3 + 64, _MM_HINT_NTA);
         }
         __m256 acc0 = _mm256_setzero_ps(), acc1 = _mm256_setzero_ps();
         __m256 acc2 = _mm256_setzero_ps(), acc3 = _mm256_setzero_ps();
         float bias0 = 0.0f, bias1 = 0.0f, bias2 = 0.0f, bias3 = 0.0f;
         for (int ib = 0; ib < lim; ++ib) {
-            if ((ib % 3) == 0 && ib + 6 < lim) {
-                _mm_prefetch(reinterpret_cast<const char*>(&x0[ib + 6]), _MM_HINT_NTA);
-                _mm_prefetch(reinterpret_cast<const char*>(&x1[ib + 6]), _MM_HINT_NTA);
-                _mm_prefetch(reinterpret_cast<const char*>(&x2[ib + 6]), _MM_HINT_NTA);
-                _mm_prefetch(reinterpret_cast<const char*>(&x3[ib + 6]), _MM_HINT_NTA);
+            if ((ib & 3) == 0 && ib + 6 < lim) {
+                const char* p0 = reinterpret_cast<const char*>(&x0[ib + 6]);
+                const char* p1 = reinterpret_cast<const char*>(&x1[ib + 6]);
+                const char* p2 = reinterpret_cast<const char*>(&x2[ib + 6]);
+                const char* p3 = reinterpret_cast<const char*>(&x3[ib + 6]);
+                _mm_prefetch(p0, _MM_HINT_NTA); _mm_prefetch(p0 + 64, _MM_HINT_NTA);
+                _mm_prefetch(p1, _MM_HINT_NTA); _mm_prefetch(p1 + 64, _MM_HINT_NTA);
+                _mm_prefetch(p2, _MM_HINT_NTA); _mm_prefetch(p2 + 64, _MM_HINT_NTA);
+                _mm_prefetch(p3, _MM_HINT_NTA); _mm_prefetch(p3 + 64, _MM_HINT_NTA);
             }
             const float ydi = yd[ib];
             const float ysi = ysum16[ib];
@@ -659,26 +676,22 @@ void kq256_down_t1_q5_0(const uint8_t* w, size_t row_bytes, int n, const void* h
 
             const float dx0 = h2f(x0[ib].d);
             bias0 = std::fmaf(dx0, ysi, bias0);
-            __m256i qx0 = _mm256_or_si256(bytes_from_nibbles_32(x0[ib].qs),
-                                          _mm256_and_si256(bytes_from_bits_32(x0[ib].qh), m16));
+            __m256i qx0 = _mm256_or_si256(bytes_from_nibbles_32(x0[ib].qs), hi_bits_16(x0[ib].qh));
             acc0 = _mm256_fmadd_ps(_mm256_set1_ps(dx0 * ydi), mul_sum_us8_pairs_float(qx0, qy), acc0);
 
             const float dx1 = h2f(x1[ib].d);
             bias1 = std::fmaf(dx1, ysi, bias1);
-            __m256i qx1 = _mm256_or_si256(bytes_from_nibbles_32(x1[ib].qs),
-                                          _mm256_and_si256(bytes_from_bits_32(x1[ib].qh), m16));
+            __m256i qx1 = _mm256_or_si256(bytes_from_nibbles_32(x1[ib].qs), hi_bits_16(x1[ib].qh));
             acc1 = _mm256_fmadd_ps(_mm256_set1_ps(dx1 * ydi), mul_sum_us8_pairs_float(qx1, qy), acc1);
 
             const float dx2 = h2f(x2[ib].d);
             bias2 = std::fmaf(dx2, ysi, bias2);
-            __m256i qx2 = _mm256_or_si256(bytes_from_nibbles_32(x2[ib].qs),
-                                          _mm256_and_si256(bytes_from_bits_32(x2[ib].qh), m16));
+            __m256i qx2 = _mm256_or_si256(bytes_from_nibbles_32(x2[ib].qs), hi_bits_16(x2[ib].qh));
             acc2 = _mm256_fmadd_ps(_mm256_set1_ps(dx2 * ydi), mul_sum_us8_pairs_float(qx2, qy), acc2);
 
             const float dx3 = h2f(x3[ib].d);
             bias3 = std::fmaf(dx3, ysi, bias3);
-            __m256i qx3 = _mm256_or_si256(bytes_from_nibbles_32(x3[ib].qs),
-                                          _mm256_and_si256(bytes_from_bits_32(x3[ib].qh), m16));
+            __m256i qx3 = _mm256_or_si256(bytes_from_nibbles_32(x3[ib].qs), hi_bits_16(x3[ib].qh));
             acc3 = _mm256_fmadd_ps(_mm256_set1_ps(dx3 * ydi), mul_sum_us8_pairs_float(qx3, qy), acc3);
         }
         out0[r]     = hsum_float_8(acc0) + bias0;
@@ -692,9 +705,11 @@ void kq256_down_t1_q5_0(const uint8_t* w, size_t row_bytes, int n, const void* h
         __m256 acc0 = _mm256_setzero_ps(), acc1 = _mm256_setzero_ps();
         float bias0 = 0.0f, bias1 = 0.0f;
         for (int ib = 0; ib < lim; ++ib) {
-            if ((ib % 3) == 0 && ib + 6 < lim) {
-                _mm_prefetch(reinterpret_cast<const char*>(&x0[ib + 6]), _MM_HINT_NTA);
-                _mm_prefetch(reinterpret_cast<const char*>(&x1[ib + 6]), _MM_HINT_NTA);
+            if ((ib & 3) == 0 && ib + 6 < lim) {
+                const char* p0 = reinterpret_cast<const char*>(&x0[ib + 6]);
+                const char* p1 = reinterpret_cast<const char*>(&x1[ib + 6]);
+                _mm_prefetch(p0, _MM_HINT_NTA); _mm_prefetch(p0 + 64, _MM_HINT_NTA);
+                _mm_prefetch(p1, _MM_HINT_NTA); _mm_prefetch(p1 + 64, _MM_HINT_NTA);
             }
             const float ydi = yd[ib];
             const float ysi = ysum16[ib];
@@ -702,14 +717,12 @@ void kq256_down_t1_q5_0(const uint8_t* w, size_t row_bytes, int n, const void* h
 
             const float dx0 = h2f(x0[ib].d);
             bias0 = std::fmaf(dx0, ysi, bias0);
-            __m256i qx0 = _mm256_or_si256(bytes_from_nibbles_32(x0[ib].qs),
-                                          _mm256_and_si256(bytes_from_bits_32(x0[ib].qh), m16));
+            __m256i qx0 = _mm256_or_si256(bytes_from_nibbles_32(x0[ib].qs), hi_bits_16(x0[ib].qh));
             acc0 = _mm256_fmadd_ps(_mm256_set1_ps(dx0 * ydi), mul_sum_us8_pairs_float(qx0, qy), acc0);
 
             const float dx1 = h2f(x1[ib].d);
             bias1 = std::fmaf(dx1, ysi, bias1);
-            __m256i qx1 = _mm256_or_si256(bytes_from_nibbles_32(x1[ib].qs),
-                                          _mm256_and_si256(bytes_from_bits_32(x1[ib].qh), m16));
+            __m256i qx1 = _mm256_or_si256(bytes_from_nibbles_32(x1[ib].qs), hi_bits_16(x1[ib].qh));
             acc1 = _mm256_fmadd_ps(_mm256_set1_ps(dx1 * ydi), mul_sum_us8_pairs_float(qx1, qy), acc1);
         }
         out0[r]     = hsum_float_8(acc0) + bias0;
@@ -747,10 +760,14 @@ void kq256_down_t1_q8_0(const uint8_t* w, size_t row_bytes, int n, const void* h
         const block_q8_0* x2 = (const block_q8_0*) (w + (size_t) (r + 2) * row_bytes);
         const block_q8_0* x3 = (const block_q8_0*) (w + (size_t) (r + 3) * row_bytes);
         if (r + 7 < r1) {
-            _mm_prefetch((const char*) (w + (size_t) (r + 4) * row_bytes), _MM_HINT_T0);
-            _mm_prefetch((const char*) (w + (size_t) (r + 5) * row_bytes), _MM_HINT_T0);
-            _mm_prefetch((const char*) (w + (size_t) (r + 6) * row_bytes), _MM_HINT_T0);
-            _mm_prefetch((const char*) (w + (size_t) (r + 7) * row_bytes), _MM_HINT_T0);
+            const char* n0 = reinterpret_cast<const char*>(w + (size_t) (r + 4) * row_bytes);
+            const char* n1 = reinterpret_cast<const char*>(w + (size_t) (r + 5) * row_bytes);
+            const char* n2 = reinterpret_cast<const char*>(w + (size_t) (r + 6) * row_bytes);
+            const char* n3 = reinterpret_cast<const char*>(w + (size_t) (r + 7) * row_bytes);
+            _mm_prefetch(n0, _MM_HINT_NTA); _mm_prefetch(n0 + 64, _MM_HINT_NTA);
+            _mm_prefetch(n1, _MM_HINT_NTA); _mm_prefetch(n1 + 64, _MM_HINT_NTA);
+            _mm_prefetch(n2, _MM_HINT_NTA); _mm_prefetch(n2 + 64, _MM_HINT_NTA);
+            _mm_prefetch(n3, _MM_HINT_NTA); _mm_prefetch(n3 + 64, _MM_HINT_NTA);
         }
         __m256 acc0 = _mm256_setzero_ps(), acc1 = _mm256_setzero_ps();
         __m256 acc2 = _mm256_setzero_ps(), acc3 = _mm256_setzero_ps();

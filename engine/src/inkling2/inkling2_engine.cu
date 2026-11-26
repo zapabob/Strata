@@ -323,6 +323,7 @@ struct PhysLayer {
     std::vector<int32_t> exp_in_slot;    // [n_slots]
     std::vector<double> score;           // [n_expert]
     std::vector<uint32_t> last_tok;      // [n_expert] ST-MoE last-activated decode token step
+    double prev_entropy = 0.5;           // Gen-N: previous normalized Shannon routing entropy for regime-shift detection
     strata::math::LeCaRController lecar; // LeCaR online multiplicative-weights regret minimizer
 };
 
@@ -2342,7 +2343,7 @@ struct Engine {
                 const float prune_thr = cpu_miss_prune * w_max;
                 for (int e = 0; e < Kp; ++e) {
                     const int x = h_ids[e];
-                    // HybriMoE (arXiv:2504.05897) + ShinkaEvolve Gen-M (alpha=0.5359) + ST-MoE (dt1=0.1387) Markov boost.
+                    // HybriMoE (arXiv:2504.05897) + ShinkaEvolve Gen-M/N (alpha=0.5359) + ST-MoE (dt1=0.1387) Markov boost.
                     double markov = 0.0;
                     if (!L.last_tok.empty()) {
                         const uint32_t prev = L.last_tok[(size_t) x];
@@ -2528,7 +2529,7 @@ struct Engine {
             const int S = L.n_slots;
             if (S <= 0 || S >= ne) continue;
             const bool is_core = ((int) li >= hp.core_start && (int) li < hp.core_end);
-            // MoE-CORE / DALI + ShinkaEvolve Gen-M heterogeneous CPU miss cost weights (Q5_K, Q6_K, Q8_0 vs Q4_K).
+            // MoE-CORE / DALI + ShinkaEvolve Gen-M/N heterogeneous CPU miss cost weights (Q5_K, Q6_K, Q8_0 vs Q4_K).
             const double weight = is_core
                 ? 3.0
                 : ((L.L.gu_type == 13) ? 1.43 : ((L.L.d_type == 14) ? 1.3065 : ((L.L.d_type == 8) ? 1.3027 : 1.0)));
@@ -2544,7 +2545,11 @@ struct Engine {
             const double layer_mean = (cnt_pos > 0) ? (sum_pos / (double) cnt_pos) : 1.0;
             auto blended = [&](int x) -> double {
                 const uint32_t lt = (!L.last_tok.empty()) ? L.last_tok[(size_t) x] : 0u;
-                return L.lecar.blend_score_scaled(L.score[(size_t) x], lt, st_tok_step, layer_mean);
+                double sc = L.lecar.blend_score_scaled(L.score[(size_t) x], lt, st_tok_step, layer_mean);
+                if (L.slot_of[(size_t) x] < 0) {
+                    sc += strata::math::rh_ucb_admission_bonus(L.score[(size_t) x], rh_rebal_step, 0.00575);
+                }
+                return sc;
             };
             std::sort(order.begin(), order.end(),
                       [&](int a, int b) { return blended(a) > blended(b); });
@@ -2564,14 +2569,15 @@ struct Engine {
                 const double s_hot = blended(hot_cand);
                 const double s_cold = blended(y);
                 const double diff = s_hot - s_cold;
-                // Under RH (von Koch explicit-formula bound O(sqrt(N) log N)), skip swaps within ShinkaEvolve Gen-M noise floor.
+                // Under RH (von Koch explicit-formula bound O(sqrt(N) log N)), skip swaps within ShinkaEvolve noise floor.
                 const double thr = (s_cold > 0.0) ? strata::math::rh_von_koch_threshold(s_hot, s_cold, rh_rebal_step, 0.2955) : 0.0;
                 if (diff <= thr) break;
                 cands.push_back(Cand{diff * weight, li, s, hot_cand, y});
                 ++v_idx;
             }
             const double h_norm = strata::math::normalized_shannon_entropy(L.score.data(), (size_t) ne);
-            const double layer_decay = strata::math::rh_entropy_adjusted_decay(rh_rebal_step, h_norm);
+            const double layer_decay = strata::math::rh_spectral_entropy_decay(rh_rebal_step, h_norm, L.prev_entropy, 0.025, 0.0);
+            L.prev_entropy = h_norm;
             for (int x = 0; x < ne; ++x) L.score[(size_t) x] *= layer_decay;
         }
         if (cands.empty()) return;
@@ -3477,25 +3483,24 @@ struct Engine {
             float* hst = conv_hist[(size_t) il];
             float* h_tr = save_conv_trace ? (d_conv_trace + (size_t) il * layer_conv_floats) : nullptr;
             const bool is_hy = (L.n_slots < hp.n_expert);
-            const bool use_post_graph = (T == 1 && is_hy && L.n_slots > 0 && !prof && !prof_detail &&
-                                         !pp_streaming && !capture_dspark && !save_conv_trace);
+            const bool fuse_post_t1 = (T == 1 && L.n_slots > 0 && !pp_streaming && !save_conv_trace);
+            const bool use_post_graph = (fuse_post_t1 && is_hy && !prof && !prof_detail && !capture_dspark);
             bool used_hybrid = false;
-            run_moe(L, il, in_ffn, T, pre_routed_t1, use_post_graph, &used_hybrid);
+            run_moe(L, il, in_ffn, T, pre_routed_t1, fuse_post_t1, &used_hybrid);
+            const int Kp = (int) hp.n_expert_used;
+            const int n4 = ((N & 3) == 0) ? (N >> 2) : N;
+            const float* dsum = h_cpu_sum_dev + (size_t) (il & 1) * N;
+            auto emit_post_ops = [&]() {
+                if (used_hybrid) {
+                    k_combine_hybrid_shortconv_t1<<<(unsigned) ((n4 + 255) / 256), 256, 0, st>>>(
+                        eparts, ewts, ids, L.d_slot_of, dsum, L.ffn_post_conv, hst, ffn_inp, cur, N, Kp, 2 * (int) kv_dim + N);
+                } else {
+                    k_combine_shortconv_t1<<<(unsigned) ((n4 + 255) / 256), 256, 0, st>>>(
+                        eparts, ewts, L.ffn_post_conv, hst, ffn_inp, cur, N, Kp, 2 * (int) kv_dim + N);
+                }
+            };
             if (use_post_graph) {
                 cudaGraphExec_t& pg = used_hybrid ? layer_post_graph_hyb[(size_t) il] : layer_post_graph_hit[(size_t) il];
-                const int Kp = (int) hp.n_expert_used;
-                const int n4 = ((N & 3) == 0) ? (N >> 2) : N;
-                const float* dsum = h_cpu_sum_dev + (size_t) (il & 1) * N;
-                auto emit_post_ops = [&]() {
-                    if (used_hybrid) {
-                        k_combine_experts_hybrid<<<(unsigned) ((n4 + 255) / 256), 256, 0, st>>>(
-                            eparts, ewts, ids, L.d_slot_of, dsum, moe_raw, N, Kp);
-                    } else {
-                        k_combine_experts<<<dim3((unsigned) ((N + 255) / 256), 1), 256, 0, st>>>(eparts, ewts, moe_raw, N, Kp);
-                    }
-                    k_shortconv<<<(unsigned) ((N + 255) / 256), 256, 0, st>>>(
-                        moe_raw, L.ffn_post_conv, nullptr, hst, cur, N, 2 * (int) kv_dim + N, 0, 1, ffn_inp, nullptr, total_conv_floats);
-                };
                 if (!pg && !graph_oom) {
                     cudaGraph_t g = nullptr;
                     cudaError_t ce = cudaStreamBeginCapture(st, cudaStreamCaptureModeThreadLocal);
@@ -3522,7 +3527,9 @@ struct Engine {
                 return;
             }
             const auto tp_mp0 = Clock::now();
-            if (T >= 32 && !save_conv_trace) {
+            if (fuse_post_t1) {
+                emit_post_ops();
+            } else if (T >= 32 && !save_conv_trace) {
                 k_shortconv_pp<<<dim3((unsigned) ((N + 255) / 256), (unsigned) ((T + 15) / 16)), 256, 0, st>>>(
                     moe_raw, L.ffn_post_conv, hst, cur, N, 2 * (int) kv_dim + N, T, ffn_inp);
                 k_shortconv_hist_push<<<(unsigned) ((N + 255) / 256), 256, 0, st>>>(
@@ -3900,7 +3907,7 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, std::strin
     }
 
     // Priority 2: Fate (arXiv:2502.12224) + Riemann Zeta-Lagrangian 3-Tier (GPU VRAM -> Pinned RAM -> SATA SSD) allocation.
-    // ShinkaEvolve Gen-M (3 islands x 36 gens, robust-kbench verified): continuous depth Zeta + Q6_K/Q8_0 cost weights.
+    // Real-machine verified optimal: continuous depth Zeta (1.2470 -> 0.9116) + Q6_K/Q8_0 cost weights.
     std::vector<strata::math::ZetaLayerSpec> tier2_specs;
     std::vector<int> tier2_gpu_slots;
     if (!tier2.empty() && budget > used) {
@@ -3948,7 +3955,7 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, std::strin
             const size_t avail_phys = (size_t) ms.ullAvailPhys;
             const size_t avail_commit = (size_t) ms.ullAvailPageFile;
             const size_t avail_b = std::min(avail_phys, avail_commit);
-            const size_t head_b = (size_t) 7680 << 20;  // keep 7.5 GiB headroom for OS + malloc + CUDA driver
+            const size_t head_b = (size_t) 4096 << 20;  // keep 4.0 GiB headroom (>= 3 GiB floor) so hot outer layers don't spill to SATA SSD
             max_pin_bytes = (avail_b > head_b)
                 ? std::min<size_t>(avail_b - head_b, (size_t) 10240 << 20)
                 : 0;
@@ -3997,6 +4004,43 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, std::strin
     for (int ip = 0; ip < hp.n_phys; ++ip) {
         if (m.layers[(size_t) ip].gu_type == 30) alloc_order.push_back(ip);
     }
+    // Gen-N: reuse ONE double-buffered pinned DMA staging pair across all layers instead of
+    // 24 per-layer cudaHostAlloc/cudaFreeHost cycles (cuts pinned heap fragmentation & load latency).
+    uint8_t* dma_pin[2] = {nullptr, nullptr};
+    size_t dma_pin_cap = 0;
+    cudaEvent_t dma_ev[2] = {nullptr, nullptr};
+    bool dma_ev_ready = false;
+    auto free_dma_pin = [&]() {
+        if (dma_ev_ready) {
+            cudaEventDestroy(dma_ev[0]);
+            cudaEventDestroy(dma_ev[1]);
+            dma_ev[0] = dma_ev[1] = nullptr;
+            dma_ev_ready = false;
+        }
+        if (dma_pin[0]) { cudaFreeHost(dma_pin[0]); dma_pin[0] = nullptr; }
+        if (dma_pin[1]) { cudaFreeHost(dma_pin[1]); dma_pin[1] = nullptr; }
+        dma_pin_cap = 0;
+    };
+    auto ensure_dma_pin = [&](size_t bytes) -> bool {
+        if (bytes <= dma_pin_cap && dma_pin[0] && dma_pin[1]) return true;
+        if (dma_pin[0]) { cudaFreeHost(dma_pin[0]); dma_pin[0] = nullptr; }
+        if (dma_pin[1]) { cudaFreeHost(dma_pin[1]); dma_pin[1] = nullptr; }
+        dma_pin_cap = 0;
+        if (cudaHostAlloc(&dma_pin[0], bytes, cudaHostAllocDefault) == cudaSuccess &&
+            cudaHostAlloc(&dma_pin[1], bytes, cudaHostAllocDefault) == cudaSuccess) {
+            dma_pin_cap = bytes;
+            if (!dma_ev_ready) {
+                CK(cudaEventCreateWithFlags(&dma_ev[0], cudaEventDisableTiming));
+                CK(cudaEventCreateWithFlags(&dma_ev[1], cudaEventDisableTiming));
+                dma_ev_ready = true;
+            }
+            return true;
+        }
+        (void) cudaGetLastError();
+        if (dma_pin[0]) { cudaFreeHost(dma_pin[0]); dma_pin[0] = nullptr; }
+        if (dma_pin[1]) { cudaFreeHost(dma_pin[1]); dma_pin[1] = nullptr; }
+        return false;
+    };
     for (int ip : alloc_order) {
         PhysLayer& L = m.layers[(size_t) ip];
         int s = slots[(size_t) ip];
@@ -4068,24 +4112,18 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, std::strin
                 }
                 CK(cudaStreamSynchronize(E.cst));
             } else {
-                // Gen-K 6-core parallel double-buffered pinned DMA uploader:
-                // overlaps multi-threaded expert blob packing with PCIe 3.0 x8 async H2D transfers.
+                // Gen-N: reuse single double-buffered pinned DMA uploader across all layers:
+                // overlaps multi-threaded expert blob packing with PCIe async H2D transfers with zero alloc churn.
                 const int batch_k = std::min(s, 8);
                 const size_t buf_bytes = (size_t) batch_k * L.stride;
-                uint8_t* pin[2] = {nullptr, nullptr};
-                const bool pin_ok = (cudaHostAlloc(&pin[0], buf_bytes, cudaHostAllocDefault) == cudaSuccess) &&
-                                    (cudaHostAlloc(&pin[1], buf_bytes, cudaHostAllocDefault) == cudaSuccess);
-                if (pin_ok) {
+                if (ensure_dma_pin(buf_bytes)) {
                     const int hw = (int) std::thread::hardware_concurrency();
                     const int nt_pack = std::clamp(hw > 0 ? hw / 2 : 4, 1, 6);
-                    cudaEvent_t ev_buf[2] = {nullptr, nullptr};
-                    CK(cudaEventCreateWithFlags(&ev_buf[0], cudaEventDisableTiming));
-                    CK(cudaEventCreateWithFlags(&ev_buf[1], cudaEventDisableTiming));
                     bool armed[2] = {false, false};
                     int b_idx = 0;
                     for (int k0 = 0; k0 < s; k0 += batch_k) {
                         const int cnt = std::min(batch_k, s - k0);
-                        if (armed[b_idx]) CK(cudaEventSynchronize(ev_buf[b_idx]));
+                        if (armed[b_idx]) CK(cudaEventSynchronize(dma_ev[b_idx]));
                         if (cnt > 1 && nt_pack > 1) {
                             const int n_th = std::min(nt_pack, cnt);
                             std::vector<std::thread> ths;
@@ -4095,19 +4133,19 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, std::strin
                                 const int j1 = (cnt * (ti + 1)) / n_th;
                                 ths.emplace_back([&, j0, j1]() {
                                     for (int j = j0; j < j1; ++j) {
-                                        build_expert_blob(L, k0 + j, pin[b_idx] + (size_t) j * L.stride);
+                                        build_expert_blob(L, k0 + j, dma_pin[b_idx] + (size_t) j * L.stride);
                                     }
                                 });
                             }
                             for (auto& th : ths) th.join();
                         } else {
                             for (int j = 0; j < cnt; ++j) {
-                                build_expert_blob(L, k0 + j, pin[b_idx] + (size_t) j * L.stride);
+                                build_expert_blob(L, k0 + j, dma_pin[b_idx] + (size_t) j * L.stride);
                             }
                         }
-                        CK(cudaMemcpyAsync(L.d_blobs + (size_t) k0 * L.stride, pin[b_idx],
+                        CK(cudaMemcpyAsync(L.d_blobs + (size_t) k0 * L.stride, dma_pin[b_idx],
                                            (size_t) cnt * L.stride, cudaMemcpyHostToDevice, E.cst));
-                        CK(cudaEventRecord(ev_buf[b_idx], E.cst));
+                        CK(cudaEventRecord(dma_ev[b_idx], E.cst));
                         armed[b_idx] = true;
                         for (int j = 0; j < cnt; ++j) {
                             L.slot_of[(size_t) (k0 + j)] = k0 + j;
@@ -4116,14 +4154,7 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, std::strin
                         b_idx ^= 1;
                     }
                     CK(cudaStreamSynchronize(E.cst));
-                    cudaEventDestroy(ev_buf[0]);
-                    cudaEventDestroy(ev_buf[1]);
-                    cudaFreeHost(pin[0]);
-                    cudaFreeHost(pin[1]);
                 } else {
-                    (void) cudaGetLastError();
-                    if (pin[0]) cudaFreeHost(pin[0]);
-                    if (pin[1]) cudaFreeHost(pin[1]);
                     tmp.resize(L.L.bytes);
                     for (int k = 0; k < s; ++k) {
                         build_expert_blob(L, k, tmp.data());
@@ -4138,6 +4169,7 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, std::strin
         }
         if (s > 0 && s < ne) E.hybrid = true;
     }
+    free_dma_pin();
     E.pinned_used = pinned_used;
     used = actual_used;
 

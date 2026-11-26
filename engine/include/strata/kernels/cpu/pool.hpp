@@ -373,6 +373,10 @@ private:
     alignas(64) std::atomic<uint64_t> head_{0};   // epoch << 32 | njobs << 16 | next index (issue #29)
     alignas(64) std::atomic<uint32_t> done_{0};
     alignas(64) std::atomic<uint32_t> parked_{0};
+    struct alignas(64) WorkerPark {
+        std::atomic<uint8_t> parked{0};
+    };
+    std::unique_ptr<WorkerPark[]> wparked_;       // per-worker cache-line-isolated park flag (zero RMW contention when numa_n_ == 0)
     alignas(64) std::atomic<uint32_t> epoch_{0};
     alignas(64) std::atomic<bool> stop_{false};
     // The sleep after `kSpinBeforeSleep`.  `sleepers_` is how `publish` knows whether anyone needs waking, so the
@@ -400,12 +404,15 @@ private:
     static constexpr int kMaxNativeFF = FF > 2048 ? FF : 2048;   // Inkling-2 n_ff=1152 > Flash-Next FF=640
     struct SplitBufMulti {
         alignas(64) float ff[MAXT][kMaxNativeFF];
-        ActQ a2[MAXT];
         alignas(64) uint8_t hq[MAXT][kNativeHBytes];   // plan v0.3 P6: native down activations
+    };
+    struct SplitBufQ2 {
+        ActQ a2[MAXT];                                 // lazily allocated only for Q2_0 paths (saves ~60 KiB/slot)
     };
     const NativeFmt* nfmt_ = nullptr;
     NativeArithmetic narithmetic_ = NativeArithmetic::Default;
     std::vector<SplitBufMulti> split_multi_;
+    std::vector<SplitBufQ2> split_multi_q2_;
     // STRATA_NUMA_SPLIT=1 (opt-in, Linux, exactly 2 nodes): in the native row phases (modes 5/6) every expert's rows
     // are cut into one slice per NUMA node (slice k = rows [per*k/2, per*(k+1)/2) of the gate/up or down matrix, the
     // part the resident complement places on node k in step B), and each node's threads claim and count on their own

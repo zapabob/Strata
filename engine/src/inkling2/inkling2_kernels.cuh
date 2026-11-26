@@ -4833,6 +4833,146 @@ __global__ void k_combine_experts_hybrid(const float* __restrict__ eparts, const
     out[i] = s;
 }
 
+/// Fused T=1 k_combine_experts + k_shortconv (dyn=nullptr, res_add=ffn_inp) for full-GPU / hit-only MoE layers.
+/// Eliminates intermediate moe_raw HBM write+read and 1 kernel launch per layer (36+ launches/tok); 100% bit-exact.
+__global__ void k_combine_shortconv_t1(const float* __restrict__ eparts, const float* __restrict__ ewts,
+                                       const float* __restrict__ w_conv, float* __restrict__ hist,
+                                       const float* __restrict__ res_add, float* __restrict__ out,
+                                       int N, int top_k, int hist_offset) {
+    const float scale = rsqrtf(5.0f);
+    if ((N & 3) == 0) {
+        const int n4 = N >> 2;
+        const int i4 = blockIdx.x * blockDim.x + threadIdx.x;
+        if (i4 >= n4) return;
+        float sx = 0.0f, sy = 0.0f, sz = 0.0f, sw = 0.0f;
+        if (top_k == 8) {
+#pragma unroll
+            for (int k = 0; k < 8; ++k) {
+                const float w = __ldg(ewts + k);
+                const float4 v = __ldg(reinterpret_cast<const float4*>(eparts + (size_t) k * N) + i4);
+                sx = fmaf(w, v.x, sx); sy = fmaf(w, v.y, sy); sz = fmaf(w, v.z, sz); sw = fmaf(w, v.w, sw);
+            }
+        } else {
+            for (int k = 0; k < top_k; ++k) {
+                const float w = __ldg(ewts + k);
+                const float4 v = __ldg(reinterpret_cast<const float4*>(eparts + (size_t) k * N) + i4);
+                sx = fmaf(w, v.x, sx); sy = fmaf(w, v.y, sy); sz = fmaf(w, v.z, sz); sw = fmaf(w, v.w, sw);
+            }
+        }
+        const float4 r4 = res_add ? __ldg(reinterpret_cast<const float4*>(res_add) + i4) : make_float4(0.0f, 0.0f, 0.0f, 0.0f);
+        const float xs[4] = {sx, sy, sz, sw};
+        const float rs[4] = {r4.x, r4.y, r4.z, r4.w};
+        float ys[4];
+        const int c0 = i4 * 4;
+#pragma unroll
+        for (int j = 0; j < 4; ++j) {
+            const int c = c0 + j;
+            const float x = xs[j];
+            float* hc = hist + (size_t) (hist_offset + c) * 3;
+            const float h0 = hc[0], h1 = hc[1], h2 = hc[2];
+            const float4 w4 = *reinterpret_cast<const float4*>(w_conv + (size_t) c * 4);
+            const float s = h0 * w4.x + h1 * w4.y + h2 * w4.z + x * w4.w;
+            ys[j] = (x + s) * scale + rs[j];
+            hc[0] = h1; hc[1] = h2; hc[2] = x;
+        }
+        reinterpret_cast<float4*>(out)[i4] = make_float4(ys[0], ys[1], ys[2], ys[3]);
+        return;
+    }
+    const int c = blockIdx.x * blockDim.x + threadIdx.x;
+    if (c >= N) return;
+    float x = 0.0f;
+    for (int k = 0; k < top_k; ++k) x += ewts[k] * eparts[(size_t) k * N + c];
+    float* hc = hist + (size_t) (hist_offset + c) * 3;
+    const float h0 = hc[0], h1 = hc[1], h2 = hc[2];
+    const float4 w4 = *reinterpret_cast<const float4*>(w_conv + (size_t) c * 4);
+    const float s = h0 * w4.x + h1 * w4.y + h2 * w4.z + x * w4.w;
+    float y = (x + s) * scale;
+    if (res_add) y += res_add[c];
+    out[c] = y;
+    hc[0] = h1; hc[1] = h2; hc[2] = x;
+}
+
+/// Fused T=1 k_combine_experts_hybrid + k_shortconv (dyn=nullptr, res_add=ffn_inp) for hybrid GPU+CPU MoE layers.
+/// Eliminates intermediate moe_raw HBM write+read and 12 kernel launches/tok across outer layers; 100% bit-exact.
+__global__ void k_combine_hybrid_shortconv_t1(const float* __restrict__ eparts, const float* __restrict__ ewts,
+                                              const int32_t* __restrict__ ids, const int32_t* __restrict__ slot_of,
+                                              const float* __restrict__ cpu_sum, const float* __restrict__ w_conv,
+                                              float* __restrict__ hist, const float* __restrict__ res_add,
+                                              float* __restrict__ out, int N, int top_k, int hist_offset) {
+    __shared__ uint8_t s_hit[16];
+    __shared__ float s_w[16];
+    if (top_k <= 16) {
+        if (threadIdx.x < (unsigned) top_k) {
+            const int k = (int) threadIdx.x;
+            const int hit = (slot_of[ids[k]] >= 0) ? 1 : 0;
+            s_hit[k] = (uint8_t) hit;
+            s_w[k] = hit ? ewts[k] : 0.0f;
+        }
+        __syncthreads();
+    }
+    const float scale = rsqrtf(5.0f);
+    if ((N & 3) == 0) {
+        const int n4 = N >> 2;
+        const int i4 = blockIdx.x * blockDim.x + threadIdx.x;
+        if (i4 >= n4) return;
+        const float4 c4 = __ldg(reinterpret_cast<const float4*>(cpu_sum) + i4);
+        float sx = c4.x, sy = c4.y, sz = c4.z, sw = c4.w;
+        if (top_k <= 16) {
+#pragma unroll
+            for (int k = 0; k < 16; ++k) {
+                if (k >= top_k) break;
+                if (s_hit[k]) {
+                    const float w = s_w[k];
+                    const float4 v = __ldg(reinterpret_cast<const float4*>(eparts + (size_t) k * N) + i4);
+                    sx = fmaf(w, v.x, sx); sy = fmaf(w, v.y, sy); sz = fmaf(w, v.z, sz); sw = fmaf(w, v.w, sw);
+                }
+            }
+        } else {
+            for (int k = 0; k < top_k; ++k) {
+                if (slot_of[ids[k]] >= 0) {
+                    const float w = ewts[k];
+                    const float4 v = __ldg(reinterpret_cast<const float4*>(eparts + (size_t) k * N) + i4);
+                    sx = fmaf(w, v.x, sx); sy = fmaf(w, v.y, sy); sz = fmaf(w, v.z, sz); sw = fmaf(w, v.w, sw);
+                }
+            }
+        }
+        const float4 r4 = res_add ? __ldg(reinterpret_cast<const float4*>(res_add) + i4) : make_float4(0.0f, 0.0f, 0.0f, 0.0f);
+        const float xs[4] = {sx, sy, sz, sw};
+        const float rs[4] = {r4.x, r4.y, r4.z, r4.w};
+        float ys[4];
+        const int c0 = i4 * 4;
+#pragma unroll
+        for (int j = 0; j < 4; ++j) {
+            const int c = c0 + j;
+            const float x = xs[j];
+            float* hc = hist + (size_t) (hist_offset + c) * 3;
+            const float h0 = hc[0], h1 = hc[1], h2 = hc[2];
+            const float4 w4 = *reinterpret_cast<const float4*>(w_conv + (size_t) c * 4);
+            const float s = h0 * w4.x + h1 * w4.y + h2 * w4.z + x * w4.w;
+            ys[j] = (x + s) * scale + rs[j];
+            hc[0] = h1; hc[1] = h2; hc[2] = x;
+        }
+        reinterpret_cast<float4*>(out)[i4] = make_float4(ys[0], ys[1], ys[2], ys[3]);
+        return;
+    }
+    const int c = blockIdx.x * blockDim.x + threadIdx.x;
+    if (c >= N) return;
+    float x = cpu_sum[c];
+    for (int k = 0; k < top_k; ++k) {
+        if ((top_k <= 16) ? (s_hit[k] != 0) : (slot_of[ids[k]] >= 0)) {
+            x = fmaf((top_k <= 16) ? s_w[k] : ewts[k], eparts[(size_t) k * N + c], x);
+        }
+    }
+    float* hc = hist + (size_t) (hist_offset + c) * 3;
+    const float h0 = hc[0], h1 = hc[1], h2 = hc[2];
+    const float4 w4 = *reinterpret_cast<const float4*>(w_conv + (size_t) c * 4);
+    const float s = h0 * w4.x + h1 * w4.y + h2 * w4.z + x * w4.w;
+    float y = (x + s) * scale;
+    if (res_add) y += res_add[c];
+    out[c] = y;
+    hc[0] = h1; hc[1] = h2; hc[2] = x;
+}
+
 __global__ void k_merge_cpu(float* __restrict__ eparts, const float* __restrict__ ecpu,
                             const int32_t* __restrict__ miss, int N) {
     const int e = blockIdx.x;
