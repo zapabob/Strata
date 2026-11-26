@@ -15,7 +15,7 @@ import requests
 from tokenizers import Tokenizer
 
 from benchmark_generation import ANSWER_HEADER, SEED, complete, digest, local_server, read, save
-from benchmark_modeb_nvfp4 import BATCH, CONTEXT, MICROBATCH, SERVER_FLAGS, stamp, throughput
+from benchmark_modeb_nvfp4 import BATCH, CONTEXT, MICROBATCH, SERVER_FLAGS, stamp
 from grade_generation import wilson
 from phase7_controls import immutable
 
@@ -153,9 +153,6 @@ def protocol(args):
                 fortress_method="manual refusal assessment of a preselected non-operational benign subset",
                 tokenizer_digest=digest(args.source / "tokenizer.json"),
                 chat_template_digest=digest(args.source / "chat_template.jinja"), server_digest=digest(args.server))
-    if args.expert_shards:
-        spec["expert_split_manifest"] = digest(args.expert_shards)
-        spec["storage_speed_protocol"] = digest(args.storage_speed_protocol)
     immutable(args.out / "protocol.json", spec)
     immutable(args.out / "scoring-key.json", gold)
     print("Frozen case counts", dict(Counter(row["cohort"] for row in items.values())), flush=True)
@@ -194,44 +191,11 @@ def case_batches(pending, items):
         yield batch
 
 
-def storage_speed(url, args, attempt, result):
-    protocol = read(args.storage_speed_protocol)
-    ids = protocol["speed_ids"]
-    if len(ids) != 512 or protocol["speed_budget"] != 128 or protocol["speed_repeats"] != 3:
-        raise ValueError("The frozen storage timing conditions differ from the matched speed trial")
-    warm = complete(url, protocol["smoke_ids"], 16)
-    if warm["output_tokens"] <= 0 or not warm["content"].strip():
-        raise ValueError("The Expert storage smoke returned no visible text")
-    trials = []
-    for index in range(protocol["speed_repeats"]):
-        row = complete(url, ids, protocol["speed_budget"])
-        if row["timings"].get("cache_n", 0) or row["timings"]["prompt_n"] != len(ids):
-            raise ValueError("The storage speed trial used a cached prefix")
-        save(attempt / f"storage-speed-{index + 1}.json", row)
-        trials.append(row)
-    measured = throughput(trials)
-    save(result, dict(smoke=warm, speed=measured, trials=trials, receipt=str(attempt)))
-    print("Expert storage measured generation:", measured, flush=True)
-
-
 def generate(args, spec, arm, selection=None):
     name, model = arm
     manifest = model.with_suffix(".manifest.json")
     if model.stat().st_size != read(manifest)["bytes"]:
         raise ValueError(f"Unexpected file extent for {model.name}")
-    flags = runtime_flags(args.cpu_expert_layers, args.load_mode, args.no_host)
-    primary = model
-    if args.expert_shards:
-        split = read(args.expert_shards)
-        if (Path(split["originals"][name]) != model.resolve()
-                or split["verified_payloads"] != 1504 or split["shared_tensor_payloads"] != 8):
-            raise ValueError(f"Unexpected Expert split provenance for {model.name}")
-        for key in (name, "shared"):
-            entry = split["shards"][key]
-            if Path(entry["path"]).stat().st_size != entry["bytes"]:
-                raise ValueError(f"Unexpected Expert split extent for {key}")
-        primary = Path(split["shards"][name]["path"])
-        flags += ("--shard", split["shards"]["shared"]["path"])
     folder = args.out / name
     answers = folder / "answers"
     answers.mkdir(parents=True, exist_ok=True)
@@ -250,12 +214,10 @@ def generate(args, spec, arm, selection=None):
             attempt = folder / ("server-" + stamp())
             before = progress
             try:
-                with local_server(args.server, primary, attempt, 1, CONTEXT,
-                                  batch=BATCH, ubatch=MICROBATCH, extra=flags,
+                with local_server(args.server, model, attempt, 1, CONTEXT,
+                                  batch=BATCH, ubatch=MICROBATCH,
+                                  extra=runtime_flags(args.cpu_expert_layers, args.load_mode, args.no_host),
                                   exclusive_gpu=True) as url:
-                    speed = folder / "storage-generation.json"
-                    if args.expert_shards and not speed.exists():
-                        storage_speed(url, args, attempt, speed)
                     for key in left:
                         result = answers / f"{key}.json"
                         if result.exists():
@@ -387,15 +349,9 @@ def main():
     parser.add_argument("--cpu-expert-layers", type=int, choices=(5, 8), default=8)
     parser.add_argument("--load-mode", choices=("none", "mmap", "dio"), default="none")
     parser.add_argument("--no-host", action="store_true", help="Bypass the CUDA host buffer")
-    parser.add_argument("--expert-shards", type=Path, help="Verified cross-volume Mode B split manifest")
-    parser.add_argument("--storage-speed-protocol", type=Path, help="Frozen 512/128 throughput protocol")
     args = parser.parse_args()
     if args.first is not None and (args.stage != "gpqa" or not 1 <= args.first <= 198):
         parser.error("--first is available for GPQA with a count between 1 and 198")
-    if args.expert_shards and (args.load_mode != "mmap" or not args.no_host or args.cpu_expert_layers != 8):
-        parser.error("Expert shard evaluation uses memory mapping, --no-host and eight CPU Expert layers")
-    if bool(args.expert_shards) != bool(args.storage_speed_protocol):
-        parser.error("Expert shard evaluation requires the frozen throughput protocol")
     args.out.mkdir(parents=True, exist_ok=True)
     frozen = args.out / "protocol.json"
     if args.action == "prepare" or not frozen.exists():
@@ -403,10 +359,7 @@ def main():
     else:
         spec, gold = read(frozen), read(args.out / "scoring-key.json")
         if (spec["server_digest"] != digest(args.server) or set(gold) != set(spec["order"])
-                or spec["shared_flags"] != list(runtime_flags(args.cpu_expert_layers, args.load_mode, args.no_host))
-                or spec.get("expert_split_manifest") != (digest(args.expert_shards) if args.expert_shards else None)
-                or spec.get("storage_speed_protocol") != (digest(args.storage_speed_protocol)
-                                                          if args.storage_speed_protocol else None)):
+                or spec["shared_flags"] != list(runtime_flags(args.cpu_expert_layers, args.load_mode, args.no_host))):
             raise ValueError("The frozen model-card protocol and its inputs differ")
     if args.action == "run":
         arms = [(tag, model) for tag, model in (("old", args.old), ("nvfp4", args.new))

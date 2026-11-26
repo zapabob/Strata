@@ -3,7 +3,7 @@
   "tag": "v0.8.3",
   "product_version": "0.8.3",
   "control_version": "0.6.3",
-  "engine_version": "0.7.0",
+  "engine_version": "0.8.3",
   "installer_names": [
     "Strata-{v}-windows-x64-setup.exe"
   ],

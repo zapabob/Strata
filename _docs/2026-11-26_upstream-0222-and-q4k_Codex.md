@@ -215,3 +215,30 @@
   already-confirmed green E2E from after the host patches is accepted; the later Python-only
   finish fix was not E2E-verified. Restart the app and rerun `e2e_quick.ps1` when convenient.
 
+## Release workflow v0.8.3 (owner-approved, in progress)
+- Owner decisions: new immutable version `v0.8.3` (do not overwrite published v0.8.2), commit all
+  132 working-tree changes, scope = app NSIS installer + SHA256SUMS, overwrite-install locally,
+  publish to GitHub; no engine rebuild (no signing key); `releaseQualified=false` retained.
+- Security: diff scanned for tokens/keys/private-material before staging; none found.
+- Version bumped 0.8.2 -> 0.8.3 in `VERSION`, `app/host/package.json` + lock,
+  `app/desktop/package.json` + lock, `app/desktop/src-tauri/Cargo.toml` + lock,
+  `docs/data/release.json` (tag/assets/product_version).
+- Commit `2f4ffe4dc` "[Other] Integrate upstream 0.2.22 fixes and restore agent pause/resume
+  (v0.8.3)" pushed to `origin main` (`1d7d29947..2f4ffe4dc main -> main`).
+- Next steps: restage Control (`stage-control.py`), UI build with `STRATA_PUBLIC_PACKAGE=1`,
+  `cargo tauri build --bundles nsis`, `verify-release.mjs`, overwrite install, publish release
+  and readback. Build was starting when the shell tool stalled.
+- Restaging Control completed (bundle 0.6.3, 22 models / 6 families). UI rebuilt with Node
+  24.22.3 and `STRATA_PUBLIC_PACKAGE=1` (24.04 s, recipe nodeVersion 24.22.3).
+- `verify-release.mjs` failed on engine source binding: the staged 0.6.3 component's
+  `native-build.json` does not match any available source tree, and the integration commit
+  changed engine sources. Owner chose to rebuild the engine component. Fresh portable CUDA
+  13.5 / sm_120 configure succeeded from `engine/` (`STRATA_PORTABLE=ON`,
+  `STRATA_ENABLE_CUDA=ON`, 5 build jobs) in `H:\Strata\build\engine-083c`.
+- Owner then required semantic-version unification: `engine/CMakeLists.txt` project version and
+  the rebuilt component version are 0.8.3, matching VERSION / package.json / Cargo.toml.
+  `docs/data/release.json` `engine_version` is 0.8.3. Control stays independently at 0.6.3.
+  The all-target build linked `strata.exe` but failed on the unrelated pre-existing test target
+  `strata_v1_1_inkling2_test.cpp` (missing `ModelFamily::Inkling2Loop`); the production target is
+  built with `--target strata` instead.
+
