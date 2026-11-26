@@ -32,12 +32,13 @@ export function GoalBar({ chatId }: { chatId: string | null | undefined }) {
     finally { setBusy(false); }
   };
   const resumable = goal.phase === 'paused' || goal.phase === 'blocked';
+  const exhausted = goal.maxRounds != null && goal.round >= goal.maxRounds;
   return <>
     <div className="goalbar" data-phase={goal.phase} role="group" aria-label={tr("Goal")}>
       <Icon name={goal.phase === 'complete' ? 'check' : 'bolt'} size={16}/>
       <span className="goalbar__text" title={goal.objective}><strong>{tr("Goal")}</strong><span> · {goal.objective}</span><span className="goalbar__state"> · {goalStatusText(goal)}</span></span>
       {goal.phase !== 'complete' ? (resumable
-        ? <IconBtn name="play" title={tr("Resume the goal")} size={16} disabled={busy || streaming} onClick={() => void run(() => resumeGoal())}/>
+        ? <IconBtn name="play" title={tr("Resume the goal")} size={16} disabled={busy || streaming || exhausted} onClick={() => void run(() => resumeGoal())}/>
         : <IconBtn name="pause" title={tr("Pause the goal")} size={16} disabled={busy} onClick={() => void run(() => goalAction(chatId, 'pause'))}/>) : null}
       {goal.phase !== 'complete' ? <IconBtn name="pencil" title={tr("Edit the goal")} size={16} disabled={busy} onClick={() => { setText(goal.objective); setEditing(true); }}/> : null}
       <IconBtn name="x" title={tr("Remove the goal")} size={16} disabled={busy} onClick={() => setRemoving(true)}/>

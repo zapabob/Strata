@@ -206,17 +206,33 @@ export async function startScriptedWorker({ port = 0, chunkDelayMs = 40, model =
       send({ role: 'assistant', reasoning_content: 'I should consider the question before answering.' });
       return finish('length', 100);
     }
-    if (directive?.[1] === 'cutwrite' || directive?.[1] === 'cutalways') {
+    if (['cutwrite', 'cutalways', 'goalpagoda'].includes(directive?.[1])) {
       // A reply the length limit cuts inside a tool call (AGENT-LOST): some words, then `write` arguments that never close, finish "length".
       // `cutwrite` is cut once and then, asked to carry on, writes the file in a small call; `cutalways` is cut every time.
       const nudged = messages.some(m => m.role === 'user' && /cut off by the output limit/.test(text(m)));
+      const isPagoda = directive[1] === 'goalpagoda';
+      const file = isPagoda ? 'pagoda.html' : (directive[2] ?? '').trim() || 'big.txt';
+      const goalPromptAt = isPagoda ? messages.findLastIndex(m => m.role === 'user' && /<goal_round>/.test(text(m))) : -1;
+      if (isPagoda && /Round: 2\//.test(text(messages[goalPromptAt])) && nudged) {
+        const step = messages.slice(goalPromptAt + 1).filter(m => m.role === 'tool').length;
+        if (step === 0) return toolCall('write', { file_path: file, content: '<!doctype html><html lang="en"><title>Five-storey pagoda</title><main><!-- roofs --></main></html>\n' });
+        if (step === 1) return toolCall('edit', { file_path: file, old_string: '<!-- roofs -->', new_string: Array.from({ length: 5 }, (_, i) => `<div class="roof" data-storey="${i + 1}">Storey ${i + 1}</div>`).join('\n') });
+        if (step === 2) return toolCall('read', { file_path: file });
+        if (step === 3 && /data-storey="5"/.test(text(last))) return toolCall('get_goal', {});
+        if (step === 4) {
+          const result = text(last);
+          const id = /"id"\s*:\s*"([^"]+)"/.exec(result)?.[1];
+          const revision = Number(/"revision"\s*:\s*(\d+)/.exec(result)?.[1]);
+          if (id && revision) return toolCall('update_goal', { goal_id: id, revision, action: 'complete' });
+        }
+        return say(['Checked pagoda.html.']);
+      }
       if (directive[1] === 'cutwrite' && nudged) {
         if (last.role === 'tool') return say(['Written in parts. The file is complete.']);
         return toolCall('write', { file_path: (directive[2] ?? '').trim() || 'big.txt', content: 'entry 0001\nentry 0002\n' });
       }
       send({ role: 'assistant', content: 'Writing the whole file in one call now. ' });
       await delay(chunkDelayMs);
-      const file = (directive[2] ?? '').trim() || 'big.txt';
       send({ tool_calls: [{ index: 0, id: `call_${requests.length}`, type: 'function', function: { name: 'write', arguments: '' } }] });
       const head = `{"file_path":"${file}","content":"`;
       for (let i = 0; i < head.length; i += 11) { send({ tool_calls: [{ index: 0, function: { arguments: head.slice(i, i + 11) } }] }); await delay(2); }

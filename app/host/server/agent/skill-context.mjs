@@ -1,12 +1,24 @@
 /** Whole, enabled skill documents selected by the host for this task. */
+import { GOAL_FILE_GUIDANCE } from './reply-cut.mjs';
+
 const OPEN = '<strata-workflow-skills-v1>';
 const CLOSE = '</strata-workflow-skills-v1>';
+const GOAL_PREFIX = `<strata-goal-file-guidance>\n${GOAL_FILE_GUIDANCE}\n</strata-goal-file-guidance>\n\n`;
 
 export function withoutSkillContext(text) {
   const value = String(text ?? '');
   if (!value.startsWith(OPEN + '\n')) return value;
   const end = value.indexOf('\n' + CLOSE + '\n\n');
   return end < 0 ? value : value.slice(end + CLOSE.length + 3);
+}
+
+export function withoutGoalContext(text) {
+  const value = withoutSkillContext(text);
+  return value.startsWith(GOAL_PREFIX) ? value.slice(GOAL_PREFIX.length) : value;
+}
+
+export function withGoalContext(text, skills = '') {
+  return skills + GOAL_PREFIX + withoutGoalContext(text);
 }
 
 export function workflowSkillContext(candidates, contextWindow = 32768) {

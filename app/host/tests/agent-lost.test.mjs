@@ -192,3 +192,31 @@ test(`a model that is cut every time is asked ${MAX_CUT_RETRIES} times, then the
   assert.equal(done.cut.calls[0].target, 'big.txt');
   assert.equal(existsSync(join(r.ws, 'big.txt')), false, 'nothing half-written is left behind');
 });
+
+test('a goal recovers an unfinished pagoda write inside its own next round', { skip }, async t => {
+  const r = await rig(t);
+  const out = [];
+  const objective = 'SCRIPT:goalpagoda';
+  await r.bridge.runTurn({ ...r.base('pagoda', f => out.push(f)), goal: { action: 'create', objective, maxRounds: 2 } });
+  const cut = out.filter(f => f.noteReason === 'cut');
+  assert.equal(cut.length, 1, JSON.stringify(r.worker.requests.filter(q => q.toolNames.length).map(q => ({ directive: q.directive, round: /Round: (\d+\/\d+)/.exec(q.raw)?.[1], guidance: q.raw.includes('first save a minimal runnable version'), lastRole: q.lastRole }))));
+  assert.match(cut[0].text, /while writing pagoda\.html.*write did not happen/);
+  const html = readFileSync(join(r.ws, 'pagoda.html'), 'utf8');
+  assert.equal((html.match(/class="roof"/g) ?? []).length, 5);
+  assert.match(html.trim(), /^<!doctype html>[\s\S]+<\/html>$/);
+  assert.ok(r.worker.requests.some(q => q.toolNames.includes('update_goal') && /Round: 2\/2/.test(q.raw) && q.raw.includes('first save a minimal runnable version')));
+  assert.equal(out.findLast(f => f.type === 'done').finishReason, 'stop');
+  assert.deepEqual(await r.bridge.goalState('pagoda'), { objective, phase: 'complete', round: 2, maxRounds: 2 });
+});
+
+test('a goal cut at its round cap cannot start a recovery round', { skip }, async t => {
+  const r = await rig(t);
+  const out = [];
+  await r.bridge.runTurn({ ...r.base('pagoda-limit', f => out.push(f)), goal: { action: 'create', objective: 'SCRIPT:goalpagoda', maxRounds: 1 } });
+  assert.match(words(out), /most steps it was allowed/);
+  assert.doesNotMatch(words(out), /Say “continue”|I asked the assistant/);
+  assert.equal(out.findLast(f => f.type === 'done').finishReason, 'length');
+  assert.equal((await r.bridge.goalState('pagoda-limit')).phase, 'blocked');
+  assert.equal(r.worker.requests.some(q => /Round: 2\//.test(q.raw)), false);
+  assert.equal(existsSync(join(r.ws, 'pagoda.html')), false);
+});

@@ -29,11 +29,11 @@ import { ChildProjector } from './children.mjs';
 import { nearestBudget } from './llm-shape.mjs';
 import { DeliverableTracker, ActivityGroups, FolderClaims } from './deliverables.mjs';
 import { SkillsUsed, skillInfoFrom } from './skills-used.mjs';
-import { workflowSkillContext, withoutSkillContext } from './skill-context.mjs';
+import { withGoalContext, withoutGoalContext, workflowSkillContext, withoutSkillContext } from './skill-context.mjs';
 import { turnEngineSpeed } from './engine-speed.mjs';
 import { engineKeepsTurnAlive } from './engine-progress.mjs';
 import { TurnGuard, GoalGuard, guardNote, GUARD_NOTES } from './turn-guard.mjs';
-import { cutNotice, cutNudge } from './reply-cut.mjs';
+import { cutNotice, cutNudge, hasCutFileWrite } from './reply-cut.mjs';
 import { MarkerStore, MAX_TOOL_FIXES, FIXING_STATUS, correctionText, endNote } from './tool-fix.mjs';
 import { watchForWake } from './wake-watch.mjs';
 
@@ -566,7 +566,7 @@ export function createAgentBridge({ dataDir, componentsDir = null, bundledDir = 
     let matchingText = researchTopic ?? goal?.objective ?? planTask?.request ?? message;
     if (goal && goal.action !== 'create') {
       const saved = await runtime.gw.rpc('goals/get', { agentId: sessionId }).catch(() => null);
-      if (saved?.objective) matchingText = withoutSkillContext(saved.objective);
+      if (saved?.objective) matchingText = withoutGoalContext(saved.objective);
     }
     const automaticSkills = prepareSkills(matchingText);
     const activateSkills = selection => {
@@ -733,7 +733,7 @@ export function createAgentBridge({ dataDir, componentsDir = null, bundledDir = 
       // A reply the length limit cut ends with a sentence that says so (and what was lost), never with silence (AGENT-LOST).
       const cutEnd = !failure && !turn.stopping && projector.ended?.kind === 'max-tokens';
       if (cutEnd && !noteReason) {
-        const note = cutNotice({ ...projector.cut(), retrying: false });
+        const note = cutNotice({ ...projector.cut(), goal: turn.goalRun });
         extra.push({ type: 'delta', own: true, text: `
 
 ${note.text}`, key: note.key, values: note.values, noteReason: 'cut' });
@@ -865,6 +865,10 @@ ${note.text}`, key: note.key, values: note.values, noteReason: 'cut' });
         case 'turn/start':
           turn.parentOpen = true;
           if (turn.research) turn.research.waitingStart = false;
+          if (turn.goalCutPending) {
+            turn.goalCutPending = false;
+            for (const f of projector.clearCut()) emit(f);
+          }
           turn.cutWaiting = false;
           fix.waiting = false;
           clearTimeout(turn.settleTimer);
@@ -953,7 +957,7 @@ ${note.text}`, key: note.key, values: note.values, noteReason: 'cut' });
       plans.update(chatId, p => { p.state = 'running'; p.goalStarted = true; p.steps[index].state = 'running'; });
       const now = plans.get(chatId);
       const objective = stepObjective(now, index), selected = prepareSkills(objective);
-      await runtime.gw.rpc('goals/create', { agentId: sessionId, request: { objective: selected.wrap(objective) } });
+      await runtime.gw.rpc('goals/create', { agentId: sessionId, request: { objective: withGoalContext(objective, selected.context) } });
       activateSkills(selected);
       written.step = ''; written.stepAt = Date.now();
       emit(stepFrame(now, index));
@@ -1053,8 +1057,26 @@ ${note.text}`, key: note.key, values: note.values, noteReason: 'cut' });
           }
           // A reply the length limit cut (AGENT-LOST): the agent lost what it was writing. Say so in the chat and ask it to carry on in smaller pieces, twice at most.
           if (turn.cutWaiting) { turn.settleTimer = after(300, armSettle); return; }
-          if (projector.ended?.kind === 'max-tokens' && !turn.goalRun && !turn.stopping && (turn.cuts ?? 0) < MAX_CUT_RETRIES) {
-            const cut = projector.cut();
+          const cut = projector.ended?.kind === 'max-tokens' ? projector.cut() : null;
+          if (cut && turn.goalRun && !turn.stopping && !turn.cutResumeRefused && hasCutFileWrite(cut)
+            && (turn.cuts ?? 0) < MAX_CUT_RETRIES && current?.phase === 'active' && current.activation === 'disarmed'
+            && current.roundsStarted < current.maxGoalRounds) {
+            turn.goalCutPending = true;
+            try {
+              // The Harness admits the next round against the same goal and round cap. A concurrent edit or pause invalidates the revision.
+              await runtime.gw.rpc('goals/resume', { agentId: sessionId, ref: { id: current.id, revision: current.revision } });
+              turn.cuts = (turn.cuts ?? 0) + 1;
+              const note = cutNotice({ ...cut, retrying: true });
+              emit({ type: 'delta', own: true, text: `\n\n${note.text}\n\n`, key: note.key, values: note.values, noteReason: 'cut' });
+            } catch (e) {
+              turn.goalCutPending = false;
+              turn.cutResumeRefused = true;
+              log(`agent · ${chatId}: goal file-write recovery did not resume (${plainGoalError(e)})`);
+            }
+            armSettle();
+            return;
+          }
+          if (cut && !turn.goalRun && !turn.stopping && (cut.calls.length || projector.emittedAny) && (turn.cuts ?? 0) < MAX_CUT_RETRIES) {
             turn.cuts = (turn.cuts ?? 0) + 1;
             const note = cutNotice({ ...cut, retrying: true });
             emit({ type: 'delta', own: true, text: `
@@ -1103,7 +1125,7 @@ ${note.text}
             if (more && !turn.finished && !turn.stopping) { turn.settleTimer = after(700, armSettle); return; }
           }
 
-          if (turn.goalRun && current) { const line = goalEnding({ ...current, objective: withoutSkillContext(current.objective) }); if (line) emit({ type: 'delta', text: line }); }
+          if (turn.goalRun && current) { const line = goalEnding(current); if (line) emit({ type: 'delta', text: line }); }
           if (turn.goalRun) await announceGoal(true);
         }
         finishTurn(null);
@@ -1189,13 +1211,13 @@ ${note.text}
   /** Create or resume the chat's goal; the Harness's goal driver then runs the rounds by itself. */
   async function startGoal(runtime, sessionId, goal, skillContext = '') {
     if (goal.action === 'create') {
-      const request = { objective: skillContext + withoutSkillContext(goal.objective), ...(goal.maxRounds ? { maxGoalRounds: goal.maxRounds } : {}) };
+      const request = { objective: withGoalContext(goal.objective, skillContext), ...(goal.maxRounds ? { maxGoalRounds: goal.maxRounds } : {}) };
       await runtime.gw.rpc('goals/create', { agentId: sessionId, request });
       return;
     }
     let current = await runtime.gw.rpc('goals/get', { agentId: sessionId });
     if (!current) throw new AgentUnavailable('There is no goal to continue. Start one with /goal followed by what you want done.', 'goal-none');
-    const objective = skillContext + withoutSkillContext(current.objective);
+    const objective = withGoalContext(current.objective, skillContext);
     if (objective !== current.objective) current = await runtime.gw.rpc('goals/edit', { agentId: sessionId, ref: { id: current.id, revision: current.revision }, request: { objective } });
     await runtime.gw.rpc('goals/resume', { agentId: sessionId, ref: { id: current.id, revision: current.revision } });
   }
@@ -1213,13 +1235,16 @@ ${note.text}
   /** The goal as the page and the goal bar see it (notes-split-agent3.md), or null. */
   function goalObject(view, chatId = null) {
     if (!view) return null;
-    const phase = ['active', 'paused', 'complete', 'blocked'].includes(view.phase) ? view.phase : 'blocked';
+    const disarmed = view.phase === 'active' && view.activation === 'disarmed';
+    const exhausted = disarmed && view.roundsStarted >= view.maxGoalRounds;
+    let phase = ['active', 'paused', 'complete', 'blocked'].includes(view.phase) ? view.phase : 'blocked';
+    if (disarmed) phase = exhausted ? 'blocked' : 'paused';
     // A goal that is running a plan (or the points of a goal) shows the plan's title and which step it is on.
     const plan = chatId ? plans.get(chatId) : null;
     const running = plan && plan.goalStarted && ['running', 'paused'].includes(plan.state) ? plan : null;
     const at = running ? running.steps.findIndex(x => x.state !== 'done' && x.state !== 'skipped') : -1;
     const step = running && at >= 0 ? { index: at + 1, total: running.steps.length, text: running.steps[at].text } : null;
-    return { objective: step ? running.title : withoutSkillContext(view.objective), ...(step ? { step } : {}), phase, round: view.roundsStarted ?? 0, maxRounds: view.maxGoalRounds ?? null, ...(phase === 'blocked' ? { blocked: plainBlocker(view.blockedReason) } : {}) };
+    return { objective: step ? running.title : withoutGoalContext(view.objective), ...(step ? { step } : {}), phase, round: view.roundsStarted ?? 0, maxRounds: view.maxGoalRounds ?? null, ...(phase === 'blocked' ? { blocked: plainBlocker(exhausted ? { code: 'round-limit' } : view.blockedReason) } : {}) };
   }
 
   /** The goal of a chat now, from the Harness (null: none, or the agent is not running). */
@@ -1242,7 +1267,7 @@ ${note.text}
       else if (action === 'edit') {
         const objective = String(text ?? '').trim().slice(0, 4000);
         if (!objective) throw new AgentUnavailable('A goal needs a few words about what you want done.', 'goal-text');
-        await rt.gw.rpc('goals/edit', { agentId: known, ref, request: { objective } });
+        await rt.gw.rpc('goals/edit', { agentId: known, ref, request: { objective: withGoalContext(objective) } });
       } else throw new AgentUnavailable('That goal action is not known.', 'goal-action');
     } catch (e) { throw e instanceof AgentUnavailable ? e : new AgentUnavailable(plainGoalError(e), 'goal-failed', e.message); }
     if (action === 'clear') { const plan = plans.get(chatId); if (plan && ['running', 'paused'].includes(plan.state)) { plans.update(chatId, p => { p.state = 'stopped'; for (const st of p.steps) if (st.state === 'running') st.state = 'pending'; }); onPlan(chatId, 'stopped', planView(plans.get(chatId))); } }
@@ -1254,7 +1279,8 @@ ${note.text}
   /** The goal's state in plain words. */
   function describeGoal(view) {
     if (!view) return 'No goal is set. Start one with /goal followed by what you want done.';
-    const what = `"${withoutSkillContext(view.objective)}"`;
+    const what = `"${withoutGoalContext(view.objective)}"`;
+    if (view.phase === 'active' && view.activation === 'disarmed') return disarmedGoalEnding(view);
     if (view.phase === 'active') return `Working on the goal ${what}.`;
     if (view.phase === 'paused') return `The goal ${what} is paused. Type /goal resume to go on.`;
     if (view.phase === 'complete') return `The goal ${what} is complete.`;
@@ -1297,7 +1323,7 @@ ${note.text}
         if (verb === 'complete') { await runtime.gw.rpc('goals/complete', { agentId: known, ref }); return say('The goal is marked complete.'); }
         if (verb === 'edit') {
           if (!rest) return say('Type /goal edit followed by the new wording of the goal.');
-          await runtime.gw.rpc('goals/edit', { agentId: known, ref, request: { objective: rest } });
+          await runtime.gw.rpc('goals/edit', { agentId: known, ref, request: { objective: withGoalContext(rest) } });
           return say(`The goal now reads: "${rest}".`);
         }
       } catch (e) { return say(plainGoalError(e)); }
@@ -1882,7 +1908,13 @@ export function goalEnding(view) {
   if (view.phase === 'complete') return '\n\n*The goal is complete.*';
   if (view.phase === 'blocked') return `\n\n*The goal stopped: ${plainBlocker(view.blockedReason)}*`;
   if (view.phase === 'paused') return '\n\n*The goal is paused. Type /goal resume to go on.*';
+  if (view.phase === 'active' && view.activation === 'disarmed') return `\n\n*${disarmedGoalEnding(view)}*`;
   return '';
+}
+
+function disarmedGoalEnding(view) {
+  if (view.roundsStarted >= view.maxGoalRounds) return `The goal stopped: ${plainBlocker({ code: 'round-limit' })}`;
+  return 'The goal stopped between rounds. Use Resume or type /goal resume to go on.';
 }
 
 /** A goal request the Harness refused, as a sentence. */

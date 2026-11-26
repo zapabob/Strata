@@ -87,8 +87,14 @@ export function cutCalls(drafts) {
 
 const withTokens = tokens => (tokens > 0 ? ` (${Number(tokens).toLocaleString('en-US')} tokens)` : '');
 
-/** The sentence for the person, with the catalog slots it needs: { text, key, values }. `again` is true when the agent was already asked to carry on. */
-export function cutNotice({ calls = [], tokens = 0, again = false, retrying = false } = {}) {
+export const GOAL_FILE_GUIDANCE = 'For file deliverables, first save a minimal runnable version, then extend it with small writes or edits. Keep each file tool call to a few thousand characters at most. If an earlier round was cut off by the output limit, inspect the files on disk before continuing. Preserve completed work and verify the result before marking the goal complete.';
+
+export function hasCutFileWrite(cut) {
+  return cut.calls.some(call => call.name === 'write' || call.name === 'edit');
+}
+
+/** The sentence for the person, with the catalog slots it needs: { text, key, values }. */
+export function cutNotice({ calls = [], tokens = 0, retrying = false, goal = false } = {}) {
   const call = calls.find(c => c.target) ?? calls[0] ?? null;
   const file = call?.target ? String(call.target).split(/[\\/]/).filter(Boolean).at(-1) : '';
   const what = file || (/^(write|edit)$/.test(call?.name ?? '') ? 'a file' : call?.name);
@@ -98,7 +104,9 @@ export function cutNotice({ calls = [], tokens = 0, again = false, retrying = fa
     return { key, values, text: fill(key, values) };
   }
   if (call) {
-    const key = 'The reply reached its length limit{0} while writing {1} ({2}), so that write did not happen. Say “continue” and it will look at what is on disk and go on in smaller parts.';
+    const key = goal
+      ? 'The reply reached its length limit{0} while writing {1} ({2}), so that write did not happen.'
+      : 'The reply reached its length limit{0} while writing {1} ({2}), so that write did not happen. Say “continue” and it will look at what is on disk and go on in smaller parts.';
     const values = [withTokens(tokens), what, kb(call.bytes)];
     return { key, values, text: fill(key, values) };
   }
@@ -106,7 +114,9 @@ export function cutNotice({ calls = [], tokens = 0, again = false, retrying = fa
     const key = 'That reply reached its length limit{0} and was cut off. I asked the assistant to carry on.';
     return { key, values: [withTokens(tokens)], text: fill(key, [withTokens(tokens)]) };
   }
-  const key = 'The reply reached its length limit{0} and was cut off. Say “continue” to go on.';
+  const key = goal
+    ? 'The reply reached its length limit{0} and was cut off.'
+    : 'The reply reached its length limit{0} and was cut off. Say “continue” to go on.';
   return { key, values: [withTokens(tokens)], text: fill(key, [withTokens(tokens)]) };
 }
 
