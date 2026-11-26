@@ -34,3 +34,19 @@ signature. The app starts unloaded.
 Full-window generation, general/low-precision model quality, public search quality and GPU
 concurrency are not qualified by these checks. The system RAM/commit/disk floors are unchanged.
 The app starts unloaded; the model is loaded manually.
+
+
+## Publication and local overwrite (2026-11-27)
+- Installer: `H:\Strata\releases\Strata-0.8.3-windows-x64-setup.exe`, 127,397,661 bytes,
+  SHA-256 `16d1b5652b6d23f1ceb806354cad78922aecb4938fef511f0b2adb61c73f1282`.
+- GitHub release: https://github.com/zapabob/Strata/releases/tag/v0.8.3 with the installer and
+  `SHA256SUMS-v083.txt`. Immutable tag points to `b15f12d3e`; mutable `latest` alias was moved
+  to the same commit.
+- Anonymous download readback: HTTP 200, 127,397,661 bytes, matching local SHA-256.
+- Local silent overwrite with `/S /UPDATE` completed; installed `strata-desktop.exe` ProductVersion
+  is 0.8.3 and installed Control reports 0.6.3. The app was not running afterward, so a
+  post-install E2E was not executed; the earlier green GUI/API E2E remains the verification record.
+- Old build outputs except evidence were removed (about 17 GB of release/build directories, old
+  installer and obsolete worktrees). Text/log evidence was archived under
+  `H:\Strata\evidence\cleanup-20261127-old-build-artifacts` (9,057 files, including the aborted
+  upstream merge diff). Models, current targets and published GitHub assets were not deleted.

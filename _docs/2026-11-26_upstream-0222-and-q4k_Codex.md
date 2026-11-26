@@ -241,4 +241,9 @@
   The all-target build linked `strata.exe` but failed on the unrelated pre-existing test target
   `strata_v1_1_inkling2_test.cpp` (missing `ModelFamily::Inkling2Loop`); the production target is
   built with `--target strata` instead.
+- Final gate passed with a separate digest-bound native source root:
+  `Release payload verified: Hakua 0.8.3, engine 0.8.3, Control 0.6.3`
+  (`native-source-083` commit `90bd866c`, manifest `a209d071…` before repackaging).
+- Version/docs/CMake changes committed as `b15f12d3e` and pushed. Engine repackaged with clean
+  build ID `b15f12d3e77f`, manifest `daa09073…`. NSIS build in progress.
 
