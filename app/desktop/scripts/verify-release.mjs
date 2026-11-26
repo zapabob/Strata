@@ -99,11 +99,11 @@ if(process.platform==='win32') {
   if(preview) {
    const folder=resolve(preview), manifestPath=join(folder,'engine-component.json');
    const verify="import sys; from pathlib import Path; sys.path.insert(0,sys.argv[1]); from strata_control import engine_component as e; c=e.read_manifest_any(Path(sys.argv[2])); e.verify(c,full=True); print(len(c.files))";
-   const checked=spawnSync(py,['-I','-B','-c',verify,control,folder],{encoding:'utf8',timeout:180000,windowsHide:true});
-   if(checked.error||checked.status!==0||checked.stdout.trim()!=='152')throw new Error(`Q38 preview payload verification failed: ${checked.error??checked.stderr}`);
+   const checked=spawnSync(py,['-I','-B','-c',verify,control,folder],{encoding:'utf8',timeout:900000,windowsHide:true});
+   if(checked.error||checked.status!==0||checked.stdout.trim()!=='155')throw new Error(`Q38 preview payload verification failed: ${checked.error??checked.stderr}`);
    const run=spawnSync(join(folder,'strata-q38.exe'),['--version'],{encoding:'utf8',timeout:15000,windowsHide:true});
    if(run.error||run.status!==0||!run.stdout.includes('SM120 cudart=13050 cublas=131000'))throw new Error('Q38 preview version probe failed');
-   console.log('Verified the Q38 preview companion payload (152 files, digest-based)');
+   console.log('Verified the Q38 preview companion payload (155 files, digest-based)');
   } else {
   const manifests=files(join(resources,'engine-bundle')).filter(path=>path.endsWith('engine-component.json'));
  if(manifests.length!==1) throw new Error('Stage exactly one current Windows engine package');

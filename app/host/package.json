@@ -1,9 +1,9 @@
 {
   "name": "strata",
   "private": true,
-  "version": "0.8.1",
+  "version": "0.8.3",
   "type": "module",
-  "description": "Strata \u2014 local AI, tuned to one model. Web shell + engine host.",
+  "description": "Strata — local AI, tuned to one model. Web shell + engine host.",
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "dev:web": "vite",
@@ -12,7 +12,7 @@
     "serve": "node server/index.mjs --dist dist",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-      "shot": "node scripts/shoot.mjs",
+    "shot": "node scripts/shoot.mjs",
     "flow": "node scripts/flow.mjs",
     "audit": "node scripts/audit-ui.mjs",
     "contrast": "node scripts/contrast.mjs",

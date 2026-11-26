@@ -1,4 +1,8 @@
 {
+  "updateResumeButton": "Retomar agentes",
+  "updateResume0": "Fazer os agentes pausados voltarem a trabalhar",
+  "updateResume1": "O trabalho dos agentes foi retomado.",
+  "updateResume2": "Não foi possível retomar o trabalho dos agentes",
   "wc5521": "Excluir todas as conversas da pasta",
   "wc5522": "Excluir todas as conversas da pasta?",
   "wc5523": "Excluir {0} conversas",

@@ -92,20 +92,26 @@ inline size_t gguf_row_bytes(uint32_t ggml_type, int64_t cols) {
 }
 
 inline bool validate_pq2_basis(const strata::GgufModel& model, std::string& err) {
-    std::set<std::string> banks;
+    std::set<std::string> forward_pq2;
+    std::set<std::string> inverse_pq2;
     for (size_t shard = 0; shard < model.size(); ++shard) {
         for (const auto& tensor : model.shard(shard).tensors()) {
             if (tensor.type != 142) continue;
-            if (tensor.shape.size() != 3 || tensor.shape[0] % 128 || tensor.shape[2] != 128 ||
-                !model.in_bounds(tensor, shard)) {
-                err = "Invalid PQ2_0 expert bank extent: " + tensor.name;
+            const bool valid_3d_expert = (tensor.shape.size() == 3 && tensor.shape[0] % 128 == 0 && tensor.shape[2] == 128);
+            const bool valid_2d_dense  = (tensor.shape.size() == 2 && tensor.shape[0] % 128 == 0);
+            if ((!valid_3d_expert && !valid_2d_dense) || !model.in_bounds(tensor, shard)) {
+                err = "Invalid PQ2_0 tensor extent: " + tensor.name;
                 return false;
             }
-            banks.insert(tensor.name);
+            if (tensor.name == "token_embd.weight") {
+                inverse_pq2.insert(tensor.name);
+            } else {
+                forward_pq2.insert(tensor.name);
+            }
         }
     }
     const auto& meta = model.meta();
-    if (banks.empty() && !meta.get("prism.hadamard.version")) return true;
+    if (forward_pq2.empty() && inverse_pq2.empty() && !meta.get("prism.hadamard.version")) return true;
     auto number_is = [&](const char* key, uint64_t value) {
         const auto* v = meta.get(key);
         return v && v->type == strata::MetaType::U32 && v->u == value;
@@ -114,21 +120,46 @@ inline bool validate_pq2_basis(const strata::GgufModel& model, std::string& err)
         const auto* v = meta.get(key);
         return v && v->type == strata::MetaType::STRING && v->s == text;
     };
-    const auto* names = meta.get("prism.hadamard.weight_names");
-    std::set<std::string> expected, declared;
+    std::set<std::string> allowed_forward;
     for (int layer = 0; layer < 24; ++layer) {
         for (const char* projection : {"gate_up", "down"})
-            expected.insert("blk." + std::to_string(layer) + ".ffn_" + projection + "_exps.weight");
+            allowed_forward.insert("blk." + std::to_string(layer) + ".ffn_" + projection + "_exps.weight");
+        for (const char* dense : {"attn_q", "attn_k", "attn_v", "attn_output", "attn_gate"})
+            allowed_forward.insert("blk." + std::to_string(layer) + "." + dense + ".weight");
     }
-    if (names && names->type == strata::MetaType::ARRAY && names->elem == strata::MetaType::STRING)
-        for (const auto& item : names->items) declared.insert(item.s);
-    if (banks.empty() || !std::includes(expected.begin(), expected.end(), banks.begin(), banks.end()) ||
-        declared != banks || !names || names->count != banks.size() ||
+    allowed_forward.insert("output.weight");
+
+    if ((forward_pq2.empty() && inverse_pq2.empty()) ||
+        !std::includes(allowed_forward.begin(), allowed_forward.end(), forward_pq2.begin(), forward_pq2.end()) ||
         !number_is("prism.hadamard.version", 1) || !number_is("prism.hadamard.block_size", 128) ||
         !string_is("prism.hadamard.transform", "normalized-sylvester-walsh-hadamard") ||
         !string_is("prism.hadamard.axis", "input-last-dimension") || !string_is("prism.hadamard.sign_mode", "identity")) {
-        err = "Unsupported Inkling PQ2_0 basis or incomplete list of transformed expert banks.";
+        err = "Unsupported Inkling PQ2_0 basis or disallowed transformed tensor.";
         return false;
+    }
+
+    const auto* names = meta.get("prism.hadamard.weight_names");
+    if (!forward_pq2.empty()) {
+        if (!names || names->type != strata::MetaType::ARRAY || names->elem != strata::MetaType::STRING ||
+            names->count != forward_pq2.size()) {
+            err = "Incomplete prism.hadamard.weight_names declaration for PQ2_0 tensors.";
+            return false;
+        }
+        // Note: strata::GgufFile truncates array items to 64 entries while preserving exact names->count.
+        for (const auto& item : names->items) {
+            if (forward_pq2.find(item.s) == forward_pq2.end()) {
+                err = "Declared prism.hadamard.weight_names entry is not a PQ2_0 tensor: " + item.s;
+                return false;
+            }
+        }
+    }
+    if (!inverse_pq2.empty()) {
+        const auto* inv_names = meta.get("prism.hadamard.inverse_weight_names");
+        if (!inv_names || inv_names->type != strata::MetaType::ARRAY || inv_names->elem != strata::MetaType::STRING ||
+            inv_names->count != inverse_pq2.size()) {
+            err = "Missing prism.hadamard.inverse_weight_names declaration for PQ2_0 embedding.";
+            return false;
+        }
     }
     return true;
 }

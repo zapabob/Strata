@@ -141,7 +141,7 @@ def evaluate(a):
                         candidates={"published_"+kind:external_values,
                                     "PQ2_0_H128":codec.unpack(bank_rows(pf,pq[key],e,rows),"PQ2_0",width),
                                     "source_NVFP4" if nv else "source_MXFP8":w}
-                        for alt in ("IQ2_S","IQ3_XXS","IQ4_NL"):
+                        for alt in ("IQ2_S","IQ3_XXS","IQ3_S","IQ4_XS","IQ4_NL","MXFP4"):
                             candidates[alt]=codec.unpack(codec.encode(w,alt,importance),alt,width)
                         records.append(dict(expert=e,calibration_routes=int(counts[e]),rows=rows.tolist(),
                             errors={k:dict(weight_mse=float(np.mean(np.square(q-w,dtype=np.float64))),

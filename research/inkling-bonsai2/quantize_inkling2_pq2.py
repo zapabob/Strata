@@ -119,7 +119,8 @@ class NativeMixed:
         out=np.empty(length,np.uint8)
         n=self.pack(int(typ),x.ctypes.data,out.ctypes.data,0,rows,w.shape[-1],None)
         if n!=length:raise ArithmeticError("Unexpected native packed extent")
-        deq=getattr(self.lib,{"Q4_K":"dequantize_row_q4_K","Q6_K":"dequantize_row_q6_K","Q8_0":"dequantize_row_q8_0"}[typ.name])
+        deq=getattr(self.lib,{"Q4_K":"dequantize_row_q4_K","Q6_K":"dequantize_row_q6_K","Q8_0":"dequantize_row_q8_0",
+                             "NVFP4":"dequantize_row_nvfp4"}[typ.name])
         deq.argtypes=[ct.c_void_p,ct.c_void_p,ct.c_int64]
         deq.restype=None
         recon=np.empty_like(x)

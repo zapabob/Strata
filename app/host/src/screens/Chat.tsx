@@ -27,6 +27,7 @@ import { COMPACT_FILES_FROM, mainResult, previewOf } from '../lib/deliverables';
 import { noModelNotice } from '../lib/no-model';
 import { ReasoningBlock } from '../components/ReasoningBlock';
 import { StatusLine } from '../components/StatusLine';
+import { api } from '../lib/client';
 import { GoalBar } from '../components/GoalBar';
 import { PlanCard, PlanPanel, QueuedMessages } from '../components/PlanCard';
 import { FolderChip } from '../components/FolderChip';
@@ -57,6 +58,41 @@ import type { ChatMessage, Session, ToolCall } from '../lib/types';
 // The Time-skip panel and its progress card are only drawn in a chat that has a Time-skip run: their code loads then (and a few seconds after start, see main.tsx).
 const TimeSkipPanel = lazyScreen(() => import('../components/TimeSkipPanel'), (m) => m.TimeSkipPanel);
 const TimeSkipWorking = lazyScreen(() => import('../components/TimeSkipWorking'), (m) => m.TimeSkipWorking);
+/** Tell the toolbar button which of "Pause for update" and "Resume agents" it is now. */
+function announcePaused(paused: boolean) { window.dispatchEvent(new CustomEvent('strata:agents-paused', { detail: paused })); }
+/** Whether the host still holds the pause; true when it cannot be asked, so the person is never left without a Resume. */
+async function hostIsPaused() {
+    try { return (await api.get<{ paused?: boolean }>('/api/agent/status')).paused === true; } catch { return true; }
+}
+/** Save progress and pause all agents (#7099). Resolves true while the host is paused afterwards. */
+async function pauseForUpdate(): Promise<boolean> {
+    pushToast('info', 'Saving agent work and preparing the update…');
+    try {
+        const result = await api.post<{ checkpoint: string; receipts: { chatId: string; helperId?: string }[] }>('/api/chat/pause-for-update', {});
+        const agents = result.receipts.map(row => (row.helperId ?? row.chatId) + ' · ');
+        pushToast('info', 'Agent work saved. Ready for update.', [...agents, result.checkpoint].join('\n'));
+        announcePaused(true);
+        return true;
+    } catch (error) {
+        pushToast('error', 'Update preparation failed', error instanceof Error ? error.message : String(error));
+        const paused = await hostIsPaused();
+        announcePaused(paused);
+        return paused;
+    }
+}
+/** Lift a pause nobody followed with an update (#7099). */
+async function resumeAfterUpdate(): Promise<boolean> {
+    try {
+        await api.post('/api/chat/resume-after-update', {});
+        pushToast('info', 'Agent work resumed.');
+        announcePaused(false);
+        return true;
+    } catch (error) {
+        pushToast('error', 'Could not resume agent work', error instanceof Error ? error.message : String(error));
+        return false;
+    }
+}
+
 export function ChatScreen() {
     const location = useLocation();
     const sessions = useStore((s) => s.sessions);
@@ -464,6 +500,7 @@ export function ChatScreen() {
         }
         let text = draft.trim();
         if (text === '/pause-for-update') { updateDraft(''); void pauseForUpdate(); return; }
+        if (text === '/resume-agents') { updateDraft(''); void resumeAfterUpdate(); return; }
         if (!text && !queuedPhotos.length)
             return;
         if (/^\/btw(?:\s|$)/i.test(text)) { updateDraft(''); void sendMessage(text); return; }
@@ -507,16 +544,10 @@ export function ChatScreen() {
         setWebSearch(null);
     }
     function onComposerKey(_e: React.KeyboardEvent) { }
-    // Official 0.2.20 ChatToolbar API: the pause control calls this. Fork semantics:
-    // stop the current answer and keep its progress, so the parked message can go next.
-    async function pauseForUpdate() {
-        stopStreaming();
-        pushToast('info', 'Answer paused', 'Your progress is kept. Send the next message when you are ready.');
-    }
     if (!session) {
         return (<>
         {searchDialog}
-        <ChatToolbar onPauseForUpdate={pauseForUpdate} previewWidth={paneWidth} extraTabs={extraTabs} session={session} items={previews} onCloseTab={closeTab} selected={setupVisible ? null : selectedPreview} onSelect={selectPreview} onClose={() => { setSelectedPreview(null); setExpanded(false); }} inline={inlinePreview} expanded={expanded} onExpand={() => setExpanded(v => !v)}/>
+        <ChatToolbar onPauseForUpdate={pauseForUpdate} onResumeAfterUpdate={resumeAfterUpdate} previewWidth={paneWidth} extraTabs={extraTabs} session={session} items={previews} onCloseTab={closeTab} selected={setupVisible ? null : selectedPreview} onSelect={selectPreview} onClose={() => { setSelectedPreview(null); setExpanded(false); }} inline={inlinePreview} expanded={expanded} onExpand={() => setExpanded(v => !v)}/>
         <div className="chatsplit" style={splitStyle} data-timeskip={!!selectedRun || undefined} ref={splitRef} data-preview={!!selectedPreview && inlinePreview || undefined} data-expanded={expanded && !!selectedPreview && inlinePreview || undefined}>
          <DropZone className="chatcol">
           <div className="main__body chat" ref={scroller}>
@@ -536,7 +567,7 @@ export function ChatScreen() {
     return (<>
       {searchDialog}
       {tr(selection && session ? <button type="button" className="quote-selection" style={{ left: selection.x, top: selection.y }} onMouseDown={e => e.preventDefault()} onClick={() => { addQuote(session.id, selection.text, selection.messageId, selection.role); window.getSelection()?.removeAllRanges(); setSelection(null); }}>{tr("Quote")}</button> : null)}
-      <ChatToolbar onPauseForUpdate={pauseForUpdate} previewWidth={paneWidth} extraTabs={extraTabs} session={session} items={previews} onCloseTab={closeTab} selected={setupVisible ? null : selectedPreview} onSelect={selectPreview} onClose={() => { setSelectedPreview(null); setExpanded(false); }} inline={inlinePreview} expanded={expanded} onExpand={() => setExpanded(v => !v)}/>
+      <ChatToolbar onPauseForUpdate={pauseForUpdate} onResumeAfterUpdate={resumeAfterUpdate} previewWidth={paneWidth} extraTabs={extraTabs} session={session} items={previews} onCloseTab={closeTab} selected={setupVisible ? null : selectedPreview} onSelect={selectPreview} onClose={() => { setSelectedPreview(null); setExpanded(false); }} inline={inlinePreview} expanded={expanded} onExpand={() => setExpanded(v => !v)}/>
 
       {/* The composer belongs to the conversation column, not the window: with
                 the context panel open, a full-width composer sat underneath the panel
@@ -601,6 +632,8 @@ function useSlashCommands(clear: () => void, setDraft: (value: string) => void, 
         { id: 'loop', label: '/loop', hint: 'Repeat a message every few minutes while this chat is open', icon: 'refresh', run: () => setDraft('/loop 10m ') },
         { id: 'website', label: '/website', hint: 'Open a website in the preview sidebar', icon: 'link', run: () => { clear(); window.dispatchEvent(new Event('strata:open-website')); } },
         { id: 'preview', label: '/preview', hint: 'Open a local file in the preview sidebar', icon: 'file', run: () => { clear(); window.dispatchEvent(new Event('strata:open-preview')); } },
+        { id: 'pause-for-update', label: '/pause-for-update', hint: 'Save progress and pause all agents for an update', icon: 'stop', run: () => { clear(); void pauseForUpdate(); } },
+        { id: 'resume-agents', label: '/resume-agents', hint: 'Let the paused agents work again', icon: 'refresh', run: () => { clear(); void resumeAfterUpdate(); } },
         ...(demo ? [{ id: 'subagents', label: '/subagents', hint: 'Preview subagent statistics', icon: 'experts' as const, run: () => { clear(); createSubagentExample(); } }] : []),
         ...getSlashCommands().map(command => ({ ...command, run: () => { clear(); command.run(); } }))
     ];

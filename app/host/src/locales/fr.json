@@ -1,4 +1,8 @@
 {
+  "updateResumeButton": "Reprendre les agents",
+  "updateResume0": "Faire retravailler les agents en pause",
+  "updateResume1": "Le travail des agents a repris.",
+  "updateResume2": "Impossible de reprendre le travail des agents",
   "wc5521": "Supprimer toutes les conversations du dossier",
   "wc5522": "Supprimer toutes les conversations du dossier ?",
   "wc5523": "Supprimer {0} conversations",

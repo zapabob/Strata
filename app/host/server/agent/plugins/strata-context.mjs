@@ -41,6 +41,23 @@ export function privateConversationSnapshot(options, snapshot) {
 }
 export const inject = ['tokenMeter', 'llm'];
 
+/** Give a new model the visible transcript and tool evidence. Native reasoning stays on disk and replays verbatim only to the same provider and model (#6516). */
+export function projectForeignReasoning(options) {
+  if (!options?.provider || !options.model || !Array.isArray(options.messages)) return options;
+  let changed = false;
+  const messages = options.messages.flatMap(message => {
+    const source = message.source;
+    if (message.role !== 'assistant' || !source?.provider || !source.model
+        || (source.provider === options.provider && source.model === options.model)) return [message];
+    const content = message.content.filter(block => block.type !== 'reasoning');
+    if (content.length === message.content.length && source.replayState === undefined) return [message];
+    changed = true;
+    const { replayState: _native, ...neutral } = source;
+    return content.length ? [{ ...message, content, source: neutral }] : [];
+  });
+  return changed ? { ...options, messages } : options;
+}
+
 /** Real prompt measurements per session: { real, estimated } for the last answer the model server reported. */
 const samples = new WeakMap();
 const bySessionId = new Map();
@@ -119,7 +136,7 @@ export function apply(ctx) {
     raised.add(adapter);
     const stream = adapter.streamWithSnapshot;
     adapter.streamWithSnapshot = function streamWithSnapshot(options, snapshot) {
-      let next = options;
+      let next = projectForeignReasoning(options);          // #6516: never replay another model's native reasoning
       try {
         if (isLocalRoute(options?.provider)) {
           const model = this.modelOf(snapshot, options.provider, options.model);
@@ -127,11 +144,11 @@ export function apply(ctx) {
           // Only the agent's own reply budget is raised: a summary or a title asks for far less and keeps what it asked.
           if (model.contextWindow > 0 && asked >= Math.floor(model.contextWindow * 0.25)) {
             const cap = replyCap(model.contextWindow, asked);
-            if (cap > asked) next = { ...options, maxTokens: cap };
+            if (cap > asked) next = { ...next, maxTokens: cap };
           }
         }
-      } catch { next = options; }
-      return stream.call(this, next, privateConversationSnapshot(options, snapshot));
+      } catch { /* keep the history projection even if no ceiling is available */ }
+      return stream.call(this, next, privateConversationSnapshot(next, snapshot));
     };
   }
 

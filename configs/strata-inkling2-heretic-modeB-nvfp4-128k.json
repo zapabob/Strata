@@ -1,0 +1,36 @@
+{
+  "schema": "strata-inkling2-modeB-offload-v1",
+  "name": "inkling-2-mini-heretic-modeB-nvfp4-128k",
+  "model_path": "H:/Strata/models/inkling2-heretic-bonsai2-pq2_0/ablated-models/Inkling-2-Mini-Heretic-ModeB-NVFP4-DensePQ2.gguf",
+  "architecture": "inkling2_loop",
+  "quantisation": {
+    "experts": "48/48 NVFP4 (0/48 3-bit or 2-bit experts)",
+    "lm_head": "Q6_K",
+    "token_embd": "Q6_K",
+    "dense_attention": "PQ2_0 ({-1, 0, +1}, H128 folded)",
+    "protected_control": "F32 / BF16 (routers, loop controllers, shortconv, norms)"
+  },
+  "offload_policy": {
+    "gpu_resident": "All attention, routers, loop controllers, Q6_K embed/lm_head, all 3x recurrent loop MoE layers (blk.6..17 = 36/48 visits), hot tail layers (blk.18..21), and full q8_0 KV cache (131K-147K)",
+    "cpu_ram_nvme_offload": "Cold 1x-visit non-recurrent MoE layers (blk.0..5, blk.22..23)",
+    "llama_server_ot_args": [
+      "-ot",
+      "blk\\.(0|1|2|3|4|5|22|23)\\.ffn_.*_exps=CPU"
+    ]
+  },
+  "runtime": {
+    "context_length": 139264,
+    "tested_contexts": [131072, 139264, 147456],
+    "kv_cache_k": "q8_0",
+    "kv_cache_v": "q8_0",
+    "ubatch": 32,
+    "batch": 2048,
+    "threads": 6,
+    "flash_attn": "on",
+    "parallel": 1,
+    "context_shift": false,
+    "vision_projector": false,
+    "speculative_drafter": false
+  },
+  "release_qualified": false
+}

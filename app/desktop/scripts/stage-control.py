@@ -58,7 +58,7 @@ def extract(archive: Path, destination: Path) -> Path:
     """Unpack the archive; returns the folder that holds python/ and strata.py."""
     scratch = destination.parent / (destination.name + ".incoming")
     shutil.rmtree(scratch, ignore_errors=True)
-    scratch.mkdir(parents=True)
+    scratch.mkdir(parents=True, exist_ok=True)
     if archive.name.endswith(".zip"):
         with zipfile.ZipFile(archive) as zf:
             for member in zf.namelist():

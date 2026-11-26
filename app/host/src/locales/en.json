@@ -1,4 +1,8 @@
 {
+  "updateResumeButton": "Resume agents",
+  "updateResume0": "Let the paused agents work again",
+  "updateResume1": "Agent work resumed.",
+  "updateResume2": "Could not resume agent work",
   "wc5521": "Delete all chats in folder",
   "wc5522": "Delete all chats in folder?",
   "wc5523": "Delete {0} chats",

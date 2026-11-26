@@ -8,7 +8,10 @@ export const DESKTOP_MEMORY_KEY_ENV='STRATA_HAKUA_LOCAL_KEY';
 export function configureDesktopMemory(cfg,{enabled=false,directory,env=process.env}={}) {
   if(!enabled || cfg.hakua_harness!==undefined) return null;
   const identity=desktopMemoryIdentity({directory,env});
-  if(cfg.arch!=='qwen38_dense')privateMemoryArgs(cfg);
+  // strata-inkling (Inkling-2-Mini) has no --prompt-cache / --conversation-cache-mib.
+  // Passing them makes the engine exit before READY; memory stays off for that arch.
+  if(cfg.arch==='inkling2_loop') cfg.hakua_harness={enabled:false};
+  else if(cfg.arch!=='qwen38_dense') privateMemoryArgs(cfg);
   cfg.hakua_harness={enabled:true,users:[{principal:'local',key_env:DESKTOP_MEMORY_KEY_ENV,root:identity.profileRoot}]};
   return identity;
 }

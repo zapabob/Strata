@@ -1,4 +1,8 @@
 {
+  "updateResumeButton": "Agenten fortsetzen",
+  "updateResume0": "Die pausierten Agenten wieder arbeiten lassen",
+  "updateResume1": "Die Agentenarbeit wurde fortgesetzt.",
+  "updateResume2": "Die Agentenarbeit konnte nicht fortgesetzt werden",
   "wc5521": "Alle Chats im Ordner löschen",
   "wc5522": "Alle Chats im Ordner löschen?",
   "wc5523": "{0} Chats löschen",

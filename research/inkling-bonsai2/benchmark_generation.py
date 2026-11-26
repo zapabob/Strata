@@ -2,6 +2,7 @@
 import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import contextmanager
+import csv
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -116,16 +117,36 @@ def prepare(root, source):
 
 
 @contextmanager
-def local_server(binary, model, folder, slots, context, batch=512, ubatch=128, extra=(), admission=12000, launcher=None):
+def local_server(binary, model, folder, slots, context, batch=512, ubatch=128, extra=(), admission=12000,
+                 launcher=None, exclusive_gpu=False):
     from filelock import FileLock
 
     lock = FileLock(str(Path(tempfile.gettempdir()) / 'strata-inkling-benchmark-gpu0.lock'))
-    with lock, _local_server(binary, model, folder, slots, context, batch, ubatch, extra, admission, launcher) as base:
+    with lock, _local_server(binary, model, folder, slots, context, batch, ubatch, extra, admission, launcher,
+                             exclusive_gpu) as base:
         yield base
 
 
+def competing_inference(owned_pid=None):
+    names = {"llama-server.exe", "strata-inkling.exe", "strata-inkling2.exe", "ollama.exe"}
+    try:
+        processes = subprocess.run(["nvidia-smi", "-i", "0", "--query-compute-apps=pid,process_name",
+                                    "--format=csv,noheader,nounits"], capture_output=True, text=True,
+                                   encoding="utf-8", errors="replace", timeout=8,
+                                   creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    except (OSError, subprocess.TimeoutExpired):
+        return []
+    matches = []
+    for row in csv.reader(processes.stdout.splitlines(), skipinitialspace=True):
+        if len(row) == 2 and row[0].isdigit() and int(row[0]) != owned_pid:
+            if Path(row[1].strip()).name.casefold() in names:
+                matches.append(int(row[0]))
+    return matches
+
+
 @contextmanager
-def _local_server(binary, model, folder, slots, context, batch, ubatch, extra, admission, launcher):
+def _local_server(binary, model, folder, slots, context, batch, ubatch, extra, admission, launcher,
+                  exclusive_gpu=False):
     from sm120_native import MemoryPolicy, Nvml, available_memory
 
     folder.mkdir(parents=True, exist_ok=False)
@@ -138,7 +159,8 @@ def _local_server(binary, model, folder, slots, context, batch, ubatch, extra, a
                     system_free_bytes=shutil.disk_usage(Path(os.environ['SystemRoot']).anchor).free)
     def check_capacity():
         headroom = sample()
-        return headroom['device_free_bytes'] >= admission*2**20 and not pressure.observe(headroom, time.monotonic())
+        return (headroom['device_free_bytes'] >= admission*2**20 and not pressure.observe(headroom, time.monotonic())
+                and (not exclusive_gpu or not competing_inference()))
 
     until = time.monotonic()+1800
     while not check_capacity():
@@ -175,6 +197,8 @@ def _local_server(binary, model, folder, slots, context, batch, ubatch, extra, a
                         peak = max(peak, snap['device_used_bytes'])
                         minimum = min(minimum, snap['device_free_bytes'])
                         reason = pressure.observe(snap, time.monotonic())
+                        if not reason and exclusive_gpu and count % 5 == 0 and competing_inference(proc.pid):
+                            reason = 'shared_gpu_pressure'
                         if reason:
                             events.append(reason)
                             break

@@ -65,15 +65,18 @@ export function resourceSettings(config,hardware,profile,model={},values={}){
  if(!['work','performance'].includes(profile))throw new Error('Choose a resource preference.');
  const args=[...(config.args??[])];
  const remove=flag=>{for(let at=args.indexOf(flag);at>=0;at=args.indexOf(flag))args.splice(at,2);};
+ // strata-inkling has no --pool-workers; it uses --cpu-threads / its own pool.
+ const noPoolWorkers=config.arch==='inkling2_loop';
+ if(noPoolWorkers)remove('--pool-workers');
  const value=flag=>{const at=args.indexOf(flag);return at>=0?Number(args[at+1])||0:0;};
  const first=reserveChoice(config,hardware,values).asked;
  const baseline=config.ui_resource_baseline??{workers:value('--pool-workers'),reserve:first!==null?0:Math.max(Number(config.vram_reserve_mib)||0,value('--vram-reserve-mib'))};
  const {asked,defaults}=reserveChoice(config,hardware,values,baseline.reserve);
- if(profile==='performance'&&config.ui_resource_profile==='work'){
+ if(!noPoolWorkers&&profile==='performance'&&config.ui_resource_profile==='work'){
   remove('--pool-workers');if(baseline.workers>0)args.push('--pool-workers',String(baseline.workers));
  }
  const cores=Number(hardware?.cpu?.cores)||0;
- if(profile==='work'&&cores>1){
+ if(!noPoolWorkers&&profile==='work'&&cores>1){
   const at=args.indexOf('--pool-workers'),previous=at>=0?Number(args[at+1]):0;
   /* 80% of the physical cores rounded UP, never more than the cores less the host thread (the engine's own count): floor(0.8 x 6) = 4 ran 8-10% slower than the engine's 5 on a 6-core Ryzen (notes-023-tune.md); 12 logical threads gave 9 in 0.2.1. */
   const workers=Math.max(1,Math.min(cores-1,Math.ceil(cores*.8)));remove('--pool-workers');

@@ -14,7 +14,8 @@
  *   - it never implements Stop by killing the Harness (that would cancel every other chat);
  *   - it never holds a secret outside the environment of the agent process it starts.
  */
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { saveCheckpoint, workspaceState } from './update-checkpoint.mjs';
 import { join, resolve } from 'node:path';
 import { homedir, tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -129,6 +130,15 @@ export function imageParts(images) {
 
 /** A timer that never keeps the process alive by itself. */
 const after = (ms, fn) => { const t = setTimeout(fn, ms); t.unref?.(); return t; };
+function beforeAbort(work, signal) {
+  signal.throwIfAborted();
+  return new Promise((resolve, reject) => {
+    const abort = () => reject(signal.reason);
+    signal.addEventListener('abort', abort, { once: true });
+    Promise.resolve().then(() => { signal.throwIfAborted(); return work(); }).then(resolve, reject)
+      .finally(() => signal.removeEventListener('abort', abort));
+  });
+}
 /** The app's own host folder: never a place an answer's files can be (this file lives in <host>/server/agent). */
 const HOST_DIR = fileURLToPath(new URL('../..', import.meta.url));
 
@@ -167,6 +177,13 @@ export function createAgentBridge({ dataDir, componentsDir = null, bundledDir = 
     return beforeAbort(() => runtime.gw.rpc(method, args, { signal: bounded }), bounded);
   };
   const root = join(dataDir, 'agent');
+  const checkpointDir = join(root, 'update-checkpoints', randomUUID());
+  const pauseMarker = join(checkpointDir, 'paused');
+  let updatePaused = false;
+  let preparation;
+  function allowWork() {
+    if (updatePaused) throw new AgentUnavailable('Agent work is paused for a Strata update. If no update is running, choose Resume agents in the chat toolbar, or restart Strata.', 'update-paused');
+  }
   const home = join(root, 'home');
   const sessionsFile = join(root, 'sessions.json');
   mkdirSync(root, { recursive: true });
@@ -258,7 +275,7 @@ export function createAgentBridge({ dataDir, componentsDir = null, bundledDir = 
   /** The capability state the app shows. Never carries a token or a key. */
   function status() {
     const h = harnessInfo();
-    if (!h.ok) return { state: 'unavailable', reason: 'The coding assistant isn’t installed on this computer yet. Chat works without it.', detail: h.reason, code: 'component-missing' };
+    if (!h.ok) return { state: 'unavailable', reason: 'The coding assistant isn’t installed on this computer yet. Chat works without it.', detail: h.reason, code: 'component-missing', paused: updatePaused };
     const profile = buildProfileNow();
     return {
       state: rt?.hp.running ? 'ready' : starting ? 'starting' : lastError ? 'error' : 'idle',
@@ -271,6 +288,8 @@ export function createAgentBridge({ dataDir, componentsDir = null, bundledDir = 
       skippedServers: profile.mcpSkipped ?? [],
       activeTurns: activeTurns(),
       pendingApprovals: pending.size,
+      // the host-wide update pause (#7099): the toolbar offers Resume while it holds
+      paused: updatePaused,
     };
   }
 
@@ -451,6 +470,7 @@ export function createAgentBridge({ dataDir, componentsDir = null, bundledDir = 
    * `signal` means the client went away: the turn keeps running (that is not Stop).
    */
   async function runTurn(options) {
+    allowWork();
     const c = chat(options.chatId);
     if (c.turn || c.starting) throw new AgentUnavailable('This chat is still working. Stop it or wait for it to finish.', 'turn-active');
     // From here until the Harness has the prompt, Stop has no session to cancel; it cancels the start.
@@ -1805,7 +1825,49 @@ ${note.text}
   /** Let go of a chat's Harness session mapping (a task starts every run in a session of its own). */
   function forget(chatId) { if (chats.get(chatId)?.turn) return; chats.get(chatId)?.wake?.close(); delete sessionMap[chatId]; chats.delete(chatId); persist(); }
 
-  return { btw, compactCommand, messageHelper, answerQuestion, goalState, goalControl, harnessDir, status, turnOf, runningTurns, wokenTurns, attach, runTurn, goalCommand, planCommand, researchCommand, llmTarget, noteToolMarker, setPlanBriefing, resetSession, reopenPlan, skipStep, planGoal, planControl, planState, queueMessage, cancelQueued, takeQueue, forget, approve, setMode, stop, pendingFor, pendingAll, close, sessionOf: chatId => sessionMap[chatId]?.sessionId ?? null, workingFolder: chatId => sessionMap[chatId]?.cwd ?? null, isRunning: chatId => !!chats.get(chatId)?.turn, _debug: () => ({ rt, sessionMap, startingPid:pendingRuntime?.hp.pid??null, closed }) };
+  // A preparation belongs to this host lifetime; every caller shares it (#7099).
+  function prepareForUpdate() {
+    if (preparation) return preparation.then(report => {
+      if (!existsSync(report.checkpoint)) throw new Error('The saved update checkpoint is missing.');
+      return report;
+    });
+    updatePaused = true;
+    preparation = checkpointAndStop();
+    return preparation;
+  }
+
+  async function checkpointAndStop() {
+    mkdirSync(checkpointDir, { recursive: true, mode: 0o700 });
+    writeFileSync(pauseMarker, '', { mode: 0o600 });
+    const targets = [...chats.values()];
+    const before = targets.map(c => ({ chatId: c.id, sessionId: sessionMap[c.id]?.sessionId ?? null,
+      cwd: c.wakeOptions?.workspacePath ?? sessionMap[c.id]?.cwd ?? null }));
+    const folders = [...new Set(before.map(s => s.cwd).filter(Boolean))];
+    const workspaces = [];
+    for (const cwd of folders) { try { workspaces.push(await workspaceState(cwd)); } catch { /* an unreadable workspace cannot block the update */ } }
+    const checkpoint = await saveCheckpoint(checkpointDir, 'before', { at: new Date().toISOString(), chats: before, workspaces });
+    const receipts = [];
+    for (const c of targets) {
+      if (!c.turn) continue;
+      receipts.push({ chatId: c.id, helperId: undefined });
+      try { await stop(c.id); } catch { /* a turn that ended during the snapshot needs no stop */ }
+    }
+    return { checkpoint, receipts };
+  }
+
+  /** The update ended without an app install: lift the pause the preparation set (#7099). */
+  async function resumeAfterUpdate() {
+    if (!updatePaused && !preparation) return { resumed: false };
+    try { await preparation; } catch { /* a stop that was never confirmed ends here too */ }
+    updatePaused = false;
+    preparation = undefined;
+    try { rmSync(pauseMarker, { force: true }); }
+    catch (e) { log(`agent · the update pause marker could not be removed: ${e?.message ?? e}`); }
+    log('agent · work resumed: the update did not restart Strata');
+    return { resumed: true };
+  }
+
+  return { prepareForUpdate, resumeAfterUpdate, btw, compactCommand, messageHelper, answerQuestion, goalState, goalControl, harnessDir, status, turnOf, runningTurns, wokenTurns, attach, runTurn, goalCommand, planCommand, researchCommand, llmTarget, noteToolMarker, setPlanBriefing, resetSession, reopenPlan, skipStep, planGoal, planControl, planState, queueMessage, cancelQueued, takeQueue, forget, approve, setMode, stop, pendingFor, pendingAll, close, sessionOf: chatId => sessionMap[chatId]?.sessionId ?? null, workingFolder: chatId => sessionMap[chatId]?.cwd ?? null, isRunning: chatId => !!chats.get(chatId)?.turn, _debug: () => ({ rt, sessionMap, startingPid:pendingRuntime?.hp.pid??null, closed }) };
 }
 
 /** A goal that stopped by itself, in words. */

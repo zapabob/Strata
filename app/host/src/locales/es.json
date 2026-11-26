@@ -1,4 +1,8 @@
 {
+  "updateResumeButton": "Reanudar agentes",
+  "updateResume0": "Hacer que los agentes en pausa vuelvan a trabajar",
+  "updateResume1": "Se reanudó el trabajo de los agentes.",
+  "updateResume2": "No se pudo reanudar el trabajo de los agentes",
   "wc5521": "Eliminar todos los chats de la carpeta",
   "wc5522": "¿Eliminar todos los chats de la carpeta?",
   "wc5523": "Eliminar {0} chats",

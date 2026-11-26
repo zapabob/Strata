@@ -15,7 +15,7 @@ class Extent:
     n_bytes: int
 
 
-def directory(path, quant_sizes, header_only=False):
+def directory(path, quant_sizes, header_only=False, *, metadata_records=None):
     path = Path(path)
     file_size = path.stat().st_size
     widths = {0: 1, 1: 1, 2: 2, 3: 2, 4: 4, 5: 4, 6: 4, 7: 1, 10: 8, 11: 8, 12: 8}
@@ -68,11 +68,21 @@ def directory(path, quant_sizes, header_only=False):
         if tensor_count > file_size // 24 or fields_count > file_size // 12:
             raise ValueError("Excessive GGUF directory count")
         for _ in range(fields_count):
+            start = f.tell()
             key, kind = string(), number("I")
             if key in fields:
                 raise ValueError("Duplicate GGUF key " + key)
             fields[key] = value(kind, key in {"general.alignment", "general.architecture", "spin8.version",
                                               "inkling_quant.revision", "inkling_quant.profile", "inkling_quant.source"})
+            if metadata_records is not None:
+                end = f.tell()
+                if end > 64 * 1024**2:
+                    raise ValueError("GGUF metadata exceeds the bounded copy budget")
+                f.seek(start)
+                record = f.read(end - start)
+                if len(record) != end - start:
+                    raise EOFError("Truncated GGUF metadata")
+                metadata_records[key] = record
         alignment = fields.get("general.alignment", 32)
         if not isinstance(alignment, int) or alignment <= 0 or alignment & (alignment - 1):
             raise ValueError("Invalid tensor alignment")

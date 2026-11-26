@@ -51,6 +51,7 @@ import * as models from './models.mjs';
 import * as engine from './engine.mjs';
 import * as monitor from './monitor.mjs';
 import * as serving from './serving.mjs';
+import { createRequestGuard } from './request-guard.mjs';
 import * as store from './store.mjs';
 import { createChatStore, drainChatStore, storeFailure, validChatId } from './chat-store.mjs';
 import { makePrivateDir } from './private-file.mjs';
@@ -74,7 +75,7 @@ import { btwRequest } from './chat-btw.mjs';
 import { createModelProviders } from './model-providers.mjs';
 import { createForkTimeskip } from './timeskip-fork.mjs';
 import { prepareOversized } from './oversize.mjs';
-import { createChatFolders, chatRootOf, openFile, resolveChatFile, previewFile, rawFile, createAttachments, withAttachments } from './chat-files.mjs';
+import { createChatFolders, chatRootOf, openFile, resolveChatFile, previewFile, rawFile, fileResponseHeaders, createAttachments, withAttachments } from './chat-files.mjs';
 import { createUserRules, rulesFile } from './user-rules.mjs';
 import { createLlmProxy, samplingFromExpert } from './agent/llm-shape.mjs';
 import { checkUpdates, checkComponentUpdates, engineFirstRun } from './updates.mjs';
@@ -192,7 +193,7 @@ if (control) {
     return answer && !answer.usable && bundledWrongMake ? { ...answer, notice: bundledWrongMake, wrongMake: true } : answer;
   };
 }
-const native=createNativeControl({control,ready:bundledEngine,appUpdater,hardwareProbe:()=>(hardware.cachedHardware()?.gpus??[]).map((g,n)=>({index:g.index??n,vram_gb:g.vramGb})),directory:store.DATA_DIR,modelsDirectory:()=>store.MODELS_DIR,nativeDataDirectory:store.nativeDataDirectory,beforeLoad:async()=>{if(models.REAL&&models.library().loaded){if(serving.state().requests.some(r=>runtimeModels.state().instances.some(i=>i.id===r.instanceId)&&["queued","generating"].includes(r.state)))throw new Error("Finish requests before switching engines.");await models.unload();runtimeState();}},requests:()=>serving.state().requests,changed:value=>hub.send('native',value)});
+const native=createNativeControl({control,beforeUpdate:()=>agent.prepareForUpdate(),afterUpdate:()=>agent.resumeAfterUpdate(),ready:bundledEngine,appUpdater,hardwareProbe:()=>(hardware.cachedHardware()?.gpus??[]).map((g,n)=>({index:g.index??n,vram_gb:g.vramGb})),directory:store.DATA_DIR,modelsDirectory:()=>store.MODELS_DIR,nativeDataDirectory:store.nativeDataDirectory,beforeLoad:async()=>{if(models.REAL&&models.library().loaded){if(serving.state().requests.some(r=>runtimeModels.state().instances.some(i=>i.id===r.instanceId)&&["queued","generating"].includes(r.state)))throw new Error("Finish requests before switching engines.");await models.unload();runtimeState();}},requests:()=>serving.state().requests,changed:value=>hub.send('native',value)});
 /* The agent: chats become DeepSeek Harness sessions when that component is installed. It is a separate
    pinned component (STRATA_HARNESS_DIR), not part of this host, so its absence is a visible capability
    state and the chat falls back to the direct path with a notice, never silently to another model. */
@@ -1147,15 +1148,18 @@ await cloudflare.inspect();
 
 /* --------------------------------------------------------------- routing --- */
 
+const guard = createRequestGuard({ port: PORT, bind: HOST });
 const server = http.createServer(async (req, res) => {
   const url = requestUrl(req);
   if (!url) return badRequest(res);   // #4397: a bad Host or request target is a 400, never an unhandled rejection
   const path = url.pathname;
   const method = req.method ?? 'GET';
 
-  res.setHeader('access-control-allow-origin', '*');
-  res.setHeader('access-control-allow-headers', 'content-type, authorization, x-api-key, x-strata-client');
-  res.setHeader('access-control-allow-methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+  // #7130: who may use this listener from a browser (request-guard.mjs): this PC's own names as Host, the host's own page as Origin, the page's
+  // token on every change, and CORS for /v1 only. A preflight is answered only when its page is allowed to send the request that follows.
+  for (const [name, value] of Object.entries(guard.cors(req, path))) res.setHeader(name, value);
+  const refused = guard.refusal(req, path, method);
+  if (refused) return error(res, refused.status, refused.message, { code: refused.code });
   if (method === 'OPTIONS') {
     res.writeHead(204);
     res.end();
@@ -1163,10 +1167,6 @@ const server = http.createServer(async (req, res) => {
   }
 
   try {
-    if (path.startsWith('/api/') && req.headers.origin) {
-      const origin = new URL(req.headers.origin);
-      if (!['localhost', '127.0.0.1', '[::1]'].includes(origin.hostname)) return error(res, 403, 'Open the local Strata app to use host controls.');
-    }
     if (path.startsWith('/api/')) {
       const modelOperation = !['GET', 'OPTIONS'].includes(method) && /^\/api\/(models|local-models|runtime|image-models|engine|native)(\/|$)/.test(path) && !['/api/runtime/plan', '/api/engine/validate', '/api/local-models/inspect'].includes(path);
       if (modelOperation) modelOperations++;
@@ -1621,7 +1621,7 @@ async function api(req, res, path, method, url) {
   if (dropGet && method === 'GET') {
     const file = nativeDrops.take(dropGet[1]);
     if (!file) return error(res, 404, 'That file is no longer available. Drop it again.');
-    res.writeHead(200, { 'content-type': file.type, 'content-length': file.bytes.length, 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' }); res.end(file.bytes); return undefined;
+    res.writeHead(200, fileResponseHeaders(file.type, file.bytes.length)); res.end(file.bytes); return undefined;
   }
 
   if (path === '/api/setup' && method === 'GET') return json(res, 200, setupState());
@@ -1792,6 +1792,12 @@ async function api(req, res, path, method, url) {
       }
       const candidate=models.library().variants.find(v=>v.id===id);if(!candidate||!models.isOnDisk(id)||['loading','downloading','unloading'].includes(candidate.state))return error(res,409,'Download this model before loading it.');
       const loadConfig={ beginner: store.get().beginner, expert: engine.params(), serving: store.get().serving };
+      const prismFormats=new Set(['PQ2_0','PTQ1_0','NVFP4','Q4_K','Q4_K_M']);
+      const needsPrism=candidate.local && (candidate.local.architecture==='inkling2_loop' || prismFormats.has(candidate.quant));
+      if (needsPrism && localBackendChoice(loadConfig.expert)==='Automatic') {
+        await engine.patch({ expert: [{ id: 'runtime.backend', value: 'PrismML' }] });
+        loadConfig.expert=engine.params();
+      }
       if (!['PrismML', 'TurboQuant'].includes(localBackendChoice(loadConfig.expert))) {
         if(control)try{
           const path=models.pathFor(candidate),preview=await native.localPreview(path);
@@ -2105,7 +2111,7 @@ async function api(req, res, path, method, url) {
     catch (e) { return error(res, e.code === 'outside' ? 403 : 400, e.message); }
   }
   if (path === '/api/files/raw' && method === 'GET') {
-    try { const f = rawFile(chatRoot(url.searchParams.get('sessionId') ?? ''), url.searchParams.get('path')); res.writeHead(200, { 'content-type': f.mime, 'content-length': f.bytes.length, 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' }); res.end(f.bytes); return undefined; }
+    try { const f = rawFile(chatRoot(url.searchParams.get('sessionId') ?? ''), url.searchParams.get('path')); res.writeHead(200, fileResponseHeaders(f.mime, f.bytes.length)); res.end(f.bytes); return undefined; }
     catch (e) { return error(res, e.code === 'outside' ? 403 : 400, e.message); }
   }
   /* A message too large for the model's window, made small enough to send: its text as a file in the chat's folder, or a shortened preview (oversize.mjs). */
@@ -2226,6 +2232,17 @@ async function api(req, res, path, method, url) {
 
   // --- agent --------------------------------------------------------------
   if (path === '/api/agent/status' && method === 'GET') return json(res, 200, agent.status());
+  // Save progress and pause the agent for an update; the toolbar and /pause-for-update use this.
+  if (path === '/api/chat/pause-for-update' && method === 'POST') {
+    try { return json(res, 200, await agent.prepareForUpdate()); }
+    catch (e) { return error(res, 409, e.message); }
+  }
+  // Lift a pause nobody followed with an update (#7099). While "Update Strata" runs, the job itself resumes or keeps the pause when it ends.
+  if (path === '/api/chat/resume-after-update' && method === 'POST') {
+    if (native.state().jobs.some(j => j.kind === 'update-strata' && j.state === 'running')) return error(res, 409, 'A Strata update is running. Agent work resumes when it ends, unless the app restarts.');
+    try { return json(res, 200, await agent.resumeAfterUpdate()); }
+    catch (e) { return error(res, 500, e.message); }
+  }
   // A chat the person deleted in the app: drop its Harness session and the host's entry for it, so the two registries
   // do not grow with every chat of every day (the app's memory climbed until the WebView2 renderer OOMed).
   if (path === '/api/agent/chat/forget' && method === 'POST') {
@@ -2704,6 +2721,14 @@ async function staticFile(req, res, path) {
     file = index;
   }
 
+  if (basename(file) === 'index.html') {
+    // #7130: the page carries this launch's token (only for the host's own page) and may not be framed by another site (a click on a framed page).
+    const html = readFileSync(file, 'utf8');
+    const body = Buffer.from(guard.mayHaveToken(req) ? guard.inject(html) : html, 'utf8');
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'content-length': body.length, 'x-frame-options': 'SAMEORIGIN', 'content-security-policy': "frame-ancestors 'self'" });
+    res.end(req.method === 'HEAD' ? undefined : body);
+    return;
+  }
   const type = MIME[extname(file)] ?? 'application/octet-stream';
   const size=statSync(file).size;
   const headers={'content-type':type,'cache-control':file.endsWith('index.html')?'no-store':'public, max-age=3600','accept-ranges':'bytes'};

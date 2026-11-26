@@ -149,6 +149,8 @@ IMAGE_PARTS = ("image_url", "input_image", "image")
 
 # Thinking levels.  The model's template knows low, medium and xhigh (its default; "high" means xhigh), and
 # enable_thinking=false for none.  Clients spell these many ways; everything maps onto those four.
+CLIENT_DEFAULT_THINKING_BUDGET = 31999  # #7133: Claude Code's default thinking budget
+
 EFFORT = {"none": None, "off": None, "minimal": None, "disabled": None, "false": None,
           "low": "low", "medium": "medium", "high": "xhigh", "xhigh": "xhigh", "max": "xhigh", "maximum": "xhigh"}
 
@@ -159,11 +161,13 @@ EFFORT_DEEPSEEK = {"none": None, "off": None, "minimal": None, "disabled": None,
                    "low": "low", "medium": "medium", "high": "high", "xhigh": "max", "max": "max", "maximum": "max"}
 _EFFORT_QWEN = dict(EFFORT)
 _NUMERIC_EFFORT = False
+_FAMILY = None  # family of the running server (official API)
 
 
 def use_family(family: str | None) -> None:
     """The reasoning-effort words of the model family this server runs (module state, like ENV_TO_USER)."""
-    global _NUMERIC_EFFORT
+    global _NUMERIC_EFFORT, _FAMILY
+    _FAMILY = family or ""
     EFFORT.clear()
     EFFORT.update(EFFORT_DEEPSEEK if family == "deepseek41" else _EFFORT_QWEN)
     _NUMERIC_EFFORT = family == "deepseek41"
@@ -601,12 +605,36 @@ def require_messages(messages: list) -> None:
         raise ValueError("messages must be a non-empty list: send at least one message")
 
 
+def _name_tool_results(messages: list[dict]) -> None:
+    """Give each tool result the name of the function whose call it answers (#7051), while the call ids are still here.
+
+    Inkling's template writes the header `<|message_tool|>NAME<|content_text|>` from `message.name` (its fallback by
+    `tool_call_id` can never match: the ids are private to this conversion).  The calls are those of the assistant message
+    before the whole run of results; a result whose id matches no call, or more than one, stays unnamed.  Other families'
+    templates do not read a tool message's name, so only Inkling gets it (their renders stay as they were)."""
+    if _FAMILY != "inkling2":
+        return
+    for i, m in enumerate(messages):
+        if m["role"] != "tool" or m.get("name"):
+            continue
+        j = i
+        while j and messages[j - 1]["role"] == "tool":
+            j -= 1
+        prev = messages[j - 1] if j else {}
+        if prev.get("role") != "assistant" or not m.get("_call_id"):
+            continue
+        named = [(c.get("function") or {}).get("name") for c in prev.get("tool_calls") or [] if c.get("_call_id") == m["_call_id"]]
+        if len(named) == 1 and isinstance(named[0], str) and named[0]:
+            m["name"] = named[0]
+
+
 def _order_chat_tool_results(messages: list[dict]) -> None:
     """The template pairs results by position, so restore call order while IDs are still available.
 
     Only a complete, unambiguous run of results is reordered. Legacy or incomplete histories keep their
     received order. IDs are private to this conversion and never reach the template.
     """
+    _name_tool_results(messages)
     i = 0
     while i < len(messages):
         if messages[i]["role"] != "tool":
@@ -873,6 +901,8 @@ def anthropic_to_messages(req: dict, think_unasked: bool = True) -> tuple[list[d
     bt = thinking.get("budget_tokens") if isinstance(thinking, dict) and thinking.get("type") != "disabled" else None
     if isinstance(bt, int) and not isinstance(bt, bool) and bt > 0 and req.get("reasoning_budget_tokens") is None:
         req["reasoning_budget_tokens"] = bt
+        if bt == 31999:
+            req["strata_default_thinking_budget"] = True   # #7133: client default, capped to the level's default
     if isinstance(thinking, dict) and thinking.get("type") == "disabled":
         kwargs["enable_thinking"] = False
     elif effort:
@@ -3043,10 +3073,10 @@ class InklingOutputParser(JsonOutputParser):
         return self._emit_channels(self._dialect.feed_channels(text, final=False))
 
     def feed_token(self, piece: str, *, is_special: bool) -> list[Event]:
-        return self._dispatch(self._dialect.feed_token(piece, is_special=is_special))
+        return self._emit_channels(self._dialect.feed_token(piece, is_special=is_special))
 
     def finish(self, reason: str | None = None) -> list[Event]:
-        out = self._dispatch(self._dialect.feed_channels("", final=True, reason=reason))
+        out = self._emit_channels(self._dialect.feed_channels("", final=True, reason=reason))
         return out + super().finish(reason)
 
 

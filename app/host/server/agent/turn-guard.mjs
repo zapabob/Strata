@@ -62,6 +62,9 @@ export class TurnGuard {
 
   #fire(reason) { this.reason ??= reason; return this.reason; }
 
+  /** Upstream API: context budget check. This fork has no context-based stop; keep the existing reason. */
+  context(_tokens) { return this.reason; }
+
   /** A tool card frame (`agent-tool`). Counts a search once, when it has finished. Returns the reason to stop, or null. */
   card(tool) {
     if (this.reason || !tool || !SEARCH_TOOLS.has(tool.name)) return this.reason;
@@ -107,6 +110,8 @@ export class TurnGuard {
  * A call the person denied is their decision, not a failure.
  */
 export class GoalGuard {
+  /** Upstream API: context budget check. This fork has no context-based stop. */
+  context(_tokens) { return this.reason ?? null; }
   /** @param {{limits?: Partial<typeof GUARD_LIMITS>}} [options] */
   constructor({ limits = {} } = {}) {
     this.limits = { ...GUARD_LIMITS, ...limits };

@@ -1,0 +1,42 @@
+{
+  "exe": "H:/Strata/builds/inkling-upstream-pq2-cuda135/bin/llama-server.exe",
+  "arch": "inkling2_loop",
+  "model_name": "inkling-2-mini-heretic-agentic-128k-hybrid",
+  "aliases": [
+    "Inkling-2-Mini-Heretic-Agentic-128K-Hybrid",
+    "inkling-2-mini-heretic-131k",
+    "sakura-inkling-2-mini-131k"
+  ],
+  "drafting": "off",
+  "vision": "off",
+  "args": [
+    "-m",
+    "H:/Strata/models/inkling2-heretic-bonsai2-pq2_0/ablated-models/Inkling-2-Mini-Heretic-Agentic-128K-Hybrid.gguf",
+    "-ngl",
+    "99",
+    "-fit",
+    "off",
+    "-fa",
+    "on",
+    "-ctk",
+    "q8_0",
+    "-ctv",
+    "q8_0",
+    "-c",
+    "139264",
+    "-ub",
+    "32",
+    "-b",
+    "2048",
+    "-np",
+    "1",
+    "--jinja",
+    "--cache-ram",
+    "0",
+    "--no-context-shift"
+  ],
+  "host": "127.0.0.1",
+  "port": 8092,
+  "open_browser": false,
+  "notes": "Upgraded Heretic BF16 -> 11.14 GiB Hybrid (Dense PQ2_0 {-1,0,+1} + 22 NVFP4 / 4 IQ4_NL / 10 IQ3_S / 12 IQ3_XXS experts). Reserves 8,192 generation tokens on top of 131,072 input within 16 GB VRAM."
+}

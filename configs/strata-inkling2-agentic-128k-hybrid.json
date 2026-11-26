@@ -1,0 +1,42 @@
+{
+  "exe": "H:/Strata/builds/inkling-upstream-pq2-cuda135/bin/llama-server.exe",
+  "arch": "inkling2_loop",
+  "model_name": "inkling-2-mini-agentic-128k-hybrid",
+  "aliases": [
+    "Inkling-2-Mini-Agentic-128K-Hybrid",
+    "inkling-2-mini-131k-agentic",
+    "sakura-inkling-2-mini-131k"
+  ],
+  "drafting": "off",
+  "vision": "off",
+  "args": [
+    "-m",
+    "H:/Strata/models/inkling2-heretic-bonsai2-pq2_0/official-models/Inkling-2-Mini-Agentic-128K-Hybrid.gguf",
+    "-ngl",
+    "99",
+    "-fit",
+    "off",
+    "-fa",
+    "on",
+    "-ctk",
+    "q8_0",
+    "-ctv",
+    "q8_0",
+    "-c",
+    "139264",
+    "-ub",
+    "32",
+    "-b",
+    "2048",
+    "-np",
+    "1",
+    "--jinja",
+    "--cache-ram",
+    "0",
+    "--no-context-shift"
+  ],
+  "host": "127.0.0.1",
+  "port": 8092,
+  "open_browser": false,
+  "notes": "139,264 context capacity reserves 8,192 generation tokens on top of a full 131,072-token prompt within 16 GB VRAM."
+}

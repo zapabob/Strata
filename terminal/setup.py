@@ -1167,6 +1167,11 @@ KQ_LIB = "strata_kq.dll" if WIN else "libstrata_kq.so"
 
 
 # ------------------------------------------------------------------------------------------------ output
+def event(_name, **fields):
+    """Official upstream API hook: progress events. This fork does not emit JSONL events."""
+    return None
+
+
 def say(msg=""):
     print(msg, flush=True)
 
@@ -1184,11 +1189,13 @@ def warn(msg):
     say(f"  [!]  {msg}")
 
 
-def fail(msg, hint=None):
+def fail(msg, hint=None, **detail):
+    """Stop setup with exit code 1. ``detail``: machine fields of the error event (official API)."""
     say(f"\n  [X]  {msg}")
     if hint:
         say(f"       {hint}")
     say("\nSetup stopped. Fix the item above and run it again - everything already done is kept and skipped.")
+    event("error", message=str(msg), hint=hint, exit_code=1, **detail)
     sys.exit(1)
 
 
@@ -9082,12 +9089,28 @@ def shape_engine_fetch(a):
     name = shape_engine.shown(shape, title)                          # what a person reads: the model's title (shape_engine.USE_TITLE)
     from strata_cli import update_cmd
     source = update_cmd._feed_source(argparse.Namespace(feed=getattr(a, "feed", None)), EC.components_dir())
-    exe = shape_engine.ensure(shape, source, emit=lambda m: say("  " + m), title=title)
+    lines: list[str] = []                                            # #7119: what ensure said; the last one is why it stopped
+
+    def emit(m):
+        lines.append(str(m))
+        say("  " + m)
+
+    exe = shape_engine.ensure(shape, source, emit=emit, title=title)
     if exe is None:
         if os.environ.get("STRATA_ALLOW_NO_ENGINE") == "1":
             warn(shape_engine.WORDS["setup_skip"].format(model=name))
             return None
-        fail(shape_engine.WORDS["setup_failed"].format(model=name), shape_engine.WORDS["setup_failed_hint"])
+        why = (lines[-1].strip() if lines else "").rstrip()
+        try:
+            hand = shape_engine.hand_install_note(shape)
+        except Exception:                                            # noqa: BLE001 - a note about folders never hides the failure itself
+            hand = ""
+        if why and not why.endswith((".", "!", "?")):
+            why += "."
+        if hand:
+            why = f"{why} {hand}".strip()
+        fail(shape_engine.WORDS["setup_failed"].format(model=name),
+             shape_engine.WORDS["setup_failed_why"].format(why=why) if why else shape_engine.WORDS["setup_failed_hint"])
     found = shape_engine.find(shape, full=False, title=title)
     ok(shape_engine.WORDS["setup_ok"].format(model=name, version=found.version, folder=found.root))
     return found
@@ -12381,6 +12404,8 @@ def main() -> int:
                               str(allf.index(rec_fam) + 1), a.yes)) - 1]
     if family in OWN_PATH_FAMILIES:                    # Qwen3.6: its own engine path, its own steps 2-7
         return install_own_path(a, family, gpu, hip, amd, cuda_tk, multi, port, ram, adopted)
+    if family in INKLING_FAMILIES:                      # Inkling-2-Mini .strata native packs
+        return install_inkling2(a, family, gpu, hip, amd, cuda_tk, multi, port, ram, adopted)
     if family in MULTI_FILE_FAMILIES:                  # DeepSeek-V4.1-Flash: nine shards, its own engine, several cards
         all_cards = (None if (WIN or getattr(a, "_cards_named", False)) else dsv41_auto_cards(amd, ROOT / "engine")) if hip else [g for g in found if gpu_problem(g) is None]
         gpu = {**gpu, "cards": chosen}

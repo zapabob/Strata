@@ -77,18 +77,19 @@ test('a model switch removes only foreign reasoning and replay state from the re
   assert.equal(chain[1].source.replayState.signature, 'opaque', 'the durable history is untouched');
 });
 
-test('calibration is cleared when the session selects another model', () => {
+test('calibration survives a model/selection event in 0.2.22', () => {
   const session = { id: 'calibration', requestHeader: () => ({ tools: [] }) };
   const meter = { measure: () => ({ surfaceTokens: 500, totalTokens: 500, nodes: [{ seq: 1, heuristicTokens: 500, tokens: 500 }] }) };
   let onEvent;
   applyContextPlugin({ tokenMeter: meter, on: (_, fn) => { onEvent = fn; }, inject: () => {} });
   onEvent(session, { type: 'assistant/message', seq: 2, data: { usage: { inputTokens: 1500 } } });
   assert.equal(meter.measure(session).totalTokens, 1500);
+  // Upstream removed the local clearing on a model switch; the measured prompt is kept until a new answer recalibrates it.
   onEvent(session, { type: 'model/selection' });
-  assert.equal(meter.measure(session).totalTokens, 500);
+  assert.equal(meter.measure(session).totalTokens, 1500);
 });
 
-test('only the default agent request gets the raised reply ceiling at 512K', async () => {
+test('only a request asking for at least a quarter of the window gets the raised reply ceiling', async () => {
   const adapter = {
     modelOf: () => ({ contextWindow: 524288, maxTokens: 32768 }),
     streamWithSnapshot: options => options,
@@ -102,7 +103,7 @@ test('only the default agent request gets the raised reply ceiling at 512K', asy
   const { stream } = await llm.prepareCall({ provider });
   const request = { provider, model: 'fixture', maxTokens: 32768 };
 
-  assert.equal(stream(request).maxTokens, 65536);
+  assert.equal(stream(request).maxTokens, 32768);   // 32K is under 25% of a 512K window, so the requested budget is kept
   assert.equal(stream({ ...request, purpose: 'compaction', maxTokens: 61440 }).maxTokens, 61440);
   assert.equal(stream({ ...request, purpose: 'session-title' }).maxTokens, 32768);
   assert.equal(stream({ ...request, maxTokens: 16384 }).maxTokens, 16384);
@@ -180,7 +181,7 @@ test('a summary request is split into pieces that fit, each message whole when i
   assert.ok(summaryBudget({ window: 65536, summaryTokens: 5734, toolsTokens: 10133, systemTokens: 400 }) > 40000);
 });
 
-test('a late context refusal retries only the unsummarised messages', async t => {
+test('a late context refusal re-shrinks every piece of a summary that does not fit', async t => {
   const line = text => ({ role: 'user', content: [{ type: 'text', text }] });
   const history = Array.from({ length: 6 }, (_, index) => line('PART ' + (index + 1) + '\n' + 'x'.repeat(4000)));
   const calls = [];
@@ -211,8 +212,9 @@ test('a late context refusal retries only the unsummarised messages', async t =>
   })) final.push(chunk);
   t.diagnostic(JSON.stringify({ attempts: calls.length, sourceParts: calls.map(call => call.parts),
     modelInputCharacters: calls.reduce((total, call) => total + call.characters, 0) }));
-  assert.deepEqual(calls.map(call => call.parts), [[1, 2], [3, 4], [3], [4], [5], [6]]);
-  assert.deepEqual(calls[2].prior, [1, 2]);
+  // 0.2.22 halves the piece budget and asks every piece again, including the ones already summarised.
+  assert.deepEqual(calls.map(call => call.parts), [[1, 2], [3, 4], [1], [2], [3], [4], [5], [6]]);
+  assert.deepEqual(calls[2].prior, [], 'the partial summary is dropped on retry, so every piece is asked fresh');
   assert.deepEqual(final, [
     { type: 'text-delta', text: 'DONE 1,2,3,4,5,6' },
     { type: 'finish', reason: { kind: 'stop' } },
@@ -303,7 +305,6 @@ test('a chat the model server refused once is not stuck: the next message compac
   // itself must leave room: at 7,000 the system prompt, the tools and this one message are 32,722 tokens by the server's count against the 32,704 it
   // accepts, so the retry is refused whatever the summary holds (nothing older is left to shorten). That size sat on the edge, and the 0.2.16 tool
   // list (the agent's own questions) moved it 18 tokens over.
-  const huge = await send(`SCRIPT:echo two ${dense.repeat(6600)}`);
   // Leave room for the tool schema and the replacement summary. 70,000 characters
   // alone no longer fit this fixture's 32K window with the current Harness tools.
   const huge = await send(`SCRIPT:echo two ${dense.repeat(6800)}`);
