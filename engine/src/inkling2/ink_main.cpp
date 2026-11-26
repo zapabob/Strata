@@ -911,6 +911,21 @@ int main(int argc, char** argv) {
             cfg.bopts.ram_experts_gb = std::atof(next().c_str());
         } else if (a == "--ssd-experts") {
             cfg.bopts.ssd_experts = true;
+        } else if (a == "--expert-cache-dir") {
+            cfg.bopts.expert_cache_dir = next();
+            if (cfg.bopts.expert_cache_dir.empty()) {
+                std::fprintf(stderr, "error: --expert-cache-dir requires an existing directory\n");
+                return 1;
+            }
+        } else if (a == "--expert-cache-min-mib") {
+            const auto value = next();
+            char* end = nullptr;
+            const unsigned long mib = std::strtoul(value.c_str(), &end, 10);
+            if (value.empty() || *end || mib > 32768) {
+                std::fprintf(stderr, "error: --expert-cache-min-mib must be between 0 and 32768\n");
+                return 1;
+            }
+            cfg.bopts.expert_cache_min_mib = static_cast<uint32_t>(mib);
         } else if (a == "--vram-reserve-mib") {
             cfg.bopts.vram_reserve_mib = std::atoi(next().c_str());
         } else if (a == "--cpu-threads") {
@@ -979,7 +994,9 @@ int main(int argc, char** argv) {
                    "  --selfcheck [--native PATH] [--verify-hash] [--cpu] [--gpu N] [--gpus 1|2] [--kv auto|fp16|fp8|k8v8|k8v4]\n"
                    "  --bench --native PATH [--parallel 1..64] [--gpu N] [--gpus 1..4] [--layer-split auto|K1,K2,...] [--ep-split F] [--vram-experts-gb F] [--ram-experts-gb F] [--ssd-experts] [--vram-reserve-mib N] [--cpu-threads N] [--kv auto|fp16|fp8|k8v8|k8v4] [--kv-offload auto|on|off] [--prompt-len N] [--gen N]\n"
                    "  --kld-eval REF.bin --native PATH\n"
-                   "  --serve --native PATH [--vision VISION] [--dspark PATH] [--max-context N] [--parallel 1..64] [--gpu N] [--gpus 1..4] [--layer-split auto|K1,K2,...] [--kv auto|fp16|fp8|k8v8|k8v4] [--kv-offload auto|on|off] [--draft auto|dspark|off]\n",
+                   "  --serve --native PATH [--vision VISION] [--dspark PATH] [--max-context N] [--parallel 1..64] [--gpu N] [--gpus 1..4] [--layer-split auto|K1,K2,...] [--kv auto|fp16|fp8|k8v8|k8v4] [--kv-offload auto|on|off] [--draft auto|dspark|off]\n"
+                   "  --expert-cache-dir DIR  Single-CUDA-GPU scratch storage for Experts exceeding --ram-experts-gb.\n"
+                   "  --expert-cache-min-mib N  Keep N MiB of host payload on scratch when available.\n",
                    INKLING_VERSION);
             return 0;
         } else {
@@ -1077,13 +1094,18 @@ int main(int argc, char** argv) {
 
     InkModelFile mf;
     std::string err;
-    if (!mf.open(cfg.model_path, err, false, cfg.bopts.dspark_path)) {
+    if (!mf.open(cfg.model_path, err, false, cfg.bopts.dspark_path, !cfg.bopts.expert_cache_dir.empty())) {
         if (mode_serve) proto("ERR open: %s", err.c_str());
         else fprintf(stderr, "open: %s\n", err.c_str());
         return 1;
     }
 
     auto backend = make_default_backend(cfg.force_cpu, &cfg.bopts);
+    if (!cfg.bopts.expert_cache_dir.empty() && std::string(backend->backend_name()) != "cuda") {
+        if (mode_serve) proto("ERR init: --expert-cache-dir requires CUDA");
+        else std::fprintf(stderr, "init: --expert-cache-dir requires CUDA\n");
+        return 1;
+    }
     if (!backend->init(mf, cfg.bopts, err)) {
         if (mode_serve) proto("ERR init: %s", err.c_str());
         else fprintf(stderr, "init: %s\n", err.c_str());

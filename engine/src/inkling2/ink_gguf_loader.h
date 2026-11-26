@@ -408,7 +408,8 @@ struct GgufAdapter {
     template <typename ManifestT, typename TInfoT>
     bool open_into(const std::string& path, ManifestT& m, std::vector<int>& dir_index_of,
                    std::vector<uint16_t>& vram_load_order, std::string& err,
-                   bool keep_tokenizer = false, const std::string& explicit_dspark = "") {
+                   bool keep_tokenizer = false, const std::string& explicit_dspark = "",
+                   bool reserve_trunk = false) {
         try {
             model = std::make_unique<strata::GgufModel>(strata::GgufModel::open(path));
         } catch (const std::exception& e) {
@@ -510,6 +511,27 @@ struct GgufAdapter {
 
         // 2. Assemble canonical Section 1 trunk tensors from GGUF
         sec1_arena.clear();
+        if (reserve_trunk) {
+            // Header sizes give a conservative F32 bound for the non-Expert working set.
+            // Reserving before decoding avoids two live, multi-GiB arenas during growth.
+            size_t reserve = 64ull << 20;
+            for (size_t shard = 0; shard < model->size(); ++shard) {
+                for (const auto& t : model->shard(shard).tensors()) {
+                    if (t.name.find("_exps.") != std::string::npos && t.shape.size() >= 3) continue;
+                    if (t.elements() > (sec1_arena.max_size() - reserve) / sizeof(float)) {
+                        err = "GGUF: Section 1 reserve exceeds the addressable extent";
+                        return false;
+                    }
+                    reserve += static_cast<size_t>(t.elements()) * sizeof(float);
+                }
+            }
+            try {
+                sec1_arena.reserve(reserve);
+            } catch (const std::exception& e) {
+                err = std::string("GGUF: Section 1 reserve failed: ") + e.what();
+                return false;
+            }
+        }
         auto align64 = [](size_t x) -> size_t { return (x + 63u) & ~63u; };
 
         auto add_f32 = [&](const std::string& canon_name, const std::vector<float>& vals, const std::vector<int64_t>& shape) {

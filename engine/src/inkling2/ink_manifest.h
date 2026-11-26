@@ -452,7 +452,7 @@ struct InkModelFile {
     std::vector<uint16_t> vram_load_order;
 
     bool open(const std::string& file_path, std::string& err, bool keep_tokenizer = false,
-              const std::string& explicit_dspark = "") {
+              const std::string& explicit_dspark = "", bool reserve_gguf_trunk = false) {
         path = file_path;
         st_adapter.reset();
         gguf_adapter.reset();
@@ -469,7 +469,7 @@ struct InkModelFile {
             kind = ModelSourceKind::Gguf;
             gguf_adapter = std::make_unique<GgufAdapter>();
             return gguf_adapter->open_into<InkManifest, TInfo>(
-                file_path, m, dir_index_of, vram_load_order, err, keep_tokenizer, explicit_dspark);
+                file_path, m, dir_index_of, vram_load_order, err, keep_tokenizer, explicit_dspark, reserve_gguf_trunk);
         }
 
         kind = ModelSourceKind::Strata;

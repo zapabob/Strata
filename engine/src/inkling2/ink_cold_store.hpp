@@ -73,7 +73,8 @@ public:
               int n_readers,
               std::string& err,
               AllocFn alloc_fn = nullptr,
-              FreeFn free_fn = nullptr) {
+              FreeFn free_fn = nullptr,
+              bool delete_on_close_file = false) {
         close();
         if (max_expert_bytes == 0) {
             err = "InkColdStore: max_expert_bytes is 0";
@@ -85,7 +86,8 @@ public:
 
 #ifdef _WIN32
         DWORD flags = FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED | FILE_FLAG_RANDOM_ACCESS | FILE_FLAG_NO_BUFFERING;
-        h_ = CreateFileA(strata_path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
+        const DWORD share = FILE_SHARE_READ | FILE_SHARE_WRITE | (delete_on_close_file ? FILE_SHARE_DELETE : 0);
+        h_ = CreateFileA(strata_path.c_str(), GENERIC_READ, share, nullptr,
                          OPEN_EXISTING, flags, nullptr);
         if (h_ != INVALID_HANDLE_VALUE) {
             direct_ = true;
@@ -99,7 +101,7 @@ public:
         } else {
             direct_ = false;
             flags = FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED | FILE_FLAG_RANDOM_ACCESS;
-            h_ = CreateFileA(strata_path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
+            h_ = CreateFileA(strata_path.c_str(), GENERIC_READ, share, nullptr,
                              OPEN_EXISTING, flags, nullptr);
             if (h_ == INVALID_HANDLE_VALUE) {
                 err = "InkColdStore: cannot open " + strata_path;
@@ -107,6 +109,7 @@ public:
             }
         }
 #else
+        (void)delete_on_close_file;
 #if defined(O_DIRECT)
         fd_ = ::open(strata_path.c_str(), O_RDONLY | O_DIRECT);
 #else

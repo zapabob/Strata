@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <charconv>
 #include <chrono>
 #include <cmath>
 #include <condition_variable>
@@ -62,6 +63,7 @@ struct SampleOpts {
     int hold_budget = 0;       // hold=N:ID reasoning budget
     int32_t hold_token_id = -1;
     int pen_from = 0;
+    std::vector<int32_t> choices; // Optional one-token greedy answer set.
 
     bool greedy() const noexcept { return temperature <= 0.0f; }
     bool penalties() const noexcept { return rep != 1.0f || freq != 0.0f || pres != 0.0f; }
@@ -148,6 +150,10 @@ inline int32_t sample_logits(float* lg, int V, const SampleOpts& s, const std::v
         }
     }
     if (s.greedy()) {
+        if (!s.choices.empty()) {
+            return *std::max_element(s.choices.begin(), s.choices.end(),
+                                     [lg](int32_t a, int32_t b) { return lg[a] < lg[b]; });
+        }
         int32_t best = 0;
         float mx = lg[0];
         for (int i = 1; i < V; ++i) {
@@ -353,6 +359,25 @@ inline bool parse_gen_cmd(const std::string& line, ParsedGen& r, std::string& er
         else if (key == "penalty_last_n") r.s.last_n = static_cast<int>(d);
         else if (key == "pen_from") r.s.pen_from = static_cast<int>(d);
         else if (key == "seed") r.s.seed = std::strtoull(val.c_str(), nullptr, 10);
+        else if (key == "choices") {
+            const char* p = val.data();
+            const char* end = p + val.size();
+            while (true) {
+                int32_t token = -1;
+                const auto parsed = std::from_chars(p, end, token);
+                if (parsed.ec != std::errc{} || token < 0 || r.s.choices.size() >= 64) {
+                    err = "bad choice token list";
+                    return false;
+                }
+                r.s.choices.push_back(token);
+                if (parsed.ptr == end) break;
+                if (*parsed.ptr != ',') {
+                    err = "bad choice token separator";
+                    return false;
+                }
+                p = parsed.ptr + 1;
+            }
+        }
         else if (key == "pin") {
             char* end = nullptr;
             const long n = std::strtol(val.c_str(), &end, 10);
@@ -376,6 +401,14 @@ inline bool parse_gen_cmd(const std::string& line, ParsedGen& r, std::string& er
             continue;
         } else {
             err = "unsupported key " + key;
+            return false;
+        }
+    }
+    if (!r.s.choices.empty()) {
+        std::sort(r.s.choices.begin(), r.s.choices.end());
+        if (!r.s.greedy() || r.max_new != 1 || r.prefill_only || r.s.hold_budget > 0 ||
+            std::adjacent_find(r.s.choices.begin(), r.s.choices.end()) != r.s.choices.end()) {
+            err = "choices requires one greedy token and unique token ids";
             return false;
         }
     }
@@ -604,6 +637,10 @@ inline int run_serve_loop(const ServeConfig& cfg, InkModelFile& mf, InkBackend& 
     };
 
     auto prepare_req = [&](const ParsedGen& pg, ActiveReq& rq, std::string& err) -> bool {
+        if (!pg.s.choices.empty() && pg.s.choices.back() >= V) {
+            err = "choice token id exceeds vocabulary";
+            return false;
+        }
         rq.active = true;
         rq.is_solo = (pg.cmd == "GEN");
         rq.is_ext_gen = (pg.cmd == "GENERATE");
@@ -747,10 +784,11 @@ inline int run_serve_loop(const ServeConfig& cfg, InkModelFile& mf, InkBackend& 
         }
         if (line == "STATS") {
             auto st = backend.stats();
-            proto("STATS active_slots=%d max_slots=%d vram_experts=%zu ram_experts=%zu total_experts=%zu kv=%s expert_selections=%llu expert_misses=%llu",
+            proto("STATS active_slots=%d max_slots=%d vram_experts=%zu ram_experts=%zu total_experts=%zu kv=%s expert_selections=%llu expert_misses=%llu expert_ssd_bytes=%llu expert_ssd_errors=%llu",
                   st.active_slots, st.max_slots, st.vram_experts_loaded, st.ram_experts_loaded, st.total_experts,
-                  st.kv_dtype == KvDtype::FP8_E4M3 ? "fp8" : "fp16",
-                  (unsigned long long)st.expert_selections, (unsigned long long)st.expert_misses);
+                  kv_str,
+                  (unsigned long long)st.expert_selections, (unsigned long long)st.expert_misses,
+                  (unsigned long long)st.expert_ssd_bytes, (unsigned long long)st.expert_ssd_errors);
             return true;
         }
         if (line == "STOP") {
@@ -1064,7 +1102,10 @@ inline int run_serve_loop(const ServeConfig& cfg, InkModelFile& mf, InkBackend& 
         // Candidate rows (the 128 best logits of each wanted row, exact) instead of the full 200058-float rows, when the backend can and
         // no wanted slot needs its whole row (a penalty changes logits anywhere in it).  Many slots: 64 rows are 51 MB per step otherwise.
         bool use_cand = cand_ok && n_want > 0 && backend.supports_candidates();
-        for (int wi = 0; use_cand && wi < n_want; ++wi) if (reqs[logit_slots[wi]].s.penalties()) use_cand = false;
+        for (int wi = 0; use_cand && wi < n_want; ++wi) {
+            const auto& sample = reqs[logit_slots[wi]].s;
+            if (sample.penalties() || !sample.choices.empty()) use_cand = false;
+        }
         std::string ferr;
         CandRows cand;
         bool fwd_ok = true;
@@ -1145,7 +1186,10 @@ inline int run_serve_loop(const ServeConfig& cfg, InkModelFile& mf, InkBackend& 
             const int s = logit_slots[wi];
             auto& rq = reqs[s];
             float* lg = use_cand ? nullptr : logits_buf.data() + static_cast<size_t>(wi) * V;
-            if (use_cand ? cand.finite[static_cast<size_t>(wi)] == 0 : !finite_logits(lg, V)) {
+            const bool finite = use_cand ? cand.finite[static_cast<size_t>(wi)] != 0 :
+                finite_logits(lg, V) && std::all_of(rq.s.choices.begin(), rq.s.choices.end(),
+                                                       [lg](int32_t id) { return std::isfinite(lg[id]); });
+            if (!finite) {
                 // Purge poisoned KV/ShortConv state so subsequent retries start clean (#879)!
                 rq.cached_prefix.clear();
                 rq.prompt_ckpt_prefix.clear();

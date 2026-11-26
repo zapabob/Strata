@@ -110,6 +110,11 @@ public:
             st.active_slots = act;
             st.kv_dtype = kv_dtype_;
             model_.hybrid.stats_total(&st.expert_selections, &st.expert_misses);   // M = 1 (device counters) + batched path
+            if (model_.hybrid.cold_store) {
+                const auto io = model_.hybrid.cold_store->scheduler_stats();
+                st.expert_ssd_bytes = io.bytes_read;
+                st.expert_ssd_errors = io.io_errors;
+            }
         }
         return st;
     }
@@ -228,7 +233,8 @@ public:
         if (!model_.load_from_model_file(mf, gpu_id_, peer_gpu_id, (float)opts.ep_split, build_screen, err,
                                          min_reserve_bytes, gguf_detail::gguf_dequant_row_f32, gguf_detail::gguf_row_bytes,
                                          opts.vram_experts_gb, opts.ram_experts_gb, opts.ssd_experts,
-                                         all_gpus, opts.layer_split, opts.threads)) {
+                                         all_gpus, opts.layer_split, opts.threads, opts.expert_cache_dir,
+                                         opts.expert_cache_min_mib)) {
             return false;
         }
 

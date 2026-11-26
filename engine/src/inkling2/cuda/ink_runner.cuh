@@ -10,6 +10,7 @@
 #include "ink_kernels.cuh"
 #include "ink_manifest.hpp"
 #include "ink_moe_cuda.cuh"
+#include "../ink_expert_spool.hpp"
 
 #include "strata/artifact/strata_reader.hpp"
 #include "strata/core/ink_kv_grow.hpp"
@@ -262,6 +263,7 @@ struct InkCudaModel {
     InkLayerMoeInfo moe_info_peer[24]{};
     bool layer_has_host[24] = {};
     bool layer_has_peer[24] = {};
+    std::unique_ptr<ink2::InkExpertSpool> expert_spool;
     InkHybridEngine hybrid;
 
     // Exact 2-stage unembed screening index (for BF16 unembed in SQ-20)
@@ -849,12 +851,17 @@ struct InkCudaModel {
         bool ssd_experts = false,
         const std::vector<int>& all_gpus = {},
         const std::string& layer_split_spec = "",
-        int cpu_threads = 0) {
+        int cpu_threads = 0,
+        const std::string& expert_cache_dir = "", uint32_t expert_cache_min_mib = 0) {
         // Fast zero-overhead path for single-GPU .strata v1.1!
         // The file's real kind decides, not the manifest's format string: a GGUF / safetensors file must never reach load() (the .strata reader).
         const bool is_strata_fmt = mf.is_native_strata();
         const bool single_gpu_req = (gpu1 < 0) && (all_gpus.size() <= 1) && layer_split_spec.empty();
-        if (is_strata_fmt && single_gpu_req) {
+        if (!expert_cache_dir.empty() && !single_gpu_req) {
+            err = "Expert scratch storage requires one CUDA GPU";
+            return false;
+        }
+        if (is_strata_fmt && single_gpu_req && expert_cache_dir.empty()) {
             return load(mf.path, gpu0, build_screen, err, extra_reserve_bytes, vram_experts_gb, ram_experts_gb, ssd_experts, cpu_threads);
         }
 
@@ -1008,10 +1015,26 @@ struct InkCudaModel {
         // 2. Read Section 1 trunk + DSpark & upload to GPU 0
         double t0 = now_s();
         std::vector<uint8_t> sec1;
-        if (!mf.read_section1(sec1, err)) return false;
-        trunk_bytes = sec1.size();
-        INK_CK(cudaMalloc(&d_trunk, std::max<size_t>(256, trunk_bytes)));
-        if (trunk_bytes > 0) INK_CK(cudaMemcpy(d_trunk, sec1.data(), trunk_bytes, cudaMemcpyHostToDevice));
+        if (is_strata_fmt && !expert_cache_dir.empty()) {
+            // With one GPU, there are no later layer shards that need a RAM copy of Section 1.
+            const auto& section = mf.rd.header().sections[1];
+            trunk_bytes = static_cast<size_t>(section.byte_length);
+            INK_CK(cudaMalloc(&d_trunk, std::max<size_t>(256, trunk_bytes)));
+            std::vector<uint8_t> staging(std::min<size_t>(trunk_bytes, 16ull << 20));
+            for (size_t at = 0; at < trunk_bytes;) {
+                const size_t bytes = std::min(staging.size(), trunk_bytes - at);
+                if (!mf.rd.read_at(section.file_offset + at, staging.data(), bytes, err)) return false;
+                INK_CK(cudaMemcpy(d_trunk + at, staging.data(), bytes, cudaMemcpyHostToDevice));
+                at += bytes;
+            }
+        } else {
+            // The scratch profile owns one CUDA backend. Its assembled GGUF trunk can be consumed.
+            if (!expert_cache_dir.empty() && mf.gguf_adapter) sec1.swap(mf.gguf_adapter->sec1_arena);
+            else if (!mf.read_section1(sec1, err)) return false;
+            trunk_bytes = sec1.size();
+            INK_CK(cudaMalloc(&d_trunk, std::max<size_t>(256, trunk_bytes)));
+            if (trunk_bytes > 0) INK_CK(cudaMemcpy(d_trunk, sec1.data(), trunk_bytes, cudaMemcpyHostToDevice));
+        }
         double t_trunk = now_s() - t0;
 
         trunk_attn_fp16 = stage_trunk_attn_fp16[0];
@@ -1462,11 +1485,38 @@ struct InkCudaModel {
             }
         }
 
+        constexpr uint8_t cold_tier = 4;
+        size_t n_cold = 0;
+        uint64_t cold_bytes = 0;
+        std::vector<ink2::InkColdExpertDesc> cold_descs;
+        if (!expert_cache_dir.empty()) {
+            const size_t minimum_cold = static_cast<size_t>(expert_cache_min_mib) << 20;
+            const size_t ram_cap = std::min(safe_host_ram_cap(ram_experts_gb, ssd_experts),
+                                            uh - std::min(uh, minimum_cold));
+            uh = 0;
+            for (const uint16_t di : order) {
+                if (target_tier[di] != 2) continue;
+                const size_t ram_extent = (eff_bytes[di] + 63ull) & ~63ull;
+                if (ram_extent <= ram_cap - uh) {
+                    uh += ram_extent;
+                } else {
+                    target_tier[di] = cold_tier;
+                    cold_bytes += ink2::InkExpertSpool::padded(eff_bytes[di]);
+                    ++n_cold;
+                }
+            }
+            if (n_cold) {
+                expert_spool = std::make_unique<ink2::InkExpertSpool>();
+                if (!expert_spool->open(std::filesystem::u8path(expert_cache_dir), cold_bytes, err)) return false;
+                cold_descs.resize(n_total);
+            }
+        }
+
         // Adaptive hot-expert tier (one GPU, experts partly in RAM): the card's expert bytes become a pool of slots that follows the router;
         // every expert then has a host copy. Needs the RAM for the card's share on top of the host share (checked against what is available).
         bool tier_mode = false;
         std::vector<int> tier_key_of_di;
-        if (!ls_active && !ep2_active && n_host_experts > 0 && u0 > 0 && !ssd_experts && InkHybridEngine::tier_enabled_env()) {
+        if (expert_cache_dir.empty() && !ls_active && !ep2_active && n_host_experts > 0 && u0 > 0 && !ssd_experts && InkHybridEngine::tier_enabled_env()) {
             size_t add = 0;
             for (int di = 0; di < n_total; ++di) if (target_tier[di] == 0) add += (eff_bytes[di] + 63ull) & ~63ull;
             const uint64_t avail_ram = ink_ram_available_bytes();
@@ -1541,14 +1591,16 @@ struct InkCudaModel {
             INK_CK(cudaSetDevice(primary_gpu));
         }
         uint8_t* h_arena_base = nullptr;
-        if (uh > 0) {
+        if (n_host_experts > 0) {
             const size_t ram_cap = safe_host_ram_cap(ram_experts_gb, ssd_experts);
-            if (ram_cap < uh && !is_strata_fmt) {
+            if (expert_cache_dir.empty() && ram_cap < uh && !is_strata_fmt) {
                 std::fprintf(stderr, "[InkCUDA] Note: GGUF/HF host spill %.2f GiB exceeds soft RAM cap %.2f GiB (allocating pageable host arena)\n",
                              (double)uh / 1073741824.0, (double)ram_cap / 1073741824.0);
             }
-            h_arena_base = hybrid.alloc_host_arena(uh);
-            if (!h_arena_base) { err = "cannot allocate host expert arena"; return false; }
+            if (uh) {
+                h_arena_base = hybrid.alloc_host_arena(uh);
+                if (!h_arena_base) { err = "cannot allocate host expert arena"; return false; }
+            }
             hybrid.host_meta.assign((size_t)man.c.n_phys * man.c.n_experts, {});
             hybrid.orig_host_off.assign((size_t)man.c.n_phys * man.c.n_experts, 0);
         }
@@ -1565,7 +1617,7 @@ struct InkCudaModel {
                     cs[s] += eff_bytes[di];
                 } else if (target_tier[di] == 0) { dst_off[di] = c0; c0 += eff_bytes[di]; }
                 else if (target_tier[di] == 1)   { dst_off[di] = c1; c1 += eff_bytes[di]; }
-                else                             { dst_off[di] = ch; ch += (eff_bytes[di] + 63ull) & ~63ull; }
+                else if (target_tier[di] == 2)   { dst_off[di] = ch; ch += (eff_bytes[di] + 63ull) & ~63ull; }
             }
         }
 
@@ -1575,7 +1627,9 @@ struct InkCudaModel {
             layer_has_host[il] = false; layer_has_peer[il] = false;
         }
 
-        // Process layer-by-layer: sequential file read, then multi-threaded CPU repack for any exotic GGUF->SF4 experts!
+        // Process layer-by-layer. Already native-formatted Experts on the scratch path
+        // can be placed as they are read, so only one Expert body needs host staging.
+        std::vector<uint8_t> staged_body;
         for (int il = 0; il < man.c.n_phys; ++il) {
             const int E = man.c.n_experts;
             std::vector<std::vector<uint8_t>> layer_bodies(E);
@@ -1586,6 +1640,7 @@ struct InkCudaModel {
                 const int di = il * E + r;
                 if (need_sf4_repack[di]) any_repack = true;
             }
+            const bool stream_bodies = !expert_cache_dir.empty() && !any_repack;
             if (any_repack) {
                 std::vector<std::vector<uint8_t>> raw_bodies(E);
                 for (int r = 0; r < E; ++r) {
@@ -1635,7 +1690,7 @@ struct InkCudaModel {
                 for (int r = 0; r < E; ++r) {
                     const int di = il * E + r;
                     const auto& e = dir[di];
-                    if (!mf.read_expert_body(di, layer_bodies[r], err)) return false;
+                    if (!stream_bodies && !mf.read_expert_body(di, layer_bodies[r], err)) return false;
                     layer_dn_off[r] = e.dn_offset;
                     layer_gu_code[r] = e.gu_code_id;
                     layer_dn_code[r] = e.dn_code_id;
@@ -1664,7 +1719,8 @@ struct InkCudaModel {
                 const int di = il * E + r;
                 const auto& e = dir[di];
                 const int key = il * E + e.expert_id;
-                const auto& body = layer_bodies[r];
+                if (stream_bodies && !mf.read_expert_body(di, staged_body, err)) return false;
+                const auto& body = stream_bodies ? staged_body : layer_bodies[r];
                 InkExpertDev d0{}, d1{};
                 d0.dn_off = d1.dn_off = layer_dn_off[r];
                 d0.gu_code = d1.gu_code = layer_gu_code[r];
@@ -1682,6 +1738,26 @@ struct InkCudaModel {
                     d1.body_off = dst_off[di]; d1.tier = 0;
                     layer_has_peer[il] = true;
                     mark_info(moe_info_peer[il], layer_gu_code[r], layer_dn_code[r]);
+                } else if (target_tier[di] == cold_tier) {
+                    if (body.size() != eff_bytes[di] || body.size() > UINT32_MAX ||
+                        layer_dn_off[r] >= body.size()) {
+                        err = "Expert scratch body differs from its planned native layout";
+                        return false;
+                    }
+                    const auto size = static_cast<uint32_t>(body.size());
+                    auto& storage = cold_descs[key];
+                    storage = {expert_spool->size(), size, layer_dn_off[r], layer_gu_code[r], layer_dn_code[r]};
+                    if (!expert_spool->append(body.data(), body.size(), err)) return false;
+                    auto& host = hybrid.host_meta[key];
+                    host.body_bytes = size;
+                    host.dn_off = layer_dn_off[r];
+                    host.gu_code = layer_gu_code[r];
+                    host.dn_code = layer_dn_code[r];
+                    host.cold_ssd = true;
+                    d0.tier = 2;
+                    d1.tier = 3;
+                    layer_has_host[il] = true;
+                    mark_info(moe_info[il], layer_gu_code[r], layer_dn_code[r]);
                 } else {
                     uint8_t* hdst = h_arena_base + dst_off[di];
                     std::memcpy(hdst, body.data(), body.size());
@@ -1709,6 +1785,26 @@ struct InkCudaModel {
             }
         }
         INK_CK(cudaSetDevice(primary_gpu));
+        if (expert_spool) {
+            if (!expert_spool->seal(err)) return false;
+            hybrid.cold_store = std::make_unique<ink2::InkColdStore>();
+            const auto pin_alloc = [](size_t bytes) -> uint8_t* {
+                uint8_t* ptr = nullptr;
+                return cudaHostAlloc(&ptr, bytes, cudaHostAllocDefault) == cudaSuccess ? ptr : nullptr;
+            };
+            const auto pin_free = [](uint8_t* ptr) { if (ptr) cudaFreeHost(ptr); };
+            const size_t ring_bytes = 512ull << 20;
+            if (!hybrid.cold_store->open(expert_spool->path().string(), std::move(cold_descs), max_exp_b,
+                                         ring_bytes, 4, err, pin_alloc, pin_free, true) ||
+                !expert_spool->reader_attached(err)) return false;
+            hybrid.ssd_only = true;
+            INK_CK(cudaHostAlloc(&hybrid.h_copyback_buf, (max_exp_b + 255ull) & ~255ull, cudaHostAllocDefault));
+            hybrid.h_copyback_bytes = (max_exp_b + 255ull) & ~255ull;
+            std::fprintf(stderr, "[InkCUDA] Expert scratch: %zu GPU, %zu RAM, %zu SSD, %llu scratch bytes, direct=%d, path=%s\n",
+                         n_vram_experts, n_host_experts - n_cold, n_cold,
+                         static_cast<unsigned long long>(cold_bytes), (int)hybrid.cold_store->is_direct(),
+                         expert_spool->path().string().c_str());
+        }
         if (n_host_experts > 0) {
             hybrid.start_workers(cpu_threads);
             size_t vf_now = 0, vt_now = 0;
@@ -1834,6 +1930,7 @@ struct InkCudaModel {
         ep2_active = false; ep2_p2p = false; peer_gpu = -1;
         n_peer_experts = 0; sec4_peer_bytes = 0;
         hybrid.free_all();
+        expert_spool.reset();
         unembed_screen.free_all();
         for (int i = 0; i < 12; ++i) {
             if (d_msg_queries[i]) {

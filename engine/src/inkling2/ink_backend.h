@@ -30,6 +30,8 @@ struct BackendOpts {
     double vram_experts_gb = -1.0; // <0 = auto (3x loop-weighted vram_load_order!)
     double ram_experts_gb = -1.0;  // <0 = auto, 0 = GPU+SSD only (bounded 1-2 GiB DMA ring, 0 host arena)
     bool ssd_experts = false;      // first-class GPU+SSD / CPU+SSD direct NVMe streaming mode
+    std::string expert_cache_dir; // optional scratch volume for CUDA Expert spill
+    uint32_t expert_cache_min_mib = 0;
     KvDtype kv_dtype = KvDtype::FP16;
     bool kv_dtype_auto = true;   // default lossless FP16; Host KV Offload handles VRAM capacity (#552)
     std::string kv_offload = "auto"; // "auto" | "on" | "off" (zero-copy mapped pinned host global KV spill)
@@ -53,6 +55,8 @@ struct BackendStats {
     KvDtype kv_dtype = KvDtype::FP16;
     uint64_t expert_selections = 0;   // routed experts counted on the batched path (decode), 0 when the backend does not count
     uint64_t expert_misses = 0;       // of those, the ones not in the card
+    uint64_t expert_ssd_bytes = 0;
+    uint64_t expert_ssd_errors = 0;
 };
 
 // Candidate rows of forward_batch_cand: row r (in the order of the wanted-logits rows) holds `k` = min(kInkCandidates, vocab)

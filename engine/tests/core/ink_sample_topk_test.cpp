@@ -45,6 +45,18 @@ static void make_row(std::mt19937_64& rng, int kind, int V, std::vector<float>& 
 int main() {
     std::mt19937_64 rng(12345);
     int bad = 0, cases = 0;
+    {
+        ink2::ParsedGen request;
+        std::string err;
+        float logits[] = {100.f, 3.f, 3.f, 1.f};
+        if (!ink2::parse_gen_cmd("GEN 1 temperature=0 choices=3,2,1 0", request, err) ||
+            ink2::sample_logits(logits, 4, request.s, {}, rng) != 1) return 1;
+        for (const auto* invalid : {"GEN 2 choices=1,2 0", "GEN 1 choices=1,1 0", "GEN 1 choices=1, 0"}) {
+            ink2::ParsedGen rejected;
+            if (ink2::parse_gen_cmd(invalid, rejected, err)) return 1;
+        }
+        std::puts("One-token selection excludes higher logits outside the choices and preserves tie order");
+    }
     const int Vs[] = {1, 2, 7, 64, 129, 1000, 200058};
     const int Ks[] = {1, 2, 5, 64, 128};
     for (int V : Vs) {
