@@ -22,6 +22,9 @@ const allowed = new Set([
     'shaders/CopyShader.js', 'shaders/LuminosityHighPassShader.js',
   ].map((path) => declaredImports['three/addons/'] + path),
 ]);
+const diagnosticAddons = [
+  'postprocessing/RenderPass.js', 'postprocessing/OutputPass.js', 'shaders/OutputShader.js',
+].map((path) => declaredImports['three/addons/'] + path);
 const csp = [
   'sandbox allow-scripts', "default-src 'none'", "script-src 'unsafe-inline' https://unpkg.com blob:",
   "style-src 'unsafe-inline'", 'img-src data: blob:', "connect-src 'none'", "form-action 'none'",
@@ -112,7 +115,7 @@ async function evaluate(page, fn) {
   }
 }
 
-async function inspect(htmlPath, executablePath) {
+async function inspect(htmlPath, executablePath, allowExtraAddons) {
   const html = await readFile(htmlPath);
   const folder = dirname(htmlPath);
   const server = createServer((req, res) => {
@@ -133,7 +136,9 @@ async function inspect(htmlPath, executablePath) {
     htmlBytes: html.length,
     htmlSha256: createHash('sha256').update(html).digest('hex'),
     viewport: [1280, 800], errors: [], failedRequests: [], requests: [],
+    dependencyPolicy: allowExtraAddons ? 'diagnostic-r160-extras' : 'published',
   };
+  const allowedScripts = allowExtraAddons ? new Set([...allowed, ...diagnosticAddons]) : allowed;
   let browser;
   try {
     // Do not turn Chromium's OS sandbox off for generated JavaScript.
@@ -148,7 +153,7 @@ async function inspect(htmlPath, executablePath) {
       if (target === url && request.isNavigationRequest() && evidence.requests.length === 0) {
         evidence.requests.push({ url: target, status: 200 });
         await route.continue();
-      } else if (request.method() === 'GET' && request.resourceType() === 'script' && allowed.has(target)) {
+      } else if (request.method() === 'GET' && request.resourceType() === 'script' && allowedScripts.has(target)) {
         try {
           const response = await route.fetch({ maxRedirects: 0, timeout: 15000 });
           evidence.requests.push({ url: target, status: response.status() });
@@ -164,7 +169,7 @@ async function inspect(htmlPath, executablePath) {
     });
     await context.addInitScript(instrumentWebGL);
     const page = await context.newPage();
-    page.on('pageerror', (error) => evidence.errors.push(String(error)));
+    page.on('pageerror', (error) => evidence.errors.push(error.stack ?? String(error)));
     page.on('console', (entry) => {
       if (entry.type() === 'error') evidence.errors.push(entry.text());
     });
@@ -194,10 +199,10 @@ async function inspect(htmlPath, executablePath) {
       .then(() => true, () => false);
     if (drawing) await page.waitForTimeout(3500);
     evidence.start = await evaluate(page, state);
-    if (drawing) evidence.frameSample = await evaluate(page, measureFrameIntervals);
-    evidence.end = await evaluate(page, state);
     evidence.firstScreenshot = await capture(page, resolve(folder, 'preview.png'));
     evidence.drawing = drawing;
+    if (drawing) evidence.frameSample = await evaluate(page, measureFrameIntervals);
+    evidence.end = await evaluate(page, state);
     if (drawing) {
       await page.mouse.move(740, 380);
       await page.mouse.down();
@@ -222,6 +227,10 @@ async function inspect(htmlPath, executablePath) {
   }
 }
 
-const [executable, ...files] = process.argv.slice(2);
-if (!executable || !files.length) throw new Error('Usage: node inspect_pagoda.mjs chrome.exe [index.html ...]');
-for (const path of files) await inspect(resolve(path), executable);
+const [executable, ...inputs] = process.argv.slice(2);
+const diagnostic = inputs[0] === '--diagnostic-extra-addons';
+const files = diagnostic ? inputs.slice(1) : inputs;
+if (!executable || !files.length) {
+  throw new Error('Usage: node inspect_pagoda.mjs chrome.exe [--diagnostic-extra-addons] [index.html ...]');
+}
+for (const path of files) await inspect(resolve(path), executable, diagnostic);
