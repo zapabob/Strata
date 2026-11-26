@@ -706,13 +706,14 @@ void native_gu_rows_impl(const NativeFmt& f, const uint8_t* blob, const void* co
         return;
     }
     // KQ matches the ggml AVX2/FMA dot; other builds keep their own singleton arithmetic.
-    if (cpu_avx2_ok() && f.gu_type == 12 && nt == 1 && f.tail_off == 0 &&
+    // Note: mixed experts (e.g. Q4_K/Q5_K gate/up + NVFP4 down) have tail_off != 0 with sg=su=1.0f.
+    if (cpu_avx2_ok() && f.gu_type == 12 && nt == 1 &&
         (Arithmetic == NativeArithmetic::Default || (flavour_avx2()))) {
         kq256_gu_t1_q4k(blob, f.gu_row, f.up_off, (int) f.n_embd, act[0], ff[0], r0, r1,
                         f.situ, f.situ_beta, f.situ_linear_beta);
         return;
     }
-    if (cpu_avx2_ok() && f.gu_type == 13 && nt == 1 && f.tail_off == 0 &&
+    if (cpu_avx2_ok() && f.gu_type == 13 && nt == 1 &&
         (Arithmetic == NativeArithmetic::Default || (flavour_avx2()))) {
         kq256_gu_t1_q5k(blob, f.gu_row, f.up_off, (int) f.n_embd, act[0], ff[0], r0, r1,
                         f.situ, f.situ_beta, f.situ_linear_beta);
@@ -888,19 +889,24 @@ void native_down_rows_impl(const NativeFmt& f, const uint8_t* blob, const void* 
         kq512_rows(f.d_type, blob + f.down_off, f.d_row, (int) f.n_ff, hq, nt, out, r0, r1);
         return;
     }
-    if (cpu_avx2_ok() && f.d_type == 6 && nt == 1 && f.tail_off == 0 && f.n_ff <= 256 * 32 &&
+    if (cpu_avx2_ok() && f.d_type == 6 && nt == 1 && f.n_ff <= 256 * 32 &&
         (Arithmetic == NativeArithmetic::Default || flavour_avx2())) {
         kq256_down_t1_q5_0(blob + f.down_off, f.d_row, (int) f.n_ff, hq[0], out[0], r0, r1);
         return;
     }
-    if (cpu_avx2_ok() && f.d_type == 8 && nt == 1 && f.tail_off == 0 && f.n_ff <= 256 * 32 &&
+    if (cpu_avx2_ok() && f.d_type == 8 && nt == 1 && f.n_ff <= 256 * 32 &&
         (Arithmetic == NativeArithmetic::Default || flavour_avx2())) {
         kq256_down_t1_q8_0(blob + f.down_off, f.d_row, (int) f.n_ff, hq[0], out[0], r0, r1);
         return;
     }
-    if (cpu_avx2_ok() && f.d_type == 12 && nt == 1 && f.tail_off == 0 &&
+    if (cpu_avx2_ok() && f.d_type == 12 && nt == 1 &&
         (Arithmetic == NativeArithmetic::Default || flavour_avx2())) {
         kq256_down_t1_q4k(blob + f.down_off, f.d_row, (int) f.n_ff, hq[0], out[0], r0, r1);
+        return;
+    }
+    if (cpu_avx2_ok() && f.d_type == 14 && nt == 1 &&
+        (Arithmetic == NativeArithmetic::Default || flavour_avx2())) {
+        kq256_down_t1_q6k(blob + f.down_off, f.d_row, (int) f.n_ff, hq[0], out[0], r0, r1);
         return;
     }
     if (cpu_avx2_ok() && kq && nt >= 2 && (f.d_type == 7 || f.d_type == 8) &&

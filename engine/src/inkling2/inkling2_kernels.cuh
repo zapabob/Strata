@@ -4781,17 +4781,42 @@ __global__ void k_combine_experts_hybrid(const float* __restrict__ eparts, const
                                          const int32_t* __restrict__ ids, const int32_t* __restrict__ slot_of,
                                          const float* __restrict__ cpu_sum, float* __restrict__ out,
                                          int N, int top_k) {
+    // Hoist the top_k <= 16 GPU-hit mask and weights into shared memory once per CTA,
+    // eliminating redundant per-thread indirect slot_of[ids[k]] global loads and branch divergence.
+    __shared__ uint8_t s_hit[16];
+    __shared__ float s_w[16];
+    if (top_k <= 16) {
+        if (threadIdx.x < (unsigned) top_k) {
+            const int k = (int) threadIdx.x;
+            const int hit = (slot_of[ids[k]] >= 0) ? 1 : 0;
+            s_hit[k] = (uint8_t) hit;
+            s_w[k] = hit ? ewts[k] : 0.0f;
+        }
+        __syncthreads();
+    }
     if ((N & 3) == 0) {
         const int n4 = N >> 2;
         const int i4 = blockIdx.x * blockDim.x + threadIdx.x;
         if (i4 >= n4) return;
-        const float4 c = reinterpret_cast<const float4*>(cpu_sum)[i4];
+        const float4 c = __ldg(reinterpret_cast<const float4*>(cpu_sum) + i4);
         float sx = c.x, sy = c.y, sz = c.z, sw = c.w;
-        for (int k = 0; k < top_k; ++k) {
-            if (slot_of[ids[k]] >= 0) {
-                const float w = ewts[k];
-                const float4 v = reinterpret_cast<const float4*>(eparts + (size_t) k * N)[i4];
-                sx += w * v.x; sy += w * v.y; sz += w * v.z; sw += w * v.w;
+        if (top_k <= 16) {
+#pragma unroll
+            for (int k = 0; k < 16; ++k) {
+                if (k >= top_k) break;
+                if (s_hit[k]) {
+                    const float w = s_w[k];
+                    const float4 v = __ldg(reinterpret_cast<const float4*>(eparts + (size_t) k * N) + i4);
+                    sx = fmaf(w, v.x, sx); sy = fmaf(w, v.y, sy); sz = fmaf(w, v.z, sz); sw = fmaf(w, v.w, sw);
+                }
+            }
+        } else {
+            for (int k = 0; k < top_k; ++k) {
+                if (slot_of[ids[k]] >= 0) {
+                    const float w = ewts[k];
+                    const float4 v = __ldg(reinterpret_cast<const float4*>(eparts + (size_t) k * N) + i4);
+                    sx = fmaf(w, v.x, sx); sy = fmaf(w, v.y, sy); sz = fmaf(w, v.z, sz); sw = fmaf(w, v.w, sw);
+                }
             }
         }
         reinterpret_cast<float4*>(out)[i4] = make_float4(sx, sy, sz, sw);
@@ -4801,7 +4826,9 @@ __global__ void k_combine_experts_hybrid(const float* __restrict__ eparts, const
     if (i >= N) return;
     float s = cpu_sum[i];
     for (int k = 0; k < top_k; ++k) {
-        if (slot_of[ids[k]] >= 0) s += ewts[k] * eparts[(size_t) k * N + i];
+        if ((top_k <= 16) ? (s_hit[k] != 0) : (slot_of[ids[k]] >= 0)) {
+            s = fmaf((top_k <= 16) ? s_w[k] : ewts[k], eparts[(size_t) k * N + i], s);
+        }
     }
     out[i] = s;
 }
@@ -4947,33 +4974,54 @@ __global__ void k_group_experts_miss_map(const int32_t* __restrict__ ids,
     __shared__ int32_t cnt[128];
     __shared__ int16_t spos[128];
     __shared__ int32_t cur_off[128];
-    if (threadIdx.x < n_exp) {
-        cnt[threadIdx.x] = 0;
-        spos[threadIdx.x] = map.pos[threadIdx.x];
+    __shared__ int32_t warp_ng[4];
+    __shared__ int32_t warp_off[4];
+    const int tid = threadIdx.x;
+    const int warp = tid >> 5, lane = tid & 31;
+    if (tid < n_exp) {
+        cnt[tid] = 0;
+        spos[tid] = map.pos[tid];
     }
     __syncthreads();
-    for (int e = threadIdx.x; e < n_ent; e += blockDim.x) {
+    for (int e = tid; e < n_ent; e += blockDim.x) {
         const int x = ids[e];
         if (spos[x] >= 0) atomicAdd(&cnt[x], 1);
     }
     __syncthreads();
-    if (threadIdx.x == 0) {
-        int ng = 0;
-        int off = 0;
-        for (int x = 0; x < n_exp; ++x) {
-            if (cnt[x] > 0) {
-                grp_ptr[ng] = (unsigned long long) (stage_blobs + (size_t) spos[x] * stride);
-                grp_start[ng] = off;
-                cur_off[x] = off;
-                off += cnt[x];
-                ++ng;
-            }
-        }
-        grp_start[ng] = off;
-        *n_groups = ng;
+    const int c = (tid < n_exp) ? cnt[tid] : 0;
+    const int active = (c > 0) ? 1 : 0;
+    const uint32_t mask = __ballot_sync(0xffffffffu, active);
+    const int w_ng = __popc(mask & ((1u << lane) - 1u));
+    int w_c = c;
+#pragma unroll
+    for (int d = 1; d < 32; d <<= 1) {
+        const int prev = __shfl_up_sync(0xffffffffu, w_c, d);
+        if (lane >= d) w_c += prev;
+    }
+    if (lane == 31) {
+        warp_ng[warp] = __popc(mask);
+        warp_off[warp] = w_c;
     }
     __syncthreads();
-    for (int e = threadIdx.x; e < n_ent; e += blockDim.x) {
+    if (warp == 0 && lane == 0) {
+        const int ng0 = warp_ng[0], ng1 = warp_ng[1], ng2 = warp_ng[2], ng3 = warp_ng[3];
+        warp_ng[0] = 0; warp_ng[1] = ng0; warp_ng[2] = ng0 + ng1; warp_ng[3] = ng0 + ng1 + ng2;
+        const int o0 = warp_off[0], o1 = warp_off[1], o2 = warp_off[2], o3 = warp_off[3];
+        warp_off[0] = 0; warp_off[1] = o0; warp_off[2] = o0 + o1; warp_off[3] = o0 + o1 + o2;
+        const int tot_ng = ng0 + ng1 + ng2 + ng3;
+        grp_start[tot_ng] = o0 + o1 + o2 + o3;
+        *n_groups = tot_ng;
+    }
+    __syncthreads();
+    if (active) {
+        const int ng = warp_ng[warp] + w_ng;
+        const int off = warp_off[warp] + (w_c - c);
+        grp_ptr[ng] = (unsigned long long) (stage_blobs + (size_t) spos[tid] * stride);
+        grp_start[ng] = off;
+        cur_off[tid] = off;
+    }
+    __syncthreads();
+    for (int e = tid; e < n_ent; e += blockDim.x) {
         const int x = ids[e];
         if (spos[x] >= 0) {
             const int pos = atomicAdd(&cur_off[x], 1);

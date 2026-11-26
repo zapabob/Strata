@@ -1427,21 +1427,19 @@ void ExpertPool::dep_task(int i) {
             native_gu_rows_invariant(*nfmt, mjobs_[e].blob, mjobs_[e].nact, mjobs_[e].nt, ff, r0, r1);
         else
             native_gu_rows(*nfmt, mjobs_[e].blob, mjobs_[e].nact, mjobs_[e].nt, ff, r0, r1);
-        dep_[(size_t) e].gu_left.fetch_sub(1, std::memory_order_release);   // the rows above are visible to whoever sees the count reach 0
+        if (dep_[(size_t) e].gu_left.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+            // Last gate/up finisher for expert `e`: quantize sb.ff immediately while warm in L1/L2,
+            // overlapping with other experts' gate/up tasks and eliminating down-thread spin on `quant`.
+            for (int t = 0; t < mjobs_[e].nt; ++t) native_quant_h(f, sb.ff[t], sb.hq[t]);
+            dep_[(size_t) e].quant.store(2, std::memory_order_release);
+        }
         return;
     }
     const int j = i - ngu;
     const int e = j / dep_k_dn_, p = j % dep_k_dn_;
     DepExpert& d = dep_[(size_t) e];
-    while (d.gu_left.load(std::memory_order_acquire) > 0) strata_cpu_pause();   // this expert's gate/up tasks all claimed earlier: one of them is running
-    int expect = 0;
+    while (d.quant.load(std::memory_order_acquire) != 2) strata_cpu_pause();   // last gate/up finisher sets quant=2
     SplitBufMulti& sb = split_multi_[(size_t) e];
-    if (d.quant.compare_exchange_strong(expect, 1, std::memory_order_acquire)) {
-        for (int t = 0; t < mjobs_[e].nt; ++t) native_quant_h(f, sb.ff[t], sb.hq[t]);
-        d.quant.store(2, std::memory_order_release);
-    } else {
-        while (d.quant.load(std::memory_order_acquire) != 2) strata_cpu_pause();
-    }
     const int h = (int) f.n_embd;
     const int r0 = (int) ((int64_t) h * p / dep_k_dn_), r1 = (int) ((int64_t) h * (p + 1) / dep_k_dn_);
     const NativeFmt* const nfmt = mjobs_[e].fmt != nullptr ? mjobs_[e].fmt : nfmt_;

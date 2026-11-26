@@ -31,6 +31,9 @@ void kq256_down_t1_q8_0(const uint8_t* w, size_t row_bytes, int n, const void* h
 /// Single-token (T==1) 2-row unrolled Q4_K x Q8_K down projection with NTA prefetch (bit-exact against ggml AVX2 dot).
 void kq256_down_t1_q4k(const uint8_t* w, size_t row_bytes, int n, const void* hq0,
                        float* out0, int r0, int r1);
+/// Single-token (T==1) 2-row unrolled Q6_K x Q8_K down projection with NTA prefetch (bit-exact against dot_q6_K_q8_K).
+void kq256_down_t1_q6k(const uint8_t* w, size_t row_bytes, int n, const void* hq0,
+                       float* out0, int r0, int r1);
 /// AVX2 + F16C Q8_0 activation quantizer (32 floats -> block_q8_0 in 1 YMM store, ~8x faster than scalar ref).
 void q8_0_quant_avx2(const float* x, void* dst, int64_t n);
 /// AVX2 FMA L1-cached weighted vector accumulate: dst[i] = first ? (w*src[i]) : (dst[i] + w*src[i]).

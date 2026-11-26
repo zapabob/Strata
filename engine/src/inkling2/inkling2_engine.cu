@@ -298,8 +298,10 @@ struct PhysLayer {
     // MoE experts (host mmap source + packed blobs + VRAM cache)
     int gu_type = -1;
     int d_type = -1;
+    int raw_d_type = -1;                 // original GGUF down-proj type (differs from d_type when transcoded on load)
     size_t gu_row = 0;
     size_t d_row = 0;
+    size_t raw_d_row = 0;                // original GGUF down-proj row bytes
     const uint8_t* h_gate_up = nullptr;
     const uint8_t* h_down = nullptr;
     const float* h_gu_scale = nullptr;   // optional (NVFP4)
@@ -369,15 +371,133 @@ struct Model : GpuWeightStore {
 
 #include "inkling2_dspark.cuh"
 
+// Opt-in load-time Q6_K (type 14) -> NVFP4 (type 40) transcoding helpers.
+// Matches ModelOpt / GGML block_nvfp4 layout (64 vals = 36 B: 4x UE4M3 sub-block scales + 32 B split-half E2M1 nibbles)
+// with per-expert global scale s_down in the 16-byte blob tail {s_gate, s_up, s_down, 0}.
+inline uint8_t fp32_to_ue4m3(float x) noexcept {
+    if (!(x > 0.0f)) return 0u;
+    if (x >= 448.0f) return 0x7Eu;
+    if (x < 0.015625f) {  // subnormal region: man * 2^-9
+        const int q = (int) std::lrintf(x * 512.0f);
+        return (uint8_t) std::clamp(q, 0, 8);
+    }
+    uint32_t u = 0;
+    std::memcpy(&u, &x, sizeof u);
+    int exp = (int) ((u >> 23) & 0xFFu) - 127 + 7;  // biased by 7 -> [1, 15]
+    const uint32_t mant = u & 0x7FFFFFu;
+    const uint32_t round_bias = 0x7FFFFu + ((mant >> 20) & 1u);
+    uint32_t m3 = (mant + round_bias) >> 20;
+    if (m3 >= 8u) {
+        m3 = 0u;
+        ++exp;
+    }
+    if (exp > 15 || (exp == 15 && m3 >= 7u)) return 0x7Eu;  // never emit 0x7F (NaN)
+    return (uint8_t) (((uint32_t) exp << 3) | m3);
+}
+
+inline float ue4m3_to_raw_f32(uint8_t x) noexcept {
+    if (x == 0u || x >= 0x7Fu) return 0.0f;
+    const uint32_t exp = (uint32_t) ((x >> 3) & 0x0Fu);
+    const uint32_t man = (uint32_t) (x & 0x07u);
+    if (exp == 0u) return (float) man * (1.0f / 512.0f);
+    const uint32_t bits = ((exp + 120u) << 23) | (man << 20);
+    float f = 0.0f;
+    std::memcpy(&f, &bits, sizeof f);
+    return f;
+}
+
+inline uint8_t e2m1_quant_nibble(float v) noexcept {
+    const float a = std::fabs(v);
+    uint8_t code;
+    if (a < 0.25f)      code = 0u;  // 0.0
+    else if (a < 0.75f) code = 1u;  // 0.5
+    else if (a < 1.25f) code = 2u;  // 1.0
+    else if (a < 1.75f) code = 3u;  // 1.5
+    else if (a < 2.50f) code = 4u;  // 2.0
+    else if (a < 3.50f) code = 5u;  // 3.0
+    else if (a < 5.00f) code = 6u;  // 4.0
+    else                code = 7u;  // 6.0
+    if (v < 0.0f && code != 0u) code |= 8u;
+    return code;
+}
+
+float transcode_expert_down_to_nvfp4(int raw_d_type, const uint8_t* src_raw, size_t raw_row_bytes,
+                                     int64_t n_embd, int64_t n_ff,
+                                     uint8_t* dst_nvfp4, size_t nvfp4_row_bytes) {
+    struct Nvfp4BlockWire {
+        uint8_t d[4];
+        uint8_t qs[32];
+    };
+    static_assert(sizeof(Nvfp4BlockWire) == 36);
+
+    const auto qtype = (strata::quant::Type) raw_d_type;
+    std::vector<float> row_buf((size_t) n_ff);
+    float expert_amax = 0.0f;
+    for (int64_t r = 0; r < n_embd; ++r) {
+        strata::quant::dequant_row(qtype, src_raw + (size_t) r * raw_row_bytes, row_buf.data(), n_ff);
+        for (int64_t c = 0; c < n_ff; ++c) {
+            const float a = std::fabs(row_buf[(size_t) c]);
+            if (a > expert_amax) expert_amax = a;
+        }
+    }
+    const float s_down = (expert_amax > 0.0f) ? (expert_amax / (6.0f * 448.0f)) : 1.0f;
+    const float inv_s_down_6 = 1.0f / (6.0f * s_down);
+    const int64_t nb = n_ff / 64;
+
+    for (int64_t r = 0; r < n_embd; ++r) {
+        strata::quant::dequant_row(qtype, src_raw + (size_t) r * raw_row_bytes, row_buf.data(), n_ff);
+        Nvfp4BlockWire* out_row = reinterpret_cast<Nvfp4BlockWire*>(dst_nvfp4 + (size_t) r * nvfp4_row_bytes);
+        for (int64_t ib = 0; ib < nb; ++ib) {
+            Nvfp4BlockWire& blk = out_row[ib];
+            const float* bp = row_buf.data() + ib * 64;
+            for (int is = 0; is < 4; ++is) {
+                const float* sp = bp + is * 16;
+                float b_amax = 0.0f;
+                for (int j = 0; j < 16; ++j) {
+                    const float a = std::fabs(sp[j]);
+                    if (a > b_amax) b_amax = a;
+                }
+                const uint8_t d_byte = fp32_to_ue4m3(b_amax * inv_s_down_6);
+                blk.d[is] = d_byte;
+                const float d_raw = ue4m3_to_raw_f32(d_byte);
+                uint8_t* qp = blk.qs + is * 8;
+                if (d_raw > 0.0f) {
+                    const float inv_sc = 1.0f / (s_down * d_raw);
+                    for (int j = 0; j < 8; ++j) {
+                        const uint8_t q0 = e2m1_quant_nibble(sp[j] * inv_sc);
+                        const uint8_t q1 = e2m1_quant_nibble(sp[j + 8] * inv_sc);
+                        qp[j] = (uint8_t) (q0 | (q1 << 4));
+                    }
+                } else {
+                    std::memset(qp, 0, 8);
+                }
+            }
+        }
+    }
+    return s_down;
+}
+
 void build_expert_blob(const PhysLayer& L, int64_t e, uint8_t* dst) {
     const int64_t n_ff = L.L.n_ff, n_embd = L.L.n_embd;
     const size_t gu_expert_bytes = (size_t) (2 * n_ff) * L.gu_row;
-    const size_t d_expert_bytes = (size_t) n_embd * L.d_row;
     const uint8_t* gu_src = L.h_gate_up + (size_t) e * gu_expert_bytes;
-    const uint8_t* d_src = L.h_down + (size_t) e * d_expert_bytes;
     // [gate (n_ff rows) | up (n_ff rows) | down (n_embd rows)]
     std::memcpy(dst, gu_src, (size_t) n_ff * L.gu_row);
     std::memcpy(dst + L.L.up_off, gu_src + (size_t) n_ff * L.gu_row, (size_t) n_ff * L.gu_row);
+    if (L.raw_d_type != L.d_type && L.d_type == 40) {
+        const size_t raw_d_expert_bytes = (size_t) n_embd * L.raw_d_row;
+        const uint8_t* d_src = L.h_down + (size_t) e * raw_d_expert_bytes;
+        const float sd = transcode_expert_down_to_nvfp4(
+            L.raw_d_type, d_src, L.raw_d_row, n_embd, n_ff, dst + L.L.down_off, L.d_row);
+        if (L.L.tail_off) {
+            const float sg = L.h_gu_scale ? L.h_gu_scale[e] : 1.0f;
+            const float tail[4] = {sg, sg, sd, 0.0f};
+            std::memcpy(dst + L.L.tail_off, tail, sizeof tail);
+        }
+        return;
+    }
+    const size_t d_expert_bytes = (size_t) n_embd * L.d_row;
+    const uint8_t* d_src = L.h_down + (size_t) e * d_expert_bytes;
     std::memcpy(dst + L.L.down_off, d_src, d_expert_bytes);
     if (L.L.tail_off) {
         const float sg = L.h_gu_scale ? L.h_gu_scale[e] : 1.0f;
@@ -425,7 +545,9 @@ void build_zc_fmts(PhysLayer& L, int ne) {
 #endif
 }
 
-bool load_model(const std::string& path, Model& m, std::string& err) {
+// transcode_down_mode: 0 = off (default, 100% bit-exact), 1 = Q6_K & Q8_0 -> NVFP4 (--transcode-q6k-nvfp4),
+//                      2 = all high-bit (Q6_K/Q8_0/Q5_0/Q5_K) -> NVFP4 (--transcode-down-nvfp4).
+bool load_model(const std::string& path, Model& m, std::string& err, int transcode_down_mode = 0) {
     const auto t0 = Clock::now();
     try {
         m.gguf = std::make_unique<strata::GgufModel>(strata::gguf_split_paths(path));
@@ -762,8 +884,28 @@ bool load_model(const std::string& path, Model& m, std::string& err) {
         }
         L.gu_type = (int) ti_gu->type;
         L.d_type = (int) ti_d->type;
+        L.raw_d_type = L.d_type;
         L.h_gu_scale = (const float*) m.find_tensor(tn("ffn_gate_up_exps.scale"), &ti_gus);
         L.h_d_scale = (const float*) m.find_tensor(tn("ffn_down_exps.scale"), &ti_ds);
+
+        const bool d_eligible =
+            (transcode_down_mode == 1 && (L.d_type == 14 || L.d_type == 8)) ||
+            (transcode_down_mode >= 2 && (L.d_type == 14 || L.d_type == 8 || L.d_type == 6 || L.d_type == 13));
+        if (d_eligible && L.gu_type != 30 && (hp.n_ff % 64) == 0 &&
+            strata::quant::can_dequant((strata::quant::Type) L.d_type) &&
+            K::native_expert_supported(L.gu_type, 40, hp.n_embd, hp.n_ff)) {
+            const size_t raw_rb = strata::quant::row_bytes(L.d_type, hp.n_ff);
+            bool cpu_ok = true;
+#if defined(STRATA_INKLING2_CPU_POOL)
+            strata::kernels::cpu::NativeFmt probe{};
+            std::string probe_err;
+            cpu_ok = strata::kernels::cpu::native_fmt(L.gu_type, 40, hp.n_embd, hp.n_ff, probe, probe_err);
+#endif
+            if (raw_rb > 0 && cpu_ok) {
+                L.raw_d_row = raw_rb;
+                L.d_type = 40;
+            }
+        }
 
         if (L.gu_type == 30 && L.d_type == 30) {
             L.L.gu_type = 30;
@@ -788,6 +930,7 @@ bool load_model(const std::string& path, Model& m, std::string& err) {
         L.L.situ_linear_beta = hp.situ_linear_beta;
         L.gu_row = L.L.gu_row;
         L.d_row = L.L.d_row;
+        if (L.raw_d_type == L.d_type) L.raw_d_row = L.d_row;
         L.stride = (L.L.bytes + 255) & ~(size_t) 255;
 
 #if defined(STRATA_INKLING2_CPU_POOL)
@@ -798,6 +941,26 @@ bool load_model(const std::string& path, Model& m, std::string& err) {
         L.cpu_fmt.situ_beta = hp.situ_beta;
         L.cpu_fmt.situ_linear_beta = hp.situ_linear_beta;
 #endif
+    }
+    if (transcode_down_mode > 0) {
+        int n_tc = 0;
+        size_t old_down_b = 0, new_down_b = 0;
+        for (const auto& L : m.layers) {
+            if (L.raw_d_type != L.d_type && L.d_type == 40) {
+                ++n_tc;
+                old_down_b += (size_t) hp.n_expert * (size_t) hp.n_embd * L.raw_d_row;
+                new_down_b += (size_t) hp.n_expert * ((size_t) hp.n_embd * L.d_row + 16u);
+            }
+        }
+        if (n_tc > 0) {
+            const double saved_mib = (double) (old_down_b > new_down_b ? old_down_b - new_down_b : 0) / (1024.0 * 1024.0);
+            const double pct = old_down_b > 0 ? 100.0 * (1.0 - (double) new_down_b / (double) old_down_b) : 0.0;
+            std::fprintf(stderr, "strata-inkling2: transcode-down-nvfp4(mode=%d) enabled: %d layers -> NVFP4 (down-proj -%.1f%%, saves %.1f MiB)\n",
+                         transcode_down_mode, n_tc, pct, saved_mib);
+        } else {
+            std::fprintf(stderr, "strata-inkling2: transcode-down-nvfp4(mode=%d) enabled: no eligible down-proj layers found\n",
+                         transcode_down_mode);
+        }
     }
     std::fprintf(stderr, "strata-inkling2: dense + metadata loaded in %.2f s (n_phys=%lld, n_virt=%lld)\n",
                  ms_since(t0) / 1000.0, (long long) hp.n_phys, (long long) hp.n_layer);
@@ -2068,7 +2231,8 @@ struct Engine {
         auto ensure_f16 = [&]() {
             if (!wmma_ready) {
                 const int64_t tot = (int64_t) T * N;
-                k_f32_to_f16<<<(unsigned) ((tot + 255) / 256), 256, 0, st>>>(x_norm, act_bf16, tot);
+                const int64_t n4 = ((tot & 3) == 0) ? (tot >> 2) : tot;
+                k_f32_to_f16<<<(unsigned) ((n4 + 255) / 256), 256, 0, st>>>(x_norm, act_bf16, tot);
                 wmma_ready = true;
             }
         };
@@ -2115,7 +2279,8 @@ struct Engine {
                 ++pp_take_idx;
                 pp_kick_next();
             }
-            k_combine_experts<<<dim3((unsigned) ((N + 255) / 256), (unsigned) T), 256, 0, st>>>(eparts, ewts, moe_raw, N, Kp);
+            const int n4 = ((N & 3) == 0) ? (N >> 2) : N;
+            k_combine_experts<<<dim3((unsigned) ((n4 + 255) / 256), (unsigned) T), 256, 0, st>>>(eparts, ewts, moe_raw, N, Kp);
             if (prof) { CK(cudaStreamSynchronize(st)); p_moe_gpu_ms += ms_since(tp_moe_r0); }
             return;
         }
@@ -2177,16 +2342,16 @@ struct Engine {
                 const float prune_thr = cpu_miss_prune * w_max;
                 for (int e = 0; e < Kp; ++e) {
                     const int x = h_ids[e];
-                    // HybriMoE (arXiv:2504.05897) + ShinkaEvolve (alpha=0.6624) + ST-MoE (arXiv:2606.15453) Markov boost.
+                    // HybriMoE (arXiv:2504.05897) + ShinkaEvolve Gen-M (alpha=0.5359) + ST-MoE (dt1=0.1387) Markov boost.
                     double markov = 0.0;
                     if (!L.last_tok.empty()) {
                         const uint32_t prev = L.last_tok[(size_t) x];
                         if (prev > 0 && st_tok_step > prev) {
-                            markov = strata::math::st_moe_markov_boost(st_tok_step - prev);
+                            markov = strata::math::st_moe_markov_boost(st_tok_step - prev, 0.1387);
                         }
                         L.last_tok[(size_t) x] = st_tok_step;
                     }
-                    L.score[(size_t) x] += 1.0 + 0.6624 * (double) std::max(0.0f, h_ewts[e]) + markov;
+                    L.score[(size_t) x] += 1.0 + 0.5359 * (double) std::max(0.0f, h_ewts[e]) + markov;
                     h_miss[e] = L.slot_of[(size_t) x] < 0 ? 1 : 0;
                     if (!h_miss[e]) continue;
                     L.lecar.on_miss(x, st_tok_step);
@@ -2333,7 +2498,8 @@ struct Engine {
             return;
         }
         const auto tp_p0 = Clock::now();
-        k_combine_experts<<<dim3((unsigned) ((N + 255) / 256), (unsigned) T), 256, 0, st>>>(eparts, ewts, moe_raw, N, Kp);
+        const int n4 = ((N & 3) == 0) ? (N >> 2) : N;
+        k_combine_experts<<<dim3((unsigned) ((n4 + 255) / 256), (unsigned) T), 256, 0, st>>>(eparts, ewts, moe_raw, N, Kp);
         if (prof && need_cpu) { CK(cudaStreamSynchronize(st)); p_moe_post_ms += ms_since(tp_p0); }
     }
 
@@ -2362,12 +2528,23 @@ struct Engine {
             const int S = L.n_slots;
             if (S <= 0 || S >= ne) continue;
             const bool is_core = ((int) li >= hp.core_start && (int) li < hp.core_end);
-            // MoE-CORE / DALI heterogeneous cost weight: Q8_0 down outer layers are ~1.3x heavier on CPU than Q5_0.
-            const double weight = is_core ? 3.0 : ((L.L.gu_type == 13) ? 1.43 : ((L.L.d_type == 8) ? 1.30 : 1.0));
-            for (int x = 0; x < ne; ++x) order[(size_t) x] = x;
+            // MoE-CORE / DALI + ShinkaEvolve Gen-M heterogeneous CPU miss cost weights (Q5_K, Q6_K, Q8_0 vs Q4_K).
+            const double weight = is_core
+                ? 3.0
+                : ((L.L.gu_type == 13) ? 1.43 : ((L.L.d_type == 14) ? 1.3065 : ((L.L.d_type == 8) ? 1.3027 : 1.0)));
+            double sum_pos = 0.0;
+            int cnt_pos = 0;
+            for (int x = 0; x < ne; ++x) {
+                order[(size_t) x] = x;
+                if (L.score[(size_t) x] > 0.0) {
+                    sum_pos += L.score[(size_t) x];
+                    ++cnt_pos;
+                }
+            }
+            const double layer_mean = (cnt_pos > 0) ? (sum_pos / (double) cnt_pos) : 1.0;
             auto blended = [&](int x) -> double {
                 const uint32_t lt = (!L.last_tok.empty()) ? L.last_tok[(size_t) x] : 0u;
-                return L.lecar.blend_score(L.score[(size_t) x], lt, st_tok_step);
+                return L.lecar.blend_score_scaled(L.score[(size_t) x], lt, st_tok_step, layer_mean);
             };
             std::sort(order.begin(), order.end(),
                       [&](int a, int b) { return blended(a) > blended(b); });
@@ -2387,8 +2564,8 @@ struct Engine {
                 const double s_hot = blended(hot_cand);
                 const double s_cold = blended(y);
                 const double diff = s_hot - s_cold;
-                // Under RH (von Koch explicit-formula bound O(sqrt(N) log N)), skip swaps within ShinkaEvolve noise floor.
-                const double thr = (s_cold > 0.0) ? strata::math::rh_von_koch_threshold(s_hot, s_cold, rh_rebal_step, 0.1893) : 0.0;
+                // Under RH (von Koch explicit-formula bound O(sqrt(N) log N)), skip swaps within ShinkaEvolve Gen-M noise floor.
+                const double thr = (s_cold > 0.0) ? strata::math::rh_von_koch_threshold(s_hot, s_cold, rh_rebal_step, 0.2955) : 0.0;
                 if (diff <= thr) break;
                 cands.push_back(Cand{diff * weight, li, s, hot_cand, y});
                 ++v_idx;
@@ -3723,15 +3900,16 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, std::strin
     }
 
     // Priority 2: Fate (arXiv:2502.12224) + Riemann Zeta-Lagrangian 3-Tier (GPU VRAM -> Pinned RAM -> SATA SSD) allocation.
-    // ShinkaEvolve (48 gens x 3 islands on real S5-1TB SATA 252.2/98.0 MB/s) optimal: rho_SATA=12.958.
+    // ShinkaEvolve Gen-M (3 islands x 36 gens, robust-kbench verified): continuous depth Zeta + Q6_K/Q8_0 cost weights.
     std::vector<strata::math::ZetaLayerSpec> tier2_specs;
     std::vector<int> tier2_gpu_slots;
     if (!tier2.empty() && budget > used) {
         tier2_specs.reserve(tier2.size());
-        for (int ip : tier2) {
+        for (size_t idx = 0; idx < tier2.size(); ++idx) {
+            const int ip = tier2[idx];
             const PhysLayer& L = m.layers[(size_t) ip];
-            const double cost = (L.L.gu_type == 13) ? 1.43 : ((L.L.d_type == 8) ? 1.30 : 1.0);
-            const double zeta_s = (ip < hp.core_start) ? 1.38 : 1.02;
+            const double cost = (L.L.gu_type == 13) ? 1.43 : ((L.L.d_type == 14) ? 1.3065 : ((L.L.d_type == 8) ? 1.3027 : 1.0));
+            const double zeta_s = strata::math::continuous_zeta_exponent((int) idx, (int) tier2.size(), 1.2470, 0.9116);
             tier2_specs.push_back(strata::math::ZetaLayerSpec{ip, L.stride, cost, zeta_s, ne});
         }
         size_t t2_used = 0;
@@ -3743,10 +3921,11 @@ bool place_experts(Model& m, Engine& E, double vram_gib, int threads, std::strin
     } else if (!tier2.empty()) {
         tier2_specs.reserve(tier2.size());
         tier2_gpu_slots.assign(tier2.size(), 0);
-        for (int ip : tier2) {
+        for (size_t idx = 0; idx < tier2.size(); ++idx) {
+            const int ip = tier2[idx];
             const PhysLayer& L = m.layers[(size_t) ip];
-            const double cost = (L.L.gu_type == 13) ? 1.43 : ((L.L.d_type == 8) ? 1.30 : 1.0);
-            const double zeta_s = (ip < hp.core_start) ? 1.38 : 1.02;
+            const double cost = (L.L.gu_type == 13) ? 1.43 : ((L.L.d_type == 14) ? 1.3065 : ((L.L.d_type == 8) ? 1.3027 : 1.0));
+            const double zeta_s = strata::math::continuous_zeta_exponent((int) idx, (int) tier2.size(), 1.2470, 0.9116);
             tier2_specs.push_back(strata::math::ZetaLayerSpec{ip, L.stride, cost, zeta_s, ne});
         }
     }
@@ -4315,6 +4494,13 @@ int run(int argc, char** argv) {
     bool kv_q8 = true;
     bool profile = false;
     bool profile_detail = false;
+    int transcode_down_mode = 0;
+    if (const char* v = std::getenv("STRATA_TRANSCODE_Q6K_NVFP4"); v && v[0] && v[0] != '0') {
+        transcode_down_mode = std::max(transcode_down_mode, 1);
+    }
+    if (const char* v = std::getenv("STRATA_TRANSCODE_DOWN_NVFP4"); v && v[0] && v[0] != '0') {
+        transcode_down_mode = std::max(transcode_down_mode, 2);
+    }
 
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
@@ -4340,6 +4526,8 @@ int run(int argc, char** argv) {
         else if (a == "--dump-logits") dump_logits_path = next_arg();
         else if (a == "--kv-f16") kv_q8 = false;
         else if (a == "--kv-q8") kv_q8 = true;
+        else if (a == "--transcode-q6k-nvfp4") transcode_down_mode = std::max(transcode_down_mode, 1);
+        else if (a == "--transcode-down-nvfp4") transcode_down_mode = std::max(transcode_down_mode, 2);
         else if (a == "--serve") serve = true;
         else if (a == "--bench") bench = true;
         else if (a == "--profile") profile = true;
@@ -4347,13 +4535,13 @@ int run(int argc, char** argv) {
     }
 
     if (model_path.empty()) {
-        std::fprintf(stderr, "usage: strata-inkling2 --model <file.gguf> [--draft <dspark.gguf>] [--draft-max N] [--max-context N] [--kv-q8|--kv-f16] [--tokens IDS] [--max-new N] [--dump-logits PATH] [--bench] [--serve]\n");
+        std::fprintf(stderr, "usage: strata-inkling2 --model <file.gguf> [--draft <dspark.gguf>] [--draft-max N] [--max-context N] [--kv-q8|--kv-f16] [--transcode-q6k-nvfp4|--transcode-down-nvfp4] [--tokens IDS] [--max-new N] [--dump-logits PATH] [--bench] [--serve]\n");
         return 2;
     }
 
     Model m;
     std::string err;
-    if (!load_model(model_path, m, err)) {
+    if (!load_model(model_path, m, err, transcode_down_mode)) {
         std::fprintf(stderr, "strata-inkling2: load failed: %s\n", err.c_str());
         return 1;
     }
@@ -4695,7 +4883,9 @@ int run(int argc, char** argv) {
                              false, dspark != nullptr, 0, nullptr, is_last);
         if (dspark) dspark->inject(E, p0, tc);
         const auto tr0 = Clock::now();
-        if (E.hybrid) E.rebalance(64, 16, true);
+        // Gen-M post-prefill cold-start warm-swap burst: promotes prompt-active experts across all 12 outer layers
+        // via async pinned DMA on copy stream `cst` instead of capping at ~5 swaps/layer.
+        if (E.hybrid) E.rebalance(192, 24, true);
         if (profile) { CK(cudaStreamSynchronize(E.st)); E.p_rebal_ms += ms_since(tr0); }
     }
     const double pp_ms = ms_since(t_pp0);

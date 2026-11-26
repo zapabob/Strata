@@ -350,8 +350,14 @@ void kq256_gu_t1_q4k(const uint8_t* blob, size_t gu_row, size_t up_off, int n, c
         const block_q4_K* xg = (const block_q4_K*) (blob + (size_t) r * gu_row);
         const block_q4_K* xu = (const block_q4_K*) (blob + up_off + (size_t) r * gu_row);
         if (r + 2 < r1) {
-            _mm_prefetch((const char*) (blob + (size_t) (r + 2) * gu_row), _MM_HINT_NTA);
-            _mm_prefetch((const char*) (blob + up_off + (size_t) (r + 2) * gu_row), _MM_HINT_NTA);
+            const char* pg0 = reinterpret_cast<const char*>(blob + (size_t) (r + 2) * gu_row);
+            const char* pu0 = reinterpret_cast<const char*>(blob + up_off + (size_t) (r + 2) * gu_row);
+            _mm_prefetch(pg0, _MM_HINT_NTA);
+            _mm_prefetch(pg0 + 64, _MM_HINT_NTA);
+            _mm_prefetch(pg0 + 128, _MM_HINT_NTA);
+            _mm_prefetch(pu0, _MM_HINT_NTA);
+            _mm_prefetch(pu0 + 64, _MM_HINT_NTA);
+            _mm_prefetch(pu0 + 128, _MM_HINT_NTA);
         }
         __m256 acc_g = _mm256_setzero_ps(), acc_u = _mm256_setzero_ps();
         __m128 acc_mg = _mm_setzero_ps(), acc_mu = _mm_setzero_ps();
@@ -376,9 +382,7 @@ void kq256_gu_t1_q4k(const uint8_t* blob, size_t gu_row, size_t up_off, int n, c
             }
             const block_q4_K& bg = xg[i];
             const block_q4_K& bu = xu[i];
-            const float dg = yd * half_at(&bg, 0);
             const float dming = -yd * half_at(&bg, 1);
-            const float du = yd * half_at(&bu, 0);
             const float dminu = -yd * half_at(&bu, 1);
 
             auto unpack_scales = [&](const block_q4_K& bx, __m128i& mins_out) -> __m256i {
@@ -391,8 +395,7 @@ void kq256_gu_t1_q4k(const uint8_t* blob, size_t gu_row, size_t up_off, int n, c
                 utmp[0] &= kmask1;
                 const __m256i ms = _mm256_cvtepu8_epi16(_mm_set_epi32((int) utmp[3], (int) utmp[2], (int) utmp[1], (int) utmp[0]));
                 mins_out = _mm256_extracti128_si256(ms, 1);
-                const __m128i sc128 = _mm256_extracti128_si256(ms, 0);
-                return _mm256_insertf128_si256(_mm256_castsi128_si256(sc128), sc128, 1);
+                return _mm256_permute2x128_si256(ms, ms, 0x00);
             };
 
             __m128i mins_g, mins_u;
@@ -401,33 +404,36 @@ void kq256_gu_t1_q4k(const uint8_t* blob, size_t gu_row, size_t up_off, int n, c
             acc_mg = _mm_fmadd_ps(_mm_set1_ps(dming), _mm_cvtepi32_ps(_mm_madd_epi16(mins_g, q8s)), acc_mg);
             acc_mu = _mm_fmadd_ps(_mm_set1_ps(dminu), _mm_cvtepi32_ps(_mm_madd_epi16(mins_u, q8s)), acc_mu);
 
-            // Zero-spill fused Gate+Up loop: holds only 2 YMM (q8l, q8h) instead of 8 YMM (q8l[4], q8h[4]),
-            // eliminating YMM stack spills while reading y[i].qs once from L1.
+            // Zero-spill fused Gate+Up loop: keeps peak live YMM <= 14 on Zen 2 (16 YMM regs).
             __m256i sumi_g = _mm256_setzero_si256();
             __m256i sumi_u = _mm256_setzero_si256();
             const int8_t* q8 = y[i].qs;
             const uint8_t* q4g = bg.qs;
             const uint8_t* q4u = bu.qs;
             for (int j = 0; j < 4; ++j) {
-                const __m256i shuf_l = get_scale_shuffle_k4(2 * j + 0);
-                const __m256i shuf_h = get_scale_shuffle_k4(2 * j + 1);
                 const __m256i q8l = _mm256_loadu_si256((const __m256i*) q8); q8 += 32;
                 const __m256i q8h = _mm256_loadu_si256((const __m256i*) q8); q8 += 32;
 
                 const __m256i q4bg = _mm256_loadu_si256((const __m256i*) q4g); q4g += 32;
-                const __m256i slg = _mm256_shuffle_epi8(scales_g, shuf_l);
-                const __m256i shg = _mm256_shuffle_epi8(scales_g, shuf_h);
-                const __m256i p16lg = _mm256_madd_epi16(slg, _mm256_maddubs_epi16(_mm256_and_si256(q4bg, m4), q8l));
-                const __m256i p16hg = _mm256_madd_epi16(shg, _mm256_maddubs_epi16(_mm256_and_si256(_mm256_srli_epi16(q4bg, 4), m4), q8h));
+                const __m256i p16lg = _mm256_madd_epi16(
+                    _mm256_shuffle_epi8(scales_g, get_scale_shuffle_k4(2 * j + 0)),
+                    _mm256_maddubs_epi16(_mm256_and_si256(q4bg, m4), q8l));
+                const __m256i p16hg = _mm256_madd_epi16(
+                    _mm256_shuffle_epi8(scales_g, get_scale_shuffle_k4(2 * j + 1)),
+                    _mm256_maddubs_epi16(_mm256_and_si256(_mm256_srli_epi16(q4bg, 4), m4), q8h));
                 sumi_g = _mm256_add_epi32(sumi_g, _mm256_add_epi32(p16lg, p16hg));
 
                 const __m256i q4bu = _mm256_loadu_si256((const __m256i*) q4u); q4u += 32;
-                const __m256i slu = _mm256_shuffle_epi8(scales_u, shuf_l);
-                const __m256i shu = _mm256_shuffle_epi8(scales_u, shuf_h);
-                const __m256i p16lu = _mm256_madd_epi16(slu, _mm256_maddubs_epi16(_mm256_and_si256(q4bu, m4), q8l));
-                const __m256i p16hu = _mm256_madd_epi16(shu, _mm256_maddubs_epi16(_mm256_and_si256(_mm256_srli_epi16(q4bu, 4), m4), q8h));
+                const __m256i p16lu = _mm256_madd_epi16(
+                    _mm256_shuffle_epi8(scales_u, get_scale_shuffle_k4(2 * j + 0)),
+                    _mm256_maddubs_epi16(_mm256_and_si256(q4bu, m4), q8l));
+                const __m256i p16hu = _mm256_madd_epi16(
+                    _mm256_shuffle_epi8(scales_u, get_scale_shuffle_k4(2 * j + 1)),
+                    _mm256_maddubs_epi16(_mm256_and_si256(_mm256_srli_epi16(q4bu, 4), m4), q8h));
                 sumi_u = _mm256_add_epi32(sumi_u, _mm256_add_epi32(p16lu, p16hu));
             }
+            const float dg = yd * half_at(&bg, 0);
+            const float du = yd * half_at(&bu, 0);
             acc_g = _mm256_fmadd_ps(_mm256_set1_ps(dg), _mm256_cvtepi32_ps(sumi_g), acc_g);
             acc_u = _mm256_fmadd_ps(_mm256_set1_ps(du), _mm256_cvtepi32_ps(sumi_u), acc_u);
         }
@@ -886,14 +892,23 @@ void kq256_down_t1_q4k(const uint8_t* w, size_t row_bytes, int n, const void* hq
         utmp[0] &= kmask1;
         const __m256i ms = _mm256_cvtepu8_epi16(_mm_set_epi32((int) utmp[3], (int) utmp[2], (int) utmp[1], (int) utmp[0]));
         mins_out = _mm256_extracti128_si256(ms, 1);
-        const __m128i sc128 = _mm256_extracti128_si256(ms, 0);
-        return _mm256_insertf128_si256(_mm256_castsi128_si256(sc128), sc128, 1);
+        return _mm256_permute2x128_si256(ms, ms, 0x00);
     };
 
     int r = r0;
     for (; r + 1 < r1; r += 2) {
         const block_q4_K* x0 = (const block_q4_K*) (w + (size_t) r * row_bytes);
         const block_q4_K* x1 = (const block_q4_K*) (w + (size_t) (r + 1) * row_bytes);
+        if (r + 3 < r1) {
+            const char* n0 = reinterpret_cast<const char*>(w + (size_t) (r + 2) * row_bytes);
+            const char* n1 = reinterpret_cast<const char*>(w + (size_t) (r + 3) * row_bytes);
+            _mm_prefetch(n0, _MM_HINT_NTA);
+            _mm_prefetch(n0 + 64, _MM_HINT_NTA);
+            _mm_prefetch(n0 + 128, _MM_HINT_NTA);
+            _mm_prefetch(n1, _MM_HINT_NTA);
+            _mm_prefetch(n1 + 64, _MM_HINT_NTA);
+            _mm_prefetch(n1 + 128, _MM_HINT_NTA);
+        }
         __m256 acc0 = _mm256_setzero_ps(), acc1 = _mm256_setzero_ps();
         __m128 acc_m0 = _mm_setzero_ps(), acc_m1 = _mm_setzero_ps();
         for (int i = 0; i < nb; ++i) {
@@ -917,8 +932,8 @@ void kq256_down_t1_q4k(const uint8_t* w, size_t row_bytes, int n, const void* hq
             }
             const block_q4_K& b0 = x0[i];
             const block_q4_K& b1 = x1[i];
-            const float d0 = yd * half_at(&b0, 0), dmin0 = -yd * half_at(&b0, 1);
-            const float d1 = yd * half_at(&b1, 0), dmin1 = -yd * half_at(&b1, 1);
+            const float dmin0 = -yd * half_at(&b0, 1);
+            const float dmin1 = -yd * half_at(&b1, 1);
 
             __m128i mins0, mins1;
             const __m256i scales0 = unpack_scales(b0, mins0);
@@ -932,25 +947,29 @@ void kq256_down_t1_q4k(const uint8_t* w, size_t row_bytes, int n, const void* hq
             const uint8_t* q4_0 = b0.qs;
             const uint8_t* q4_1 = b1.qs;
             for (int j = 0; j < 4; ++j) {
-                const __m256i shuf_l = get_scale_shuffle_k4(2 * j + 0);
-                const __m256i shuf_h = get_scale_shuffle_k4(2 * j + 1);
                 const __m256i q8l = _mm256_loadu_si256((const __m256i*) q8); q8 += 32;
                 const __m256i q8h = _mm256_loadu_si256((const __m256i*) q8); q8 += 32;
 
                 const __m256i q4b0 = _mm256_loadu_si256((const __m256i*) q4_0); q4_0 += 32;
-                const __m256i sl0 = _mm256_shuffle_epi8(scales0, shuf_l);
-                const __m256i sh0 = _mm256_shuffle_epi8(scales0, shuf_h);
-                const __m256i p16l0 = _mm256_madd_epi16(sl0, _mm256_maddubs_epi16(_mm256_and_si256(q4b0, m4), q8l));
-                const __m256i p16h0 = _mm256_madd_epi16(sh0, _mm256_maddubs_epi16(_mm256_and_si256(_mm256_srli_epi16(q4b0, 4), m4), q8h));
+                const __m256i p16l0 = _mm256_madd_epi16(
+                    _mm256_shuffle_epi8(scales0, get_scale_shuffle_k4(2 * j + 0)),
+                    _mm256_maddubs_epi16(_mm256_and_si256(q4b0, m4), q8l));
+                const __m256i p16h0 = _mm256_madd_epi16(
+                    _mm256_shuffle_epi8(scales0, get_scale_shuffle_k4(2 * j + 1)),
+                    _mm256_maddubs_epi16(_mm256_and_si256(_mm256_srli_epi16(q4b0, 4), m4), q8h));
                 sumi0 = _mm256_add_epi32(sumi0, _mm256_add_epi32(p16l0, p16h0));
 
                 const __m256i q4b1 = _mm256_loadu_si256((const __m256i*) q4_1); q4_1 += 32;
-                const __m256i sl1 = _mm256_shuffle_epi8(scales1, shuf_l);
-                const __m256i sh1 = _mm256_shuffle_epi8(scales1, shuf_h);
-                const __m256i p16l1 = _mm256_madd_epi16(sl1, _mm256_maddubs_epi16(_mm256_and_si256(q4b1, m4), q8l));
-                const __m256i p16h1 = _mm256_madd_epi16(sh1, _mm256_maddubs_epi16(_mm256_and_si256(_mm256_srli_epi16(q4b1, 4), m4), q8h));
+                const __m256i p16l1 = _mm256_madd_epi16(
+                    _mm256_shuffle_epi8(scales1, get_scale_shuffle_k4(2 * j + 0)),
+                    _mm256_maddubs_epi16(_mm256_and_si256(q4b1, m4), q8l));
+                const __m256i p16h1 = _mm256_madd_epi16(
+                    _mm256_shuffle_epi8(scales1, get_scale_shuffle_k4(2 * j + 1)),
+                    _mm256_maddubs_epi16(_mm256_and_si256(_mm256_srli_epi16(q4b1, 4), m4), q8h));
                 sumi1 = _mm256_add_epi32(sumi1, _mm256_add_epi32(p16l1, p16h1));
             }
+            const float d0 = yd * half_at(&b0, 0);
+            const float d1 = yd * half_at(&b1, 0);
             acc0 = _mm256_fmadd_ps(_mm256_set1_ps(d0), _mm256_cvtepi32_ps(sumi0), acc0);
             acc1 = _mm256_fmadd_ps(_mm256_set1_ps(d1), _mm256_cvtepi32_ps(sumi1), acc1);
         }
@@ -960,6 +979,185 @@ void kq256_down_t1_q4k(const uint8_t* w, size_t row_bytes, int n, const void* hq
     for (; r < r1; ++r) {
         const void* act1[1] = {hq0};
         q4k_dot((const block_q4_K*) (w + (size_t) r * row_bytes), nb, act1, 1, out0 + r);
+    }
+}
+
+// Gen-M Zero-Spill 2-Row Unrolled Q6_K x Q8_K Down Projection (T==1) with NTA L3-preserving prefetch:
+// Keeps peak live registers <= 15 YMM on Zen 2 (16 YMM regs) by folding q8sclsub into initial sumi = -q8sclsub,
+// deferring d0/d1 until after the inner j-loop, loading L1-hot y[i].qs and shuffle masks as memory operands,
+// and sequencing b1 (q0,q2) before b2 (q1,q3). Streams 210B block_q6_K with _MM_HINT_NTA for 8 MB L3.
+// 100% bit-exact against dot_q6_K_q8_K (__AVX2__).
+void kq256_down_t1_q6k(const uint8_t* w, size_t row_bytes, int n, const void* hq0,
+                       float* out0, int r0, int r1) {
+    alignas(16) static const uint8_t k_q6k_shuffle[128] = {
+         0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1,
+         2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3,
+         4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5,
+         6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7,
+         8, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9,
+        10,10,10,10,10,10,10,10, 11,11,11,11,11,11,11,11,
+        12,12,12,12,12,12,12,12, 13,13,13,13,13,13,13,13,
+        14,14,14,14,14,14,14,14, 15,15,15,15,15,15,15,15
+    };
+    const __m256i m3 = _mm256_set1_epi8(3);
+    const __m256i m12 = _mm256_set1_epi8(12);
+    const __m256i m15 = _mm256_set1_epi8(15);
+    const __m256i m48 = _mm256_set1_epi8(48);
+    const __m256i mn64 = _mm256_set1_epi8(-64);
+    const int nb = n / QK_K;
+    const block_q8_K* y = (const block_q8_K*) hq0;
+
+    auto shuf_q6 = [&](int idx) -> __m128i {
+        return _mm_load_si128(reinterpret_cast<const __m128i*>(k_q6k_shuffle) + idx);
+    };
+
+    int r = r0;
+    for (; r + 1 < r1; r += 2) {
+        const block_q6_K* x0 = (const block_q6_K*) (w + (size_t) r * row_bytes);
+        const block_q6_K* x1 = (const block_q6_K*) (w + (size_t) (r + 1) * row_bytes);
+        if (r + 3 < r1) {
+            const char* n0 = reinterpret_cast<const char*>(w + (size_t) (r + 2) * row_bytes);
+            const char* n1 = reinterpret_cast<const char*>(w + (size_t) (r + 3) * row_bytes);
+            _mm_prefetch(n0,       _MM_HINT_NTA);
+            _mm_prefetch(n0 + 64,  _MM_HINT_NTA);
+            _mm_prefetch(n0 + 128, _MM_HINT_NTA);
+            _mm_prefetch(n0 + 192, _MM_HINT_NTA);
+            _mm_prefetch(n1,       _MM_HINT_NTA);
+            _mm_prefetch(n1 + 64,  _MM_HINT_NTA);
+            _mm_prefetch(n1 + 128, _MM_HINT_NTA);
+            _mm_prefetch(n1 + 192, _MM_HINT_NTA);
+        }
+        __m256 acc0 = _mm256_setzero_ps();
+        __m256 acc1 = _mm256_setzero_ps();
+        for (int i = 0; i < nb; ++i) {
+            if (i + 2 < nb) {
+                const char* p0 = reinterpret_cast<const char*>(&x0[i + 2]);
+                const char* p1 = reinterpret_cast<const char*>(&x1[i + 2]);
+                _mm_prefetch(p0,       _MM_HINT_NTA);
+                _mm_prefetch(p0 + 64,  _MM_HINT_NTA);
+                _mm_prefetch(p0 + 128, _MM_HINT_NTA);
+                _mm_prefetch(p0 + 192, _MM_HINT_NTA);
+                _mm_prefetch(p1,       _MM_HINT_NTA);
+                _mm_prefetch(p1 + 64,  _MM_HINT_NTA);
+                _mm_prefetch(p1 + 128, _MM_HINT_NTA);
+                _mm_prefetch(p1 + 192, _MM_HINT_NTA);
+            }
+            const __m256i q8sums = _mm256_loadu_si256((const __m256i*) y[i].bsums);
+            const __m128i scales0 = _mm_loadu_si128((const __m128i*) x0[i].scales);
+            const __m128i scales1 = _mm_loadu_si128((const __m128i*) x1[i].scales);
+            const __m256i zero = _mm256_setzero_si256();
+            __m256i sumi0 = _mm256_sub_epi32(zero, _mm256_slli_epi32(_mm256_madd_epi16(q8sums, _mm256_cvtepi8_epi16(scales0)), 5));
+            __m256i sumi1 = _mm256_sub_epi32(zero, _mm256_slli_epi32(_mm256_madd_epi16(q8sums, _mm256_cvtepi8_epi16(scales1)), 5));
+
+            const uint8_t* ql0 = x0[i].ql;
+            const uint8_t* qh0 = x0[i].qh;
+            const uint8_t* ql1 = x1[i].ql;
+            const uint8_t* qh1 = x1[i].qh;
+            const int8_t*  q8  = y[i].qs;
+
+            int is = 0;
+            for (int j = 0; j < QK_K / 128; ++j) {
+                // Row 0: sequence b1 (q0, q2) then b2 (q1, q3); L1-hot q8 & shuffle masks fold into memory operands.
+                {
+                    const __m256i bh = _mm256_loadu_si256((const __m256i*) qh0); qh0 += 32;
+                    {
+                        const __m256i b1 = _mm256_loadu_si256((const __m256i*) ql0); ql0 += 32;
+                        const __m256i q0 = _mm256_or_si256(_mm256_and_si256(b1, m15), _mm256_slli_epi16(_mm256_and_si256(bh, m3), 4));
+                        const __m256i p0 = _mm256_madd_epi16(_mm256_cvtepi8_epi16(_mm_shuffle_epi8(scales0, shuf_q6(is + 0))),
+                                                             _mm256_maddubs_epi16(q0, _mm256_loadu_si256((const __m256i*) (q8 + 0))));
+                        const __m256i q2 = _mm256_or_si256(_mm256_and_si256(_mm256_srli_epi16(b1, 4), m15), _mm256_and_si256(bh, m48));
+                        const __m256i p2 = _mm256_madd_epi16(_mm256_cvtepi8_epi16(_mm_shuffle_epi8(scales0, shuf_q6(is + 2))),
+                                                             _mm256_maddubs_epi16(q2, _mm256_loadu_si256((const __m256i*) (q8 + 64))));
+                        sumi0 = _mm256_add_epi32(sumi0, _mm256_add_epi32(p0, p2));
+                    }
+                    {
+                        const __m256i b2 = _mm256_loadu_si256((const __m256i*) ql0); ql0 += 32;
+                        const __m256i q1 = _mm256_or_si256(_mm256_and_si256(b2, m15), _mm256_slli_epi16(_mm256_and_si256(bh, m12), 2));
+                        const __m256i p1 = _mm256_madd_epi16(_mm256_cvtepi8_epi16(_mm_shuffle_epi8(scales0, shuf_q6(is + 1))),
+                                                             _mm256_maddubs_epi16(q1, _mm256_loadu_si256((const __m256i*) (q8 + 32))));
+                        const __m256i q3 = _mm256_or_si256(_mm256_and_si256(_mm256_srli_epi16(b2, 4), m15), _mm256_srli_epi16(_mm256_and_si256(bh, mn64), 2));
+                        const __m256i p3 = _mm256_madd_epi16(_mm256_cvtepi8_epi16(_mm_shuffle_epi8(scales0, shuf_q6(is + 3))),
+                                                             _mm256_maddubs_epi16(q3, _mm256_loadu_si256((const __m256i*) (q8 + 96))));
+                        sumi0 = _mm256_add_epi32(sumi0, _mm256_add_epi32(p1, p3));
+                    }
+                }
+                // Row 1
+                {
+                    const __m256i bh = _mm256_loadu_si256((const __m256i*) qh1); qh1 += 32;
+                    {
+                        const __m256i b1 = _mm256_loadu_si256((const __m256i*) ql1); ql1 += 32;
+                        const __m256i q0 = _mm256_or_si256(_mm256_and_si256(b1, m15), _mm256_slli_epi16(_mm256_and_si256(bh, m3), 4));
+                        const __m256i p0 = _mm256_madd_epi16(_mm256_cvtepi8_epi16(_mm_shuffle_epi8(scales1, shuf_q6(is + 0))),
+                                                             _mm256_maddubs_epi16(q0, _mm256_loadu_si256((const __m256i*) (q8 + 0))));
+                        const __m256i q2 = _mm256_or_si256(_mm256_and_si256(_mm256_srli_epi16(b1, 4), m15), _mm256_and_si256(bh, m48));
+                        const __m256i p2 = _mm256_madd_epi16(_mm256_cvtepi8_epi16(_mm_shuffle_epi8(scales1, shuf_q6(is + 2))),
+                                                             _mm256_maddubs_epi16(q2, _mm256_loadu_si256((const __m256i*) (q8 + 64))));
+                        sumi1 = _mm256_add_epi32(sumi1, _mm256_add_epi32(p0, p2));
+                    }
+                    {
+                        const __m256i b2 = _mm256_loadu_si256((const __m256i*) ql1); ql1 += 32;
+                        const __m256i q1 = _mm256_or_si256(_mm256_and_si256(b2, m15), _mm256_slli_epi16(_mm256_and_si256(bh, m12), 2));
+                        const __m256i p1 = _mm256_madd_epi16(_mm256_cvtepi8_epi16(_mm_shuffle_epi8(scales1, shuf_q6(is + 1))),
+                                                             _mm256_maddubs_epi16(q1, _mm256_loadu_si256((const __m256i*) (q8 + 32))));
+                        const __m256i q3 = _mm256_or_si256(_mm256_and_si256(_mm256_srli_epi16(b2, 4), m15), _mm256_srli_epi16(_mm256_and_si256(bh, mn64), 2));
+                        const __m256i p3 = _mm256_madd_epi16(_mm256_cvtepi8_epi16(_mm_shuffle_epi8(scales1, shuf_q6(is + 3))),
+                                                             _mm256_maddubs_epi16(q3, _mm256_loadu_si256((const __m256i*) (q8 + 96))));
+                        sumi1 = _mm256_add_epi32(sumi1, _mm256_add_epi32(p1, p3));
+                    }
+                }
+                q8 += 128;
+                is += 4;
+            }
+            const float yd = y[i].d;
+            const float d0 = yd * h2f(x0[i].d);
+            const float d1 = yd * h2f(x1[i].d);
+            acc0 = _mm256_fmadd_ps(_mm256_set1_ps(d0), _mm256_cvtepi32_ps(sumi0), acc0);
+            acc1 = _mm256_fmadd_ps(_mm256_set1_ps(d1), _mm256_cvtepi32_ps(sumi1), acc1);
+        }
+        out0[r]     = hsum_float_8(acc0);
+        out0[r + 1] = hsum_float_8(acc1);
+    }
+    for (; r < r1; ++r) {
+        const block_q6_K* x = (const block_q6_K*) (w + (size_t) r * row_bytes);
+        __m256 acc = _mm256_setzero_ps();
+        for (int i = 0; i < nb; ++i) {
+            const __m256i q8sums = _mm256_loadu_si256((const __m256i*) y[i].bsums);
+            const __m128i scales = _mm_loadu_si128((const __m128i*) x[i].scales);
+            __m256i sumi = _mm256_sub_epi32(_mm256_setzero_si256(),
+                                            _mm256_slli_epi32(_mm256_madd_epi16(q8sums, _mm256_cvtepi8_epi16(scales)), 5));
+            const uint8_t* ql = x[i].ql;
+            const uint8_t* qh = x[i].qh;
+            const int8_t*  q8 = y[i].qs;
+            int is = 0;
+            for (int j = 0; j < QK_K / 128; ++j) {
+                const __m256i bh = _mm256_loadu_si256((const __m256i*) qh); qh += 32;
+                {
+                    const __m256i b1 = _mm256_loadu_si256((const __m256i*) ql); ql += 32;
+                    const __m256i q0 = _mm256_or_si256(_mm256_and_si256(b1, m15), _mm256_slli_epi16(_mm256_and_si256(bh, m3), 4));
+                    const __m256i p0 = _mm256_madd_epi16(_mm256_cvtepi8_epi16(_mm_shuffle_epi8(scales, shuf_q6(is + 0))),
+                                                         _mm256_maddubs_epi16(q0, _mm256_loadu_si256((const __m256i*) (q8 + 0))));
+                    const __m256i q2 = _mm256_or_si256(_mm256_and_si256(_mm256_srli_epi16(b1, 4), m15), _mm256_and_si256(bh, m48));
+                    const __m256i p2 = _mm256_madd_epi16(_mm256_cvtepi8_epi16(_mm_shuffle_epi8(scales, shuf_q6(is + 2))),
+                                                         _mm256_maddubs_epi16(q2, _mm256_loadu_si256((const __m256i*) (q8 + 64))));
+                    sumi = _mm256_add_epi32(sumi, _mm256_add_epi32(p0, p2));
+                }
+                {
+                    const __m256i b2 = _mm256_loadu_si256((const __m256i*) ql); ql += 32;
+                    const __m256i q1 = _mm256_or_si256(_mm256_and_si256(b2, m15), _mm256_slli_epi16(_mm256_and_si256(bh, m12), 2));
+                    const __m256i p1 = _mm256_madd_epi16(_mm256_cvtepi8_epi16(_mm_shuffle_epi8(scales, shuf_q6(is + 1))),
+                                                         _mm256_maddubs_epi16(q1, _mm256_loadu_si256((const __m256i*) (q8 + 32))));
+                    const __m256i q3 = _mm256_or_si256(_mm256_and_si256(_mm256_srli_epi16(b2, 4), m15), _mm256_srli_epi16(_mm256_and_si256(bh, mn64), 2));
+                    const __m256i p3 = _mm256_madd_epi16(_mm256_cvtepi8_epi16(_mm_shuffle_epi8(scales, shuf_q6(is + 3))),
+                                                         _mm256_maddubs_epi16(q3, _mm256_loadu_si256((const __m256i*) (q8 + 96))));
+                    sumi = _mm256_add_epi32(sumi, _mm256_add_epi32(p1, p3));
+                }
+                q8 += 128;
+                is += 4;
+            }
+            const float d = y[i].d * h2f(x[i].d);
+            acc = _mm256_fmadd_ps(_mm256_set1_ps(d), _mm256_cvtepi32_ps(sumi), acc);
+        }
+        out0[r] = hsum_float_8(acc);
     }
 }
 
