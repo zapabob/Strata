@@ -294,11 +294,22 @@ export function NativeModels({ onOtherModels, onReady, onImport, onConnectEngine
   </div>
   
   <NativeDeleteDialog id={deleting} onClose={() => setDeleting(null)}/>
-  <Dialog open={manage} compact title={tr("Manage models")} onClose={() => setManage(false)} actions={<Btn onClick={() => setManage(false)}>{tr("Done")}</Btn>}><div className="native-manage">
-   {tr(downloaded.some(m => m.ready || m.diskGb) ? <div className="native-manage-list" role="list">{tr(downloaded.filter(m => m.ready || m.diskGb).map(m => { const v = allSizes.find(x => x.id === m.model), loaded = native?.instances.some(i => i.model === m.model && i.status === 'ready'); return <div className="native-manage-row" role="listitem" key={m.model} data-selected={selectedSize?.id === m.model || undefined}>
+  <Dialog open={manage} title={tr("Manage models")} onClose={() => setManage(false)} actions={<Btn onClick={() => setManage(false)}>{tr("Done")}</Btn>}><div className="native-manage">
+   {tr(downloaded.some(m => m.ready || m.diskGb) ? <div className="native-manage-list" role="list">{tr(downloaded.filter(m => m.ready || m.diskGb).map(m => {
+    const v = allSizes.find(x => x.id === m.model), loaded = native?.instances.some(i => i.model === m.model && i.status === 'ready');
+    const policy = native?.servingPolicies?.[m.model]?.id;
+    const localLoad = !v && (policy === 'q38dense' || policy === 'inkling2_loop');
+    const localReady = localLoad && m.ready && m.runtime?.available !== false;
+    return <div className="native-manage-row" role="listitem" key={m.model} data-selected={selectedSize?.id === m.model || undefined}>
      <span className="native-manage-name"><strong>{tr(v ? `${catalogVersionLabel(v)}` : m.model_name ?? m.model)}</strong><small>{tr(v ? v.model : m.model)}{tr(m.diskGb ? ` · ${sizeGb(m.diskGb)}` : '')}</small></span>
      <span className={loaded ? 'st-pill st-pill--accent' : 'st-pill'}>{tr(loaded ? 'Loaded' : 'Downloaded')}</span>
-     <span className="native-manage-actions"><Btn size="sm" disabled={pending || !!active || (!v && native?.servingPolicies?.[m.model]?.id !== 'q38dense')} onClick={() => { if (v) { setSize(v.id); setManage(false); } else void perform(async () => { await nativeAction('operations', { kind: 'load', args: { model: m.model } }); setManage(false); }); }}>{tr(!v && native?.servingPolicies?.[m.model]?.id === 'q38dense' ? 'Load model' : selectedSize?.id === m.model ? 'Selected' : 'Use version')}</Btn><Btn size="sm" variant="danger" disabled={!!active} onClick={() => setDeleting(m.model)}>{tr("Delete")}</Btn></span>
+     <span className="native-manage-actions"><Btn size="sm" disabled={pending || !!active || (!v && (!localReady || loaded))} onClick={() => {
+      if (v) { setSize(v.id); setManage(false); }
+      else if (localReady && !loaded) void perform(async () => {
+        await nativeAction('operations', { kind: 'load', args: { model: m.model } });
+        setManage(false);
+      });
+     }}>{tr(localLoad ? (loaded ? 'Selected' : 'Load model') : selectedSize?.id === m.model ? 'Selected' : 'Use version')}</Btn><Btn size="sm" variant="danger" disabled={!!active} onClick={() => setDeleting(m.model)}>{tr("Delete")}</Btn></span>
     </div>; }))}</div> : <p className="small muted native-manage-empty">{tr("No downloaded models")}</p>)}
    <div className="native-manage-foot"><Btn variant="ghost" icon="folder" onClick={() => { setManage(false); (onImport ?? onOtherModels)(); }}>{tr("Use a local GGUF…")}</Btn></div>
   </div></Dialog>
