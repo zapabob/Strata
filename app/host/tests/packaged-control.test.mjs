@@ -964,3 +964,32 @@ test('packaged: Inkling with a disk Expert cache can finish a slow cold start', 
     } finally { await f.native.close(); f.cleanup(); }
   }
 });
+
+test('packaged: SC117 uses the selected context for a load and preserves the prepared profile', async () => {
+  const id = 'inkling-2-mini-sc117-sq-10';
+  const f = packagedFixture({ ids: [id] });
+  try {
+    const path = join(f.install, `strata-${id}.json`);
+    const prepared = {
+      ...JSON.parse(readFileSync(path, 'utf8')), arch: 'inkling2_loop',
+      args: ['--max-context', '32768', '--kv-dtype', 'K8V8', '--expert-cache-dir', join(f.install, 'scratch')],
+      user_args: ['--ctx', '16384', '--cpu-threads', '6'],
+    };
+    writeFileSync(path, JSON.stringify(prepared));
+    await f.native.refresh(true);
+
+    await assert.rejects(async () => f.native.operation('load', { model: id, context: '49152' }), /Choose an Inkling context/);
+    assert.equal(f.saved.length, 0);
+
+    const job = await finish(f.native, f.native.operation('load', { model: id, context: 49152 }).id);
+    assert.equal(job.state, 'done', job.error);
+    assert.equal(f.native.state().instances[0].context, 49152);
+    assert.deepEqual(f.saved[0].args, [
+      '--kv-dtype', 'K8V8', '--expert-cache-dir', join(f.install, 'scratch'),
+      '--cpu-threads', '6', '--max-context', '49152',
+    ]);
+    assert.deepEqual(f.saved[0].user_args, ['--cpu-threads', '6']);
+    assert.equal(readFileSync(path, 'utf8'), JSON.stringify(prepared));
+    assert.equal(f.rpc.some(call => call.name === 'strata_install'), false);
+  } finally { await f.native.close(); f.cleanup(); }
+});

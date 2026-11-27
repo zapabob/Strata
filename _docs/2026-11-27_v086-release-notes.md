@@ -6,6 +6,8 @@ Workspace skills can bring their scripts, templates and references into the agen
 
 ## SC117 rendering check
 
+For an installed SC117 SQ-10, SQ-15 or SQ-20 profile, choose **Conversation context** on the Models screen before loading. The choice applies to the next load in the current desktop session. Strata keeps the model's prepared configuration, cache format and Expert placement. Changing the context of a running model requires unloading and loading it again.
+
 On a Windows PC with an RTX 5060 Ti 16 GB, SC117 SQ-10 generated a single-file scene from the published Pagoda Bench prompt in a Strata `/goal` session. The model repaired JavaScript errors and adjusted the camera after receiving diagnostics. Chrome opened the saved file with the specified Three.js imports and drew the scene in WebGL 2. The scene reported 7,079 voxels and five floors. All five roofs were visible after zooming out. The opening view still cropped the top. This check used no hand edits to the generated HTML and produced no official benchmark score.
 
 The Windows installer is distributed separately from CUDA model engines. See the [workflow guide](../docs/WORKFLOW_SKILLS.md) and the [previous hardware measurements](2026-11-27_v085-release-notes.md).

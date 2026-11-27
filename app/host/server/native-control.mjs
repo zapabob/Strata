@@ -33,7 +33,7 @@ import { openTextFile } from './open-text-file.mjs';
 import { openLoopbackUrl } from './open-loopback.mjs';
 import { markEngine, engineRefusal } from './engine-version.mjs';
 import { friendlyModelName } from './model-names.mjs';
-import { isInkling } from './inkling.mjs';
+import { isInkling, sc117RunContext, withInklingContext } from './inkling.mjs';
 import { parseSaved as parseRoles, mirror as mirrorRoles } from './gpu-roles.mjs';
 import { configContextLimit } from './dsv41-context.mjs';
 import { PROJECTION_KEY, probeRefusalProjection, projectionModelReason, projectionView, projectionRequested, admitProjection, applyProjection, clearOwnedProjection } from './refusal-projection.mjs';
@@ -377,6 +377,7 @@ export function createNativeControl({directory,requests=()=>[],changed=()=>{},sp
  function servingConfig(args,config,{kvCapability=null,memoryCapability=null,negotiating=false,memoryKnown=false}={}){
   if(denseConfig(config))return denseRunConfig(config,{...args,values:validateNativeSettings(args.values??{})});
   const policy=policyFor(args.model,config,kvCapability,snapshot.catalog,memoryCapability);
+  sc117RunContext(args.model,policy.runtimeArch,args.context);
   const next=applyOrdinaryKv(applyServingPatch(config,validateNativeSettings(args.values??{})),args.kv,policy);
   assertServingSettings(next,policy,{negotiating,memoryKnown});
   // Carry every resolved adapter across the process boundary. A known non-Q36
@@ -662,6 +663,11 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   else   if(args.gpus!==undefined&&!(args.gpusFromRecommendation&&namedInFile)){const detected=new Set((snapshot.hardware?.gpus??[]).map(g=>g.index));if(!Array.isArray(args.gpus)||!args.gpus.length||new Set(args.gpus).size!==args.gpus.length||args.gpus.some(g=>!Number.isInteger(g)||!detected.has(g)))throw new Error('Choose distinct detected GPUs. CPU-only text inference is not supported by this native adapter.');cfg.gpu=args.gpus.length===1?args.gpus[0]:args.gpus;for(const k of ['gpu_roles','gpu_cards','gpu_none'])delete cfg[k];delete cfg.hip_ordinal;cfg.layer_split=args.gpus.length>1?validateNativeSettings({layer_split:args.layerSplit??'auto'}).layer_split:'auto';if(cfg.layer_split!=='auto'&&cfg.layer_split.split(',').length!==args.gpus.length-1)throw new Error('Choose one layer split point between each pair of GPUs.');}
   if(cfg.vram_reserve_mib!==undefined&&cfg.vram_reserve_mib!==null){cfg.args=[...(cfg.args??[])];const at=cfg.args.indexOf('--vram-reserve-mib');if(at>=0)cfg.args.splice(at,2);cfg.args.push('--vram-reserve-mib',String(cfg.vram_reserve_mib));}
   if(mine.length){cfg.args=mergeUserArgs(cfg.args??[],mine);cfg[USER_KEY]=mine;}else delete cfg[USER_KEY];
+  const inklingContext=sc117RunContext(args.model,cfg.arch,args.context);
+  if(inklingContext!==undefined){
+   cfg.args=withInklingContext(cfg.args,inklingContext);
+   if(cfg[USER_KEY])cfg[USER_KEY]=setUserFlag(setUserFlag(cfg[USER_KEY],'--ctx',null),'--max-context',null);
+  }
   if(cfg.vision){if(cfg.vision_tokens!=null)cfg.vision={...cfg.vision,max_tokens:cfg.vision_tokens};if(cfg.vision_min_tokens!=null)cfg.vision={...cfg.vision,min_tokens:cfg.vision_min_tokens};}cfg.mcp={...(cfg.mcp??{}),...(cfg.mcp_timeout_s!=null?{timeout_s:cfg.mcp_timeout_s}:{}),...(cfg.mcp_max_rounds!=null?{max_rounds:cfg.mcp_max_rounds}:{}),...(cfg.mcp_max_result_chars!=null?{max_result_chars:cfg.mcp_max_result_chars}:{})};
   /* The model's own choices win over what setup wrote into the arguments: "Draft layer (MTP)" off leaves --mtp out of every start, and a picture reading that is off leaves --vision out (setup writes both again whenever it runs; the saved settings are applied here, on every load). */
   if((cfg.mtp===false||cfg.drafting==='off')&&Array.isArray(cfg.args))cfg.args=withoutDraftLayer(cfg.args);
@@ -888,7 +894,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   if(q36Config(cfg,args.model)&&!cfg.log)cfg.log=join(work,`${id}.engine.log`);
   writeFileSync(configPath,JSON.stringify(cfg,null,2),{mode:0o600});
   if(memoryAccess)desktopMemoryAccess.set(id,memoryAccess);
-  const instance={id,apiModelId,fingerprint,context:entry.context??0,aliases:cfg.aliases??[],arch:(String(cfg.arch??'').toLowerCase()==='hy4flash'?'hy4flash':String(cfg.arch??'').toLowerCase()==='inkling2_loop'?'inkling2_loop':(cfg.arch??null)),vision:!!cfg.vision,resourceProfile:cfg.ui_resource_profile??null,model:args.model,label:friendlyModelName(snapshot.catalog,args.model)??entry.model_name??args.model,port:cfg.port,gpus:Array.isArray(cfg.gpu)?cfg.gpu:cfg.gpu===undefined?[]:[cfg.gpu],status:'loading',phase:'loading',parallel:cfg.parallel??1,mcpServers:cfg.mcp_servers??cfg.mcpServers??{},mcpTimeoutS:cfg.mcp_timeout_s??null,key,configPath,ownerJob:job.id,loadedAt:new Date().toISOString(),metrics:null,error:null,...(picturesNote?{picturesNote}:{})};
+  const instance={id,apiModelId,fingerprint,context:sc117RunContext(args.model,cfg.arch,args.context)??entry.context??0,aliases:cfg.aliases??[],arch:(String(cfg.arch??'').toLowerCase()==='hy4flash'?'hy4flash':String(cfg.arch??'').toLowerCase()==='inkling2_loop'?'inkling2_loop':(cfg.arch??null)),vision:!!cfg.vision,resourceProfile:cfg.ui_resource_profile??null,model:args.model,label:friendlyModelName(snapshot.catalog,args.model)??entry.model_name??args.model,port:cfg.port,gpus:Array.isArray(cfg.gpu)?cfg.gpu:cfg.gpu===undefined?[]:[cfg.gpu],status:'loading',phase:'loading',parallel:cfg.parallel??1,mcpServers:cfg.mcp_servers??cfg.mcpServers??{},mcpTimeoutS:cfg.mcp_timeout_s??null,key,configPath,ownerJob:job.id,loadedAt:new Date().toISOString(),metrics:null,error:null,...(picturesNote?{picturesNote}:{})};
   instance.servingPolicy=policyFor(args.model,cfg).id;
   instance.refusalProjection={vectorVerified:projectionRequested(cfg,packaged?control.control.dir:repo()),requested:projectionRequested(config,packaged?control.control.dir:repo())};
   const capture=(args.runObservation===true||observationEnabled())?beginObservation(id,job,cfg,{executable:trustedEngineExe??undefined}):null;
@@ -992,7 +998,8 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
    if(adopted&&instance.profile&&Date.now()-lastAsked>10000){lastAsked=Date.now();const st=await control.status(instance.profile).catch(()=>null);if(st&&['failed','stopped','stale'].includes(st.state)){const error={message:st.error||'server_exited',output:st};instance.status='error';instance.error=humanStartError(error);emit();throw startFailure(error,instance.error);}}
    try{const response=await fetcher(`http://127.0.0.1:${instance.port}/health`,{headers:{authorization:`Bearer ${key}`},signal:AbortSignal.timeout(2000)});if(job.state!=='running'){await stopCancelledLoad(job,instance,id);return;}if(response.ok){instance.status='ready';instance.phase='idle';await noteDrafting(job,instance,key);
     // Persist only load-owned choices into the current file; later edits and READY survive save failure.
-    if(denseConfig(cfg)||resources||args.kv!==undefined||args.vision!==undefined||args.contextChosen===true||JSON.stringify(cfg[USER_KEY]??null)!==JSON.stringify(config[USER_KEY]??null)){
+    const runContextOverride=sc117RunContext(args.model,cfg.arch,args.context)!==undefined;
+    if(!runContextOverride&&(denseConfig(cfg)||resources||args.kv!==undefined||args.vision!==undefined||args.contextChosen===true||JSON.stringify(cfg[USER_KEY]??null)!==JSON.stringify(config[USER_KEY]??null))){
      try{const path=record(args.model).path;const current=readJson(path);
       // Dense raw choices own both this run and future loads. If the file was
       // edited while loading, reconcile that newer file instead of overwriting it.

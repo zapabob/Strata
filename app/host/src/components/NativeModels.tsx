@@ -34,7 +34,7 @@ import { useStore } from '../lib/store';
 import { NativePresets } from './NativePresets';
 import { NativeTune } from './NativeTune';
 import { NativeTuneBadge } from './NativeTuneBadge';
-import { nativeCatalogModels, catalogVersionLabel, fetchesPictures, hasKvChoice, HY4_FAMILY, INKLING_FAMILY } from '../lib/native-catalog';
+import { nativeCatalogModels, catalogVersionLabel, fetchesPictures, hasKvChoice, HY4_FAMILY, INKLING_FAMILY, sc117Contexts } from '../lib/native-catalog';
 export function NativeModels({ onOtherModels, onReady, onImport, onConnectEngine }: {
     onOtherModels: () => void;
     onImport?: () => void;
@@ -44,6 +44,7 @@ export function NativeModels({ onOtherModels, onReady, onImport, onConnectEngine
     const native = useNative(), imageLibrary = useStore(s => s.imageModels), hardware = useStore(s => s.hardware);
     // The choices are kept while the page is closed (Models -> Monitor -> Models used to start them over and a person lost track of what was downloading).
     const [family, setFamily] = useKept('models.family', ''), [size, setSize] = useKept('models.size', ''), [context, setContext] = useKept('models.context', DEFAULT_CONTEXT), [contextPicked, setContextPicked] = useKept('models.contextPicked', false), [vision, setVision] = useKept('models.vision', 'yes');
+    const [localContexts, setLocalContexts] = useKept<Record<string, number>>('models.localContexts', {});
     const manual = useStore(s => s.setup?.choices?.onboarding?.manual ?? false);
     const [expert, setExpert] = useKept('models.expert', manual), [multiple, setMultiple] = useKept('models.multiple', false), [roles, setRoles] = useKept<Roles | null>('models.roles', null), [kv, setKv] = useKept('models.kv', 'int8'), [lowRam, setLowRam] = useKept('models.lowRam', 'auto'), [split, setSplit] = useKept('models.split', 'auto');
     const [resourceProfile, setResourceProfile] = useKept<'work' | 'performance'>('models.profile', 'work');
@@ -80,7 +81,7 @@ export function NativeModels({ onOtherModels, onReady, onImport, onConnectEngine
     const servingPolicy = selectedSize ? native?.servingPolicies?.[selectedSize.id] : undefined;
     const ordinaryKv = servingPolicy?.ordinaryKv ?? [];
     // The sizes this model offers for the conversation context; it opens at 128K (or its largest size when that is smaller).
-    const contextList = selectedSize?.localProfile && installed?.context ? [installed.context] : selectedSize?.multi_file ? deepseekContexts(installed?.contextMax) : native?.catalog?.contexts ?? [8192, 32768, 65536, 131072, 262144];
+    const contextList = selectedSize?.localProfile ? sc117Contexts(installed?.context) : selectedSize?.multi_file ? deepseekContexts(installed?.contextMax) : native?.catalog?.contexts ?? [8192, 32768, 65536, 131072, 262144];
     // The model that is running is shown as running, with Unload: not offered for loading again.
     const downloaded = native?.installed?.models ?? [], allSizes = families.flatMap(f => f.sizes);
     // This computer for the fit figures: the biggest usable graphics card, or the ones chosen under Expert settings.
@@ -179,8 +180,10 @@ export function NativeModels({ onOtherModels, onReady, onImport, onConnectEngine
         setAppliedSig(sig);
         if (installed) {
             // The context it was prepared with when someone chose it; a model that holds the old default (32K, DeepSeek's 8K) without the marker opens at the new default.
-            if (installed.context)
-                setContext(selectedSize.localProfile ? installed.context : openingContext(installed.context, contextList, installed.contextChosen === true, selectedSize.multi_file ? [OLD_DEEPSEEK_CONTEXT] : undefined));
+            if (selectedSize.localProfile)
+                setContext(localContexts[selectedSize.id] ?? (installed.context || 8192));
+            else if (installed.context)
+                setContext(openingContext(installed.context, contextList, installed.contextChosen === true, selectedSize.multi_file ? [OLD_DEEPSEEK_CONTEXT] : undefined));
             // Off only when the person turned it off (a saved choice on a model that has the picture files); a model prepared without them (images 'off', or an old "off" saved while the engine had no reader) starts with it ON.
             // The first time this version is seen as installed it opens from its saved settings; from then on that value is the person's (a host report that changes while a job runs never changes it).
             const known = visionPicks.current.get(selectedSize.id), value = shownVision(known, installed);
@@ -229,7 +232,8 @@ export function NativeModels({ onOtherModels, onReady, onImport, onConnectEngine
     async function load() { if (!selectedSize || runtimeUnavailable)
         return; setPlan(null); setDrafterGb(null); await perform(async () => {
         if (selectedSize.localProfile) {
-            const result = await nativeAction<NativeJob>('operations', { kind: 'load', args: { model: selectedSize.id } });
+            const requestedContext = localContexts[selectedSize.id];
+            const result = await nativeAction<NativeJob>('operations', { kind: 'load', args: { model: selectedSize.id, context: requestedContext } });
             setJobId(result.id);
             return;
         }
@@ -273,7 +277,7 @@ export function NativeModels({ onOtherModels, onReady, onImport, onConnectEngine
       {tr(fitState === 'ssd' ? <p className="small muted native-spill-note"><Icon name="disk" size={16}/>{tr("may run slower")}</p> : null)}
       {tr(selectedSize?.multi_file && deepseekContextNote(context) ? <p className="small muted native-spill-note"><Icon name="info" size={16}/>{tr(deepseekContextNote(context))}</p> : null)}
       <div className="native-choice__row">
-       <div className="native-choice__col"><span className="native-choice__label">{tr("Conversation context")}</span><Select ariaLabel={tr("Conversation context")} value={String(context)} options={contextChoices(contextList, context).map(n => ({ value: String(n), label: n % 1024 === 0 ? `${n / 1024}K` : `${n.toLocaleString()} tokens` }))} onChange={n => { setContextPicked(true); setContext(Number(n)); }}/></div>
+       <div className="native-choice__col"><span className="native-choice__label">{tr("Conversation context")}</span><Select ariaLabel={tr("Conversation context")} value={String(context)} options={contextChoices(contextList, context).map(n => ({ value: String(n), label: n % 1024 === 0 ? `${n / 1024}K` : `${n.toLocaleString()} tokens` }))} onChange={n => { const tokens = Number(n); if (selectedSize.localProfile) setLocalContexts(picks => ({ ...picks, [selectedSize.id]: tokens })); else setContextPicked(true); setContext(tokens); }}/></div>
        {tr(draftingChoices ? <div className="native-choice__col"><span className="native-choice__label">{tr("Drafting")}</span><Select ariaLabel={tr("Drafting")} value={drafting} disabled={!!active} options={draftingChoices.map(v => ({ value: v, label: tr(draftingWords[v]) }))} onChange={v => setDrafting(String(v))}/></div> : null)}
        {tr(!isHy4Selected ? <div className="native-choice__col"><span className="native-choice__label">{tr("Computer use")}</span><div className="native-resource-choice"><button aria-pressed={resourceProfile === 'work'} data-selected={resourceProfile === 'work'} onClick={() => setResourceProfile('work')}><Icon name="computer" size={20}/><span><strong>{tr("Leave room for my work")}</strong><small>{tr("Keeps 5-8 GB of memory free for other programs.")}</small></span>{tr(resourceProfile === 'work' ? <Icon name="check" size={15}/> : null)}</button><button aria-pressed={resourceProfile === 'performance'} data-selected={resourceProfile === 'performance'} onClick={() => setResourceProfile('performance')}><Icon name="bolt" size={20}/><span><strong>{tr("Full performance")}</strong><small>{tr("Give Strata priority")}</small></span>{tr(resourceProfile === 'performance' ? <Icon name="check" size={15}/> : null)}</button></div></div> : null)}
       </div>

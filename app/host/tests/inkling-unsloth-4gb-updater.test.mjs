@@ -66,6 +66,11 @@ test('Inkling-2-Mini catalog exposes native .strata builds and Unsloth GGUF buil
   assert.equal(inkWithSc117.sizes.find(size => size.id === sq10.id).localProfile, undefined);
 });
 
+test('SC117 context menu includes intermediate sizes and the prepared custom size', () => {
+  assert.deepEqual(catalog.sc117Contexts(40960), [8192, 16384, 32768, 40960, 49152, 65536, 98304, 131072, 262144]);
+  assert.equal(catalog.sc117Contexts(32768).filter(size => size === 32768).length, 1);
+});
+
 test('4 GB GPUs reporting 3.8-4.0 GiB are admitted by runCards and gpu-roles', () => {
   const gtx1650 = { index: 0, name: 'NVIDIA GeForce GTX 1650', vram_gb: 3.9, usable: true, vendor: 'nvidia' };
   const igpu = { index: 1, name: 'Intel UHD Graphics', vram_gb: 0, integrated: true, usable: true, vendor: 'nvidia' };
