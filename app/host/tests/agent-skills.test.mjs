@@ -11,6 +11,9 @@ import { startScriptedWorker } from './helpers/scripted-worker.mjs';
 import { createAgentBridge } from '../server/agent/agent-bridge.mjs';
 import { resolveHarness } from '../server/agent/harness-runtime.mjs';
 import { buildProfile } from '../server/agent/profile.mjs';
+import { createAgentTools } from '../server/agent/tools-settings.mjs';
+import { harnessFixtureEnvironment } from './helpers/harness-environment.mjs';
+import { selectSkills } from '../server/skill-selection.mjs';
 import { materializeSkills, parseSkillFile, skillFileText, skillSlug, writeCreatedSkill } from '../server/skill-files.mjs';
 
 const skip = !process.env.STRATA_HARNESS_DIR || !resolveHarness({ env: process.env }).ok ? 'STRATA_HARNESS_DIR is not set to a built Harness' : false;
@@ -88,4 +91,88 @@ test('real Harness: a skill saved in the app is in the catalog, loads by name, a
   for (let i = 0; i < 20 && !seen; i++) { await new Promise(r => setTimeout(r, 500)); await run('s2', 'SCRIPT:say hi'); seen = /release-notes/.test(worker.requests.at(-1).raw); }
   assert.ok(seen, 'a skill saved while the agent runs reaches a later message');
   assert.equal(bridge.status().runtime.pid, pid, 'without restarting the agent');
+});
+
+test('real Harness: on-demand discovery replaces a resumed catalogue and remains independent of Goals, Files and helpers', { skip }, async t => {
+  const worker = await startScriptedWorker({});
+  const dir = mkdtempSync(join(tmpdir(), 'strata-skills-demand-'));
+  const ws = join(dir, 'ws');
+  mkdirSync(ws, { recursive: true });
+  const live = join(dir, 'skills-live');
+  const catalogueMarker = 'CATALOGUE_ONLY_MARKER';
+  const bodyMarker = 'PRIVATE_SKILL_BODY_MARKER';
+  const autoMarker = 'AUTOMATIC_WORKFLOW_BODY_MARKER';
+  materializeSkills(live, [
+    { id: 'pagoda-audit', name: 'Pagoda audit', description: catalogueMarker, body: bodyMarker, enabled: true },
+    ...Array.from({ length: 14 }, (_, i) => ({ id: `example-${i}`, name: `Example ${i}`, description: 'Example workflow', body: 'Example instructions', enabled: true })),
+  ]);
+  const local = [{ id: 'model', label: 'Scripted', baseUrl: worker.url, modelId: 'scripted-model', context: 32768, slots: 2 }];
+  let saved;
+  let autoApply = false;
+  const workflows = [
+    { id: 'matching-workflow', name: 'Matching workflow', body: autoMarker, enabled: true, triggers: ['matching workflow'] },
+    { id: 'always-on', name: 'Always on', body: 'UNRELATED_WORKFLOW_MARKER', enabled: true, triggers: [] },
+  ];
+  const settings = createAgentTools({ read: () => saved, write: next => { saved = next; }, dataDir: dir });
+  const bridge = createAgentBridge({
+    dataDir: dir, localInstances: () => local, connections: () => [], skillsDir: () => live,
+    tools: () => settings.profileView(), env: harnessFixtureEnvironment(dir), startTimeoutMs: 90_000,
+    selectSkillsForTurn: ({ message }) => {
+      const tools = settings.profileView();
+      return autoApply && !tools.off.has('skills')
+        ? selectSkills(workflows, message, null, { includeAlwaysOn: !tools.skillsOnDemand }) : [];
+    },
+  });
+  t.after(async () => { await bridge.close(); await worker.close(); cleanup(dir); });
+  const run = async (chatId, message, mode = 'bypass') => {
+    try { await bridge.runTurn({ chatId, message, workspacePath: ws, mode, onFrame() {} }); }
+    catch (error) {
+      await bridge.close();
+      const log = join(dir, 'agent', 'harness.log');
+      if (existsSync(log)) t.diagnostic(readFileSync(log, 'utf8').slice(-7000));
+      throw error;
+    }
+    return worker.requests.at(-1);
+  };
+
+  const classic = await run('resumed', 'SCRIPT:say first');
+  assert.ok(classic.raw.includes(catalogueMarker));
+  assert.ok(classic.toolNames.includes('subagent'));
+  assert.equal(settings.update({ skillsOnDemand: true, groups: { helpers: false } }).skillsOnDemand, true);
+  const resumed = await run('resumed', 'SCRIPT:say second');
+  assert.ok(resumed.raw.includes('SCRIPT:say first'), 'the old user message still reaches the model');
+  assert.ok(!resumed.raw.includes(catalogueMarker), 'the historical catalogue no longer reaches the model');
+  assert.ok(!resumed.raw.includes(bodyMarker));
+  for (const tool of ['skills_list', 'skill', 'read', 'write', 'create_goal']) assert.ok(resumed.toolNames.includes(tool), tool);
+  assert.ok(!resumed.toolNames.includes('subagent'));
+  assert.ok(!resumed.raw.includes('To continue delegated work'));
+
+  const listing = await run('demand', 'SCRIPT:call skills_list {}', 'manual');
+  const result = JSON.parse(JSON.parse(listing.raw).messages.findLast(m => m.role === 'tool').content);
+  assert.equal(result.nextOffset, 12);
+  assert.equal(result.skills.length, 12);
+  assert.ok(!listing.raw.includes(bodyMarker));
+  const matched = await run('query', 'SCRIPT:call skills_list {"query":"pagoda"}');
+  assert.ok(matched.raw.includes(catalogueMarker));
+  assert.ok(!matched.raw.includes(bodyMarker));
+  const loaded = await run('load', 'SCRIPT:call skill {"name":"pagoda-audit"}');
+  assert.ok(loaded.raw.includes(bodyMarker));
+  const invoked = await run('explicit', 'SCRIPT:say use /pagoda-audit please');
+  assert.ok(invoked.raw.includes(bodyMarker));
+  autoApply = true;
+  const auto = await run('workflow', 'SCRIPT:say matching workflow');
+  assert.ok(auto.raw.includes(autoMarker));
+  assert.ok(!auto.raw.includes('UNRELATED_WORKFLOW_MARKER'));
+  assert.ok(!auto.raw.includes(catalogueMarker));
+  assert.ok(!auto.raw.includes(bodyMarker));
+
+  settings.update({ groups: { skills: false, helpers: true } });
+  const off = await run('resumed', 'SCRIPT:say skills off');
+  for (const tool of ['skills_list', 'skill']) assert.ok(!off.toolNames.includes(tool), tool);
+  for (const tool of ['subagent', 'read', 'write', 'create_goal']) assert.ok(off.toolNames.includes(tool), tool);
+  assert.ok(!off.raw.includes(catalogueMarker));
+  settings.update({ skillsOnDemand: false, groups: { skills: true } });
+  const restored = await run('resumed', 'SCRIPT:say classic again');
+  assert.ok(restored.raw.includes(catalogueMarker));
+  assert.ok(!restored.toolNames.includes('skills_list'));
 });

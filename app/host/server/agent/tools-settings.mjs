@@ -32,6 +32,7 @@ function normalize(raw, platform = process.platform) {
   const search = r.search && typeof r.search === 'object' ? r.search : {};
   return {
     off: [...new Set((Array.isArray(r.off) ? r.off : []).filter(id => GROUP_IDS.includes(id)))],
+    skillsOnDemand: r.skillsOnDemand === true,
     search: { provider: SEARCH_PROVIDERS.includes(search.provider) ? search.provider : 'builtin', key: typeof search.key === 'string' ? search.key : '' },
     browser: { enabled: r.browser?.enabled === true },
     // Manual mode asks once per chat before the first web search or page. This switch (off unless the person turned it on) skips that question.
@@ -126,6 +127,7 @@ export function createAgentTools({ read, write, dataDir, browser = () => ({ foun
     const probe = browser();
     return {
       groups: TOOL_GROUPS.map(g => ({ id: g.id, name: g.name, about: g.about, area: g.area, asks: g.asks, enabled: !s.off.includes(g.id) })),
+      skillsOnDemand: s.skillsOnDemand,
       search: { provider: s.search.provider, keySet: !!s.search.key },
       webWithoutAsking: s.webWithoutAsking,
       runAsAdmin: { enabled: s.runAsAdmin, available: platform === 'win32' },
@@ -159,6 +161,7 @@ export function createAgentTools({ read, write, dataDir, browser = () => ({ foun
       }
       return {
         off: new Set(s.off),
+        skillsOnDemand: s.skillsOnDemand,
         search: s.search,
         webWithoutAsking: s.webWithoutAsking,
         runAsAdminEnabled: s.runAsAdmin && platform === 'win32',
@@ -192,6 +195,7 @@ export function createAgentTools({ read, write, dataDir, browser = () => ({ foun
           s.search = { ...s.search, key };
         }
       }
+      if (typeof change?.skillsOnDemand === 'boolean') s.skillsOnDemand = change.skillsOnDemand;
       if (typeof change?.webWithoutAsking === 'boolean') s.webWithoutAsking = change.webWithoutAsking;
       if (change?.runAsAdmin && typeof change.runAsAdmin.enabled === 'boolean') s.runAsAdmin = change.runAsAdmin.enabled;
       if (change?.blockedFolders?.add !== undefined) {

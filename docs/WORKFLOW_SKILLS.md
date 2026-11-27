@@ -15,6 +15,14 @@ truncated and Plan-mode work does not create a skill. A new task interrupts the
 review. The limit is twenty reviews per UTC day and one hundred learned skills.
 Both options are off by default in a new profile.
 
+In **Settings → Tools**, **Find skills on demand** keeps the automatic skill
+catalogue out of agent requests, including when a chat resumes. The agent can
+search a page of skill names and short descriptions, then load a named skill.
+When workflow auto-application is enabled, it adds skills that match the task
+by name or trigger within the current workspace. The **Skills** and
+**Helper assistants** switches can be used independently. File tools and
+`/goal` have their own switches.
+
 The review receives a bounded task objective and redacted tool metadata. It does
 not receive raw file contents, tool outputs, full conversation history, memories
 or saved provider keys. Paths and command arguments become placeholders; common

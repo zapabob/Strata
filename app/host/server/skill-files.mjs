@@ -103,6 +103,7 @@ export function materializeSkills(root, skills) {
 
 /** The note the agent skills folder keeps of the folders Strata wrote in it. Not a folder, so the agent's scan skips it. */
 const OWNED = '.strata-skills.json';
+const COPIED = '.strata-copied.json';
 /** Where a removed skill's folder goes: next to the agent skills folder, outside what the agent scans. */
 export const SKILLS_REMOVED = 'skills-removed';
 const KEEP_REMOVED = 40;

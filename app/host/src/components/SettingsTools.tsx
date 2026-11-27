@@ -34,6 +34,7 @@ export interface CustomTool {
 }
 export interface ToolsState {
   groups: ToolGroup[];
+  skillsOnDemand?: boolean;
   search: { provider: 'builtin' | 'rustxng' | 'exa' | 'perplexity' | 'deepseek'; keySet: boolean };
   /** Skip the once-per-chat question before the first web search or page in Manual mode. Off unless the person turned it on. */
   webWithoutAsking: boolean;
@@ -128,6 +129,10 @@ export function SettingsTools({ preview }: { preview?: ToolsState }) {
         {state.groups.filter(g => g.area === area.id).map(g => <Field key={g.id} label={tr(g.name)} hint={tr(g.about)}>
           <button className="st-toggle" role="switch" aria-checked={g.enabled} aria-label={tr(g.name)} disabled={busy} onClick={() => toggle(g.id, !g.enabled)} />
         </Field>)}
+        {area.id === 'together' ? <Field label={tr('Find skills on demand')} hint={tr('Keep the full list out of agent chats. When automatic application is on, only skills that match a name or trigger phrase are added.')}>
+          <button className="st-toggle" role="switch" aria-checked={state.skillsOnDemand === true} aria-label={tr('Find skills on demand')}
+            disabled={busy || !state.groups.some(g => g.id === 'skills' && g.enabled)} onClick={() => void save({ skillsOnDemand: !state.skillsOnDemand })} />
+        </Field> : null}
       </div>
     </section>)}
 

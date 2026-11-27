@@ -42,13 +42,20 @@ test('completed real tools → bounded tool-free review → private skill → la
   const workspace = join(home, 'work'); await mkdir(workspace);
   for (const name of ['first.txt', 'second.txt', 'third.txt']) await writeFile(join(workspace, name), 'PRIVATE_FILE_TEXT_MUST_NOT_ENTER_REVIEW\n');
   let h = await host(home, { env: { STRATA_HARNESS_DIR: process.env.STRATA_HARNESS_DIR, STRATA_AGENT: 'on' } });
+  const readToken = async () => {
+    const page = await (await fetch(h.base)).text();
+    const token = /<meta name="strata-token" content="([0-9a-f]{64})">/.exec(page)?.[1];
+    assert.ok(token, 'the built test host exposes its local UI token');
+    return token;
+  };
+  let token = await readToken();
   t.after(async () => {
     await fetch(h.base + '/api/app/quit', { method: 'POST', headers: { origin: h.base, 'x-strata-client': 'learning-test' } }).catch(() => {});
     await h.stop(); adapter.closeAllConnections(); await new Promise(resolve => adapter.close(resolve)); await worker.close();
     // Keep the isolated artifact directory for diagnostic evidence.
   });
   const request = async (path, method = 'GET', body, origin = h.base) => {
-    const response = await fetch(h.base + path, { method, headers: { origin, 'content-type': 'application/json' }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+    const response = await fetch(h.base + path, { method, headers: { origin, 'content-type': 'application/json', 'x-strata-token': token }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
     return { status: response.status, data: await response.json() };
   };
   assert.equal((await request('/api/skills/learning')).data.enabled, false);
@@ -59,7 +66,7 @@ test('completed real tools → bounded tool-free review → private skill → la
   assert.equal(saved.status, 200);
   const remoteModel = { connectionId: saved.data.connections.find(row => row.name === 'Learning fixture').id, modelId: 'scripted-model' };
   const run = async (message, sessionId = 'learning-fixture', workspaceId) => {
-    const response = await fetch(h.base + '/api/chat/stream', { method: 'POST', headers: { origin: h.base, 'content-type': 'application/json' }, body: JSON.stringify({ sessionId, message, mode: 'bypass', remoteModel, workspaceId }) });
+    const response = await fetch(h.base + '/api/chat/stream', { method: 'POST', headers: { origin: h.base, 'content-type': 'application/json', 'x-strata-token': token }, body: JSON.stringify({ sessionId, message, mode: 'bypass', remoteModel, workspaceId }) });
     assert.equal(response.status, 200);
     const text = await response.text();
     return text.trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
@@ -81,10 +88,13 @@ test('completed real tools → bounded tool-free review → private skill → la
   });
   assert.equal(reviews.length, 1, 'Loading one saved skill is not another eligible workflow');
   assert.equal((await request('/api/skills/learning', 'PUT', { autoApply: true })).data.autoApply, true);
+  assert.equal((await request('/api/agent/tools', 'PUT', { skillsOnDemand: true })).data.skillsOnDemand, true);
+  await request('/api/skills', 'POST', { name: 'Unrelated skill', body: 'UNRELATED_SKILL_BODY_MARKER', enabled: true, triggers: [] });
   const automatic = await run('Perform fixture validation. SCRIPT:echo Applied automatically.', 'automatic-fixture');
   assert.ok(automatic.some(frame => frame.type === 'skills-used' && frame.skills.some(skill => skill.name === 'Fixture validation')));
   assert.equal(automatic.some(frame => frame.type === 'agent-tool' && frame.tool.name === 'skill'), false);
   assert.match(worker.requests.at(-1).raw, /Inspect the first source/);
+  assert.doesNotMatch(worker.requests.at(-1).raw, /UNRELATED_SKILL_BODY_MARKER|available_skills/);
   const otherFolder = join(home, 'other-work'); await mkdir(otherFolder);
   const scope = (await request('/api/workspaces', 'POST', { path: otherFolder })).data.id;
   await request('/api/skills', 'POST', { name: 'Scoped check', body: 'SCOPED_WORKFLOW_MARKER', enabled: true, onlyIn: scope, triggers: ['scoped validation'] });
@@ -103,7 +113,9 @@ test('completed real tools → bounded tool-free review → private skill → la
   await fetch(h.base + '/api/app/quit', { method: 'POST', headers: { origin: h.base, 'x-strata-client': 'learning-test' } }).catch(() => {});
   await h.stop();
   h = await host(home);
+  token = await readToken();
   assert.equal((await request('/api/skills/learning')).data.enabled, true);
   assert.equal((await request('/api/skills/learning')).data.autoApply, true);
+  assert.equal((await request('/api/agent/tools')).data.skillsOnDemand, true);
   assert.equal((await request('/api/skills')).data.find(row => row.id === learned.id).enabled, false);
 });

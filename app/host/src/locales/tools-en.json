@@ -1,4 +1,6 @@
 {
+ "skills_demand_01": "Find skills on demand",
+ "skills_demand_02": "Keep the full list out of agent chats. When automatic application is on, only skills that match a name or trigger phrase are added.",
  "tl01": "Use a simple server name of up to 32 characters: letters, numbers, hyphens or underscores.",
  "tl02": "These tool servers were left out because their names are not allowed: {0}. A name can have up to 32 letters, numbers, hyphens or underscores.",
  "tl03": "These tool servers were left out because they have no program or web address: {0}.",

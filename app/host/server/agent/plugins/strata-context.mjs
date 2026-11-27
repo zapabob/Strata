@@ -18,6 +18,7 @@
  */
 import { replyCap } from '../reply-cut.mjs';
 import { createHash } from 'node:crypto';
+import { retireSkillCatalogues } from './strata-skills.mjs';
 import { densityOf, estimateMessage, estimateTools, isContextOverflow, MAX_DENSITY, pressureNow, promptTokensOf, splitMessages, summaryBudget, usageOfEvent, WINDOW_SLACK, withSummaryLanguage } from '../context-budget.mjs';
 
 export const name = 'strata-context';
@@ -65,7 +66,8 @@ const wrapped = new WeakSet();
 /** Densities that made a summary request fail on this server, per session id (the next request starts from a more careful one). */
 const careful = new Map();
 
-export function apply(ctx) {
+export function apply(ctx, config = {}) {
+  if (config.retireSkillCatalogues === true) retireSkillCatalogues(ctx);
   const meter = ctx.tokenMeter;
   const llm = ctx.llm;
   const log = (level, text) => { try { ctx.logger?.[level]?.(`strata-context: ${text}`); } catch { /* logging never blocks */ } };

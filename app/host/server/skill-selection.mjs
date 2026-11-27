@@ -23,7 +23,7 @@ function matchesMessage(skill, text) {
  * - Trigger phrase or skill name in the message → include.
  * - Empty trigger list → always-on (capped), so people do not have to memorize phrases.
  */
-export function selectSkills(skills, message, workspaceId) {
+export function selectSkills(skills, message, workspaceId, { includeAlwaysOn = true } = {}) {
   const text = String(message ?? '').toLowerCase();
   const scoped = (skills ?? []).filter(skill => skill.enabled
     && (!skill.onlyIn || skill.onlyIn === workspaceId)
@@ -34,7 +34,7 @@ export function selectSkills(skills, message, workspaceId) {
   for (const skill of scoped) {
     const how = matchesMessage(skill, text);
     if (how) hit.push(skill);
-    else if (triggerList(skill).length === 0) always.push(skill);
+    else if (includeAlwaysOn && triggerList(skill).length === 0) always.push(skill);
   }
 
   const out = [...hit];

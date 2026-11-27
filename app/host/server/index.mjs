@@ -255,10 +255,11 @@ const agent = createAgentBridge({
   skillsDir: () => AGENT_SKILLS,
   onTurnBegin: options => skillLearning?.begin(options),
   selectSkillsForTurn: ({ message, workspacePath }) => {
-    if (!store.get().skillLearning?.autoApply || agentTools.profileView().off.has('skills')) return [];
+    if (!store.get().skillLearning?.autoApply) return [];
+    const toolSettings = agentTools.profileView();
+    if (toolSettings.off.has('skills')) return [];
     const scopes = workspacePath ? workspaces.filter(w => { const path = relative(w.path, workspacePath); return path === '' || (!path.startsWith('..') && !isAbsolute(path)); }).sort((a, b) => b.path.length - a.path.length) : [];
-    const applied = selectSkills(skillState, message, scopes[0]?.id ?? null);
-    return applied;
+    return selectSkills(skillState, message, scopes[0]?.id ?? null, { includeAlwaysOn: !toolSettings.skillsOnDemand });
   },
   onGoal: (chatId, goal) => hub.send('goal', { chatId, goal }),
   // The person's Response settings (thinking budget, Expert sampling) reach the agent's model through this host's own forwarding endpoint.
