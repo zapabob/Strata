@@ -62,13 +62,19 @@ Resumed and completed the in-progress Hakua 0.8.7 (`v087-sc117-fix`) release wor
   - `Strata-0.8.7-windows-x64-setup.exe`: `cd348b568708baf65cacd602be83d9464e60257f47306fdba6940aab86a1565e`
   - `Strata-0.8.7-windows-x64.tar.7z`: `7fb0bb7f6d71ee4f44ed2a9faff2c20d23f64970bc83debd5e8c12d6896e3368`
   - `strata-engine-0.8.5-windows-x86_64-cuda-cuda13.tar.gz`: `72672f6c84a6eba9f89afd3b416c1d07533ee2b97632f5fe7685107c3dae6201`
+  - `strata-q38-0.6.9-windows-x86_64-cuda-cuda13.tar.gz`: `6505bb523f435560e3ba32b3312b0949f17d7fa4bdf402b819c453506685e43c`
+  - `strata-q36-0.6.9-windows-x86_64-cuda-cuda13.tar.gz`: `85190ae7353c0b60a30fae8ac6d7f368f09767ed602748f655454cd5c106b887`
+  - `strata-hy4-0.1.64-windows-x86_64-cuda-cuda13.tar.gz`: `fad3a1952f6fe6304eeddd57db76cb74f87b34a04b78f5fb83e895898f93ff91`
 - Local overwrite install: PASS (`INSTALLER_EXIT=0`, `C:\Users\downl\AppData\Local\Programs\Strata\strata-desktop.exe` version `0.8.7`, `host\package.json` version `0.8.7`, all 3 SC117 profiles preserved in `%LOCALAPPDATA%\Strata\install`).
+- Normal app startup: PASS (`strata-desktop.exe` PID `34520` alive after 8s).
+- Live Expert scratch fallback (`inkling.mjs` on installed 0.8.7): PASS (`D:\Strata\scratch\low-space-test` [7.05 GB free] -> `C:\Strata\scratch\strata-inkling-experts-20261126` [35.1 GB free] for `inkling-2-mini-sc117-sq-15`).
+- Live SC117 128K load (`sc117-128k-verification.json`): PASS (`inkling-2-mini-sc117-sq-10`, `requestedContext=131072`, `engineContext=131072`, `loadSeconds=160`, `desktopInclusivePeakMiB=12158`, `savedProfileUnchanged=true`, clean `native.unload`; unauthenticated `/v1/chat/completions` probe returned HTTP 401 as expected).
 
 ## Residual Risks
 
-- Desktop installer and separate CUDA engine remain unsigned (`releaseQualified=false`).
+- Desktop installer and separate CUDA engines remain unsigned (`releaseQualified=false`).
 - `engine/src/inkling2/ink_main.cpp` change is not compiled into the shipped 0.8.5 engine binary; it will take effect when the CUDA engine is next rebuilt.
-- Full-window inference, general model quality, and live GPU load of SC117 at 128K context were not executed in this session.
+- Full-window generation quality and authenticated 128K completion throughput were not measured in this session.
 - `tools/release_manifest.py --check` still reports 5 pre-existing historical mismatches (`CMakeLists.txt` 0.8.5 vs upstream 0.1.67, and v0.8.3/v0.8.4 doc references).
 
 ## Recommended Next Actions
