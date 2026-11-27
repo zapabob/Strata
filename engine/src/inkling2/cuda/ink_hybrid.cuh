@@ -2276,6 +2276,9 @@ struct InkHybridEngine {
     // Plan the pool. key_bytes[key] = body bytes of the expert (0 = not eligible), order_keys = load order (most wanted first),
     // budget = bytes of the pool. Returns how many experts start in the card; sets tier_pool_bytes. Allocates nothing on the card.
     int tier_plan(const std::vector<size_t>& key_bytes, const std::vector<int>& order_keys, size_t budget, const std::vector<double>& key_w) {
+        if (const char* e = std::getenv("STRATA_INK_TIER_ROWS")) tier_round_rows = std::max(1, std::atoi(e));
+        // Class policies capture their share of this budget during planning.
+        if (const char* e = std::getenv("STRATA_INK_TIER_SWAPS")) tier_swaps_per_round = std::max(1, std::atoi(e));
         tclass.clear();
         key_class.assign(key_bytes.size(), -1);
         key_local.assign(key_bytes.size(), -1);
@@ -2371,8 +2374,6 @@ struct InkHybridEngine {
         // the decode graph keeps no candidate list in this mode
         if (d_want_keys) { cudaFree(d_want_keys); d_want_keys = nullptr; }
         if (d_n_want) { cudaFree(d_n_want); d_n_want = nullptr; }
-        if (const char* e = std::getenv("STRATA_INK_TIER_ROWS")) tier_round_rows = std::max(1, std::atoi(e));
-        if (const char* e = std::getenv("STRATA_INK_TIER_SWAPS")) tier_swaps_per_round = std::max(1, std::atoi(e));
         tier_log = std::getenv("STRATA_INK_TIER_LOG") != nullptr;
         tier_on = true;
         n_promo_slots = 0;

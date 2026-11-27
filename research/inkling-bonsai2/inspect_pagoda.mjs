@@ -214,6 +214,11 @@ async function inspect(htmlPath, executablePath, allowExtraAddons) {
       await page.setViewportSize({ width: 1024, height: 640 });
       await page.waitForTimeout(450);
       evidence.resized = await evaluate(page, state);
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await page.mouse.move(640, 400);
+      await page.mouse.wheel(0, 640);
+      await page.waitForTimeout(900);
+      evidence.afterZoomOut = await capture(page, resolve(folder, 'after-zoom-out.png'));
     }
   } catch (error) {
     evidence.harnessError = String(error);

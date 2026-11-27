@@ -53,8 +53,8 @@ test('the sentence is the approved one, with its interface key', () => {
 
 test('the bridge gives a goal turn the goal guard; a trip stops the turn, and stop() pauses the goal', () => {
   const src = readFileSync(new URL('../server/agent/agent-bridge.mjs', import.meta.url), 'utf8');
-  assert.match(src, /guard = goal \? new GoalGuard\(\) : new TurnGuard\(\{ plan: !!planTask \}\)/);
+  assert.match(src, /guard = goal \? new GoalGuard\(\) : new TurnGuard\(\{ plan: !!planTask, contextMax: route.kind === 'local' \? route.contextWindow : 0 \}\)/);
   assert.match(src, /function trip\(reason\) \{[\s\S]{0,400}void stop\(chatId\)/);
   const stop = src.slice(src.indexOf('async function stop(chatId'), src.indexOf('function turnOf(chatId'));
-  assert.match(stop, /await beforeAbort\(\(\) => pauseGoal\(runtime, turn\.sessionId, chatId, pauseSignal\), pauseSignal\)/);
+  assert.match(stop, /await pauseGoal\(rt, turn\.sessionId, chatId\)/);
 });
