@@ -154,8 +154,6 @@ const imageModels = createImageModels({ dataDir: store.DATA_DIR, modelsDir: () =
 const CONTROL = findControl();
 const control = createControl({ control: CONTROL, log: line => console.log(line) });
 const llamaMemory=createLlamaMemory({directory:store.DATA_DIR,control:CONTROL,enable:()=>supervisor.enableMemory(),target:()=>supervisor.memoryTarget(),onBeforeStop:supervisor.onBeforeStop});
-// Files a run as administrator made in Strata's own folders (owner Administrators) are given back to the user at every start; best effort, never blocks.
-if (control && process.platform === 'win32' && !process.env.STRATA_NO_REPAIR_ACCESS) void control.repairAccess().catch(() => {});
 /* Which window shows the page (the app window or, when that cannot run, a browser tab) and what only the app window can do: app-ui.mjs. */
 const appUi = createAppUi({ shutdown: () => shutdown() });
 /* The app's version has one source: the desktop shell passes it (STRATA_APP_VERSION, from app/desktop/src-tauri/Cargo.toml). Outside the app it is read from the same file in a checkout, else 'dev'. */
@@ -2761,6 +2759,10 @@ server.listen(PORT, HOST, () => {
   // A9: the first read of this PC (the graphics cards, the engine, the models: a few seconds) starts now, while the window is still opening,
   // instead of when the first page asks. The first-run "Your model" step then often finds the list ready. It reads only; nothing is downloaded.
   if (control && process.env.STRATA_PACKAGED === '1') Promise.resolve(native.refresh(false)).catch(() => { /* the page's own read tells the person */ });
+  // Defer Windows file-ownership repair until after /api/health is listening so heavy disk scans cannot delay shell startup past the health timeout.
+  if (control && process.platform === 'win32' && !process.env.STRATA_NO_REPAIR_ACCESS) {
+    setTimeout(() => { void control.repairAccess().catch(() => {}); }, 2000).unref();
+  }
 });
 
 const CHAT_DRAIN_MS = Math.min(15000, Math.max(500, Number(process.env.STRATA_SHUTDOWN_CHAT_DRAIN_MS) || 5000));
