@@ -6,8 +6,73 @@
  * list (bundled, written, added, edited, switched on or off) into one folder the Harness is told to scan (`materializeSkills`), every time
  * anything changes. The Harness watches that folder, so a skill saved in the app is there for the next message without a restart.
  */
-import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+
+const COPIED = '.strata-copied.json';
+export const SKILL_EXTRAS_LIMITS = { files: 500, bytes: 64 * 1024 * 1024, depth: 6, file: 16 * 1024 * 1024 };
+
+function extraTarget(root, relative) {
+  if (typeof relative !== 'string') return null;
+  const parts = relative.split('/');
+  if (parts.some(part => !part || part.startsWith('.') || /[\\:\x00]/.test(part))
+      || (parts.length === 1 && /^skill\.md$/i.test(parts[0]))) return null;
+  let path = root;
+  if (lstatSync(path, { throwIfNoEntry: false })?.isSymbolicLink()) return null;
+  for (let i = 0; i < parts.length; i++) {
+    path = join(path, parts[i]);
+    const entry = lstatSync(path, { throwIfNoEntry: false });
+    if (entry?.isSymbolicLink() || (entry && i < parts.length - 1 && !entry.isDirectory())) return null;
+  }
+  return path;
+}
+
+/** Materialise bounded, ordinary companion files for workspace skills on the agent's skill path. */
+export function copySkillExtras(from, to, limits = SKILL_EXTRAS_LIMITS) {
+  const copied = [];
+  let bytes = 0;
+  if (lstatSync(to, { throwIfNoEntry: false })?.isSymbolicLink()) return copied;
+  const walk = (dir, prefix, depth) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (copied.length >= limits.files) break;
+      if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
+      const relative = prefix + entry.name;
+      const source = join(dir, entry.name);
+      if (entry.isDirectory() && depth < limits.depth) walk(source, relative + '/', depth + 1);
+      if (!entry.isFile()) continue;
+      const target = extraTarget(to, relative);
+      if (!target) continue;
+      const original = lstatSync(source, { throwIfNoEntry: false });
+      if (!original?.isFile() || original.size > limits.file || bytes + original.size > limits.bytes) continue;
+      const previous = lstatSync(target, { throwIfNoEntry: false });
+      if (previous && !previous.isFile()) continue;
+      if (!previous || previous.size !== original.size || previous.mtimeMs < original.mtimeMs) {
+        mkdirSync(dirname(target), { recursive: true });
+        copyFileSync(source, target);
+      }
+      copied.push(relative);
+      bytes += original.size;
+    }
+  };
+  walk(from, '', 0);
+  const record = join(to, COPIED);
+  if (lstatSync(record, { throwIfNoEntry: false })?.isSymbolicLink()) return copied;
+  let previous = '';
+  try { previous = readFileSync(record, 'utf8'); } catch { /* first copy */ }
+  const next = JSON.stringify(copied);
+  if (previous === next) return copied;
+  let managed = [];
+  try { managed = JSON.parse(previous); } catch { /* malformed records own no files */ }
+  const kept = new Set(copied);
+  for (const relative of Array.isArray(managed) ? managed : []) {
+    if (kept.has(relative)) continue;
+    const target = extraTarget(to, relative);
+    if (target && lstatSync(target, { throwIfNoEntry: false })?.isFile()) rmSync(target);
+  }
+  mkdirSync(to, { recursive: true });
+  writeFileSync(record, next);
+  return copied;
+}
 
 /** The kebab-case name the Harness requires, from what a person typed ("Directory opener" -> "directory-opener"). */
 export function skillSlug(name) {
@@ -72,8 +137,9 @@ export function writeCreatedSkill(root, { name, title = name, description, body 
  * A skill that comes from a folder of its own (`folders`: skill id -> that folder) brings the rest of the folder along (`copySkillExtras`).
  * @param {string} root
  * @param {Array<{id: string, name: string, description?: string, body?: string, enabled?: boolean}>} skills
+ * @param {Map<string, string>|Record<string, string>} [folders]
  */
-export function materializeSkills(root, skills) {
+export function materializeSkills(root, skills, folders = {}) {
   mkdirSync(root, { recursive: true });
   const manifest = readOwned(root);
   const keep = new Set();
@@ -91,6 +157,11 @@ export function materializeSkills(root, skills) {
     // Only a changed skill is rewritten: the agent watches this folder and treats every write as a change to its list.
     let same = false; try { same = readFileSync(file, 'utf8') === text; } catch { /* not there yet */ }
     if (!same) writeFileSync(file, text);
+    const source = folders instanceof Map ? folders.get(s.id) : Object.hasOwn(folders ?? {}, s.id) ? folders[s.id] : undefined;
+    if (source) {
+      try { copySkillExtras(source, dir); }
+      catch (error) { console.warn(`skills · could not copy companion files for ${unique}:`, error.message); }
+    }
   }
   // Only a folder Strata wrote is ever taken away, and it is moved aside, not deleted (#6857). Everything else in this folder is the person's.
   for (const entry of readdirSync(root, { withFileTypes: true })) {
@@ -103,7 +174,6 @@ export function materializeSkills(root, skills) {
 
 /** The note the agent skills folder keeps of the folders Strata wrote in it. Not a folder, so the agent's scan skips it. */
 const OWNED = '.strata-skills.json';
-const COPIED = '.strata-copied.json';
 /** Where a removed skill's folder goes: next to the agent skills folder, outside what the agent scans. */
 export const SKILLS_REMOVED = 'skills-removed';
 const KEEP_REMOVED = 40;
@@ -138,7 +208,10 @@ function looksWritten(root, name) {
 
 /** A folder at `name` that Strata did not make. Folders from before the note existed that look like what Strata writes are taken for its own once, so an upgrade does not leave a twin. */
 function isForeign(root, name, manifest) {
-  if (!existsSync(join(root, name))) return false;
+  const dir = join(root, name);
+  const entry = lstatSync(dir, { throwIfNoEntry: false });
+  if (!entry) return false;
+  if (!entry.isDirectory() || lstatSync(join(dir, 'SKILL.md'), { throwIfNoEntry: false })?.isSymbolicLink()) return true;
   if (isOwned(root, name, manifest)) return false;
   return !(manifest === null && looksWritten(root, name));
 }
