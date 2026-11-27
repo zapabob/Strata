@@ -22,6 +22,8 @@ serve/*.jinja text eol=lf
 
 # The model-data notice is pinned by its original byte digest in PROVENANCE.json.
 data/experimental-speed-projection/LICENSE -text
+terminal/data/experimental-speed-projection/LICENSE text eol=crlf
+engine/third_party/libstrix/NOTICE.md text eol=lf
 
 # container scripts run in Linux: always LF
 docker/*.sh text eol=lf
