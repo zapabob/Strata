@@ -1095,20 +1095,20 @@ int main(int argc, char** argv) {
     InkModelFile mf;
     std::string err;
     if (!mf.open(cfg.model_path, err, false, cfg.bopts.dspark_path, !cfg.bopts.expert_cache_dir.empty())) {
+        fprintf(stderr, "open: %s\n", err.c_str());
         if (mode_serve) proto("ERR open: %s", err.c_str());
-        else fprintf(stderr, "open: %s\n", err.c_str());
         return 1;
     }
 
     auto backend = make_default_backend(cfg.force_cpu, &cfg.bopts);
     if (!cfg.bopts.expert_cache_dir.empty() && std::string(backend->backend_name()) != "cuda") {
+        std::fprintf(stderr, "init: --expert-cache-dir requires CUDA\n");
         if (mode_serve) proto("ERR init: --expert-cache-dir requires CUDA");
-        else std::fprintf(stderr, "init: --expert-cache-dir requires CUDA\n");
         return 1;
     }
     if (!backend->init(mf, cfg.bopts, err)) {
+        fprintf(stderr, "init: %s\n", err.c_str());
         if (mode_serve) proto("ERR init: %s", err.c_str());
-        else fprintf(stderr, "init: %s\n", err.c_str());
         return 1;
     }
 

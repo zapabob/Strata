@@ -66,9 +66,49 @@ test('Inkling-2-Mini catalog exposes native .strata builds and Unsloth GGUF buil
   assert.equal(inkWithSc117.sizes.find(size => size.id === sq10.id).localProfile, undefined);
 });
 
-test('SC117 context menu includes intermediate sizes and the prepared custom size', () => {
-  assert.deepEqual(catalog.sc117Contexts(40960), [8192, 16384, 32768, 40960, 49152, 65536, 98304, 131072, 262144]);
+test('SC117 context menu includes 64K-128K (131,072) steps and the prepared custom size', () => {
+  assert.deepEqual(catalog.sc117Contexts(40960), [8192, 16384, 32768, 40960, 49152, 65536, 81920, 98304, 114688, 131072, 262144]);
   assert.equal(catalog.sc117Contexts(32768).filter(size => size === 32768).length, 1);
+});
+
+test('Inkling Expert scratch resolver redirects low-space C: drive to USB or fixed drive with enough headroom', async () => {
+  const { resolveInklingExpertCacheDir } = await import('../server/inkling.mjs');
+  const GIB = 1024 * 1024 * 1024;
+  const created = [];
+  const freeByRoot = { 'C:': 5.9 * GIB, 'D:': 10.1 * GIB, 'E:': 0, 'H:': 4.0 * GIB };
+  const exists = p => {
+    const u = String(p).toUpperCase();
+    return u.startsWith('C:') || u.startsWith('D:') || u.startsWith('E:') || u.startsWith('H:');
+  };
+  const statfs = p => {
+    const root = String(p).slice(0, 2).toUpperCase();
+    return { bsize: 4096, bavail: Math.floor((freeByRoot[root] ?? 0) / 4096) };
+  };
+  const baseArgs = ['--native', 'C:\\models\\sq15.strata', '--expert-cache-dir', 'C:\\Temp\\scratch', '--max-context', '131072'];
+  const res = resolveInklingExpertCacheDir(baseArgs, { args: baseArgs, exe: 'C:\\bin\\strata-inkling.exe' }, 'inkling-2-mini-sc117-sq-15', {
+    platform: 'win32',
+    driveLetters: ['C', 'D', 'E', 'H'],
+    exists,
+    statfs,
+    mkdir: dir => created.push(dir),
+    canWrite: () => true,
+  });
+  assert.equal(res.redirectedFrom, 'C:\\Temp\\scratch');
+  assert.equal(res.redirectedTo, 'D:\\Strata\\scratch\\strata-inkling-experts');
+  assert.match(res.note, /D:\\Strata\\scratch\\strata-inkling-experts/);
+  assert.equal(res.args[res.args.indexOf('--expert-cache-dir') + 1], 'D:\\Strata\\scratch\\strata-inkling-experts');
+
+  assert.throws(
+    () => resolveInklingExpertCacheDir(baseArgs, { args: baseArgs, exe: 'C:\\bin\\strata-inkling.exe' }, 'inkling-2-mini-sc117-sq-20', {
+      platform: 'win32',
+      driveLetters: ['C', 'D', 'E', 'H'],
+      exists,
+      statfs,
+      mkdir: () => {},
+      canWrite: () => true,
+    }),
+    /Not enough free disk space for Inkling Expert scratch.*USB/i
+  );
 });
 
 test('4 GB GPUs reporting 3.8-4.0 GiB are admitted by runCards and gpu-roles', () => {

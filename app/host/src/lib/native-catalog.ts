@@ -21,9 +21,9 @@ export const hasKvChoice=(group?:string)=>group!=='qwen3.6'&&group!==HY4_FAMILY&
 export const HY4_FAMILY='hy4-flash';
 /** Thinking Machines Inkling-2-Mini (setup.py INKLING_FAMILIES, its own shape engine strata-inkling). */
 export const INKLING_FAMILY='inkling-2-mini';
-/** Inkling's ordinary choices, plus intermediate sizes and a custom saved size. */
+/** Inkling's ordinary choices, plus 16K steps across 64K-128K (131,072) and a custom saved size. */
 export function sc117Contexts(saved?: number): number[] {
- const sizes = [8192, 16384, 32768, 49152, 65536, 98304, 131072, 262144];
+ const sizes = [8192, 16384, 32768, 49152, 65536, 81920, 98304, 114688, 131072, 262144];
  if (saved && !sizes.includes(saved)) sizes.push(saved);
  return sizes.sort((a, b) => a - b);
 }

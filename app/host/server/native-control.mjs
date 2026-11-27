@@ -33,7 +33,7 @@ import { openTextFile } from './open-text-file.mjs';
 import { openLoopbackUrl } from './open-loopback.mjs';
 import { markEngine, engineRefusal } from './engine-version.mjs';
 import { friendlyModelName } from './model-names.mjs';
-import { isInkling, sc117RunContext, withInklingContext } from './inkling.mjs';
+import { isInkling, resolveInklingExpertCacheDir, sc117RunContext, withInklingContext } from './inkling.mjs';
 import { parseSaved as parseRoles, mirror as mirrorRoles } from './gpu-roles.mjs';
 import { configContextLimit } from './dsv41-context.mjs';
 import { PROJECTION_KEY, probeRefusalProjection, projectionModelReason, projectionView, projectionRequested, admitProjection, applyProjection, clearOwnedProjection } from './refusal-projection.mjs';
@@ -151,7 +151,7 @@ function watchQ36EngineLog(logPath, onChunk, pollMs) {
   return stop;
 }
 
-export function createNativeControl({directory,requests=()=>[],changed=()=>{},spawnProcess=spawn,fetcher=fetch,modelsDirectory,nativeDataDirectory=value=>value,beforeUpdate=async()=>{},afterUpdate=async()=>{},beforeLoad=async()=>{},hardwareProbe=()=>[],observationProbe,control=null,ready=null,appUpdater=null,lockWaitMs=60000,lockPollMs=2000,appDirectory=dirname(ROOT),defaultRepo=process.env.STRATA_NATIVE_REPO??resolve(ROOT,'../../Strata'),engineLogPollMs=200,q36CapabilityProbe=probeQ36Capabilities,refusalCapabilityProbe=probeRefusalProjection}={}){
+export function createNativeControl({directory,requests=()=>[],changed=()=>{},spawnProcess=spawn,fetcher=fetch,modelsDirectory,nativeDataDirectory=value=>value,beforeUpdate=async()=>{},afterUpdate=async()=>{},beforeLoad=async()=>{},hardwareProbe=()=>[],observationProbe,control=null,ready=null,appUpdater=null,lockWaitMs=60000,lockPollMs=2000,appDirectory=dirname(ROOT),defaultRepo=process.env.STRATA_NATIVE_REPO??resolve(ROOT,'../../Strata'),engineLogPollMs=200,q36CapabilityProbe=probeQ36Capabilities,refusalCapabilityProbe=probeRefusalProjection,resolveInklingScratch=resolveInklingExpertCacheDir}={}){
  mkdirSync(directory,{recursive:true});
  const appInstalledFor=new Set();   // #7099: an app install keeps the pause; every other end of an update lifts it
  const settingsPath=join(directory,'native-host.json');
@@ -663,6 +663,12 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   else   if(args.gpus!==undefined&&!(args.gpusFromRecommendation&&namedInFile)){const detected=new Set((snapshot.hardware?.gpus??[]).map(g=>g.index));if(!Array.isArray(args.gpus)||!args.gpus.length||new Set(args.gpus).size!==args.gpus.length||args.gpus.some(g=>!Number.isInteger(g)||!detected.has(g)))throw new Error('Choose distinct detected GPUs. CPU-only text inference is not supported by this native adapter.');cfg.gpu=args.gpus.length===1?args.gpus[0]:args.gpus;for(const k of ['gpu_roles','gpu_cards','gpu_none'])delete cfg[k];delete cfg.hip_ordinal;cfg.layer_split=args.gpus.length>1?validateNativeSettings({layer_split:args.layerSplit??'auto'}).layer_split:'auto';if(cfg.layer_split!=='auto'&&cfg.layer_split.split(',').length!==args.gpus.length-1)throw new Error('Choose one layer split point between each pair of GPUs.');}
   if(cfg.vram_reserve_mib!==undefined&&cfg.vram_reserve_mib!==null){cfg.args=[...(cfg.args??[])];const at=cfg.args.indexOf('--vram-reserve-mib');if(at>=0)cfg.args.splice(at,2);cfg.args.push('--vram-reserve-mib',String(cfg.vram_reserve_mib));}
   if(mine.length){cfg.args=mergeUserArgs(cfg.args??[],mine);cfg[USER_KEY]=mine;}else delete cfg[USER_KEY];
+  let inklingNote='';
+  if(isInkling(cfg)&&Array.isArray(cfg.args)&&cfg.args.includes('--expert-cache-dir')){
+   const scratch=resolveInklingScratch(cfg.args,cfg,args.model);
+   cfg.args=scratch.args;
+   if(scratch.note)inklingNote=scratch.note;
+  }
   const inklingContext=sc117RunContext(args.model,cfg.arch,args.context);
   if(inklingContext!==undefined){
    cfg.args=withInklingContext(cfg.args,inklingContext);
@@ -707,7 +713,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
   }else if(privacyRequired && cfg.arch!=='inkling2_loop')privateMemoryArgs(cfg);
   if(projectionRequested(cfg,packaged?control.control.dir:repo()))Object.assign(cfg,applyProjection(cfg,projectionContext(args.model,cfg,trusted.exe)));
   else if(cfg[PROJECTION_KEY]===false)Object.assign(cfg,clearOwnedProjection(cfg,packaged?control.control.dir:repo()));
-  return {cfg,resources,visionPreferences,parallelChoice,parallelNote,dsNote,q36Note};
+  return {cfg,resources,visionPreferences,parallelChoice,parallelNote,dsNote,q36Note,inklingNote};
  }
  /* One drafter per run. Control (strata_control/drafting.py) says which one this load runs and whether its file is on this computer: the plan of the saved model file with the choice the Load carries. */
  /* The engines this Load is about to unload (the load below unloads every instance unless it adds one beside them): their graphics memory is given back before the new engine starts, so Control must not count it as busy memory when it asks whether the all-cards split engine fits (`--engines-unloading`; the Terminal does the same, Runner.card_probe). A model added beside the others (`multiple`) keeps their memory busy. */
@@ -864,7 +870,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
    if(drafts?.split===true&&drafts.mtp_needed===true){noSplit=true;job.drafterNote=job.drafterNote??'The MTP drafter could not be downloaded.';job.summary='Loading the model…';emit();drafts=await draftPlan(args,configFile,{noSplit:true,config});}}
   /* A plain load (the Models screen's own Load carries its choice and fetches below): Auto on a set that has the tuned drafter fetches it now, so the start uses it. Not on this computer and not reachable: the MTP or the stock drafter runs as before. */
   if(args.values?.drafting===undefined&&drafts?.needed===true){const got=await fetchAutoDrafter(job,args,configFile,drafts,{noSplit,after:'Loading the model…'});if(job.state!=='running')return;if(got){drafts=await draftPlan(args,configFile,{noSplit,config});if(job.drafterNote===MTP_OFFLINE_NOTE){job.drafterNote=undefined;emit();}}}
-  const {cfg,resources,visionPreferences,parallelChoice,parallelNote:chosenNote,dsNote,q36Note}=buildConfig(args,config,drafts?.choice==='dflash2'&&drafts.needed===true&&args.values?.drafting===undefined?'mtp':drafts?.choice??null,trusted);/* (a drafter that is not here and will not be fetched by this load: the MTP runs, and the request slots stay) */
+  const {cfg,resources,visionPreferences,parallelChoice,parallelNote:chosenNote,dsNote,q36Note,inklingNote}=buildConfig(args,config,drafts?.choice==='dflash2'&&drafts.needed===true&&args.values?.drafting===undefined?'mtp':drafts?.choice??null,trusted);/* (a drafter that is not here and will not be fetched by this load: the MTP runs, and the request slots stay) */
   // Launch the dedicated file admission checked, independent of Control's cwd.
   // Only the generated runtime config changes; keep the saved spelling intact.
   if(runtime?.exe)cfg.exe=runtime.exe;
@@ -928,6 +934,7 @@ return {summary:result.summary??'Deleted',removed:result.plan?.gb??null};}
    instances.set(id,instance);if(!defaultId||!args.multiple||wasDefault)defaultId=id;emit();
    if(dsNote)append(id,dsNote);
    if(q36Note)append(id,q36Note);
+   if(inklingNote)append(id,inklingNote);
    /* Q36_STARTUP is the engine's stderr. `_paths` names `{profile}.host.log` (the owner) and the server writes `{profile}.server.log`. Tail the run config's log, which serve opens as the engine stderr. */
    /* The all-cards split engine: where the plan says it takes this start, Control turns the run config into the split engine's (the step `strata launch` does itself: the rule, the engine package and the draft layer are checked on this computer) and says so in one line. Any "no" leaves the layer split config as it is. The second try after a failed start is never split. */
    const splitStart=async value=>{

@@ -90,7 +90,7 @@ test('runCli passes the arguments untouched (no shell) and reads JSON', async ()
 
 // ---------------------------------------------------------------------------------- native-control in packaged mode
 
-function packagedFixture({ engineUsable = true, updater = null, repair = false, ids = ['iq2_xs', 'iq3_s'], controlVersion = '0.1.45', extraSizes = [], cliStartWait = 'old', engineLogPollMs = 200, installPoll = null } = {}) {
+function packagedFixture({ engineUsable = true, updater = null, repair = false, ids = ['iq2_xs', 'iq3_s'], controlVersion = '0.1.45', extraSizes = [], cliStartWait = 'old', engineLogPollMs = 200, installPoll = null, resolveInklingScratch = args => ({ args, redirectedFrom: null, redirectedTo: null, note: null }) } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'strata-packaged-test-'));
   const install = join(root, 'install'), data = join(root, 'data');
   mkdirSync(install, { recursive: true });
@@ -176,7 +176,7 @@ function packagedFixture({ engineUsable = true, updater = null, repair = false, 
     } };
     return child;
   };
-  const native = createNativeControl({ control, directory: data, spawnProcess, fetcher, requests: () => requests, engineLogPollMs });
+  const native = createNativeControl({ control, directory: data, spawnProcess, fetcher, requests: () => requests, engineLogPollMs, resolveInklingScratch });
   const others = () => spawned.filter(s => !String(s.args[0]).endsWith('strata_mcp.py'));
   return { native, calls, saved, spawned, others, rpc, setStatus: v => { statusAnswer = v; }, setMetricsDown: v => { metricsDown = v; }, setHealthDown: v => { healthDown = v; }, holdStart: fn => { startHold = fn; }, failStart: (v, times = Infinity) => { startFailure = v; startFailureLeft = times; }, catalog, hardware, install, root, cleanup: () => { if (earlierInstallEnv === undefined) delete process.env.STRATA_INSTALL_DIR; else process.env.STRATA_INSTALL_DIR = earlierInstallEnv; rmSync(root, { recursive: true, force: true }); } };
 }
@@ -991,5 +991,34 @@ test('packaged: SC117 uses the selected context for a load and preserves the pre
     assert.deepEqual(f.saved[0].user_args, ['--cpu-threads', '6']);
     assert.equal(readFileSync(path, 'utf8'), JSON.stringify(prepared));
     assert.equal(f.rpc.some(call => call.name === 'strata_install'), false);
+  } finally { await f.native.close(); f.cleanup(); }
+});
+
+test('packaged: SC117 loads at 131,072 (128K) context and redirects Expert scratch to USB/fallback volume when needed', async () => {
+  const id = 'inkling-2-mini-sc117-sq-15';
+  const usbScratch = 'D:\\Strata\\scratch\\strata-inkling-experts';
+  const f = packagedFixture({
+    ids: [id],
+    resolveInklingScratch: args => ({
+      args: args.map((v, i, list) => (i > 0 && list[i - 1] === '--expert-cache-dir' ? usbScratch : v)),
+      redirectedFrom: 'C:\\Temp\\scratch',
+      redirectedTo: usbScratch,
+      note: `Expert scratch redirected from C:\\Temp\\scratch to ${usbScratch} (10.1 GB free, needs >= 7.8 GB including 5 GB reserve).`,
+    }),
+  });
+  try {
+    const path = join(f.install, `strata-${id}.json`);
+    const prepared = {
+      ...JSON.parse(readFileSync(path, 'utf8')), arch: 'inkling2_loop',
+      args: ['--max-context', '8192', '--kv-dtype', 'k8v8', '--expert-cache-dir', 'C:\\Temp\\scratch'],
+    };
+    writeFileSync(path, JSON.stringify(prepared));
+    await f.native.refresh(true);
+
+    const job = await finish(f.native, f.native.operation('load', { model: id, context: 131072 }).id);
+    assert.equal(job.state, 'done', job.error);
+    assert.equal(f.native.state().instances[0].context, 131072);
+    assert.deepEqual(f.saved[0].args, ['--kv-dtype', 'k8v8', '--expert-cache-dir', usbScratch, '--max-context', '131072']);
+    assert.equal(readFileSync(path, 'utf8'), JSON.stringify(prepared));
   } finally { await f.native.close(); f.cleanup(); }
 });

@@ -232,7 +232,7 @@ export function NativeModels({ onOtherModels, onReady, onImport, onConnectEngine
     async function load() { if (!selectedSize || runtimeUnavailable)
         return; setPlan(null); setDrafterGb(null); await perform(async () => {
         if (selectedSize.localProfile) {
-            const requestedContext = localContexts[selectedSize.id];
+            const requestedContext = localContexts[selectedSize.id] ?? (context > 0 && context !== installed?.context ? context : undefined);
             const result = await nativeAction<NativeJob>('operations', { kind: 'load', args: { model: selectedSize.id, context: requestedContext } });
             setJobId(result.id);
             return;
@@ -320,7 +320,7 @@ export function NativeModels({ onOtherModels, onReady, onImport, onConnectEngine
      <span className="native-manage-actions"><Btn size="sm" disabled={pending || !!active || (!v && (!localReady || loaded))} onClick={() => {
       if (v) { setSize(v.id); setManage(false); }
       else if (localReady && !loaded) void perform(async () => {
-        await nativeAction('operations', { kind: 'load', args: { model: m.model } });
+        await nativeAction('operations', { kind: 'load', args: { model: m.model, ...(localContexts[m.model] ? { context: localContexts[m.model] } : {}) } });
         setManage(false);
       });
      }}>{tr(localLoad ? (loaded ? 'Selected' : 'Load model') : selectedSize?.id === m.model ? 'Selected' : 'Use version')}</Btn><Btn size="sm" variant="danger" disabled={!!active} onClick={() => setDeleting(m.model)}>{tr("Delete")}</Btn></span>
