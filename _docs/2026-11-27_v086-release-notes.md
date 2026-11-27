@@ -9,3 +9,9 @@ Workspace skills can bring their scripts, templates and references into the agen
 On a Windows PC with an RTX 5060 Ti 16 GB, SC117 SQ-10 generated a single-file scene from the published Pagoda Bench prompt in a Strata `/goal` session. The model repaired JavaScript errors and adjusted the camera after receiving diagnostics. Chrome opened the saved file with the specified Three.js imports and drew the scene in WebGL 2. The scene reported 7,079 voxels and five floors. All five roofs were visible after zooming out. The opening view still cropped the top. This check used no hand edits to the generated HTML and produced no official benchmark score.
 
 The Windows installer is distributed separately from CUDA model engines. See the [workflow guide](../docs/WORKFLOW_SKILLS.md) and the [previous hardware measurements](2026-11-27_v085-release-notes.md).
+
+## Native Expert placement
+
+The Windows build uses the Expert promotion interval and swap budget before it creates the per-size-class cache policies. This leaves the default values in place. The adaptive VRAM/RAM path and the SSD Expert scratch path are separate in this engine.
+
+With the SSD scratch path active, a 256-token native benchmark at 16,384 context capacity decoded 32 tokens at 13.3 tokens/s on the installed build and 13.1 tokens/s on the rebuilt default. Neither run exercised adaptive promotion, so these observations provide no estimate of its effect. The tuning harness requires the engine to confirm that adaptive promotion is active before recording a result for that mode.

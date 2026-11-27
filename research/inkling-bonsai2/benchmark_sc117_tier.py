@@ -16,8 +16,8 @@ from filelock import FileLock
 DEFAULT = (4, 16)
 PROMPT_IDS = "200002,200004,34182,279,154554,150628,25,220,15,200010,200000,200004,40,150480,149882,150617,153048,13,153611,154845,30,200010,200001,200004"
 RUNTIME_FLAGS = ("--native", "--gpus", "--slots", "--kv-dtype", "--chunk", "--draft",
-                 "--vram-experts-gb", "--ram-experts-gb", "--cpu-threads",
-                 "--expert-cache-dir", "--expert-cache-min-mib", "--vram-reserve-mib")
+                 "--vram-experts-gb", "--cpu-threads",
+                 "--vram-reserve-mib")
 BENCH_RESULT = re.compile(r"prefill=([0-9.]+) ppts .*?decode=([0-9.]+) tps")
 CREATION_FLAGS = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
@@ -59,6 +59,10 @@ def run(engine, args, settings, output, label, extra):
             if child.returncode:
                 raise RuntimeError(f"{label} exited with {child.returncode}. See {stderr}.")
     text = stdout.read_text(encoding="utf-8", errors="replace")
+    engine_log = stderr.read_text(encoding="utf-8", errors="replace")
+    tier = re.search(r"\[InkTier\] adaptive expert tier on:.*a round every (\d+) tokens, (\d+) swaps", engine_log)
+    if not tier or tuple(map(int, tier.groups())) != settings:
+        raise RuntimeError(f"The requested adaptive tier was not confirmed in {stderr}.")
     result = {"run": label, "rows": rows, "swaps": swaps, "peak_device_mib": peak,
               "wall_s": time.monotonic() - start}
     if "--bench" in extra:
@@ -100,8 +104,9 @@ def main():
         control = bench(opt.engine, DEFAULT, "calibration-default", 256)
         pool = [control, bench(opt.engine, (8, 16), "calibration-rows", 256),
                 bench(opt.engine, (4, 8), "calibration-swaps", 256)]
-        select = lambda trials: max((r for r in trials if r["prefill_tps"] >= 0.95 * control["prefill_tps"]),
-                                    key=lambda result: result["decode_tps"])
+        def select(trials):
+            eligible = (result for result in trials if result["prefill_tps"] >= 0.95 * control["prefill_tps"])
+            return max(eligible, key=lambda result: result["decode_tps"])
         parent = select(pool)
         child = (parent["rows"] * 2, max(4, parent["swaps"] // 2))
         pool.append(bench(opt.engine, child, "calibration-mutation", 256))
