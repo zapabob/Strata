@@ -5,7 +5,7 @@ import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from terminal.strata_control import user_args
+from strata_control import user_args
 
 
 def valid_q36_memory_capability(cap: object, digest: str | None = None) -> bool:

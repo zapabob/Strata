@@ -12,7 +12,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "packaging"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "packaging"))
 import feed_tool  # noqa: E402
 import package_engine  # noqa: E402
 from strata_control import components, dsv41_engine, engine_component as ec, signing  # noqa: E402

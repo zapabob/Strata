@@ -1,5 +1,5 @@
 /** Local GGUF references. Adding/removing a reference never copies or deletes the user's weights. */
-import { accessSync, constants, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, statSync, writeFileSync } from 'node:fs';
+import { accessSync, closeSync, constants, mkdirSync, openSync, readSync, readdirSync, readFileSync, realpathSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { basename, dirname, extname, isAbsolute, join } from 'node:path';
 import { homedir } from 'node:os';
@@ -8,6 +8,10 @@ import { extractHybridGeometry, estimateModelMemory, modelMemoryFromMetadata } f
 // Reject known auxiliary/embedding architectures. The installed llama-server checks text-model support at load time.
 const NON_GENERATIVE=new Set(`clip bert modern-bert nomic-bert nomic-bert-moe neo-bert jina-bert-v2 jina-bert-v3 eurobert
  t5encoder gemma-embedding llama-embed wavtokenizer-dec pangu-embedded eagle3 dflash paddleocr qwen3tts pockettts talkie`.trim().split(/\s+/));
+const STRATA_MAGIC=Buffer.from([0x53,0x54,0x52,0x41,0x54,0x41,0x00,0x01]);
+export const STRATA_MIN_BYTES=32;
+/** A name the person sees: printable characters only, no path separators, at most 160 characters. */
+export const cleanLabel=value=>String(value??'').replace(/[\x00-\x1f\x7f\\/]/g,' ').replace(/\s+/g,' ').trim().slice(0,160);
 const QUANTS={0:'F32',1:'F16',2:'Q4_0',3:'Q4_1',7:'Q8_0',8:'Q5_0',9:'Q5_1',10:'Q2_K',11:'Q3_K_S',12:'Q3_K_M',13:'Q3_K_L',14:'Q4_K_S',15:'Q4_K_M',16:'Q5_K_S',17:'Q5_K_M',18:'Q6_K',19:'IQ2_XXS',20:'IQ2_XS',21:'Q2_K_S',22:'IQ3_XS',23:'IQ3_XXS',24:'IQ1_S',25:'IQ4_NL',26:'IQ3_S',27:'IQ3_M',28:'IQ2_S',29:'IQ2_M',30:'IQ4_XS',31:'IQ1_M',32:'BF16',141:'PQ2_0',142:'PQ2_0',143:'PTQ1_0'};
 const clean=value=>String(value??'').replace(/[\x00-\x1f\x7f]/g,' ').trim().slice(0,160);
 const genericName=value=>!clean(value)||/^(hf|hugging[ -]?face|model|unknown)$/i.test(clean(value));
@@ -16,11 +20,12 @@ function namedVariant(v,name){return {...v,name,label:`${name} · ${v.quant}`};}
 function fullPath(input){if(typeof input!=='string'||!input.trim()||input.includes('\0'))throw new Error('Choose a model file or enter its full path.');const path=input.trim().replace(/^~(?=$|[\\/])/,homedir());if(!isAbsolute(path))throw new Error('Enter a full path.');try{return realpathSync(path);}catch{throw new Error('This file or folder is unavailable. Check its location and permissions.');}}
 export function browseLocalModels(input){
  const directory=fullPath(input);if(!statSync(directory).isDirectory())throw new Error('Choose a folder to browse.');
- const entries=readdirSync(directory,{withFileTypes:true}).filter(e=>!e.name.startsWith('.')).map(e=>{try{const path=join(directory,e.name),s=statSync(path);if(s.isDirectory())return {name:e.name,path,kind:'folder'};if(s.isFile()&&extname(e.name).toLowerCase()==='.gguf')return {name:e.name,path,kind:'model',bytes:s.size};}catch{}return null;}).filter(Boolean).sort((a,b)=>(a.kind==='folder'?0:1)-(b.kind==='folder'?0:1)||a.name.localeCompare(b.name));
+ const entries=readdirSync(directory,{withFileTypes:true}).filter(e=>!e.name.startsWith('.')).map(e=>{try{const path=join(directory,e.name),s=statSync(path);if(s.isDirectory())return {name:e.name,path,kind:'folder'};if(s.isFile()&&['.gguf','.strata'].includes(extname(e.name).toLowerCase()))return {name:e.name,path,kind:'model',bytes:s.size};}catch{}return null;}).filter(Boolean).sort((a,b)=>(a.kind==='folder'?0:1)-(b.kind==='folder'?0:1)||a.name.localeCompare(b.name));
  return {directory,parent:dirname(directory)===directory?null:dirname(directory),entries:entries.slice(0,1000),truncated:entries.length>1000};
 }
 export function inspectLocalModel(input){
- let file=fullPath(input);if(extname(file).toLowerCase()!=='.gguf')throw new Error('Select a .gguf model file. Folders and adapters cannot be loaded as a chat model.');
+ let file=fullPath(input);if(extname(file).toLowerCase()==='.strata')return inspectStrataFile(file);
+ if(extname(file).toLowerCase()!=='.gguf')throw new Error('Select a .strata or .gguf model file. Folders and adapters cannot be loaded as a chat model.');
  if(/^mmproj/i.test(basename(file)))throw new Error('This is a picture reader (mmproj), not a model. Choose the model’s own .gguf file; a model that reads pictures needs its reader in the same folder.');
  if(!statSync(file).isFile())throw new Error('Select the model’s .gguf file, rather than its folder.');
  accessSync(file,constants.R_OK);
@@ -73,6 +78,25 @@ export function inspectLocalModel(input){
     ?[`Hybrid Attention: ${hybrid.nFullAttention} full-attention / ${hybrid.nRecurrent} recurrent layers (KV grows only on attention layers).`]
     :[];
   return {variant,files:names,warnings:[...(local.hasChatTemplate?[]:['No chat template was declared. Response formatting depends on the engine.']),...(declaredContext===null?['Context length is not declared. Start at 4K tokens; the engine checks the actual limit when loading.']:[]),...(kvKbPerToken===null?['KV memory metadata is incomplete. Actual allocation is unknown; the engine checks it when loading.']:[]),...(!quantizedKvSupported?['This GGUF cannot use a quantized K/V cache with its declared attention width. Choose FP16 for KV mode and leave K/V cache precision at Inherit or FP16.']:[]),...hybridNote,'Memory is estimated from metadata; engine support and actual allocation are checked when loading. Attention KV theory is not a full GPU fit claim.']};
+}
+/** The name a person gives a custom build (sent to setup as --custom-label): a short printable string, never a path. Empty or not a string: undefined. */
+export function customLabel(value){
+ if(typeof value!=='string')return undefined;
+ const label=value.replace(/[\x00-\x1f\x7f\\/:*?"<>|]/g,' ').replace(/^[-\s.]+/,'').replace(/\s+/g,' ').trim().slice(0,80).trim();
+ return label||undefined;
+}
+/** A local .strata file: only its 8-byte magic and its size are read (no tensor parse; Strata's engine reads the manifest when it loads). */
+function inspectStrataFile(file){
+ const stat=statSync(file);if(!stat.isFile())throw new Error('Select the model’s .strata file, rather than its folder.');
+ if(/vision|engram/i.test(basename(file)))throw new Error('This is a picture reader or helper shard, not a model. Choose the model’s own .strata file; Strata finds helper files next to it.');
+ accessSync(file,constants.R_OK);
+ if(stat.size<STRATA_MIN_BYTES)throw new Error('This .strata file is empty or cut short.');
+ const head=Buffer.alloc(STRATA_MAGIC.length),fd=openSync(file,'r');try{readSync(fd,head,0,head.length,0);}finally{closeSync(fd);}
+ if(!head.equals(STRATA_MAGIC))throw new Error('This file does not begin with a STRATA header. Choose a complete .strata model file.');
+ const name=cleanLabel(basename(file).replace(/\.strata$/i,''))||'Local model',id=`local-${createHash('sha256').update(file).digest('hex').slice(0,24)}`,gb=stat.size/1024**3;
+ const local={path:file,files:[{path:file,bytes:stat.size,mtimeMs:stat.mtimeMs,ctimeMs:stat.ctimeMs}],architecture:'strata',hasChatTemplate:false,contextLength:32768,shards:1,metadataSignature:createHash('sha256').update(`${stat.size}:${basename(file)}`).digest('hex')};
+ const variant={id,name,family:'Local models',quant:'STRATA',label:`${name} · STRATA`,params:'',blurb:'Local model file. Engine compatibility is checked when loading.',role:'option',tier:'local',ramClass:{minGb:gb+2,maxGb:gb+6,label:'From the file size'},diskGb:gb,downloadGb:0,contextMax:32768,layerCount:1,experts:0,kvKbPerToken:0,hasDraft:false,kvModes:['INT8','FP16'],tags:['local'],source:{repo:'local',file:basename(file),bytes:stat.size},local};
+ return {variant,files:[basename(file)],warnings:['Memory is estimated from the file size; engine support and actual allocation are checked when loading.']};
 }
 export function createLocalModels(dataDir){
  mkdirSync(dataDir,{recursive:true});const file=join(dataDir,'local-models.json');let records=[];

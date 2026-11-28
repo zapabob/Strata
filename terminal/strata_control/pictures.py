@@ -107,7 +107,7 @@ def family_of(cfg: dict, gguf: Path | None, asked: str | None = None) -> str | N
     names = [str(cfg.get("model_name") or "").lower(), (gguf.name.lower() if gguf else "")]
     if arch == "deepseek41" or any("deepseek" in n for n in names) or "strata-dsv41" in str(cfg.get("exe") or "").lower():
         return None
-    if any(n.startswith("qwen3.6") or "qwen3.6-35b" in n for n in names):
+    if any(n.startswith("qwen3.6") or "qwen3.6-35b" in n or n.startswith("ornith-1.5") for n in names):      # Ornith-1.5-35B-A3B (#7134): the Qwen3.6 engine path, its own picture file in setup
         return None
     if any(n.startswith("swift") for n in names):
         return "swift"
@@ -337,6 +337,19 @@ def fetch(config_path: str | Path, *, engine_dir: str | Path, asked: str = "yes"
     foot = discovery.footprint(cfg, config)
     gguf = foot.weights[0] if foot.weights else None
     name = family_of(cfg, gguf, family)
+    if name == "hy4-flash":
+        return _fetch_hy4(config, cfg, foot, data_dir=data_dir, progress=progress, cancel=cancel, endpoint=endpoint, online=online)
+    if name == "inkling-2-mini":
+        got = _fetch_inkling(config, cfg, foot, data_dir=data_dir, progress=progress, cancel=cancel, endpoint=endpoint, online=online)
+        # The reader is built into the engine (no vision section): say which one this card gets, for the caller to write as `--vision-reader gpu|cpu`
+        # (the engine decides by itself when it is not there; the server fills it in at start for a config that has none).  Same rule as setup.
+        hw = hardware or {}
+        make = str(hw.get("make") or "").lower()
+        mac = make == "apple" or sys.platform == "darwin"
+        mode = vision_reader.inkling_reader(asked, hw.get("vram_gb"), make, mac=mac)
+        got["reader"] = mode if mode in ("gpu", "cpu") else None
+        got["reader_note"] = next((text for warn, text in vision_reader.inkling_lines(asked, mode, hw.get("vram_gb"), make, mac=mac) if warn), "")
+        return got
     projector = PROJECTOR_BY_FAMILY.get(name) if name else None
     if projector is None or gguf is None:
         raise PicturesError("unsupported", WORDS["unsupported"])

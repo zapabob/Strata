@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 from strata_cli.launch import settings as S
+from strata_cli.launch.catalog import pick_row
 
 EXAMPLES = """\
 examples:
@@ -84,7 +85,8 @@ def add_parsers(sp: argparse._SubParsersAction) -> list[argparse.ArgumentParser]
     g.add_argument("--family", metavar="NAME", help="the model family when a size is offered by several (qwen, swift, coder, ...)")
     g.add_argument("--dsv41-package", metavar="FILE", help="DeepSeek: the engine package you downloaded from the release page (.tar.gz or .zip); "
                                                           "it is checked and installed instead of being fetched")
-    g.add_argument("--model-path", metavar="PATH", help="use model files you already have: a folder of shards or one .gguf file")
+    g.add_argument("--model-path", metavar="PATH", help="use model files you already have: a folder of shards, or one .gguf or .strata file (your own fine-tune, merge or quantization of a model Strata runs)")
+    g.add_argument("--custom-label", metavar="NAME", help="with --model-path: the name your own build is listed under (default: the file's own name). It gets a run config of its own; the official build is never replaced and your files are never copied or deleted")
     g.add_argument("--inkling-engine", metavar="STRATA-INKLING", help="serve the local PQ2_0 GGUF in this terminal with a specified native strata-inkling build")
     g.add_argument("--data-dir", metavar="DIR", help="where downloaded model files are stored (default: Strata's data folder)")
     g.add_argument("--move-data", action="store_true",
@@ -105,6 +107,12 @@ def add_parsers(sp: argparse._SubParsersAction) -> list[argparse.ArgumentParser]
                    help="which drafter guesses words ahead to make answers faster, one at a time: auto (recommended: DFlash2 for Qwen3.8-Flash-Next where the engine has it, "
                         "else the MTP), mtp, dflash2 (downloads its drafter once, 0.3 to 1.2 GB depending on the model; the size is shown before the download) or off. Auto uses the MTP when several requests run at once; --drafting dflash2 runs with the --parallel count you set. "
                         "If DFlash2 cannot run (on a model it is not for, for example) the MTP is used alone and the start says why")
+    g.add_argument("--draft", choices=("on", "off"), metavar="on|off",
+                   help="Inkling-2-Mini only: on asks for the DFlash 2 drafter by name, so the engine loads it even where it would leave it out to keep the whole model "
+                        "on the card (the start then says nothing about it); off starts without it. Same as --set draft=on. The other models ignore it")
+    g.add_argument("--draft-vocab", type=_choice("a draft vocabulary", S.DRAFT_VOCAB_MODES), metavar="cjk|en|cyrillic|fr|latin",
+                   help="which tokens the drafter may guess: cjk (the default: with Chinese, Japanese and Korean), en (English and code), "
+                        "cyrillic, fr or latin (each with English and code). Without it Strata picks from this computer's languages")
     g.add_argument("--split-engine", type=_choice("a split-engine setting", S.SPLIT_MODES), metavar="auto|on|off",
                    help="NVIDIA, two or more cards: the engine that splits every layer across the cards (faster answers). auto (the default) uses it by itself "
                         "where it is supported and starts the normal layer split everywhere else; on asks for it and says in one line why it cannot run; "
@@ -125,6 +133,12 @@ def add_parsers(sp: argparse._SubParsersAction) -> list[argparse.ArgumentParser]
     g.add_argument("--dspark", type=_choice("a DSpark mode", ("on", "off", "auto", "none")), metavar="on|off|auto|none",
                    help="DeepSeek: the DSpark drafter that guesses ahead (auto loads it only where it helps; off still loads it on some cards). "
                         "The same as --set dspark=<word>")
+    g.add_argument("--turbo", action="store_true",
+                   help="Inkling-2-Mini on NVIDIA or AMD cards: skip the experts that matter least for a word in the last pass (about 3 percent of the expert reads). "
+                        "Faster answers on cards that read the model from RAM or the SSD; answers differ slightly from exact. Off unless you ask. See docs/INKLING_TURBO.md")
+    g.add_argument("--turbo-max", action="store_true",
+                   help="like --turbo but skips about 16 percent of the expert reads in every pass: faster still, answers differ more (the exact setting is in docs/INKLING_TURBO.md). "
+                        "Off unless you ask")
     g.add_argument("--set", action="append", default=[], metavar="KEY=VALUE",
                    help="an advanced engine setting or STRATA_* variable, e.g. prefill=65536 (repeat); unknown names get a warning, not a refusal")
     g.add_argument("--pool-cores", metavar="LIST",
@@ -225,12 +239,26 @@ def settings_from_args(a: argparse.Namespace, catalog=None) -> tuple[S.LaunchSet
         s.model_path = str(Path(a.model_path).expanduser())
         if not a.model:
             s.family = s.model = None
+            s.custom_id = s.custom_label = None
     if a.model:
         if catalog is None:
             raise ValueError("The model list is not available in this Terminal; run it from the full Terminal install.")
-        s.family, s.model = catalog.resolve(a.model, a.family)
-        if not a.model_path:
-            s.model_path = None
+        from strata_cli.launch import custom
+        found = custom.find(catalog, a.model)                       # one of the person's own builds, by its id or the name they gave it
+        if found is not None:
+            custom.use_installed(s, found)
+        else:
+            s.family, s.model = catalog.resolve(a.model, a.family)
+            s.custom_id = s.custom_label = None
+            if not a.model_path:
+                s.model_path = None
+    if getattr(a, "custom_label", None):
+        from strata_cli.launch import custom
+        if not s.model_path:
+            raise ValueError("--custom-label names your own model files: add --model-path with the .gguf or .strata file (or its folder).")
+        s.custom_label = custom.clean_label(a.custom_label) or None
+        if not s.custom_label:
+            raise ValueError("--custom-label needs a name to list your build under.")
     elif a.family and s.model:
         s.family = a.family
     if a.data_dir:
@@ -300,6 +328,18 @@ def settings_from_args(a: argparse.Namespace, catalog=None) -> tuple[S.LaunchSet
         if a.dspark == "on" and sys.platform == "darwin":
             notices.append(S.Notice("warn", "DeepSeek's drafter (DSpark) is not supported on a Mac yet, so --dspark on will probably stop the engine.",
                                     "Leave it out: on a Mac the drafter is off and answers are as fast without it."))
+    if getattr(a, "draft", None):
+        s.extra = {**s.extra, "--draft": a.draft}
+    if getattr(a, "turbo", False) or getattr(a, "turbo_max", False):
+        if a.turbo and a.turbo_max:
+            raise ValueError("--turbo and --turbo-max cannot be used together: choose one.")
+        word = "turbo-max" if a.turbo_max else "turbo"
+        if str(s.extra.get("STRATA_INK_TAIL_SKIP") or "") not in ("", word):
+            notices.append(S.Notice("warn", f"--{word} is ignored because STRATA_INK_TAIL_SKIP is set with --set.", "The setting you wrote wins."))
+        else:
+            s.extra = {**s.extra, "STRATA_INK_TAIL_SKIP": word}
+            notices.append(S.Notice("warn", f"--{word} is on: answers differ slightly from exact. It only works for Inkling-2-Mini on NVIDIA and AMD cards.",
+                                    "Take the flag away to get exact answers again."))
     if a.pool_cores:
         text = a.pool_cores.replace(" ", "")
         if not re.fullmatch(r"\d+(-\d+(:\d+)?)?(,\d+(-\d+(:\d+)?)?)*", text):
@@ -416,7 +456,7 @@ def apply_defaults(s: S.LaunchSettings, catalog) -> tuple[S.LaunchSettings, list
         _q4 = _gf.strix_q4_stall_note(s.model, comp.gpus)       # REMOVE with the Strix stall fix (gpu_fit.STRIX_Q4_NOTE)
         if _q4:
             notices.append(S.Notice("warn", _q4, ""))
-        rows = [r for r in catalog.rows(hw) if r.family == s.family and r.model == s.model]
+        rows = [r for r in [pick_row(catalog.rows(hw, own=(s.family, s.model) if s.model_path else None), s)] if r is not None]
         if rows:
             r = rows[0]
             if s.model_path and s.family == "deepseek41" and r.words == "tight: needs more disk space":

@@ -154,8 +154,14 @@ class CatalogRules(unittest.TestCase):
             patcher.start()
             self.addCleanup(patcher.stop)
             rows = {r.model: r for r in cat.rows()}
-            self.assertEqual(set(rows), {"Q2_0", "IQ3_XXS", "IQ3_S", "Gyro-S", "Gyro-M", "IST-DAS-2.00bpw", "IST-DAS-2.25bpw", "ISTA-DAS-Coder", "UD-IQ1_S", "UD-IQ1_M",
-                                "UD-Q2_0", "UD-IQ2_XS", "UD-Q2_K_XL", "UD-IQ3_XXS", "UD-Q3_K_XL", "UD-IQ4_XS-v31", "UD-Q4_K_XL", "UD-Q5_K_XL", "UD-Q6_K_XL"})   # DeepSeek (0.2.7.1): the two ISTA; Unsloth's sets (round 0214: the Mac app repacks them; UD-IQ1_M is also DeepSeek's name)-DAS sets run on a Mac, UD-IQ1_S since f-039; the Coder and UD-IQ1_M are offered with a "not run yet" line
+            self.assertEqual(set(rows), {
+                "Q2_0", "IQ3_XXS", "IQ3_S", "Gyro-S", "Gyro-M",
+                "IST-DAS-2.00bpw", "IST-DAS-2.25bpw", "ISTA-DAS-Coder",
+                "UD-IQ1_S", "UD-IQ1_M", "UD-Q2_0", "UD-IQ2_XS", "UD-Q2_K_XL",
+                "UD-IQ3_XXS", "UD-Q3_K_XL", "UD-IQ4_XS-v31", "UD-Q4_K_XL",
+                "UD-Q5_K_XL", "UD-Q6_K_XL", "SQ-64", "SQ-96", "SQ-128",
+                "SQ-20", "SQ-15", "SQ-10", "GSQ-RCO-IQ3_S",
+            })
             self.assertEqual([r.model for r in rows.values() if r.recommended], ["Q2_0"])
             for name in ("IST-DAS-2.00bpw", "IST-DAS-2.25bpw"):            # a 32 GB Mac: said plainly (mostly read from the SSD), never refused
                 self.assertEqual(rows[name].family, "deepseek41")
@@ -980,6 +986,25 @@ class FlagsCommand(unittest.TestCase):
         self.assertEqual(p["settings"]["mtp"], "off")
         self.assertIn("--mtp off", p["flags"])
         code, out, err = run_cli(["launch", "--plan", "--mtp", "maybe"])
+        self.assertNotEqual(code, 0)
+
+    def test_turbo_flags_are_listed_planned_and_copyable(self):
+        """Owner 2026-11-26: --turbo and --turbo-max are the two opt-in Inkling tail-skip presets; both off unless asked, mapped onto STRATA_INK_TAIL_SKIP."""
+        code, out, err = run_cli(["launch", "--help"])
+        for flag in ("--turbo", "--turbo-max"):
+            self.assertIn(flag, out)
+        self.assertEqual(self.plan("--model", "q2_0")["settings"]["extra"], {})              # off by default
+        for flag, word in (("--turbo", "turbo"), ("--turbo-max", "turbo-max")):
+            p = self.plan("--model", "q2_0", flag)
+            self.assertEqual(p["settings"]["extra"], {"STRATA_INK_TAIL_SKIP": word})
+            self.assertIn(flag, p["flags"])                                                   # the copyable line says what was typed
+            self.assertNotIn("--set STRATA_INK_TAIL_SKIP", p["flags"])
+            self.assertTrue(any("differ slightly from exact" in w for w in p["warnings"]), p["warnings"])
+        # the person's own --set wins over the flag, with a warning
+        p = self.plan("--model", "q2_0", "--turbo", "--set", "STRATA_INK_TAIL_SKIP=thr=0.05")
+        self.assertEqual(p["settings"]["extra"], {"STRATA_INK_TAIL_SKIP": "thr=0.05"})
+        self.assertTrue(any("is ignored" in w for w in p["warnings"]), p["warnings"])
+        code, out, err = run_cli(["launch", "--plan", "--turbo", "--turbo-max"])              # one of the two
         self.assertNotEqual(code, 0)
 
     def test_vision_help_says_the_picture_rule(self):

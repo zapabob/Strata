@@ -32,7 +32,8 @@ from typing import Any, Callable
 from strata_cli.launch import access as acc
 from strata_cli.launch import modelstate
 from strata_cli.launch import settings as S
-from strata_cli.launch.catalog import Catalog, CatalogUnavailable
+from strata_cli.launch.catalog import Catalog, CatalogUnavailable, pick_row
+from strata_cli.launch.custom import custom_alias
 
 ROOT = Path(__file__).resolve().parents[2]
 WINDOWS = os.name == "nt"
@@ -326,6 +327,13 @@ def apply_choices(cfg: dict, s: S.LaunchSettings) -> dict:
             del args[at:at + 2]
         is_ink = s.family == "inkling-2-mini" or str(cfg.get("arch") or "").lower() == "inkling2_loop"
         if is_ink:
+            # the picture reader (the Qwen rule, strata_control/vision_reader.py): off takes the engine's flag away with the Vision file, gpu / cpu are kept as asked;
+            # "on" keeps what setup resolved for the card
+            from strata_control import vision_reader as _VR
+            if s.vision in ("off", "no"):
+                args = _VR.set_reader_arg(args, None)
+            elif s.vision in ("gpu", "cpu") and "--vision" in args:
+                args = _VR.set_reader_arg(args, s.vision)
             if s.kv:
                 eff_kv, _ = S.safe_inkling_kv(s.kv, cfg.get("backend"))
                 if eff_kv:
@@ -375,10 +383,10 @@ def auto_signals(catalog, s: S.LaunchSettings, family: str | None) -> dict:
     real-use run); on a Mac the set decides (Metal IQ3_S is the MTP, the other sets DFlash2). Never raises."""
     try:
         from strata_control import drafting
-        path = catalog.installed_config(catalog.tag_of(s.family, s.model))
+        path = catalog.installed_config(catalog.tag_of(s.family, s.model, getattr(s, "custom_id", None)))
         cfg = apply_choices(read_config(path) if path is not None else {}, s)
-        backend, archs = drafting.detect_hardware()
-        return {"model_name": cfg.get("model_name") or catalog.model_name_of(family, s.model),
+        backend, archs = drafting.hardware_for(cfg.get("backend"))   # #5109: the config's card family on a mixed NVIDIA + AMD computer
+        return {"model_name": (catalog.model_name_of(family, s.model) if getattr(s, "custom_id", None) else None) or cfg.get("model_name") or catalog.model_name_of(family, s.model), "engine_backend": cfg.get("backend"),
                 **card_signals(cfg, s.gpus, {"backend": backend, "archs": archs})}
     except Exception:                                    # noqa: BLE001 - no signal: Auto as before
         return {}
@@ -648,8 +656,160 @@ def own_log_path(base: dict) -> str | None:
     return None if _SETUP_LOG_NAME.match(Path(value.replace("\\", "/")).name) else value
 
 
+#: The keys of the Settings view (serve/runconfig.py, the web page's About > Settings) that a start saved into this
+#: launch's config. They are not launch choices, and derive_config rebuilds the config from the installed one, so a
+#: value set on the page would quietly revert at the next start unless the earlier start's config carries it — the
+#: same way strata_control/arg_layers.py keeps hand-edited engine options. Not here: "mtp" and drafting (the
+#: launcher decides those with --mtp and --drafting), "open_browser" (strata launch sets it itself), and
+#: "vram_reserve_mib" (an engine option that already survives as a flag in "args" with its "user_args" copy).
+WEB_SETTINGS_KEYS = ("reasoning_budget_tokens", "fit_max_tokens", "anthropic_thinking", "effort_position",
+                     "aliases", "idle_unload_s", "lazy_load", "engine_silence_s", "api_monitor")
+WEB_SAMPLING_KEYS = ("temperature", "top_p", "top_k", "min_p")     # the editable keys of the "sampling" block
+
+#: Advanced-table options (--set, a preset's extra table) that the server reads from the run config, not from the
+#: engine's command line (serve/server.py). Written into the engine args they stop the engine: it knows no
+#: "--idle-unload" and exits with "unknown argument: --idle-unload", restart and exit again.
+SERVER_CONFIG_OPTIONS = {"--idle-unload": "idle_unload_s"}
+
+
+def take_server_options(a_changes: dict) -> dict:
+    """The command-line choices that are server behavior, not engine options: taken out of the engine changes here,
+    written as config keys after the carried values (what this command line says beats what an earlier start saved).
+    Values arrive as words; they become numbers, and one that cannot be is refused in plain words."""
+    out: dict[str, float | None] = {}
+    for flag, key in SERVER_CONFIG_OPTIONS.items():
+        if flag not in a_changes:
+            continue
+        value = a_changes.pop(flag)
+        if value is None:
+            out[key] = None                                   # "--idle-unload off": remove the key (the server never unloads)
+            continue
+        try:
+            number = float(str(value))
+        except ValueError:
+            raise LaunchError(f"idle-unload={value} is not a number of seconds.",
+                              "Use 0 or 'off' to never unload, or a number of seconds such as 300.")
+        out[key] = int(number) if number.is_integer() else number
+    return out
+
+
+#: #5858: run-defaults.json, user-wide server settings for every `strata launch` (beside launch-presets/: ~/.config/strata or %APPDATA%\\Strata).
+#: The Settings view's server keys (serve/runconfig.EDITABLE, checked with its rules) and undeclared_tool_calls; not "mtp", "open_browser" or
+#: engine options. Lowest precedence: the model's installed config, the Settings view's saved values and this launch's own choices come first.
+USER_DEFAULTS_FILE = "run-defaults.json"
+USER_DEFAULTS_KEY = "user_defaults"            # in the launch config: {key: value} the defaults file supplied (sampling keys dotted)
+_DEFAULTS_NOT = ("mtp", "open_browser", "vram_reserve_mib")
+
+
+def user_defaults_path() -> Path:
+    from strata_control import profiles
+    return profiles.profile_dir().parent / USER_DEFAULTS_FILE
+
+
+def read_user_defaults(path: Path | None = None) -> tuple[dict, list[str]]:
+    """({key: checked value}, the lines to say) from the user's run-defaults.json. No file: ({}, []), today's behaviour."""
+    from serve import runconfig
+    path = Path(path) if path is not None else user_defaults_path()
+    try:
+        raw = path.read_text(encoding="utf-8-sig")
+    except FileNotFoundError:
+        return {}, []
+    except OSError as exc:
+        return {}, [f"{path} is skipped: {exc.strerror or exc}."]
+    try:
+        data = json.loads(raw)
+    except ValueError as exc:
+        return {}, [f"{path} is skipped: it is not valid JSON ({exc})."]
+    if not isinstance(data, dict):
+        return {}, [f"{path} is skipped: it must hold one JSON object of settings."]
+    out, notes = {}, []
+    for key, value in data.items():
+        flat = {f"sampling.{k}": v for k, v in value.items()} if key == "sampling" and isinstance(value, dict) else {key: value}
+        for name, v in flat.items():
+            try:
+                if name == "undeclared_tool_calls":
+                    if v not in ("text", "call"):
+                        raise ValueError('expected "text" or "call"')
+                    checked = v
+                elif name in runconfig.SPEC and name not in _DEFAULTS_NOT:
+                    checked = runconfig.check(name, v, {})
+                else:
+                    raise ValueError("not a setting this file can hold")
+            except ValueError as exc:
+                notes.append(f"{path}: {name} is skipped ({exc}).")
+                continue
+            if checked is not None:
+                out[name] = checked
+    return out, notes
+
+
+def _has_setting(cfg: dict, key: str) -> bool:
+    if key.startswith("sampling."):
+        return isinstance(cfg.get("sampling"), dict) and key.split(".", 1)[1] in cfg["sampling"]
+    return key in cfg
+
+
+def _setting_of(cfg: dict, key: str):
+    if key.startswith("sampling."):
+        return (cfg.get("sampling") or {}).get(key.split(".", 1)[1]) if isinstance(cfg.get("sampling"), dict) else None
+    return cfg.get(key)
+
+
+def apply_user_defaults(cfg: dict, base: dict, defaults: dict) -> dict:
+    """The defaults the model's installed config does not set itself, put into `cfg`; returns what was applied (remembered in the
+    launch config under USER_DEFAULTS_KEY, so carry_settings tells them from a value the Settings view saved)."""
+    applied = {}
+    for key, value in (defaults or {}).items():
+        if _has_setting(base, key):
+            continue                                         # the model's own setting comes first
+        if key.startswith("sampling."):
+            merged = dict(cfg["sampling"]) if isinstance(cfg.get("sampling"), dict) else {}
+            merged[key.split(".", 1)[1]] = value
+            cfg["sampling"] = merged
+        elif key == "lazy_load" and value and cfg.get("vision"):
+            continue                                         # lazy loading is text-only
+        else:
+            cfg[key] = value
+        applied[key] = value
+    if applied:
+        cfg[USER_DEFAULTS_KEY] = applied
+    else:
+        cfg.pop(USER_DEFAULTS_KEY, None)
+    return applied
+
+
+def carry_settings(cfg: dict, prev: dict | None) -> None:
+    """The Settings-view values a person saved in this launch's config since its last start (the web page writes into
+    the very file `strata launch` wrote): their standing choices, kept in the rebuilt config like a hand-edit. A value the user
+    defaults file put there last time (and nobody changed since) is not carried: the defaults file as it is now decides it (#5858)."""
+    if not prev:
+        return
+    from_defaults = prev.get(USER_DEFAULTS_KEY) if isinstance(prev.get(USER_DEFAULTS_KEY), dict) else {}
+
+    def untouched_default(key: str) -> bool:
+        return key in from_defaults and _setting_of(prev, key) == from_defaults[key]
+
+    for key in WEB_SETTINGS_KEYS:
+        if key not in prev or untouched_default(key):
+            continue
+        if key == "lazy_load" and prev[key] and cfg.get("vision"):
+            continue                                         # lazy loading is text-only; the page itself refuses it for a picture model
+        cfg[key] = prev[key]
+    sampling = prev.get("sampling")
+    if isinstance(sampling, dict):
+        keep = {k: v for k, v in sampling.items() if k in WEB_SAMPLING_KEYS and not untouched_default(f"sampling.{k}")}
+        if keep:
+            merged = dict(cfg["sampling"]) if isinstance(cfg.get("sampling"), dict) else {}
+            merged.update(keep)
+            cfg["sampling"] = merged
+
+
+def is_reader_file(name: object) -> bool:
+    """Is this download line's file the picture reader's (setup labels it "vision encoder", the file is an mmproj)? progress_words says "the picture reader" by the same words."""
+    return any(w in str(name or "").lower() for w in ("vision", "picture", "mmproj"))
+
 def derive_config(base: dict, s: S.LaunchSettings, *, bool_flags: frozenset[str], log: str | None = None, gpus: "list[int] | dict | None" = None,
-                  experts: int | None = None, prev: dict | None = None) -> dict:
+                  experts: int | None = None, prev: dict | None = None, defaults: dict | None = None) -> dict:
     """The private run config of this launch: the installed one plus the choices that are not setup's (host, port, key, cards, advanced).
     `prev` is the config this launch wrote last time: its calibrated values and hand edits are kept (strata_control/arg_layers.py: explicit
     launch values, then persisted overrides, then calibrated values, then Auto)."""
@@ -685,7 +845,7 @@ def derive_config(base: dict, s: S.LaunchSettings, *, bool_flags: frozenset[str]
     drafting_off = _drafting.normalize(chosen if chosen is not None else cfg.get("drafting")) == "off"
     if is_inkling and isinstance(cfg.get("args"), list):
         if drafting_off:
-            # #6670: strata-inkling defaults to dspark=1 unless --draft off is explicitly passed.
+            # #6670: strata-inkling drafts by default (when a drafter is there) unless --draft off is explicitly passed.
             out_args: list[str] = []
             i = 0
             raw_args = [str(a) for a in cfg["args"]]
@@ -728,12 +888,23 @@ def derive_config(base: dict, s: S.LaunchSettings, *, bool_flags: frozenset[str]
     if cfg.get("arch") == "deepseek41":                      # strata-dsv41 takes --mmap-experts on|off|auto: "off" must reach it as a word (#5027)
         bool_flags = bool_flags - tune_knobs.DSV41_WORD_FLAGS
         word_flags = word_flags | tune_knobs.DSV41_WORD_FLAGS
-    a_changes, e_changes = S.as_argv_changes(s.extra, bool_flags, word_flags) if s.extra else ({}, {})
+    extra = s.extra
+    if "--draft" in extra and not is_inkling:                # --draft on|off is Inkling-2-Mini's engine option: the other engines do not take it
+        extra = {k: v for k, v in extra.items() if k != "--draft"}
+    a_changes, e_changes = S.as_argv_changes(extra, bool_flags, word_flags) if extra else ({}, {})
+    server_set = take_server_options(a_changes)              # a server setting (--set idle-unload=...) never rides to the engine
     arg_layers.layer(cfg, a_changes, prev, bool_flags)       # the one place that decides which value an option has
     if e_changes:
         cfg["env"] = tune_knobs.apply_to_env(dict(cfg.get("env") or {}), e_changes)
     from strata_control import draft_layer
     draft_layer.apply(cfg)                                   # "mtp": false (from the installed config too) never sits beside --mtp in the saved args (B10)
+    apply_user_defaults(cfg, base, defaults or {})            # #5858: the user's run-defaults.json, below everything else
+    carry_settings(cfg, prev)                                # what the Settings view saved since the last start survives this launch
+    for key, value in server_set.items():                    # an explicit value from this command line beats what an earlier start saved
+        if value is None:
+            cfg.pop(key, None)
+        else:
+            cfg[key] = value
     apply_experts(cfg, experts)
     return cfg
 
@@ -769,7 +940,7 @@ def launch_dir() -> Path:
 
 def launch_name_of(s) -> str:
     """The name of the launch these settings make (Runner.name): its run config is launch/<name>.json."""
-    return S.slug(s.name or (s.model or "model") + "-" + S.context_label(s.context).lower())
+    return S.slug(s.name or (getattr(s, "custom_id", None) or s.model or "model") + "-" + S.context_label(s.context).lower())      # a custom build never shares the official build's launch profile
 
 
 def saved_launch_word(name: str) -> str | None:
@@ -1115,6 +1286,20 @@ class Runner:
         except Exception:                                    # noqa: BLE001 - no table, no shape: the Strata engine
             return None
 
+    def is_hy4(self) -> bool:
+        """The chosen model is Tencent Hy4-Flash: no drafter, no tuning, no slots, no split engine; its own engine program (serve/hy4_kind.py)."""
+        from strata_control import hy4_family
+        return self.s.family == hy4_family.FAMILY
+
+    def is_inkling(self) -> bool:
+        """The chosen model is Thinking Machines Inkling-2-Mini: native .strata v1.1 engine (strata-inkling) with built-in DSpark drafter, built-in Vision, and continuous batching (--parallel 1..64)."""
+        from strata_control import inkling_family
+        return self.s.family == inkling_family.FAMILY
+
+    def is_native_strata_family(self) -> bool:
+        """A custom native .strata engine family (Hy4-Flash or Inkling-2-Mini): built-in drafter and Vision shard, no external GGUF pack or Qwen tuner."""
+        return self.s.family == "hy4-flash" or self.is_inkling()
+
     def model_title(self) -> str | None:
         """The chosen model's title ("Q4 Lite Shape"), which the lines about its engine name instead of the geometry's name; None when the table has none."""
         try:
@@ -1209,8 +1394,9 @@ class Runner:
         """The picture setting of this launch: the chosen one, or (nothing chosen) the default for this model and engine (catalog.picture_default)."""
         s = self.s
         if s.vision is None:
-            row = next((r for r in self.catalog.rows() if (r.family, r.model) == (s.family, s.model)), None)
-            s.vision = self.catalog.picture_default(bool(row.images) if row is not None else False)
+            row = pick_row(self.catalog.rows(), s)
+            images = bool(row.images) if row is not None else False
+            s.vision = ("on" if images else "off") if self.is_native_strata_family() else self.catalog.picture_default(images)
         return s.vision
 
     def vision_word(self) -> str:
@@ -1235,7 +1421,8 @@ class Runner:
             note = ("Pictures could not be switched on: this engine does not carry the picture reader, or this model cannot read pictures, "
                     "so it will answer text only.")
             if self.is_inkling():                            # 0221 APPTUI: the real reason, and the way to add it
-                note = ("Images will not work: no picture reader file (Inkling-2-Mini-Vision.strata, 0.64 GB) is installed for this model, so it answers text only. "
+                from strata_control import inkling_family
+                note = (f"Images will not work: no picture reader file ({inkling_family.VISION_FILE}, 0.64 GB) is installed for this model, so it answers text only. "
                         "`strata launch --vision on` downloads it, or put the file next to the model files.")
             self.notices.append(note)
             self.emit("model", note, 100, level="warn")
@@ -1295,10 +1482,15 @@ class Runner:
                 args.append("--set-default-data-dir")
         if s.model_path:
             p = Path(s.model_path)
-            args += ["--gguf-dir", str(p if p.is_dir() else p.parent)]
+            if (fam == "inkling-2-mini" or s.custom_label) and p.is_file():
+                args += ["--gguf-dir", str(p)]                # a custom build names its one file (the folder may hold the official build too)
+            else:
+                args += ["--gguf-dir", str(p if p.is_dir() else p.parent)]
+        if s.custom_label:                                # the person's own files, named: setup writes a run config of its own (strata-<family>custom-<name>.json), never the official one
+            args += ["--custom-label", s.custom_label]
         if s.dsv41_package and s.family == "deepseek41":
             args += ["--dsv41-package", s.dsv41_package]
-        if self.feed:                                     # --feed / STRATA_UPDATE_FEED: setup fetches the DeepSeek engine from it too
+        if self.feed:                                     # --feed / STRATA_UPDATE_FEED: setup reads the signed feed from there too
             args += ["--feed", str(self.feed)]
         if s.gpu_roles:
             args += ["--gpu-roles", ",".join(f"{k}={v}" for k, v in sorted(s.gpu_roles.items(), key=lambda kv: int(kv[0])))]
@@ -1309,7 +1501,7 @@ class Runner:
         if sys.platform == "darwin":
             # a Mac's setup (Control mode, strata_control/mac_fit.py) takes fewer options (no --kv, --gpu, speed projection)
             keep = {"--yes", "--no-start", "--family", "--model", "--context", "--vision", "--data-dir", "--gguf-dir", "--move-data",
-                    "--set-default-data-dir", "--feed", "--drafter", "--dsv41-package", "--mtp"}     # --drafter / --mtp: setup.py's Mac step fetches the draft layer only where the
+                    "--set-default-data-dir", "--feed", "--drafter", "--dsv41-package", "--mtp", "--draft-vocab", "--custom-label"}     # --drafter / --mtp: setup.py's Mac step fetches the draft layer only where the
                                                                                   # start runs the MTP, and not after a Drafting Off (`--mtp off`)
             flags = ("--yes", "--no-start", "--move-data", "--set-default-data-dir")
             out, i = [], 0
@@ -1348,7 +1540,7 @@ class Runner:
         return []
 
     def installed_state(self) -> tuple[Path | None, dict | None]:
-        tag = self.catalog.tag_of(self.s.family, self.s.model)
+        tag = self.catalog.tag_of(self.s.family, self.s.model, self.s.custom_id)
         path = self.catalog.installed_config(tag)
         if path is None:
             return None, None
@@ -1367,7 +1559,7 @@ class Runner:
             return False
         try:
             if path is None:
-                path = self.catalog.installed_config(self.catalog.tag_of(s.family, s.model))
+                path = self.catalog.installed_config(self.catalog.tag_of(s.family, s.model, getattr(s, "custom_id", None)))
             return path is not None and read_config(path).get("mtp") is False
         except Exception:                                    # noqa: BLE001 - an unreadable config is setup's to report; nothing changes here
             return False
@@ -1411,7 +1603,7 @@ class Runner:
                 found = discovery.writable_beside(self._first_own_gguf())
                 return Path(found) if found else None
             if s.family and s.model:
-                path = self.catalog.installed_config(self.catalog.tag_of(s.family, s.model))
+                path = self.catalog.installed_config(self.catalog.tag_of(s.family, s.model, getattr(s, "custom_id", None)))
                 if path is not None:
                     from strata_control import discovery
                     found = discovery.footprint(read_config(path), path).data_dir
@@ -1462,7 +1654,7 @@ class Runner:
                 # the plan counts what setup fetches there, not the other copy (lane NET 4a)
                 path, desc, installed = None, None, False
         return modelstate.assess(self.catalog, s.family, s.model, vision=s.vision, model_path=s.model_path, data_dir=s.data_dir,
-                                 config=path, desc=desc, mtp=s.mtp, drafting=self.resolved_drafting(s.family), use_installed=installed)
+                                 config=path, desc=desc, mtp=s.mtp, drafting=self.resolved_drafting(s.family), use_installed=installed, custom_id=s.custom_id)
 
     def other_copy(self) -> Path | None:
         """The data folder of an installed copy of this model that this launch does not use, else None: another --data-dir was given, and the
@@ -1507,7 +1699,7 @@ class Runner:
         longer to read (about 8 more seconds per GB above 40 GB, at most 30 minutes). Automatic: nobody sets a variable for it."""
         gb = 0.0
         try:
-            row = next((r for r in self.catalog.rows() if r.family == self.s.family and r.model == self.s.model), None)
+            row = pick_row(self.catalog.rows(), self.s)
             gb = float(getattr(row, "download_gb", 0) or 0)
         except Exception:                                    # noqa: BLE001
             gb = 0.0
@@ -1551,7 +1743,7 @@ class Runner:
         data = Path(s.data_dir) if s.data_dir else (self.existing_data_dir() or cat.data_dir())
         models_dir = data / "models"
         job = {"folder": str(cat.model_folder(data, s.family, s.model)),
-               "total_gb": float(next((r.download_gb for r in cat.rows() if r.family == s.family and r.model == s.model), 0) or 0)}
+               "total_gb": float(getattr(pick_row(cat.rows(), s), "download_gb", 0) or 0)}
         try:
             setup_module = cat.strata.setup_module()
             if setup_module is not None and not s.model_path:
@@ -1582,8 +1774,8 @@ class Runner:
             self.emit("model", "The model already installed here is somewhere else than the folder you gave, so Strata uses the folder you gave "
                                "and points this launch at it.", 0)
         title = f"{s.family} {s.model}"
-        try:                                                 # the name on screen (DeepSeek's sets are ISTA-DAS there, their ids keep the first spelling)
-            title = next((r.title for r in self.catalog.rows() if r.family == s.family and r.model == s.model), title)
+        try:                                                 # the name on screen
+            title = getattr(pick_row(self.catalog.rows(), s), "title", title)
         except Exception:                                    # noqa: BLE001 - a label only
             pass
         if sys.platform == "darwin" and not (cat.src / "strata_control" / "mac_fit.py").is_file():
@@ -1791,7 +1983,7 @@ class Runner:
             return None
         _models, families, _ctx, _src = cat.tables()
         fam = families.get(s.family or "", {})
-        tag = cat.tag_of(s.family, s.model)
+        tag = cat.tag_of(s.family, s.model, getattr(s, "custom_id", None))
         data_dir = Path(s.data_dir) if s.data_dir else cat.data_dir()
         if s.model_path:
             model_dir = Path(s.model_path)
@@ -1824,7 +2016,7 @@ class Runner:
                     (pack_dir / "index.txt").exists() and (pack_dir / "tokenizer" / "vocab.json").exists()):
                 self.prepare_pack(model_dir, pack_dir, files)
         cfg, problems = adopt.plan(family=s.family, model=s.model, model_dir=model_dir, data_dir=data_dir, src=cat.src,
-                                   context=s.context or 32768, kv=s.kv, model_name=f"{fam.get('name', s.family)}-{s.model.lower()}", family_def=fam,
+                                   context=s.context or 32768, kv=s.kv, model_name=(custom_alias(s) if s.custom_id else f"{fam.get('name', s.family)}-{s.model.lower()}"), family_def=fam,
                                    log=cat.root / f"strata-{tag}.log", backend=backend,
                                    vram_gb=float(cat.computer().main_vram_gb or 0), notes=self.notices, pack_name=tag.lower(),
                                    drafting=s.drafting)
@@ -1837,6 +2029,9 @@ class Runner:
                               + "; ".join(problems) + ".",
                               "Use model files that were prepared on this computer already (folder + pack): for an Intel Arc card the steps are in docs/INTEL_ARC.md (the Terminal carries tools/iq_pack.py for the pack). Or install on a computer with an NVIDIA or AMD card.", 5)
         path = cat.root / f"strata-{tag}.json"
+        if s.custom_id:
+            from strata_cli.launch import custom
+            cfg.update(custom.run_config_keys(s, model_dir))
         adopt.write(path, cfg)
         self.notices.append("The downloader built into this Terminal sets up NVIDIA and AMD cards only (Intel Arc cards have a separate installer), so Strata wrote the "
                             f"run settings itself from the prepared model files already on this computer ({path.name}). No model files were downloaded.")
@@ -1951,6 +2146,8 @@ class Runner:
                 s.model_path = hold[0]["folder"]
             elif not plan.get("issues"):
                 s.model_path = models.import_target(s.model_path, plan)
+            if s.custom_label and not plan.get("issues"):     # --custom-label names these files as a custom build of the model that was named
+                self.name_custom_build(s.custom_label)
             return
         sel = plan.get("candidate_selection") or {}
         fam, model = sel.get("family"), sel.get("model")
@@ -1961,7 +2158,20 @@ class Runner:
                               "Choose the matching model in the list, or check that every shard is in the folder.", 5)
         s.family, s.model = fam, model
         s.model_path = models.import_target(s.model_path, plan)
+        if sel.get("custom") or s.custom_label:             # not a build Strata has tested: the person's own build, with a run config and a name of its own
+            label = self.name_custom_build(s.custom_label or sel.get("suggested_label") or Path(s.model_path).stem)
+            self.emit("model", f"These files are a custom build of {sel.get('family_title') or fam} (settings of {model}); it is listed as '{label}'.", None)
+            return
         self.emit("model", f"These files are {fam} {model}.", None)
+
+    def name_custom_build(self, label: object) -> str:
+        """The files in s.model_path are the person's own build of the family s.family: it gets the display name `label` and a run config of its own
+        (strata_cli/launch/custom.py); the official build of the same model is never touched. Drafting is Auto: a fine-tune keeps the base model's vocabulary,
+        so the drafter is used while it helps and the run falls back to plain decoding by itself."""
+        from strata_cli.launch import custom
+        s = self.s
+        custom.use_import(s, self.catalog, label)
+        return s.custom_label or ""
 
     # ---- 3. config and profile
     def resolved_drafting(self, family: str | None) -> str:
@@ -2072,6 +2282,8 @@ class Runner:
     def ensure_drafter(self, base_path: Path) -> None:
         """Fetch the DFlash2 drafter when this launch will use it and it is not here yet. Never stops the launch: if it cannot be had, the model
         starts with the MTP and the person is told (recommend, never force)."""
+        if self.is_native_strata_family():                   # Hy4-Flash carries its drafter (DFly2) inside the model file; Inkling-2-Mini's DFlash 2 file is fetched by setup and `setup --update` (setup.inkling_fetch_dflash2)
+            return
         from strata_control import drafting, drafting_fetch
         want: dict = {}
         try:
@@ -2154,6 +2366,9 @@ class Runner:
             previous = None
         if not isinstance(previous, dict):
             previous = None
+        defaults, notes = read_user_defaults()
+        for note in notes:
+            self.emit("config", note, None, level="warn")
         cfg = derive_config(base, self.s, bool_flags=tune_knobs.BOOL_FLAGS,
                             log=str(launch_dir() / f"{self.name}.engine.log"), gpus=cards_for_launch(self.s, self.catalog, base=base),
                             prev=previous, defaults=defaults)
@@ -2545,7 +2760,7 @@ class Runner:
         c = row.get("choices") or {}
         title = None
         try:
-            title = next((r.title for r in self.catalog.rows() if r.family == c.get("family") and r.model == c.get("model")), None)
+            title = next((r.title for r in self.catalog.rows() if (r.custom and r.id == c.get("custom_id")) or (not c.get("custom_id") and not r.custom and r.family == c.get("family") and r.model == c.get("model"))), None)
         except Exception:                                    # noqa: BLE001
             title = None
         title = title or ("Your model files" if c.get("model_path") else row["name"])
@@ -2858,7 +3073,7 @@ class Runner:
     def row(self):
         """The catalog row of the chosen model (None for a model the list does not carry)."""
         s = self.s
-        return next((r for r in self.catalog.rows() if (r.family, r.model) == (s.family, s.model)), None)
+        return pick_row(self.catalog.rows(), s)
 
     def download_plan(self) -> dict:
         """What this launch would download, in numbers and words (nothing is changed): the model's missing files, and for a model that is
@@ -2928,24 +3143,25 @@ class Runner:
                 pass
         gb = round(sum(p["gb"] for p in parts), 1)
         engine, here = True, []
-        try:
-            shape = self.model_shape()
-            if shape:
-                from strata_control import shape_engine
-                try:
-                    found = shape_engine.find(shape, Path(self.components_dir) if self.components_dir else None, full=False, title=self.model_title())
-                    engine = bool(found.usable)
-                    here = [found.version] if found.installed and found.version else []
-                except engine_component.EngineIntegrityError:
-                    engine, here = False, ["installed"]          # an engine is here that did not pass the check: said as such below
-                except engine_component.EngineMissing:
-                    engine, here = False, []                     # none for this model's shape here: the plan says it is downloaded first (it used to say nothing: the error left engine True)
-            else:
-                report = engine_component.status(Path(self.components_dir) if self.components_dir else None)
-                engine = bool(report.get("usable"))
-                here = [str(i.get("version")) for i in report.get("installed") or [] if i.get("version")]
-        except Exception:                                    # noqa: BLE001 - the plan must not fail on this
-            pass
+        if s.family != "deepseek41":  # DeepSeek reports its separate engine package in dsv41_plan.
+            try:
+                shape = self.model_shape()
+                if shape:
+                    from strata_control import shape_engine
+                    try:
+                        found = shape_engine.find(shape, Path(self.components_dir) if self.components_dir else None, full=False, title=self.model_title())
+                        engine = bool(found.usable)
+                        here = [found.version] if found.installed and found.version else []
+                    except engine_component.EngineIntegrityError:
+                        engine, here = False, ["installed"]          # an engine is here that did not pass the check: said as such below
+                    except engine_component.EngineMissing:
+                        engine, here = False, []                     # none for this model's shape here: the plan says it is downloaded first (it used to say nothing: the error left engine True)
+                else:
+                    report = engine_component.status(Path(self.components_dir) if self.components_dir else None)
+                    engine = bool(report.get("usable"))
+                    here = [str(i.get("version")) for i in report.get("installed") or [] if i.get("version")]
+            except Exception:                                    # noqa: BLE001 - the plan must not fail on this
+                pass
         if gb < 0.05:
             text = ("Nothing to download: your model files are used where they are." if st.own_files
                     else "Nothing to download: the model is already on this computer.")
@@ -2968,7 +3184,11 @@ class Runner:
             if any(p["label"] == "the DSpark drafter" for p in parts if p["kind"] == "shared"):
                 text += " The drafter is part of the model's prepared data and is fetched even with --dspark off."
             if any(p["kind"] == "mmproj" for p in parts):
-                text += " To skip the picture reader (the model then answers text only), add --vision off; or put its mmproj file next to your model files."
+                from strata_control import inkling_family
+                reader_file = ("Hy4-Flash-Vision.strata" if self.is_hy4()
+                               else inkling_family.VISION_FILE if self.is_inkling()
+                               else "its mmproj file")
+                text += f" To skip the picture reader (the model then answers text only), add --vision off; or put {reader_file} next to your model files."
             if any(p["kind"] == "mtp" for p in parts):
                 text += " To skip the draft layer (a little slower, less memory), add --mtp off."
             if any(p["kind"] == "dflash2" for p in parts):
@@ -3209,7 +3429,7 @@ class Runner:
             prev = read_config(launch_dir() / f"{self.name}.json")
             if not isinstance(prev, dict) or drafting.normalize(prev.get("drafting")) != "off":
                 return
-            path = self.catalog.installed_config(self.catalog.tag_of(s.family, s.model))
+            path = self.catalog.installed_config(self.catalog.tag_of(s.family, s.model, getattr(s, "custom_id", None)))
             if path is not None and read_config(path).get("drafting") is not None:
                 return
             s.drafting = "off"
@@ -3231,7 +3451,7 @@ class Runner:
             word = saved_launch_word(self.name)
             if word is None or word == "off" or modelstate.drafting_for_family(word, s.family) is None:
                 return
-            path = self.catalog.installed_config(self.catalog.tag_of(s.family, s.model))
+            path = self.catalog.installed_config(self.catalog.tag_of(s.family, s.model, getattr(s, "custom_id", None)))
             installed = read_config(path) if path is not None else {}
             if isinstance(installed, dict) and (installed.get("drafting") is not None or installed.get("mtp") is False):
                 return
@@ -3242,6 +3462,10 @@ class Runner:
     def drafting_plan_line(self) -> str:
         """The drafting line of --plan: what drafts, or why not what was asked for. Nothing is changed or downloaded."""
         from strata_control import drafting
+        if self.is_hy4():
+            return "Drafting: off" if str(self.s.drafting or "").strip().lower() == "off" else "Drafting: DFly2 (built into the model)"
+        if self.is_inkling():
+            return "Drafting: off" if str(self.s.drafting or "").strip().lower() == "off" else "Drafting: DFlash 2 (a file beside the model)"
         if self.feed_without_draft_layer():                  # the model list says this model has no draft layer: setup fetches none and the engine starts without a drafter
             return drafting.summary_line(drafting.Decision("off", "off"))
         if self.multi_file():                                # DeepSeek drafts with its own DSpark drafter (the --dspark auto the config writes), not MTP

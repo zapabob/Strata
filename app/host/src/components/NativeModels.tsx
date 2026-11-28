@@ -308,7 +308,7 @@ export function NativeModels({ onOtherModels, onReady, onImport, onConnectEngine
   </div>
   
   <NativeDeleteDialog id={deleting} onClose={() => setDeleting(null)}/>
-  <Dialog open={manage} title={tr("Manage models")} onClose={() => setManage(false)} actions={<Btn onClick={() => setManage(false)}>{tr("Done")}</Btn>}><div className="native-manage">
+  <Dialog open={manage} compact title={tr("Manage models")} onClose={() => setManage(false)} actions={<Btn onClick={() => setManage(false)}>{tr("Done")}</Btn>}><div className="native-manage">
    {tr(downloaded.some(m => m.ready || m.diskGb) ? <div className="native-manage-list" role="list">{tr(downloaded.filter(m => m.ready || m.diskGb).map(m => {
     const v = allSizes.find(x => x.id === m.model), loaded = native?.instances.some(i => i.model === m.model && i.status === 'ready');
     const policy = native?.servingPolicies?.[m.model]?.id;
@@ -325,7 +325,7 @@ export function NativeModels({ onOtherModels, onReady, onImport, onConnectEngine
       });
      }}>{tr(localLoad ? (loaded ? 'Selected' : 'Load model') : selectedSize?.id === m.model ? 'Selected' : 'Use version')}</Btn><Btn size="sm" variant="danger" disabled={!!active} onClick={() => setDeleting(m.model)}>{tr("Delete")}</Btn></span>
     </div>; }))}</div> : <p className="small muted native-manage-empty">{tr("No downloaded models")}</p>)}
-   <div className="native-manage-foot"><Btn variant="ghost" icon="folder" onClick={() => { setManage(false); (onImport ?? onOtherModels)(); }}>{tr("Use a local GGUF…")}</Btn></div>
+   <div className="native-manage-foot"><Btn variant="ghost" icon="folder" onClick={() => { setManage(false); (onImport ?? onOtherModels)(); }}>{tr("Use local model files (.strata or .gguf)…")}</Btn></div>
   </div></Dialog>
  {selectedSize ? <NativeTune open={tuneOpen} onClose={() => setTuneOpen(false)} model={selectedSize.id} resourceProfile={resourceProfile} vision={selectedSize.images ? vision : 'no'} visionUnavailable={noReader}/> : null}
  </Screen>;

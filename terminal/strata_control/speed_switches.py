@@ -65,6 +65,29 @@ SWITCHES: tuple[Switch, ...] = (
            "on a few graphics cards where it is still slower, Strata uses llama.cpp's by itself. Choose llama.cpp's if pictures look misread.",
            (("STRATA_VISION_TOWER", "mtmd"),), "qwen-pictures", group="Image reading",
            words=(("on", "Strata's own (recommended)"), ("off", "llama.cpp's")), terminal_default="auto"),
+    # 0.2.16 (owner): the route tail skip as a choice.  0.2.17 (owner, 11-19): OFF by default.  The engine of 0.2.17 (0.1.62) still has its own rule for an
+    # unset STRATA_ROUTE_TAIL_SKIP (rank 7 on CUDA and gfx1200/gfx1201 where it helps; src/core/expert_source.cpp tail_skip_rank()), so every engine start
+    # sets it: child_env() in serve/server.py gives the engine "0" when neither the run config nor the person's own environment names the setting
+    # (engine_env_defaults below).  On is rank 7, written as STRATA_ROUTE_TAIL_SKIP=7; 1-9 is that rank.  Only 7 is measured (docs/DETAILS.md, QUANTS.md).
+    # A "0" in a run config (setup's own, or the person's) reads as Off, which is the default.
+    Switch("route_tail_skip", "Skip rarely used parts of the model",
+           "Faster answers: parts of the model that matter least for a word are skipped when they are not on the graphics card yet. "
+           "Answers can change slightly. Off by default.",
+           (("STRATA_ROUTE_TAIL_SKIP", "7"),), "tail-skip", default="off",
+           words=(("on", "On"), ("off", "Off (default)")),
+           choices=(("7", "On"),) + tuple((str(r), str(r)) for r in (1, 2, 3, 4, 5, 6, 8, 9)),
+           choice_note="Lower numbers skip more parts and are faster; answers can change more. Only 7 has been measured.",
+           choice_sets="set 7 to turn it on, or 1 to 9 to choose how much is skipped"),
+    # Inkling-2-Mini opt-in router tail skip (lane TAILSKIP, owner 2026-11-26): two presets, both OFF by default and never the default.  `strata launch --turbo` and
+    # `--turbo-max` write STRATA_INK_TAIL_SKIP=turbo / turbo-max, the engine expands the names (engine/src/inkling2/cuda/ink_tail_skip.cuh).  Terminal only.
+    # turbo: Pass 2 only, about 3 % of the expert reads skipped, KL about 1e-3.  turbo-max: about 16 % skipped, KL about 1.3e-2.  docs/INKLING_TURBO.md.
+    Switch("inkling_turbo", "Inkling: skip rarely used experts (turbo)",
+           "Faster answers on Inkling-2-Mini: experts that matter least for a word are not read. Answers differ slightly from exact. Off by default.",
+           (("STRATA_INK_TAIL_SKIP", "turbo"),), "inkling-tail", default="off", terminal_only=True,
+           words=(("on", "On"), ("off", "Off (default)")),
+           choices=(("turbo", "Turbo"), ("turbo-max", "Turbo max")),
+           choice_note="Turbo skips about 3 percent of the expert reads; turbo-max about 16 percent, which is faster and changes answers more.",
+           choice_sets="set turbo (about 3 percent of the reads skipped) or turbo-max (about 16 percent, faster, answers differ more)"),
     # Troubleshooting only, in the Terminal's Advanced table and nowhere else: every Qwen 0.2.7 default back to its 0.2.6 behaviour.
     Switch("qwen_defaults_026", "Qwen: 0.2.6 behaviour",
            "Starts every Qwen speed setting new in 0.2.7 the way 0.2.6 did, for troubleshooting. Use it if something that worked before no longer does.",
@@ -129,6 +152,12 @@ def applies(switch: Switch | str, cfg: Mapping[str, Any] | None, gpus: Iterable[
         return not (cfg or {}).get("arch") and backend == "cuda" and _small_nvidia(gpus)
     if sw.only == "qwen-radeon-9000":
         return backend == "hip" and _radeon_9000(gpus)
+    if sw.only == "inkling-tail":
+        # the Inkling engine has the skip on CUDA and HIP (its direct MoE path)
+        return str((cfg or {}).get("arch") or "").lower() == "inkling2_loop" and backend in ("cuda", "hip")
+    if sw.only == "tail-skip":
+        # the engine reads STRATA_ROUTE_TAIL_SKIP on CUDA builds and on HIP gfx1200/gfx1201 only
+        return backend == "cuda" or (backend == "hip" and _radeon_9000(gpus))
     return False
 
 
