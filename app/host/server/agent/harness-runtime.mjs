@@ -16,6 +16,7 @@ import { externalEnvironment } from '../external-env.mjs';
 import { utf8Script } from '../powershell-utf8.mjs';
 
 const URL_PATTERN = /http:\/\/127\.0\.0\.1:(\d+)\/\?token=([A-Za-z0-9_-]+)/;
+export const HARNESS_START_TIMEOUT_MS = 120_000;
 
 /** Environment names that carry ambient credentials and must not reach the agent unless named. */
 const SECRET_NAME = /(KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|AUTH)/i;
@@ -76,7 +77,7 @@ export class HarnessProcess {
   get running() { return this.#child !== null && this.exited === null; }
 
   /** Start the agent and resolve with its loopback URL and launch token. */
-  async start({ timeoutMs = 120_000 } = {}) {
+  async start({ timeoutMs = HARNESS_START_TIMEOUT_MS } = {}) {
     mkdirSync(this.home, { recursive: true });
     mkdirSync(this.cwd, { recursive: true });
     const args = [this.harness.bin, '--profile', 'web', '--patch', this.patchFile, '--port', '0', '--no-open'];

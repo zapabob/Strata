@@ -16,7 +16,7 @@ import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { startScriptedWorker } from './helpers/scripted-worker.mjs';
 import { createAgentBridge } from '../server/agent/agent-bridge.mjs';
-import { resolveHarness } from '../server/agent/harness-runtime.mjs';
+import { HARNESS_START_TIMEOUT_MS, resolveHarness } from '../server/agent/harness-runtime.mjs';
 
 const HARNESS = process.env.STRATA_HARNESS_DIR;
 const skip = !HARNESS || !resolveHarness({ env: process.env }).ok ? 'STRATA_HARNESS_DIR is not set to a built Harness' : false;
@@ -54,7 +54,7 @@ async function rig(t, { connections = [], dataDir } = {}) {
   const dir = dataDir ?? mkdtempSync(join(tmpdir(), 'strata-agent-'));
   const ws = join(dir, 'ws'); mkdirSync(ws, { recursive: true });
   const local = [{ id: 'inst-1', label: 'Scripted', baseUrl: worker.url, modelId: 'scripted-model', context: 32768 }];
-  const bridge = createAgentBridge({ dataDir: dir, localInstances: () => local, connections: () => connections, env: process.env, startTimeoutMs: 90_000 });
+  const bridge = createAgentBridge({ dataDir: dir, localInstances: () => local, connections: () => connections, env: process.env });
   t.after(async () => { await bridge.close(); await worker.close(); if (!dataDir) cleanup(dir); });
   const run = (chatId, message, opts = {}) => {
     const frames = [];
@@ -77,10 +77,9 @@ async function rig(t, { connections = [], dataDir } = {}) {
 
 const states = (frames, id) => frames.filter(f => f.type === 'agent-tool' && (!id || f.tool.id === id)).map(f => f.tool.state);
 const text = frames => frames.filter(f => f.type === 'delta').map(f => f.text).join('');
-// The real runtime has a 90-second cold-start budget. Wait for the actual turn
-// state within that same bound; ending early is a failure, not a successful wait.
+// Bound the wait for a turn milestone by the same budget used for a cold runtime.
 async function waitForTurn(turn, predicate, label) {
-  const deadline=Date.now()+90_000;
+  const deadline=Date.now()+HARNESS_START_TIMEOUT_MS;
   let ended=false, failure;
   void turn.promise.then(()=>{ended=true;},error=>{ended=true;failure=error;});
   while(!predicate(turn.frames)) {
@@ -109,7 +108,11 @@ test('closing during cold startup ends the owned process and cannot revive the b
 test('A01/A02 a turn streams reasoning and text, then finishes with usage', { skip }, async t => {
   const r = await rig(t);
   const { frames, promise } = r.run('chat-a01', 'SCRIPT:hello');
-  await promise;
+  await promise.catch(error => {
+    if (typeof error?.details === 'string') t.diagnostic(error.details);
+    t.diagnostic(`Frame types before failure: ${frames.map(frame => frame.type).join(', ')}. Scripted worker requests: ${r.worker.requests.length}.`);
+    throw error;
+  });
   assert.equal(frames[0].type, 'queued');
   const start = frames.find(f => f.type === 'start');
   assert.equal(start.agent, true); assert.equal(start.model, 'Scripted'); assert.equal(start.contextMax, 32768);
@@ -320,7 +323,7 @@ test('a leftover agent from a host that died is stopped at the next start, and a
   const patchFile = join(dir, 'p.patch.yml'); writeFileSync(patchFile, profile.patch);
   const pidFile = join(dir, 'harness.pid');
   const hp = new HarnessProcess({ harness: resolveHarness({ env: process.env }), home: join(dir, 'home'), patchFile, cwd: join(dir, 'run'), env: profile.env, pidFile });
-  await hp.start({ timeoutMs: 90_000 });
+  await hp.start();
   const pid = hp.pid;
   assert.ok(existsSync(pidFile), 'the agent records its PID');
   // The host "dies": nothing calls stop(). The next start finds the record.

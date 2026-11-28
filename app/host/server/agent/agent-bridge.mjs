@@ -21,7 +21,7 @@ import { homedir, tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { createHash, randomUUID } from 'node:crypto';
 import { GatewayClient } from './gateway-client.mjs';
-import { HarnessProcess, resolveHarness, redact, stopStaleAgent } from './harness-runtime.mjs';
+import { HARNESS_START_TIMEOUT_MS, HarnessProcess, resolveHarness, redact, stopStaleAgent } from './harness-runtime.mjs';
 import { StatusReporter } from './status.mjs';
 import { buildProfile, routeFor, MODE_PRESETS, modeOf, effortOf, localOutputBudget, compactionThreshold } from './profile.mjs';
 import { TurnProjector, parseArguments as parseArgs, baselineItems } from './events.mjs';
@@ -169,7 +169,7 @@ export function turnStallLimit({ local, toolRunning, stallMs, localStallMs, stal
  * @param {string} [options.nodePath]                   the Node runtime that runs the Harness
  * @param {(line:string)=>void} [options.log]
  */
-export function createAgentBridge({ dataDir, componentsDir = null, bundledDir = null, gate = true, localInstances, connections, tools = () => undefined, defaultLocalId = () => null, skillsDir = () => null, selectSkillsForTurn = () => [], onTurnBegin = () => null, onGoal = () => {}, onPlan = () => {}, onQueue = () => {}, onWake = () => {}, proxyBase = null, searchMock = null, expertSampling = () => null, engineProgress = () => null, engineGraceMs = 2 * 60 * 60_000, helperLimitMs = () => 0, contextOptimizer = () => null, stallMs = 4 * 60_000, localStallMs = 30 * 60_000, stallToolMs = 20 * 60_000, env = process.env, nodePath = process.execPath, log = () => {}, liveMs = 90_000, startRuntimeImpl = null, startTimeoutMs = 120_000, sessionReadyMs = 60_000, sessionRetryMs = 1_500, restartWaitMs = 120_000, controlRpcMs = 15_000, helperStopMs = 10_000 }) {
+export function createAgentBridge({ dataDir, componentsDir = null, bundledDir = null, gate = true, localInstances, connections, tools = () => undefined, defaultLocalId = () => null, skillsDir = () => null, selectSkillsForTurn = () => [], onTurnBegin = () => null, onGoal = () => {}, onPlan = () => {}, onQueue = () => {}, onWake = () => {}, proxyBase = null, searchMock = null, expertSampling = () => null, engineProgress = () => null, engineGraceMs = 2 * 60 * 60_000, helperLimitMs = () => 0, contextOptimizer = () => null, stallMs = 4 * 60_000, localStallMs = 30 * 60_000, stallToolMs = 20 * 60_000, env = process.env, nodePath = process.execPath, log = () => {}, liveMs = 90_000, startRuntimeImpl = null, startTimeoutMs = HARNESS_START_TIMEOUT_MS, sessionReadyMs = 60_000, sessionRetryMs = 1_500, restartWaitMs = 120_000, controlRpcMs = 15_000, helperStopMs = 10_000 }) {
   localStallMs = localSilenceLimit(env.STRATA_LOCAL_STALL_MS, localStallMs);
   const boundedRpc = (runtime, method, args, signal = null) => {
     const deadline = AbortSignal.timeout(controlRpcMs);
