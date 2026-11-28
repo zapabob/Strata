@@ -18,6 +18,8 @@ ARCHIVE_PREFIXES = (
     "docs/bench-results/",
     "phaseA-tests/",
     "docs/release-notes-",
+    "_docs/2026-11-27_v084-genm-nvfp4-release_Antigravity.md",
+    "_docs/2026-11-27_v084-release-notes.md",
 )
 
 

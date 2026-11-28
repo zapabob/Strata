@@ -1,5 +1,11 @@
 # Hakua Windows release qualification
 
+## 0.8.8 Windows release
+
+This release incorporates the v0.2.23 upstream delta and includes Control 0.6.4. The Hakua Inkling CUDA companion is packaged as 0.8.8 and uses the same strata-inkling 0.1.70 executable as the real CHiPS smoke test. The standard 0.8.5 CUDA component is carried forward for existing profiles. The installer and CUDA components are unsigned. Download names, checksums and preparation are described in the [Windows guide](HAKUA_INSTALL.md).
+
+A complete CHiPS SQv2 pack generated a chat response at 4,096 context on an RTX 5060 Ti 16 GB. Thirty-three installed Harness cases passed with a scripted provider, including streaming, tool approval, Stop and resume. The previous Harness failure did not retain its exception. A controlled cold start reproduced the failure at the fixture's old 90-second limit and passed using the application's 120-second startup limit. The test now uses that shared limit and records the cause on failure. Existing DS4 paths were kept and passed targeted tests. DS4 real-weight generation, long-context retrieval and concurrent GPU execution remain outside this verification. See the [upstream intake record](../_docs/2026-11-28_upstream-023-hakua_Codex.md).
+
 ## 0.6.0 owned Q38 source candidate
 
 The new Windows CUDA 13 / Blackwell dense GGUF runner uses Strata-owned loading, forward execution and CUDA operations. It reuses Strata's GDN kernel and attributed PrismML/ggml format mathematics, Spin8 and Turbo scalar tables, without a llama runtime dependency. PrismML 0.4.1 PQ2_0 weights and F16-K/Turbo2/3/4-V or Spin8 K8V4 caches share this native path. The original standalone PrismML 0.4.1 and TurboQuant 0.4.0 packages retain their separate identities and evidence. Their old signatures do not qualify the combined native executable.
@@ -421,7 +427,7 @@ generation remains unqualified. Use the explicit
 [beta release page](https://github.com/zapabob/Strata/releases/tag/v0.4.1-beta.1)
 for asset availability; the normal latest feed retains its earlier signed release.
 See [installation](HAKUA_INSTALL.md) and
-[version policy](../packaging/UPDATES.md#version-and-asset-names).
+[version policy](../tools/packaging/UPDATES.md#version-and-asset-names).
 
 Published on 2026-11-05 at 12:40:24 UTC as a prerelease with `latest=false`.
 The release tag points to `9e6f515af3c707562e99b3f904c64da9e9c69e8d`.
@@ -830,7 +836,7 @@ These checks do not establish general model quality, a speed improvement, multiu
 
 The package uses official Node 24.22.2, SHA-256 `1c331340fa6cac5e4294725959070a143fa0507195a78ad77eed7943f719aac9`. The reviewed Hakua wheel is selected by exact URI and hash, with hashed dependency installation at build time. App startup does not install Python packages or compile code. Windows credential files use a protected owner-only DACL. The public UI uses approved pinned Lucide assets, an owned MIT icon and system fonts.
 
-There are 94 inventoried third-party notice files. The unchanged upstream 483,520-byte control vector is included, off by default, with its full Qwen Community License 1.0. [Provenance](../data/experimental-speed-projection/PROVENANCE.json) pins its source and licence bytes. Vector SHA-256: `ef0724c5b79297e481017be85769832bc26eb220c984ecba2b0e1b0c8426312b`. The guard permits exactly this declared GGUF and rejects other GGUFs or live profile data in Control. Complete inference model weight packs, personal memories and user keys are not distributed.
+There are 94 inventoried third-party notice files. The unchanged upstream 483,520-byte control vector is included, off by default, with its full Qwen Community License 1.0. [Provenance](../terminal/data/experimental-speed-projection/PROVENANCE.json) pins its source and licence bytes. Vector SHA-256: `ef0724c5b79297e481017be85769832bc26eb220c984ecba2b0e1b0c8426312b`. The guard permits exactly this declared GGUF and rejects other GGUFs or live profile data in Control. Complete inference model weight packs, personal memories and user keys are not distributed.
 
 ### Installer and publication (0.3.3)
 

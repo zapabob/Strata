@@ -5,9 +5,11 @@ import hashlib
 import json
 import re
 import shutil
-import subprocess
 
 ROOT = Path(__file__).resolve().parents[3]
+ENGINE = ROOT / "engine"
+PACKAGING = ROOT / "tools/packaging"
+VECTOR_DATA = ROOT / "terminal/data/experimental-speed-projection"
 
 def sha(path):
     with path.open("rb") as stream:
@@ -15,14 +17,12 @@ def sha(path):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    for name in ("out","ggml-source","cuda-dir","node-dir","host-node-modules","control-dir","microsoft-documents"):
+    for name in ("out","cuda-dir","node-dir","host-node-modules","control-dir","microsoft-documents"):
         parser.add_argument("--"+name,required=True,type=Path)
     args=parser.parse_args()
     out=args.out.resolve()
     if out.exists():
         raise SystemExit("Notice stages are immutable; use a fresh output directory")
-    if subprocess.check_output(["git","-C",str(args.ggml_source),"rev-parse","HEAD"],text=True).strip()!="3cf03257f219afbe7334045ff7c6a06ac68c627d":
-        raise SystemExit("Unexpected ggml licence source")
     entries={}
     def copy(source,name,expected=None):
         source=Path(source)
@@ -37,17 +37,22 @@ def main():
         shutil.copy2(source,target)
         entries[name]=sha(target)
     copy(ROOT/"LICENSE","Strata-MIT.txt")
-    copy(args.ggml_source/"LICENSE","ggml-MIT.txt")
-    libstrix_notice=ROOT/"third_party/libstrix/NOTICE.md"
-    if libstrix_notice.is_file():
-        copy(libstrix_notice,"libstrix-NOTICE.md")
+    copy(ENGINE/"third_party/strata-ggml/LICENSE","ggml-MIT.txt")
+    copy(ENGINE/"third_party/libstrix/NOTICE.md","libstrix-NOTICE.md")
+    q38=ENGINE/"q38/src"
+    copy(q38/"LICENSE-formats.txt","Q38-formats-MIT.txt")
+    copy(q38/"tqcodec/DIALECT_LICENSE.txt","Turbo-dialects-MIT.txt")
+    spin8=q38/"spin8/third_party/sha256"
+    copy(spin8/"LICENSE","Spin8-SHA256-LICENSE.txt")
+    copy(spin8/"PROVENANCE.md","Spin8-SHA256-PROVENANCE.md")
+    copy(spin8/"rotate-bits/LICENSE.md","Spin8-rotate-bits-LICENSE.md")
     copy(args.cuda_dir/"EULA.txt","NVIDIA-EULA.txt")
     copy(args.cuda_dir/"LICENSE","NVIDIA-LICENSE.txt")
     copy(args.node_dir/"LICENSE","Node-LICENSE.txt","ed34dd8e3f0a78dbaf00d0444ce8e285b015b765379c2e17880455f70370f8e9")
-    copy(ROOT/"packaging/hakua-third-party-notices.md","README.md")
-    qwen=json.loads((ROOT/"data/experimental-speed-projection/PROVENANCE.json").read_text(encoding="utf-8"))["license"]
-    copy(ROOT/"data/experimental-speed-projection/LICENSE","Qwen-Community-License-1.0.txt",qwen["sha256"])
-    vendor=json.loads((ROOT/"packaging/microsoft-2022-notice-sources.json").read_text(encoding="utf-8"))
+    copy(PACKAGING/"hakua-third-party-notices.md","README.md")
+    qwen=json.loads((VECTOR_DATA/"PROVENANCE.json").read_text(encoding="utf-8"))["license"]
+    copy(VECTOR_DATA/"LICENSE","Qwen-Community-License-1.0.txt",qwen["sha256"])
+    vendor=json.loads((PACKAGING/"microsoft-2022-notice-sources.json").read_text(encoding="utf-8"))
     for item in vendor:
         if not re.fullmatch(r"[A-Za-z0-9.-]+",item["file"]):
             raise ValueError("Unsafe vendor notice name")

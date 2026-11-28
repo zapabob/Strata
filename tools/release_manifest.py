@@ -154,13 +154,10 @@ def check(manifest):
     for where, (found, key) in code_versions().items():
         want = manifest.get(key, manifest["product_version"]) if key == "terminal_version" else manifest[key]
         if where == "CMakeLists.txt (engine)" and "upstream" in manifest:
-            # The Hakua fork keeps its own engine component version (engine_version,
-            # e.g. 0.6.3) while engine/CMakeLists.txt follows the absorbed upstream
-            # engine (upstream.engine_version, e.g. 0.1.63). Compare the CMake project
-            # version against the upstream reference, not the fork component version.
-            up_want = manifest["upstream"]["engine_version"]
-            if found != up_want and not found.startswith(up_want + "."):
-                problems.append("%s says %s, upstream reference engine_version is %s" % (where, found, up_want))
+            # Fork releases can pin a source version independently of the upstream docs and shipped components.
+            source_version = manifest.get("engine_source_version", manifest["upstream"]["engine_version"])
+            if found != source_version and not found.startswith(source_version + "."):
+                problems.append("%s says %s, declared engine source version is %s" % (where, found, source_version))
         elif where == "CMakeLists.txt (engine)" and "upstream" not in manifest:
             # the CMake project version is Control's. The engine packages carry it, except after a Control-only hotfix (Control 0.1.59.1,
             # engines still 0.1.59): then Control is the engine version plus one hotfix part.

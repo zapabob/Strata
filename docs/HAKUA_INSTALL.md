@@ -1,5 +1,17 @@
 # Install Hakua / Strata on Windows
 
+## Hakua 0.8.8
+
+Quit Strata and its tray process after any active requests have finished. Run the [Windows installer](https://github.com/zapabob/Strata/releases/download/v0.8.8/Strata-0.8.8-windows-x64-setup.exe) against the existing per-user installation, usually %LOCALAPPDATA%\Programs\Strata. The app update uses the existing model library, profiles and chat data. Compare downloads against the [SHA-256 list](https://github.com/zapabob/Strata/releases/download/v0.8.8/SHA256SUMS.txt). The [offline bundle](https://github.com/zapabob/Strata/releases/download/v0.8.8/Strata-0.8.8-windows-x64.tar.7z) contains the same setup program, both CUDA packages and their checksums. The model weights are a separate download.
+
+### Inkling 2 Mini CHiPS
+
+Download the [Hakua 0.8.8 Inkling CUDA companion](https://github.com/zapabob/Strata/releases/download/v0.8.8/strata-inkling-0.8.8-windows-x86_64-cuda-cuda13.tar.gz) for Windows x64 and the RTX 50 series. The archive holds the manifest and executables at its root. After verifying the archive hash, extract it into a new versioned folder under the Inkling shape's engine directory. The default is %LOCALAPPDATA%\Strata\components\shapes\inkling2\engine\0.8.8-windows-x86_64-cuda-cuda13. If you have set STRATA_COMPONENTS_DIR, use that directory in place of %LOCALAPPDATA%\Strata\components. The manifest should sit directly in the versioned folder alongside strata-inkling.exe. Approximately 543 MiB of space is needed for the extracted component. The archive has SHA-256 integrity checks and is unsigned.
+
+Open **Models → Use local model files (.strata or .gguf)…** and select the complete Inkling-2-Mini-SQv2-20-CHiPS.strata. Strata reads the weights from their existing location. Start with a 4,096-token context, one slot, and drafting and vision disabled. The generation smoke test used the exact Expert GPU path and 7 GiB each for Expert VRAM and RAM. Restart Strata after adding the engine if it was already open.
+
+The standard 0.8.5 CUDA engine remains available for its existing profiles in the offline bundle and the [previous release](https://github.com/zapabob/Strata/releases/tag/v0.8.7). Keep prior components and the prior installer for rollback. The dedicated Inkling component is selected by its higher package version.
+
 ## 0.6.0 candidate and local dense GGUF
 
 The reviewed source candidate adds the Windows CUDA 13 / Blackwell Qwen3.8-27B-family native trial. Installation and public delivery of 0.6.0 remain pending their receipts; the installed and published stable release remains 0.5.9. After a component covering `strata-q38.exe` is delivered, choose Use a local GGUF, select the original checkpoint, check it, then Prepare and load. A previous component without this helper reports a missing-engine error. Do not copy a development executable into the installed application.
@@ -219,7 +231,7 @@ Hakua memory is optional and remains off until enabled. Open it from the sidebar
 loading the model. Reference/save consent is selected separately for each message.
 Additional local runtimes use the app's local profile key automatically. First enabling
 memory can restart the owned server with authentication and shared caches disabled;
-finish active requests first. See the [memory guide](../serve/MEMORY_HARNESS.md).
+finish active requests first. See the [memory guide](../terminal/serve/MEMORY_HARNESS.md).
 
 Native image input and the separate DeepSeek native engine are not included in this
 Windows release. Other GPUs, HIP, SYCL, Linux and Metal need their own builds and tests.
