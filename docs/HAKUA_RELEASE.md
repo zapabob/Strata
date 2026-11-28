@@ -1,8 +1,8 @@
 # Hakua Windows release qualification
 
-## 0.8.8 Windows release
+## 0.8.9 Windows release
 
-This release incorporates the v0.2.23 upstream delta and includes Control 0.6.4. The Hakua Inkling CUDA companion is packaged as 0.8.8 and uses the same strata-inkling 0.1.70 executable as the real CHiPS smoke test. The standard 0.8.5 CUDA component is carried forward for existing profiles. The installer and CUDA components are unsigned. Download names, checksums and preparation are described in the [Windows guide](HAKUA_INSTALL.md).
+This release incorporates the v0.2.23 upstream delta and includes Control 0.6.4. The Hakua Inkling CUDA companion is packaged as 0.8.8 and uses the same strata-inkling 0.1.70 executable as the real CHiPS smoke test. The desktop restores the upstream loopback health check to distinguish its App Host from a model server already using the preferred port. The standard 0.8.5 CUDA component is carried forward for existing profiles. The installer and CUDA components are unsigned. Download names, checksums and preparation are described in the [Windows guide](HAKUA_INSTALL.md).
 
 A complete CHiPS SQv2 pack generated a chat response at 4,096 context on an RTX 5060 Ti 16 GB. Thirty-three installed Harness cases passed with a scripted provider, including streaming, tool approval, Stop and resume. The previous Harness failure did not retain its exception. A controlled cold start reproduced the failure at the fixture's old 90-second limit and passed using the application's 120-second startup limit. The test now uses that shared limit and records the cause on failure. Existing DS4 paths were kept and passed targeted tests. DS4 real-weight generation, long-context retrieval and concurrent GPU execution remain outside this verification. See the [upstream intake record](../_docs/2026-11-28_upstream-023-hakua_Codex.md).
 

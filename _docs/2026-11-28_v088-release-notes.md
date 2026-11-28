@@ -1,7 +1,0 @@
-# Hakua / Strata 0.8.8
-
-Hakua 0.8.8 for Windows x64 incorporates the official Strata v0.2.23 delta and ships Control 0.6.4. The existing DeepSeek V4.1/DS4 launch and profile handling are retained. The DeepSeek Harness streaming test now uses the application's startup budget and includes startup diagnostics.
-
-The separate Inkling CUDA companion adds support for local Inkling 2 Mini SQv2 packs with the 16 KiB layout. The companion's Hakua package version is 0.8.8 and its executable identifies itself as strata-inkling 0.1.70. The offline bundle includes the installer, the Inkling companion and the retained standard engine 0.8.5. Model weights are provided separately. The installer and native payloads are unsigned. Compare downloads against SHA256SUMS.txt and follow the [Windows install guide](https://github.com/zapabob/Strata/blob/v0.8.8/docs/HAKUA_INSTALL.md).
-
-The complete CHiPS model produced a chat response at 4,096 context on an RTX 5060 Ti 16 GB. The installed Harness passed 33 streaming, tool, approval and lifecycle checks with a scripted provider. The targeted Python suite passed 106 tests covering DS4 routing and local model import and activation. Real-weight DS4 generation, long-context retrieval and concurrent GPU use remain unverified. [Upstream intake and verification](https://github.com/zapabob/Strata/blob/v0.8.8/_docs/2026-11-28_upstream-023-hakua_Codex.md)

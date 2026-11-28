@@ -10,7 +10,7 @@ Download the per-user setup program from [Hakua Releases](https://github.com/zap
 
 ## Inkling 2 Mini CHiPS
 
-Hakua 0.8.8 incorporates the Strata 0.2.23 release changes, including local Inkling SQv2 and the 16 KiB `.strata` layout. Install the [Inkling CUDA companion](docs/HAKUA_INSTALL.md#inkling-2-mini-chips), then import the existing pack with **Models → Use local model files**. The import gives the model its own identity and reads the weights from their existing path. Start with a single 4,096-token slot and drafting and vision off. The complete CHiPS SQv2 pack passed a real chat completion on an RTX 5060 Ti 16 GB. [CHiPS model files](https://huggingface.co/Kujira/Inkling-2-Mini-Strata-CHiPS-Abliterated) · [Verification record](_docs/2026-11-28_upstream-023-hakua_Codex.md)
+Hakua 0.8.9 incorporates the Strata 0.2.23 release changes, including local Inkling SQv2 and the 16 KiB `.strata` layout. Install the [Inkling CUDA companion](docs/HAKUA_INSTALL.md#inkling-2-mini-chips), then import the existing pack with **Models → Use local model files**. The import gives the model its own identity and reads the weights from their existing path. Start with a single 4,096-token slot and drafting and vision off. The complete CHiPS SQv2 pack passed a real chat completion on an RTX 5060 Ti 16 GB. [CHiPS model files](https://huggingface.co/Kujira/Inkling-2-Mini-Strata-CHiPS-Abliterated) · [Verification record](_docs/2026-11-28_upstream-023-hakua_Codex.md)
 
 ## Reuse agent workflows
 

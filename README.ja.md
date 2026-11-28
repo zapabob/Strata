@@ -10,7 +10,7 @@ Hakua / Strata は、[Niko1221/Strata](https://github.com/Niko1221/Strata) を�
 
 ## Inkling 2 Mini CHiPS
 
-Hakua 0.8.8 は Strata 0.2.23 の差分を取り込み、Inkling SQv2 の 16 KiB `.strata` 形式に対応しました。[Inkling 用の CUDA エンジン](docs/HAKUA_INSTALL.md#inkling-2-mini-chips)を入れ、「モデル」から手元のファイルを指定します。カスタムモデルには専用の識別子が付き、重みは元の場所から読み込みます。最初は 4,096 トークン、1 スロットで、ドラフトと画像入力をオフにして起動できます。完全な CHiPS SQv2 パックを RTX 5060 Ti 16 GB で読み込み、チャット API で応答を確認しました。[CHiPS モデル配布ページ](https://huggingface.co/Kujira/Inkling-2-Mini-Strata-CHiPS-Abliterated) · [検証記録](_docs/2026-11-28_upstream-023-hakua_Codex.md)
+Hakua 0.8.9 は Strata 0.2.23 の差分を取り込み、Inkling SQv2 の 16 KiB `.strata` 形式に対応しました。[Inkling 用の CUDA エンジン](docs/HAKUA_INSTALL.md#inkling-2-mini-chips)を入れ、「モデル」から手元のファイルを指定します。カスタムモデルには専用の識別子が付き、重みは元の場所から読み込みます。最初は 4,096 トークン、1 スロットで、ドラフトと画像入力をオフにして起動できます。完全な CHiPS SQv2 パックを RTX 5060 Ti 16 GB で読み込み、チャット API で応答を確認しました。[CHiPS モデル配布ページ](https://huggingface.co/Kujira/Inkling-2-Mini-Strata-CHiPS-Abliterated) · [検証記録](_docs/2026-11-28_upstream-023-hakua_Codex.md)
 
 ## 作業手順をスキルとして再利用する
 
